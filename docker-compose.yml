@@ -1,0 +1,20 @@
+version: "3.9"
+services:
+        base:
+                build: vde
+                # command: tail -F /dev/null #keep the base running
+                environment: 
+                        - DISPLAY=$DISPLAY
+                        - QT_X11_NO_MITSHM=1
+                        - USER=docker
+                        
+                volumes:
+                        - "autoware-vol:/opt/AutowareAuto"
+                        - /tmp/.X11-unix:/tmp/.X11-unix:rw
+                        - ${HOME}/vdehome:/home/docker/
+        autoware:
+                image: registry.gitlab.com/autowarefoundation/autoware.auto/autowareauto/amd64/binary-foxy:1.0.0
+                volumes:
+                        - "autoware-vol:/opt/AutowareAuto"
+volumes:
+        autoware-vol: {}
