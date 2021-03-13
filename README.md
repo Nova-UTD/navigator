@@ -21,11 +21,10 @@ If everything goes well, you should now be inside the VDE container.
 
 ## Building Autoware.Auto
 1. Are you inside the container? Your terminal will have "docker@..." if you're inside. If not, run `./start.sh`
-2. Go to the home directory with `cd ~`
-3. You'll need to give yourself permissions for the home folder uisng `sudo chown -R docker: .` (This is quirky and will be fixed)
-4. Move into the Autoware repo using `cd ~/Autoware`
-5. Source your ROS installation using `source /opt/ros/foxy/setup.bash` The build **will fail** if you forget this.
-6. Finally run `colcon build`. This will take a while to finish.
+2. You'll need to give yourself permissions for the home folder uisng `sudo chown -R docker: .` (This is quirky and will be fixed)
+3. Move into the Autoware repo using `cd ~/AutowareAuto`
+4. Source your ROS installation using `source /opt/ros/foxy/setup.bash` The build **will fail** if you forget this.
+5. Finally run `colcon build`. This will take a while to finish.
 At this point, your environment setup is complete.
 
 # Notes
