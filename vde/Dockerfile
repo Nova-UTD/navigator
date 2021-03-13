@@ -134,11 +134,13 @@ COPY colcon-defaults.yaml /usr/local/etc/colcon-defaults.yaml
 RUN echo "export COLCON_DEFAULTS_FILE=/usr/local/etc/colcon-defaults.yaml" >> \
     /etc/skel/.bashrc
 
+COPY autoware-setup.sh /tmp/
+RUN chmod +x /tmp/autoware-setup.sh
 RUN useradd --create-home --shell /bin/bash docker && echo "docker:docker" | chpasswd && adduser docker sudo
 USER docker
 WORKDIR /home/docker
 
-COPY autoware-setup.sh /tmp/
+
 RUN /tmp/autoware-setup.sh
 USER root
 #RUN cd /home/docker/AutowareAuto/ && colcon build
