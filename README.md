@@ -26,7 +26,7 @@ If everything goes well, you should now be inside the VDE container.
 4. Move into the Autoware repo using `cd ~/AutowareAuto`
 5. Source your ROS installation using `source /opt/ros/foxy/setup.bash` The build **will fail** if you forget this.
 6. Finally run `colcon build`. This will take a while to finish.
-At this point, your environment setup is complete.
+At this point, your environment setup is complete. More information about building Autoware.Auto can be found [here](https://autowarefoundation.gitlab.io/autoware.auto/AutowareAuto/building.html)
 
 # Notes
 - By default, the home directory inside the container is linked to a folder called "vdehome" in the host user's home folder. You'll see this in docker-compose.yml on the line `${HOME}/vdehome:/home/docker/`. This means that any file you place in the home directory will be saved.
