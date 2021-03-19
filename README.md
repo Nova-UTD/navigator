@@ -1,4 +1,13 @@
-# vde
+```
+
+██╗   ██╗██████╗ ███████╗
+██║   ██║██╔══██╗██╔════╝
+██║   ██║██║  ██║█████╗  
+╚██╗ ██╔╝██║  ██║██╔══╝  
+ ╚████╔╝ ██████╔╝███████╗
+  ╚═══╝  ╚═════╝ ╚══════╝
+                         
+```
 The Voltron Development Environment, our Docker-based development setup. It's really a modified version of Autoware.Auto's [ADE](https://ade-cli.readthedocs.io/).
 
 # Installation
