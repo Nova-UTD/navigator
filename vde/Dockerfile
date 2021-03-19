@@ -37,6 +37,8 @@ ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
+
+
 # download node.js?
 RUN echo deb https://deb.nodesource.com/node_10.x ${CODENAME} main | tee /etc/apt/sources.list.d/nodesource.list
 RUN apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key 1655A0AB68576280
@@ -130,22 +132,41 @@ COPY gitconfig /etc/gitconfig
 
 
 COPY entrypoint /ade_entrypoint
+COPY autoware-setup.sh /tmp/
+COPY autoware-build.sh /tmp/
 COPY colcon-defaults.yaml /usr/local/etc/colcon-defaults.yaml
-RUN echo "export COLCON_DEFAULTS_FILE=/usr/local/etc/colcon-defaults.yaml" >> \
+RUN chmod +x /ade_entrypoint && \
+    chmod +x /tmp/autoware-setup.sh && \
+    chmod +x /tmp/autoware-build.sh && \
+    echo "export COLCON_DEFAULTS_FILE=/usr/local/etc/colcon-defaults.yaml" >> \
     /etc/skel/.bashrc
 
-COPY autoware-setup.sh /tmp/
-RUN chmod +x /tmp/autoware-setup.sh
-RUN useradd --create-home --shell /bin/bash docker && echo "docker:docker" | chpasswd && adduser docker sudo
+# Add a welcome to our new bash
+RUN echo "echo \"This is the\"" >> \
+    /etc/skel/.bashrc
+RUN echo "figlet \"Voltron\"" >> \
+    /etc/skel/.bashrc
+RUN echo "echo Development Environment" >> \
+    /etc/skel/.bashrc
+
+# Add our "docker" user, give it a home directory and shell,
+    # give it a password, add "docker" to the sudo group,
+    # and give access to its home directory
+RUN useradd --create-home --shell /bin/bash docker && \
+    echo "docker:docker" | chpasswd && \
+    adduser docker sudo && \
+    chown -R docker: /home/docker
+
 USER docker
 WORKDIR /home/docker
 
-
 RUN /tmp/autoware-setup.sh
+
 USER root
 #RUN cd /home/docker/AutowareAuto/ && colcon build
 
 # An ENTRYPOINT is an executable run when the container
     # starts.
+RUN /tmp/autoware-build.sh
 ENTRYPOINT ["/ade_entrypoint"]
 CMD ["/bin/sh", "-c", "trap 'exit 147' TERM; tail -f /dev/null & wait ${!}"]

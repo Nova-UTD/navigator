@@ -39,3 +39,6 @@ ros-$ROS_DISTRO-rosbag2
 ros-$ROS_DISTRO-rosbag2-storage-default-plugins
 ros-$ROS_DISTRO-rosbag2-transport
 
+# ADE tools
+lolcat
+figlet
