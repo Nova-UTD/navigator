@@ -1,21 +1,23 @@
 version: "3.9"
 services:
-        base:
-                build: vde
-                # command: tail -F /dev/null #keep the base running
-                environment: 
-                        - DISPLAY=$DISPLAY
-                        - QT_X11_NO_MITSHM=1
-                        - USER=docker
-                        - VDE_VERSION=1.0.1
-                        
-                volumes:
-                        - "autoware-vol:/opt/AutowareAuto"
-                        - /tmp/.X11-unix:/tmp/.X11-unix:rw
-                        - ${HOME}/vdehome:/home/docker/
-        autoware:
-                image: registry.gitlab.com/autowarefoundation/autoware.auto/autowareauto/amd64/binary-foxy:1.0.0
-                volumes:
-                        - "autoware-vol:/opt/AutowareAuto"
+     base:
+          # To use the prebuilt VDE image, uncomment the 
+               # "image:" line and comment the "build:" line
+               # To build yourself, do the reverse.
+          image: ghcr.io/voltron-utd/vde/vde_x86_64:latest
+          # build: vde
+          environment: 
+               - DISPLAY=$DISPLAY
+               - QT_X11_NO_MITSHM=1
+               - USER=docker
+               - VDE_VERSION=1.0.1
+          volumes:
+               - "autoware-vol:/opt/AutowareAuto"
+               - /tmp/.X11-unix:/tmp/.X11-unix:rw
+               - ${HOME}/vdehome:/home/docker/
+     autoware:
+          image: registry.gitlab.com/autowarefoundation/autoware.auto/autowareauto/amd64/binary-foxy:1.0.0
+          volumes:
+               - "autoware-vol:/opt/AutowareAuto"
 volumes:
-        autoware-vol: {}
+     autoware-vol: {}
