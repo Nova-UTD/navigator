@@ -12,7 +12,7 @@ The Voltron Development Environment, our Docker-based development setup. It's re
 
 # Installation
 ## Requirements
-- Your computer will need a *64-bit processor*
+- Your computer will need a *64-bit processor*. If you don't have one for some reason, you'll need to [build from scratch](https://github.com/Voltron-UTD/vde/blob/main/README.md#building-vde-yourself)
 - Make sure you have *Git, Docker and Docker Compose* installed.
     - For Docker, download instructions are [here](https://docs.docker.com/get-docker/)
     - For Docker Compose, see [their Docs](https://docs.docker.com/compose/install/)
