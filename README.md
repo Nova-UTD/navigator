@@ -26,9 +26,11 @@ sudo chmod +x start.sh
 ```
 3. Build the container using `docker-compose build`
 4. Enter using `./start.sh`. Feel free to examine the contents of this script to see what it does. It's short!
-If everything goes well, you should now be inside the VDE container.
+
+If everything goes well, you should now be inside the VDE container. Congratulations, you're ready to develop! 🎉🎉🎉
 
 ## Building Autoware.Auto
+_**Note:** Autoware.Auto is now built automatically when you run `colcon build`. These instructions will simply rebuild it._
 1. Are you inside the container? Your terminal will have "docker@..." if you're inside. If not, run `./start.sh`
 2. You'll need to give yourself permissions for the home folder uisng `sudo chown -R docker: .` (This is quirky and will be fixed)
 3. Clone the official Autoware.Auto Git repo using `cd ~ && git clone https://gitlab.com/autowarefoundation/autoware.auto/AutowareAuto.git`
@@ -40,3 +42,4 @@ At this point, your environment setup is complete. More information about buildi
 # Notes
 - By default, the home directory inside the container is linked to a folder called "vdehome" in the host user's home folder. You'll see this in docker-compose.yml on the line `${HOME}/vdehome:/home/docker/`. This means that any file you place in the home directory will be saved.
 - All work done outside of the home directory is erased when you stop the container.
+- ***Any files developed in the container should be backed up! You should assume that files on the vehicle will regularly be cleared!***
