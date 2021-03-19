@@ -16,7 +16,7 @@ The Voltron Development Environment, our Docker-based development setup. It's re
     - For Docker, download instructions are [here](https://docs.docker.com/get-docker/)
     - For Docker Compose, see [their Docs](https://docs.docker.com/compose/install/)
     - For Git, see [Getting Started Installing Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-- These instructions will assume you're doing this on Linux. Windows instructions will come later (this hasn't been tested yet)
+- These instructions will assume you're doing this on Linux. If you're on Windows or Mac, you'll need to modify the inital setup instructions a little, but the process is the same in a broad sense.
 
 ## Initial setup
 1. Clone this repo onto your local machine using `git clone ...`.
