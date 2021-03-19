@@ -27,7 +27,7 @@ sudo chmod +x vde/entrypoint
 sudo chmod +x vde/autoware-setup.sh
 sudo chmod +x start.sh
 ```
-3. Build the container using `docker-compose build`
+3. Build the container using `docker-compose build`. This will take some time, around 15-30 minutes.
 4. Enter using `./start.sh`. Feel free to examine the contents of this script to see what it does. It's short!
 
 If everything goes well, you should now be inside the VDE container. Congratulations, you're ready to develop! 🎉🎉🎉
