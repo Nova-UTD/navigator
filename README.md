@@ -25,6 +25,8 @@ The Voltron Development Environment, our Docker-based development setup. It's re
 3. Give proper executable permissions to our start script with `sudo chmod +x start.sh`.
 4. Enter using `./start.sh`. Feel free to examine the contents of this script to see what it does. It's short!
 
+If everything goes well, you should now be inside the VDE container. Congratulations, you're ready to develop! 🎉🎉🎉
+
 ## Building VDE yourself
 If you don't have a 64-bit computer or you want to modify VDE to suit your needs, you'll need to build VDE on your own.
 
