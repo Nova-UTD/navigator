@@ -13,6 +13,9 @@ The Voltron Development Environment, our Docker-based development setup. It's re
 # Installation
 ## Requirements
 - Make sure you have Git, Docker and Docker Compose installed.
+    - For Docker, download instructions are [here](https://docs.docker.com/get-docker/)
+    - For Docker Compose, see [their Docs](https://docs.docker.com/compose/install/)
+    - For Git, see [Getting Started Installing Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 - These instructions will assume you're doing this on Linux. Windows instructions will come later (this hasn't been tested yet)
 
 ## Initial setup
