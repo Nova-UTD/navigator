@@ -4,7 +4,7 @@ services:
           # To use the prebuilt VDE image, uncomment the 
                # "image:" line and comment the "build:" line
                # To build yourself, do the reverse.
-          image: ghcr.io/voltron-utd/vde/vde_x86_64:latest
+          image: ghcr.io/voltron-utd/vde_x86_64:latest
           # build: vde
           environment: 
                - DISPLAY=$DISPLAY
@@ -15,9 +15,9 @@ services:
                - "autoware-vol:/opt/AutowareAuto"
                - /tmp/.X11-unix:/tmp/.X11-unix:rw
                - ${HOME}/vdehome:/home/docker/
-     autoware:
-          image: registry.gitlab.com/autowarefoundation/autoware.auto/autowareauto/amd64/binary-foxy:1.0.0
-          volumes:
-               - "autoware-vol:/opt/AutowareAuto"
+     # autoware:
+     #      image: registry.gitlab.com/autowarefoundation/autoware.auto/autowareauto/amd64/binary-foxy:1.0.0
+     #      volumes:
+     #           - "autoware-vol:/opt/AutowareAuto"
 volumes:
      autoware-vol: {}

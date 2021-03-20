@@ -1,7 +1,7 @@
 #!/bin/bash
 export TERM=xterm
 echo "$(tput -T xterm setaf 3)$(tput -T xterm smso)[VDE]$(tput -T xterm rmso)$(tput -T xterm sgr0) Preparing for Autoware build"
-cd /home/docker
+cd /opt/
 sudo apt update
 rosdep update
 sudo chown -R docker: .

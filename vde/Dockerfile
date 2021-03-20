@@ -163,7 +163,6 @@ WORKDIR /home/docker
 RUN /tmp/autoware-setup.sh
 
 USER root
-#RUN cd /home/docker/AutowareAuto/ && colcon build
 
 # An ENTRYPOINT is an executable run when the container
     # starts.
