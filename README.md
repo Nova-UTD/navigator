@@ -44,8 +44,8 @@ If everything goes well, you should now be inside the VDE container. Congratulat
 _**Note:** Autoware.Auto is now built automatically when you run `colcon build`. These instructions will simply rebuild it._
 1. Are you inside the container? Your terminal will have "docker@..." if you're inside. If not, run `./start.sh`
 2. You'll need to give yourself permissions for the home folder uisng `sudo chown -R docker: .` (This is quirky and will be fixed)
-3. Clone the official Autoware.Auto Git repo using `cd ~ && git clone https://gitlab.com/autowarefoundation/autoware.auto/AutowareAuto.git`
-4. Move into the Autoware repo using `cd ~/AutowareAuto`
+3. Clone the official Autoware.Auto Git repo using `cd /opt/ && git clone https://gitlab.com/autowarefoundation/autoware.auto/AutowareAuto.git`
+4. Move into the Autoware repo using `cd /opt/AutowareAuto`
 5. Source your ROS installation using `source /opt/ros/foxy/setup.bash` The build **will fail** if you forget this.
 6. Finally run `colcon build`. This will take a while to finish.
 At this point, your environment setup is complete. More information about building Autoware.Auto can be found [here](https://autowarefoundation.gitlab.io/autoware.auto/AutowareAuto/building.html)
