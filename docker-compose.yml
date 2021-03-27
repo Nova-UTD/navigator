@@ -10,11 +10,15 @@ services:
                - DISPLAY=$DISPLAY
                - QT_X11_NO_MITSHM=1
                - USER=docker
-               - VDE_VERSION=1.0.1
+               - VDE_VERSION=1.0.2
+          hostname: vde
           volumes:
                - "autoware-vol:/opt/AutowareAuto"
                - /tmp/.X11-unix:/tmp/.X11-unix:rw
                - ${HOME}/vdehome:/home/docker/
+          ports:
+               - "3000:3000"
+               - "9090:9090"
      # autoware:
      #      image: registry.gitlab.com/autowarefoundation/autoware.auto/autowareauto/amd64/binary-foxy:1.0.0
      #      volumes:
