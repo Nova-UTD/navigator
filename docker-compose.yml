@@ -16,6 +16,7 @@ services:
                - "autoware-vol:/opt/AutowareAuto"
                - /tmp/.X11-unix:/tmp/.X11-unix:rw
                - ${HOME}/vdehome:/home/docker/
+          network_mode: "host"
           ports:
                - "3000:3000"
                - "9090:9090"
