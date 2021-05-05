@@ -17,9 +17,6 @@ services:
                - /tmp/.X11-unix:/tmp/.X11-unix:rw
                - ${HOME}/vdehome:/home/docker/
           network_mode: "host"
-          ports:
-               - "3000:3000"
-               - "9090:9090"
      # autoware:
      #      image: registry.gitlab.com/autowarefoundation/autoware.auto/autowareauto/amd64/binary-foxy:1.0.0
      #      volumes:
