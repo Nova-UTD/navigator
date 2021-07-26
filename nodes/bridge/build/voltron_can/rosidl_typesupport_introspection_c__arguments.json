@@ -1,0 +1,19 @@
+{
+  "package_name": "voltron_can",
+  "output_dir": "/opt/package/build/voltron_can/rosidl_typesupport_introspection_c/voltron_can",
+  "template_dir": "/opt/ros/foxy/share/rosidl_typesupport_introspection_c/resource",
+  "idl_tuples": [
+    "/opt/package/build/voltron_can/rosidl_adapter/voltron_can:msg/CanFrame.idl"
+  ],
+  "target_dependencies": [
+    "/opt/ros/foxy/lib/rosidl_typesupport_introspection_c/rosidl_typesupport_introspection_c",
+    "/opt/ros/foxy/lib/python3.8/site-packages/rosidl_typesupport_introspection_c/__init__.py",
+    "/opt/ros/foxy/share/rosidl_typesupport_introspection_c/resource/idl__rosidl_typesupport_introspection_c.h.em",
+    "/opt/ros/foxy/share/rosidl_typesupport_introspection_c/resource/idl__type_support.c.em",
+    "/opt/ros/foxy/share/rosidl_typesupport_introspection_c/resource/msg__rosidl_typesupport_introspection_c.h.em",
+    "/opt/ros/foxy/share/rosidl_typesupport_introspection_c/resource/msg__type_support.c.em",
+    "/opt/ros/foxy/share/rosidl_typesupport_introspection_c/resource/srv__rosidl_typesupport_introspection_c.h.em",
+    "/opt/ros/foxy/share/rosidl_typesupport_introspection_c/resource/srv__type_support.c.em",
+    "/opt/package/build/voltron_can/rosidl_adapter/voltron_can/msg/CanFrame.idl"
+  ]
+}

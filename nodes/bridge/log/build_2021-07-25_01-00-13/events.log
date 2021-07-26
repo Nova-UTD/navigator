@@ -1,0 +1,80 @@
+[0.000000] (-) TimerEvent: {}
+[0.000195] (voltron_can) JobQueued: {'identifier': 'voltron_can', 'dependencies': OrderedDict()}
+[0.000624] (voltron_can) JobStarted: {'identifier': 'voltron_can'}
+[0.009342] (voltron_can) JobProgress: {'identifier': 'voltron_can', 'progress': 'cmake'}
+[0.009527] (voltron_can) Command: {'cmd': ['/usr/bin/cmake', '/opt/package', '-DCMAKE_INSTALL_PREFIX=/opt/package/install/voltron_can'], 'cwd': '/opt/package/build/voltron_can', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en_US.UTF-8'), ('USER', 'docker'), ('HOSTNAME', '9784f695b459'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/opt/AutowareAuto/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/x86_64-linux-gnu:/opt/ros/foxy/lib'), ('HOME', '/root'), ('OLDPWD', '/home/docker'), ('ROS_PYTHON_VERSION', '3'), ('COLCON_PREFIX_PATH', '/opt/AutowareAuto'), ('ROS_DISTRO', 'foxy'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('TERM', 'xterm'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'), ('LANG', 'en_US.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('AMENT_PREFIX_PATH', '/opt/AutowareAuto:/opt/ros/foxy'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('PWD', '/opt/package/build/voltron_can'), ('LC_ALL', 'en_US.UTF-8'), ('PYTHONPATH', '/opt/AutowareAuto/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/opt/AutowareAuto:/opt/ros/foxy')]), 'shell': False}
+[0.049985] (voltron_can) StdoutLine: {'line': b'-- The C compiler identification is GNU 9.3.0\n'}
+[0.085345] (voltron_can) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 9.3.0\n'}
+[0.088690] (voltron_can) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc\n'}
+[0.099880] (-) TimerEvent: {}
+[0.131677] (voltron_can) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc -- works\n'}
+[0.132359] (voltron_can) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[0.175597] (voltron_can) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[0.183952] (voltron_can) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[0.184173] (voltron_can) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[0.185972] (voltron_can) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++\n'}
+[0.199993] (-) TimerEvent: {}
+[0.236947] (voltron_can) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ -- works\n'}
+[0.237732] (voltron_can) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[0.288079] (voltron_can) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[0.296970] (voltron_can) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[0.297356] (voltron_can) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[0.299713] (voltron_can) StdoutLine: {'line': b'-- Found ament_cmake_auto: 0.9.8 (/opt/ros/foxy/share/ament_cmake_auto/cmake)\n'}
+[0.300047] (-) TimerEvent: {}
+[0.321239] (voltron_can) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") \n'}
+[0.321378] (voltron_can) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[0.400166] (-) TimerEvent: {}
+[0.500378] (-) TimerEvent: {}
+[0.525430] (voltron_can) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[0.533002] (voltron_can) StdoutLine: {'line': b'-- Found rosidl_adapter: 1.2.1 (/opt/ros/foxy/share/rosidl_adapter/cmake)\n'}
+[0.600464] (-) TimerEvent: {}
+[0.609508] (voltron_can) StdoutLine: {'line': b'-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "1.1.1f")  \n'}
+[0.633589] (voltron_can) StdoutLine: {'line': b'-- Found FastRTPS: /opt/ros/foxy/include  \n'}
+[0.700582] (-) TimerEvent: {}
+[0.704504] (voltron_can) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[0.782193] (voltron_can) StdoutLine: {'line': b'-- Found rmw_implementation_cmake: 1.0.3 (/opt/ros/foxy/share/rmw_implementation_cmake/cmake)\n'}
+[0.783263] (voltron_can) StdoutLine: {'line': b"-- Using RMW implementation 'rmw_fastrtps_cpp' as default\n"}
+[0.784001] (voltron_can) StdoutLine: {'line': b'-- Looking for pthread.h\n'}
+[0.800697] (-) TimerEvent: {}
+[0.830927] (voltron_can) StdoutLine: {'line': b'-- Looking for pthread.h - found\n'}
+[0.831087] (voltron_can) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD\n'}
+[0.876657] (voltron_can) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed\n'}
+[0.876860] (voltron_can) StdoutLine: {'line': b'-- Looking for pthread_create in pthreads\n'}
+[0.900783] (-) TimerEvent: {}
+[0.913666] (voltron_can) StdoutLine: {'line': b'-- Looking for pthread_create in pthreads - not found\n'}
+[0.913886] (voltron_can) StdoutLine: {'line': b'-- Looking for pthread_create in pthread\n'}
+[0.958465] (voltron_can) StdoutLine: {'line': b'-- Looking for pthread_create in pthread - found\n'}
+[0.959234] (voltron_can) StdoutLine: {'line': b'-- Found Threads: TRUE  \n'}
+[1.000897] (-) TimerEvent: {}
+[1.092316] (voltron_can) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found version "3.8.10") \n'}
+[1.100965] (-) TimerEvent: {}
+[1.140211] (voltron_can) StdoutLine: {'line': b'-- Found ament_cmake_ros: 0.9.2 (/opt/ros/foxy/share/ament_cmake_ros/cmake)\n'}
+[1.201089] (-) TimerEvent: {}
+[1.230873] (voltron_can) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[1.235800] (voltron_can) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[1.252771] (voltron_can) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3.5") \n'}
+[1.254756] (voltron_can) StdoutLine: {'line': b'-- Found python_cmake_module: 0.8.1 (/opt/ros/foxy/share/python_cmake_module/cmake)\n'}
+[1.273308] (voltron_can) StdoutLine: {'line': b'-- Found PythonLibs: /usr/lib/x86_64-linux-gnu/libpython3.8.so (found suitable version "3.8.10", minimum required is "3.5") \n'}
+[1.273512] (voltron_can) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[1.273581] (voltron_can) StdoutLine: {'line': b'-- Using PYTHON_INCLUDE_DIRS: /usr/include/python3.8\n'}
+[1.273643] (voltron_can) StdoutLine: {'line': b'-- Using PYTHON_LIBRARIES: /usr/lib/x86_64-linux-gnu/libpython3.8.so\n'}
+[1.288992] (voltron_can) StdoutLine: {'line': b'-- Found PythonExtra: .so  \n'}
+[1.301196] (-) TimerEvent: {}
+[1.326563] (voltron_can) StdoutLine: {'line': b'-- Found ament_lint_auto: 0.9.6 (/opt/ros/foxy/share/ament_lint_auto/cmake)\n'}
+[1.341113] (voltron_can) StdoutLine: {'line': b"-- Found gtest sources under '/opt/ros/foxy/src/gtest_vendor': C++ tests using 'Google Test' will be built\n"}
+[1.342835] (voltron_can) StdoutLine: {'line': b'-- Check if compiler accepts -pthread\n'}
+[1.388630] (voltron_can) StdoutLine: {'line': b'-- Check if compiler accepts -pthread - yes\n'}
+[1.389867] (voltron_can) StderrLine: {'line': b'CMake Error at /opt/ros/foxy/share/ament_cmake_target_dependencies/cmake/ament_target_dependencies.cmake:77 (message):\n'}
+[1.389977] (voltron_can) StderrLine: {'line': b"  ament_target_dependencies() the passed package name 'voltron_test_utils'\n"}
+[1.390038] (voltron_can) StderrLine: {'line': b'  was not found before\n'}
+[1.390094] (voltron_can) StderrLine: {'line': b'Call Stack (most recent call first):\n'}
+[1.390148] (voltron_can) StderrLine: {'line': b'  CMakeLists.txt:51 (ament_target_dependencies)\n'}
+[1.390202] (voltron_can) StderrLine: {'line': b'\n'}
+[1.390256] (voltron_can) StderrLine: {'line': b'\n'}
+[1.392021] (voltron_can) StdoutLine: {'line': b'-- Configuring incomplete, errors occurred!\n'}
+[1.392103] (voltron_can) StdoutLine: {'line': b'See also "/opt/package/build/voltron_can/CMakeFiles/CMakeOutput.log".\n'}
+[1.392166] (voltron_can) StdoutLine: {'line': b'See also "/opt/package/build/voltron_can/CMakeFiles/CMakeError.log".\n'}
+[1.398257] (voltron_can) CommandEnded: {'returncode': 1}
+[1.401313] (-) TimerEvent: {}
+[1.415184] (voltron_can) JobEnded: {'identifier': 'voltron_can', 'rc': 1}
+[1.425809] (-) EventReactorShutdown: {}

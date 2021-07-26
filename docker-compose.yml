@@ -1,27 +1,39 @@
 version: "3.9"
 services:
-     base:
-          # To use the prebuilt VDE image, uncomment the 
-               # "image:" line and comment the "build:" line
-               # To build yourself, do the reverse.
-          image: ghcr.io/voltron-utd/vde_x86_64:latest
-          # build: vde
-          environment: 
-               - DISPLAY=$DISPLAY
-               - QT_X11_NO_MITSHM=1
-               - USER=docker
-               - VDE_VERSION=1.0.2
-          hostname: vde
-          volumes:
-               - "autoware-vol:/opt/AutowareAuto"
-               - /tmp/.X11-unix:/tmp/.X11-unix:rw
-               - ${HOME}/vdehome:/home/docker/
-          ports:
-               - "3000:3000"
-               - "9090:9090"
-     # autoware:
-     #      image: registry.gitlab.com/autowarefoundation/autoware.auto/autowareauto/amd64/binary-foxy:1.0.0
+     # base:
+     #      # To use the prebuilt VDE image, uncomment the 
+     #           # "image:" line and comment the "build:" line
+     #           # To build yourself, do the reverse.
+     #      image: ghcr.io/voltron-utd/vde_x86_64:latest
+     #      # build: vde
+     #      environment: 
+     #           - DISPLAY=$DISPLAY
+     #           - QT_X11_NO_MITSHM=1
+     #           - USER=docker
+     #           - VDE_VERSION=1.0.2
+     #      hostname: vde
      #      volumes:
      #           - "autoware-vol:/opt/AutowareAuto"
+     #           - /tmp/.X11-unix:/tmp/.X11-unix:rw
+     #           - ${HOME}/vdehome:/home/docker/
+     #      ports:
+     #           - "3000:3000"
+     #           - "9090:9090"
+     # starter:
+     #      build: voltron_starter
+     #      environment: 
+     #           - USER=docker
+     base:
+          build: base
+          environment: 
+               - USER=docker
+          volumes:
+               - ./base/:/opt/luna_ws/src/base/
+
+     bridge:
+          build: nodes/bridge
+          environment: 
+               - USER=docker
+
 volumes:
      autoware-vol: {}

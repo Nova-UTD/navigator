@@ -1,0 +1,6 @@
+{
+  "package_name": "voltron_can",
+  "non_idl_tuples": [
+    "/opt/package:msg/CanFrame.msg"
+  ]
+}

@@ -1,0 +1,78 @@
+[0.260s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build']
+[0.260s] DEBUG:colcon:Parsed command line arguments: Namespace(ament_cmake_args=None, base_paths=['.'], build_base='build', catkin_cmake_args=None, catkin_skip_building_tests=False, cmake_args=None, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, cmake_target=None, cmake_target_skip_unavailable=False, continue_on_error=False, event_handlers=None, executor='parallel', ignore_user_meta=False, install_base='install', log_base=None, log_level=None, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x7fe4df86d970>>, merge_install=False, metas=['./colcon.meta'], mixin=None, mixin_files=None, mixin_verb=('build',), packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_end=None, packages_ignore=None, packages_ignore_regex=None, packages_select=None, packages_select_build_failed=False, packages_select_by_dep=None, packages_select_regex=None, packages_select_test_failures=False, packages_skip=None, packages_skip_build_finished=False, packages_skip_by_dep=None, packages_skip_regex=None, packages_skip_test_passed=False, packages_skip_up_to=None, packages_start=None, packages_up_to=None, packages_up_to_regex=None, parallel_workers=20, paths=None, symlink_install=False, test_result_base=None, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x7fe4df86d970>, verb_name='build', verb_parser=<colcon_mixin.mixin.mixin_argument.MixinArgumentDecorator object at 0x7fe4df86df40>)
+[0.265s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.266s] INFO:colcon.colcon_metadata.package_discovery.colcon_meta:Using configuration from '/root/.colcon/metadata/default/Gazebo.meta'
+[0.266s] INFO:colcon.colcon_metadata.package_discovery.colcon_meta:Using configuration from '/root/.colcon/metadata/default/fastrtps.meta'
+[0.267s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.267s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.267s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.267s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.267s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.267s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/opt/package'
+[0.267s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.267s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.267s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.267s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.267s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.267s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.267s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.267s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.267s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.278s] DEBUG:colcon.colcon_core.package_identification:Package '.' with type 'ros.ament_cmake' and name 'voltron_can'
+[0.278s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.278s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.278s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.278s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.278s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.294s] Level 5:colcon.colcon_core.verb:set package 'voltron_can' build argument 'cmake_args' from command line to 'None'
+[0.294s] Level 5:colcon.colcon_core.verb:set package 'voltron_can' build argument 'cmake_target' from command line to 'None'
+[0.294s] Level 5:colcon.colcon_core.verb:set package 'voltron_can' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.294s] Level 5:colcon.colcon_core.verb:set package 'voltron_can' build argument 'cmake_clean_cache' from command line to 'False'
+[0.294s] Level 5:colcon.colcon_core.verb:set package 'voltron_can' build argument 'cmake_clean_first' from command line to 'False'
+[0.294s] Level 5:colcon.colcon_core.verb:set package 'voltron_can' build argument 'cmake_force_configure' from command line to 'False'
+[0.294s] Level 5:colcon.colcon_core.verb:set package 'voltron_can' build argument 'ament_cmake_args' from command line to 'None'
+[0.294s] Level 5:colcon.colcon_core.verb:set package 'voltron_can' build argument 'catkin_cmake_args' from command line to 'None'
+[0.294s] Level 5:colcon.colcon_core.verb:set package 'voltron_can' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.294s] DEBUG:colcon.colcon_core.verb:Building package 'voltron_can' with the following arguments: {'ament_cmake_args': None, 'build_base': '/opt/package/build/voltron_can', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/opt/package/install/voltron_can', 'merge_install': False, 'path': '/opt/package', 'symlink_install': False, 'test_result_base': None}
+[0.294s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.296s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.296s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/opt/package' with build type 'ament_cmake'
+[0.296s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/opt/package'
+[0.299s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.299s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.299s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.301s] DEBUG:colcon.colcon_core.shell:Ignoring prefix path '/opt/ros/foxy'
+[0.306s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/opt/package/build/voltron_can': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake /opt/package -DCMAKE_INSTALL_PREFIX=/opt/package/install/voltron_can
+[1.694s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/opt/package/build/voltron_can' returned '1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake /opt/package -DCMAKE_INSTALL_PREFIX=/opt/package/install/voltron_can
+[1.703s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(voltron_can)
+[1.706s] Level 1:colcon.colcon_core.environment:checking '/opt/package/install/voltron_can' for CMake module files
+[1.706s] Level 1:colcon.colcon_core.environment:checking '/opt/package/install/voltron_can' for CMake config files
+[1.707s] Level 1:colcon.colcon_core.environment:checking '/opt/package/install/voltron_can/bin'
+[1.707s] Level 1:colcon.colcon_core.environment:checking '/opt/package/install/voltron_can/lib/pkgconfig/voltron_can.pc'
+[1.707s] Level 1:colcon.colcon_core.environment:checking '/opt/package/install/voltron_can/lib/python3.8/site-packages'
+[1.707s] INFO:colcon.colcon_core.shell:Creating package script '/opt/package/install/voltron_can/share/voltron_can/package.ps1'
+[1.708s] INFO:colcon.colcon_core.shell:Creating package descriptor '/opt/package/install/voltron_can/share/voltron_can/package.dsv'
+[1.709s] INFO:colcon.colcon_core.shell:Creating package script '/opt/package/install/voltron_can/share/voltron_can/package.sh'
+[1.709s] INFO:colcon.colcon_core.shell:Creating package script '/opt/package/install/voltron_can/share/voltron_can/package.bash'
+[1.710s] INFO:colcon.colcon_core.shell:Creating package script '/opt/package/install/voltron_can/share/voltron_can/package.zsh'
+[1.710s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/opt/package/install/voltron_can/share/colcon-core/packages/voltron_can)
+[1.721s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[1.721s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[1.721s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '1'
+[1.721s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[1.726s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.notify_send': Could not find 'notify-send'
+[1.726s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[1.726s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[1.726s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[1.726s] DEBUG:colcon.colcon_notification.desktop_notification.notify2:Failed to initialize notify2: org.freedesktop.DBus.Error.NotSupported: Unable to autolaunch a dbus-daemon without a $DISPLAY for X11
+[1.726s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[1.726s] INFO:colcon.colcon_core.shell:Creating prefix script '/opt/package/install/local_setup.ps1'
+[1.727s] INFO:colcon.colcon_core.shell:Creating prefix util module '/opt/package/install/_local_setup_util_ps1.py'
+[1.728s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/opt/package/install/setup.ps1'
+[1.730s] INFO:colcon.colcon_core.shell:Creating prefix script '/opt/package/install/local_setup.sh'
+[1.730s] INFO:colcon.colcon_core.shell:Creating prefix util module '/opt/package/install/_local_setup_util_sh.py'
+[1.730s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/opt/package/install/setup.sh'
+[1.732s] INFO:colcon.colcon_core.shell:Creating prefix script '/opt/package/install/local_setup.bash'
+[1.732s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/opt/package/install/setup.bash'
+[1.734s] INFO:colcon.colcon_core.shell:Creating prefix script '/opt/package/install/local_setup.zsh'
+[1.734s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/opt/package/install/setup.zsh'
