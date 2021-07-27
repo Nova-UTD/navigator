@@ -1,4 +1,4 @@
-from os import path
+from os import path, environ
 
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import IncludeLaunchDescription
@@ -18,7 +18,7 @@ def generate_launch_description():
         package='velodyne_nodes',
         namespace="lidar_front",
         executable='velodyne_cloud_node_exe',
-        parameters=[("/opt/package/param/vlp16_voltron_front.param.yaml")],
+        parameters=[("/opt/params/"+environ["param_name"])],
         remappings=[("topic", "points_raw")],
         arguments=["--model", "vlp16"])
 

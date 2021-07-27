@@ -16,3 +16,21 @@ services:
           environment: 
                - USER=docker
                - package_name=vt_velodyne_nodes
+               - param_name=vlp16_voltron_front.param.yaml
+          volumes:
+               - type: bind
+                 source: ./params
+                 target: /opt/params
+     lidar_rear:
+          network_mode: host
+          build: 
+               context: packages/perception/velodyne_nodes
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_velodyne_nodes
+               - param_name=vlp16_voltron_rear.param.yaml
+          volumes:
+               - type: bind
+                 source: ./params
+                 target: /opt/params
