@@ -50,6 +50,35 @@ _**Note:** Autoware.Auto is now built automatically when you run `colcon build`.
 6. Finally run `colcon build`. This will take a while to finish.
 At this point, your environment setup is complete. More information about building Autoware.Auto can be found [here](https://autowarefoundation.gitlab.io/autoware.auto/AutowareAuto/building.html)
 
+# Target stack
+Here are the components we wish to include. A check means that it's been successfully integrated. The categories are purely for human clarity.
+
+## Perception
+- [ ] Lidar nodes (Front and Rear)
+- [ ] Lidar filters (Front and Rear)
+- [ ] Lidar downsampler
+- [ ] Lidar fusion
+
+## Mapping
+- [ ] Lanelet provider
+- [ ] 3D map publisher
+- [ ] Lanelet visualizer
+
+## Localization
+- [ ] NDT localizer
+
+## Planning
+- [ ] Path planner (includes lane and parking)
+- [ ] Route planner
+
+## Control
+- [ ] Steering angle calculator
+
+## Interface
+- [ ] EPAS Interface (includes "reporter" and "controller")
+- [ ] ROS2 Web Bridge
+- [ ] Web interface server
+
 # Notes
 - By default, the home directory inside the container is linked to a folder called "vdehome" in the host user's home folder. You'll see this in docker-compose.yml on the line `${HOME}/vdehome:/home/docker/`. This means that any file you place in the home directory will be saved.
 - All work done outside of the home directory is erased when you stop the container.
