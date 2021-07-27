@@ -1,2 +1,0 @@
-Invoking command in '/opt/package/build/voltron_can': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake /opt/package -DCMAKE_INSTALL_PREFIX=/opt/package/install/voltron_can
-Invoked command in '/opt/package/build/voltron_can' returned '1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake /opt/package -DCMAKE_INSTALL_PREFIX=/opt/package/install/voltron_can
