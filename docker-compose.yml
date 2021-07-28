@@ -8,30 +8,82 @@ services:
           build: images/pillar
           environment: 
                - USER=docker
+     # PERCEPTION
      lidars:
-          network_mode: host
+          # network_mode: host
+          # pid: host
           build: 
                context: packages/perception/velodyne_nodes
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
                - package_name=vt_velodyne_nodes
-               - param_name=vlp16_voltron_front.param.yaml
+               - front_param_name=perception/lidar_front.param.yaml
+               - rear_param_name=perception/lidar_rear.param.yaml
           volumes:
                - type: bind
                  source: ./params
                  target: /opt/params
      lidar_filters:
-          network_mode: host
+          # network_mode: host
+          # pid: host
           build: 
                context: packages/perception/point_cloud_filter_transform_nodes
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
                - package_name=vt_point_cloud_filter_transform_nodes
-               - param_name=pc_filter_transform_front_sim.param.yaml
+               - front_param_name=perception/pc_filter_transform_front_sim.param.yaml
+               - rear_param_name=perception/pc_filter_transform_rear_sim.param.yaml
           volumes:
                - type: bind
                  source: ./params
                  target: /opt/params
+     lidar_downsampler:
+          build: 
+               context: packages/perception/voxel_grid_nodes
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=voxel_grid_nodes
+               - param_name=perception/lidar_downsampler.param.yaml
+          volumes:
+               - type: bind
+                 source: ./params
+                 target: /opt/params
+     lidar_fusion:
+          build: 
+               context: packages/perception/point_cloud_fusion_nodes
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=point_cloud_fusion_nodes
+               - param_name=perception/lidar_fusion.param.yaml
+          volumes:
+               - type: bind
+                 source: ./params
+                 target: /opt/params
+     # MISC
+     urdf_publisher:
+          # network_mode: host
+          # pid: host
+          build: 
+               context: packages/perception/point_cloud_filter_transform_nodes
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+          command: ros2 run robot_state_publisher robot_state_publisher /opt/data/voltron.urdf
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+     odom_bl_publisher:
+          build: images/frame
+          environment: 
+               - USER=docker
+          command: ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
      

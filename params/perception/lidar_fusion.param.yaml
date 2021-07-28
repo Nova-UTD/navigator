@@ -1,0 +1,6 @@
+# templated from Autoware perception/filters/point_cloud_fusion_nodes/param/test.param.yaml
+/**:
+  ros__parameters:
+    number_of_sources: 2
+    output_frame_id:  "base_link"
+    cloud_size:       55000
