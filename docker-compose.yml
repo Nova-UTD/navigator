@@ -8,7 +8,7 @@ services:
           build: images/pillar
           environment: 
                - USER=docker
-     lidar_front:
+     lidars:
           network_mode: host
           build: 
                context: packages/perception/velodyne_nodes
@@ -21,16 +21,17 @@ services:
                - type: bind
                  source: ./params
                  target: /opt/params
-     lidar_rear:
+     lidar_filters:
           network_mode: host
           build: 
-               context: packages/perception/velodyne_nodes
+               context: packages/perception/point_cloud_filter_transform_nodes
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
-               - package_name=vt_velodyne_nodes
-               - param_name=vlp16_voltron_rear.param.yaml
+               - package_name=vt_point_cloud_filter_transform_nodes
+               - param_name=pc_filter_transform_front_sim.param.yaml
           volumes:
                - type: bind
                  source: ./params
                  target: /opt/params
+     

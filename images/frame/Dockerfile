@@ -7,6 +7,8 @@ COPY . /opt/package/
 WORKDIR /opt/package/
 RUN . /opt/ros/foxy/setup.sh && \
     . /opt/AutowareAuto/setup.sh && \
+    # rosdep update && \
+    # rosdep install -y -i --from-paths src && \
     colcon build && \
     . install/setup.sh
 
