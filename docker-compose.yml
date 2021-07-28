@@ -8,6 +8,61 @@ services:
           build: images/pillar
           environment: 
                - USER=docker
+
+     # LOCALIZATION
+     ndt:
+          build: 
+               context: packages/localization/ndt_nodes # TODO: Split map provider into separate package
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_ndt_nodes
+               - map_name=borregas
+               - param_name=localization/ndt_localizer.param.yaml
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+               - ./params:/opt/params
+
+     # MAPPING
+     lanelet_provider:
+          build: 
+               context: packages/mapping/lanelet_provider
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_lanelet_provider
+               - map_name=borregas
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+          depends_on:
+               - ndt
+
+
+     # MISC
+     urdf_publisher:
+          # network_mode: host
+          # pid: host
+          build: images/frame
+          environment: 
+               - USER=docker
+          command: ros2 run robot_state_publisher robot_state_publisher /opt/data/voltron.urdf
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+     odom_bl_publisher:
+          build: images/frame
+          environment: 
+               - USER=docker
+          command: ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
      # PERCEPTION
      lidars:
           # network_mode: host
@@ -57,59 +112,9 @@ services:
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
-               - package_name=point_cloud_fusion_nodes
+               - package_name=vt_point_cloud_fusion_nodes
                - param_name=perception/lidar_fusion.param.yaml
           volumes:
                - type: bind
                  source: ./params
                  target: /opt/params
-     # MAPPING
-     lanelet_provider:
-          build: 
-               context: packages/mapping/lanelet_provider
-               dockerfile: ../../../images/frame/Dockerfile
-          environment: 
-               - USER=docker
-               - package_name=vt_lanelet_provider
-               - map_name=borregas
-          volumes:
-               - type: bind
-                 source: ./data
-                 target: /opt/data
-          depends_on:
-               - pcd_map_provider
-     pcd_map_provider:
-          build: 
-               context: packages/localization/ndt_nodes # TODO: Split map provider into separate package
-               dockerfile: ../../../images/frame/Dockerfile
-          environment: 
-               - USER=docker
-               - package_name=vt_ndt_nodes
-               - map_name=borregas
-          volumes:
-               - type: bind
-                 source: ./data
-                 target: /opt/data
-
-     # MISC
-     urdf_publisher:
-          # network_mode: host
-          # pid: host
-          build: images/frame
-          environment: 
-               - USER=docker
-          command: ros2 run robot_state_publisher robot_state_publisher /opt/data/voltron.urdf
-          volumes:
-               - type: bind
-                 source: ./data
-                 target: /opt/data
-     odom_bl_publisher:
-          build: images/frame
-          environment: 
-               - USER=docker
-          command: ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link
-          volumes:
-               - type: bind
-                 source: ./data
-                 target: /opt/data
-     

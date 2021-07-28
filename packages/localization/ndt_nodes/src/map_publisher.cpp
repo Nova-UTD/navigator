@@ -128,6 +128,11 @@ void NDTMapPublisherNode::init(
       std::chrono::seconds(1),
       [this]() {
         if (m_downsampled_pc.width > 0U) {
+          // tf.header.stamp = rclcpp::Clock().now();
+          // tf.transform.rotation = tf2::toMsg(q);
+          // tf.header.frame_id = "earth";
+          m_downsampled_pc.header.stamp = rclcpp::Clock().now();
+          m_downsampled_pc.header.frame_id = "map";
           m_viz_pub->publish(m_downsampled_pc);
         }
       });

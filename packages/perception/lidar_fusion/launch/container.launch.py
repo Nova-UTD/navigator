@@ -14,7 +14,7 @@ from ament_index_python import get_package_share_directory
 def generate_launch_description():
     
     lidar_fusion = Node(
-        package='point_cloud_fusion_nodes',
+        package='vt_point_cloud_fusion_nodes',
         executable='pointcloud_fusion_node_exe',
         namespace="lidars",
         parameters=[("/opt/params/"+environ["param_name"])],

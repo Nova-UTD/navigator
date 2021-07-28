@@ -60,12 +60,11 @@ Here are the components we wish to include. A check means that it's been success
 - [x] Lidar fusion
 
 ## Mapping
-- [ ] Lanelet provider
-- [ ] 3D map publisher
-- [ ] Lanelet visualizer
+- [x] Lanelet provider (includes visualizer)
+- [x] 3D map publisher
 
 ## Localization
-- [ ] NDT localizer
+- [x] NDT localizer
 
 ## Planning
 - [ ] Path planner (includes lane and parking)

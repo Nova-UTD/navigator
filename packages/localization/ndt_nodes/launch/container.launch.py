@@ -19,7 +19,20 @@ def generate_launch_description():
         namespace='localization',
         parameters=[("/opt/data/maps/"+environ["map_name"]+"/map_publisher.param.yaml")]
     )
+    ndt_localizer = Node(
+        package='vt_ndt_nodes',
+        executable='p2d_ndt_localizer_exe',
+        namespace='localization',
+        name='p2d_ndt_localizer_node',
+        parameters=[("/opt/params/"+environ["param_name"])],
+        remappings=[
+            ("points_in", "/lidars/points_fused_downsampled"),
+            ("observation_republish", "/lidars/points_fused_viz"),
+        ]
+    )
+
 
     return LaunchDescription([
         map_publisher,
+        ndt_localizer,
     ])
