@@ -28,7 +28,7 @@ services:
           # network_mode: host
           # pid: host
           build: 
-               context: packages/perception/point_cloud_filter_transform_nodes
+               context: packages/perception/lidar_filters
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
@@ -41,7 +41,7 @@ services:
                  target: /opt/params
      lidar_downsampler:
           build: 
-               context: packages/perception/voxel_grid_nodes
+               context: packages/perception/lidar_downsampler
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
@@ -53,7 +53,7 @@ services:
                  target: /opt/params
      lidar_fusion:
           build: 
-               context: packages/perception/point_cloud_fusion_nodes
+               context: packages/perception/lidar_fusion
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
@@ -63,13 +63,39 @@ services:
                - type: bind
                  source: ./params
                  target: /opt/params
+     # MAPPING
+     lanelet_provider:
+          build: 
+               context: packages/mapping/lanelet_provider
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_lanelet_provider
+               - map_name=borregas
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+          depends_on:
+               - pcd_map_provider
+     pcd_map_provider:
+          build: 
+               context: packages/localization/ndt_nodes # TODO: Split map provider into separate package
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_ndt_nodes
+               - map_name=borregas
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+
      # MISC
      urdf_publisher:
           # network_mode: host
           # pid: host
-          build: 
-               context: packages/perception/point_cloud_filter_transform_nodes
-               dockerfile: ../../../images/frame/Dockerfile
+          build: images/frame
           environment: 
                - USER=docker
           command: ros2 run robot_state_publisher robot_state_publisher /opt/data/voltron.urdf
