@@ -62,7 +62,7 @@ public:
 
   void request_osm_binary_map();
   void goal_pose_cb(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
-  void current_pose_cb(const autoware_auto_msgs::msg::VehicleKinematicState::SharedPtr msg);
+  void current_pose_cb(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
   void send_global_path(
     const std::vector<lanelet::Id> & route,
     const autoware_auto_msgs::msg::TrajectoryPoint & start_point,
@@ -75,7 +75,7 @@ private:
   std::shared_ptr<Lanelet2GlobalPlanner> lanelet2_global_planner;
   rclcpp::Client<autoware_auto_msgs::srv::HADMapService>::SharedPtr map_client;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pose_sub_ptr;
-  rclcpp::Subscription<autoware_auto_msgs::msg::VehicleKinematicState>::SharedPtr
+  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
     current_pose_sub_ptr;
   rclcpp::Publisher<autoware_auto_msgs::msg::Route>::SharedPtr global_path_pub_ptr;
   geometry_msgs::msg::PoseStamped start_pose;

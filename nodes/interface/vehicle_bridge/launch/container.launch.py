@@ -13,15 +13,17 @@ from ament_index_python import get_package_share_directory
 
 def generate_launch_description():
     
-    route_planner = Node(
-        package='vt_route_planner',
-        name='lanelet2_global_planner_node',
-        namespace='planning',
-        executable='lanelet2_global_planner_node_exe',
-        remappings=[('HAD_Map_Client', '/had_maps/HAD_Map_Service'),
-                    ('ndt_pose', '/localization/ndt_pose')]
+    bridge = Node(
+        package='vt_vehicle_bridge',
+        executable='svl_bridge_exe',
+        # parameters=[("/opt/params/"+environ["param_name"])],
+        # remappings=[
+        #     ("output_topic", "points_fused"),
+        #     ("input_topic1", "/lidar_front/points_filtered"), 
+        #     ("input_topic2", "/lidar_rear/points_filtered")
+        # ]
     )
 
     return LaunchDescription([
-        route_planner
+        bridge
     ])

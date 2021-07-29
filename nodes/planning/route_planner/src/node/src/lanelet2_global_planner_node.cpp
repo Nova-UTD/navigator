@@ -40,15 +40,15 @@ using autoware::common::types::bool8_t;
 using autoware::common::types::float32_t;
 using autoware::common::types::float64_t;
 using autoware::common::types::TAU;
-using autoware::planning::lanelet2_global_planner::Lanelet2GlobalPlanner;
+using voltron::planning::route_planner::Lanelet2GlobalPlanner;
 using autoware_auto_msgs::msg::Complex32;
 using std::placeholders::_1;
 
-namespace autoware
+namespace voltron
 {
 namespace planning
 {
-namespace lanelet2_global_planner_nodes
+namespace route_planner
 {
 
 autoware_auto_msgs::msg::TrajectoryPoint convertToTrajectoryPoint(
@@ -78,8 +78,8 @@ Lanelet2GlobalPlannerNode::Lanelet2GlobalPlannerNode(
 
   // Subcribers Current Pose
   current_pose_sub_ptr =
-    this->create_subscription<autoware_auto_msgs::msg::VehicleKinematicState>(
-    "vehicle_kinematic_state", rclcpp::QoS(10),
+    this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+    "ndt_pose", rclcpp::QoS(10),
     std::bind(&Lanelet2GlobalPlannerNode::current_pose_cb, this, _1));
 
   // Global path publisher
@@ -131,10 +131,12 @@ void Lanelet2GlobalPlannerNode::request_osm_binary_map()
 void Lanelet2GlobalPlannerNode::goal_pose_cb(
   const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
+  RCLCPP_INFO(this->get_logger(), "STARTING");
   if (!start_pose_init) {
     RCLCPP_ERROR(this->get_logger(), "Current pose has not been set!");
     return;
   }
+  RCLCPP_INFO(this->get_logger(), "Transforming goal pose from "+msg->header.frame_id+" to map");
   // transform and set the starting and goal point in the map frame
   goal_pose.header = msg->header;
   goal_pose.pose = msg->pose;
@@ -148,34 +150,47 @@ void Lanelet2GlobalPlannerNode::goal_pose_cb(
       goal_pose = goal_pose_map;
     }
   }
-
+  // RCLCPP_INFO(this->get_logger(), "Converting points to trajectories...");
   auto start = convertToTrajectoryPoint(start_pose.pose);
   auto end = convertToTrajectoryPoint(goal_pose.pose);
-
+  // RCLCPP_INFO(this->get_logger(), "Trajectories converted...");
   // get routes
   std::vector<lanelet::Id> route;
-  if (lanelet2_global_planner->plan_route(start, end, route)) {
+  if (lanelet2_global_planner->plan_route(start, end, route)) { // <-- THIS IS THE CULPRIT!
     // send out the global path
     std_msgs::msg::Header msg_header;
     msg_header.stamp = rclcpp::Clock().now();
     msg_header.frame_id = "map";
+    RCLCPP_INFO(this->get_logger(), "SENDING GLOBAL ROUTE");
     this->send_global_path(route, start, end, msg_header);
+    
   } else {
     RCLCPP_ERROR(this->get_logger(), "Global route has not been found!");
   }
+
+  // MASSIVE HACK BELOW, PLEASE FORGIVE ME (Will)
+  // std::vector<lanelet::Id> route;
+  // route.push_back(-99768);
+  // route.push_back(-99770);
+  // route.push_back(-99772);
+  // std_msgs::msg::Header msg_header;
+  // msg_header.stamp = rclcpp::Clock().now();
+  // msg_header.frame_id = "map";
+  // RCLCPP_INFO(this->get_logger(), "SENDING GLOBAL ROUTE");
+  // this->send_global_path(route, start, end, msg_header);
 }
 
 void Lanelet2GlobalPlannerNode::current_pose_cb(
-  const autoware_auto_msgs::msg::VehicleKinematicState::SharedPtr msg)
+  const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
 {
   // convert msg to geometry_msgs::msg::Pose
-  start_pose.pose.position.x = msg->state.x;
-  start_pose.pose.position.y = msg->state.y;
+  start_pose.pose.position.x = msg->pose.pose.position.x;
+  start_pose.pose.position.y = msg->pose.pose.position.y;
   start_pose.pose.position.z = 0.0;
-  const auto yaw = motion::motion_common::to_angle(msg->state.heading);
-  tf2::Quaternion tf2_quat;
-  tf2_quat.setRPY(0.0, 0.0, yaw);
-  start_pose.pose.orientation = tf2::toMsg(tf2_quat);
+  // const auto yaw = motion::motion_common::to_angle(msg->state.heading);
+  // tf2::Quaternion tf2_quat;
+  // tf2_quat.setRPY(0.0, 0.0, yaw);
+  start_pose.pose.orientation = msg->pose.pose.orientation;
   start_pose.header = msg->header;
 
   // transform to "map" frame if needed
@@ -259,4 +274,4 @@ bool8_t Lanelet2GlobalPlannerNode::transform_pose_to_map(
 }  // namespace autoware
 
 RCLCPP_COMPONENTS_REGISTER_NODE(
-  autoware::planning::lanelet2_global_planner_nodes::Lanelet2GlobalPlannerNode)
+  voltron::planning::route_planner::Lanelet2GlobalPlannerNode)

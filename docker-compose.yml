@@ -5,14 +5,25 @@ services:
           environment: 
                - USER=docker
      pillar:
-          build: images/pillar
+          build: 
+               context: roslibs/
+               dockerfile: ../images/pillar/Dockerfile
           environment: 
                - USER=docker
+
+     # INTERFACE
+     vehicle_bridge:
+          build: 
+               context: nodes/interface/vehicle_bridge
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_vehicle_bridge
 
      # LOCALIZATION
      ndt:
           build: 
-               context: packages/localization/ndt_nodes # TODO: Split map provider into separate package
+               context: nodes/localization/ndt_nodes # TODO: Split map provider into separate package
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
@@ -28,7 +39,7 @@ services:
      # MAPPING
      lanelet_provider:
           build: 
-               context: packages/mapping/lanelet_provider
+               context: nodes/mapping/lanelet_provider
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
@@ -68,7 +79,7 @@ services:
           # network_mode: host
           # pid: host
           build: 
-               context: packages/perception/velodyne_nodes
+               context: nodes/perception/velodyne_nodes
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
@@ -83,7 +94,7 @@ services:
           # network_mode: host
           # pid: host
           build: 
-               context: packages/perception/lidar_filters
+               context: nodes/perception/lidar_filters
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
@@ -96,7 +107,7 @@ services:
                  target: /opt/params
      lidar_downsampler:
           build: 
-               context: packages/perception/lidar_downsampler
+               context: nodes/perception/lidar_downsampler
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
@@ -108,7 +119,7 @@ services:
                  target: /opt/params
      lidar_fusion:
           build: 
-               context: packages/perception/lidar_fusion
+               context: nodes/perception/lidar_fusion
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
@@ -123,11 +134,13 @@ services:
      # PLANNING
      route_planner:
           build: 
-               context: packages/planning/route_planner
+               context: nodes/planning/route_planner
                dockerfile: ../../../images/frame/Dockerfile
           environment: 
                - USER=docker
-               - package_name=vt_route_planner
+               - package_name=vt_route_planner_node
+          depends_on: 
+               - lanelet_provider
           # volumes:
           #      - type: bind
           #        source: ./params

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(vt_route_planner)
+project(vt_route_planner_node)
 
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
@@ -25,7 +25,7 @@ target_include_directories(${GB_PLANNER_NODE_LIB} SYSTEM PUBLIC ${tf2_INCLUDE_DI
 
 set(GB_PLANNER_NODE_EXE ${GB_PLANNER_NODE_LIB}_exe)
 rclcpp_components_register_node(${GB_PLANNER_NODE_LIB}
-  PLUGIN "autoware::planning::lanelet2_global_planner_nodes::Lanelet2GlobalPlannerNode"
+  PLUGIN "voltron::planning::route_planner::Lanelet2GlobalPlannerNode"
   EXECUTABLE ${GB_PLANNER_NODE_EXE}
 )
 
