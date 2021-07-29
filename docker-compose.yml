@@ -41,7 +41,6 @@ services:
           depends_on:
                - ndt
 
-
      # MISC
      urdf_publisher:
           # network_mode: host
@@ -63,6 +62,7 @@ services:
                - type: bind
                  source: ./data
                  target: /opt/data
+     
      # PERCEPTION
      lidars:
           # network_mode: host
@@ -118,3 +118,17 @@ services:
                - type: bind
                  source: ./params
                  target: /opt/params
+
+
+     # PLANNING
+     route_planner:
+          build: 
+               context: packages/planning/route_planner
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_route_planner
+          # volumes:
+          #      - type: bind
+          #        source: ./params
+          #        target: /opt/params
