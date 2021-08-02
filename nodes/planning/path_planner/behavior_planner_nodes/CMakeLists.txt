@@ -13,7 +13,7 @@
 # limitations under the License.
 cmake_minimum_required(VERSION 3.5)
 
-project(behavior_planner_nodes)
+project(vt_path_planner)
 
 # dependencies
 find_package(ament_cmake_auto REQUIRED)
@@ -65,4 +65,5 @@ endif()
 ament_auto_package(
   INSTALL_TO_SHARE
     param
+    launch
 )

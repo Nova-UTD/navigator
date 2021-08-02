@@ -4,12 +4,16 @@ services:
           build: images/base
           environment: 
                - USER=docker
+          profiles:
+               - build
      pillar:
           build: 
                context: roslibs/
                dockerfile: ../images/pillar/Dockerfile
           environment: 
                - USER=docker
+          profiles:
+               - build
 
      # INTERFACE
      vehicle_bridge:
@@ -34,7 +38,7 @@ services:
                - type: bind
                  source: ./data
                  target: /opt/data
-               - ./params:/opt/params
+               - ./param:/opt/param
 
      # MAPPING
      lanelet_provider:
@@ -88,8 +92,8 @@ services:
                - rear_param_name=perception/lidar_rear.param.yaml
           volumes:
                - type: bind
-                 source: ./params
-                 target: /opt/params
+                 source: ./param
+                 target: /opt/param
      lidar_filters:
           # network_mode: host
           # pid: host
@@ -103,8 +107,8 @@ services:
                - rear_param_name=perception/pc_filter_transform_rear_sim.param.yaml
           volumes:
                - type: bind
-                 source: ./params
-                 target: /opt/params
+                 source: ./param
+                 target: /opt/param
      lidar_downsampler:
           build: 
                context: nodes/perception/lidar_downsampler
@@ -115,8 +119,8 @@ services:
                - param_name=perception/lidar_downsampler.param.yaml
           volumes:
                - type: bind
-                 source: ./params
-                 target: /opt/params
+                 source: ./param
+                 target: /opt/param
      lidar_fusion:
           build: 
                context: nodes/perception/lidar_fusion
@@ -127,8 +131,8 @@ services:
                - param_name=perception/lidar_fusion.param.yaml
           volumes:
                - type: bind
-                 source: ./params
-                 target: /opt/params
+                 source: ./param
+                 target: /opt/param
 
 
      # PLANNING
@@ -143,5 +147,20 @@ services:
                - lanelet_provider
           # volumes:
           #      - type: bind
-          #        source: ./params
-          #        target: /opt/params
+          #        source: ./param
+          #        target: /opt/param
+     path_planner:
+          # This container runs the behavior planner, lane planner
+          # (action server) and parking planner (also action server)
+          build: 
+               context: nodes/planning/path_planner
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_path_planner
+          depends_on: 
+               - route_planner
+          volumes:
+               - type: bind
+                 source: ./param
+                 target: /opt/param

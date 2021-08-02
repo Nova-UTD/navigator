@@ -26,14 +26,14 @@ def generate_launch_description():
         package="point_cloud_filter_transform_nodes",
         executable="point_cloud_filter_transform_node_exe",
         namespace = "lidar_front",
-        parameters=[("/opt/params/"+environ["front_param_name"])],
+        parameters=[("/opt/param/"+environ["front_param_name"])],
         remappings = [("points_in", "/lidar_front/points_raw")]
     )
     lidar_rear_filter = Node(
         package="point_cloud_filter_transform_nodes",
         executable="point_cloud_filter_transform_node_exe",
         namespace = "lidar_rear",
-        parameters=[("/opt/params/"+environ["rear_param_name"])],
+        parameters=[("/opt/param/"+environ["rear_param_name"])],
         remappings = [("points_in", "/lidar_rear/points_raw")]
     )
 

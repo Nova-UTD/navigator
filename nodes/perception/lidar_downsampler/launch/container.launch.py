@@ -17,7 +17,7 @@ def generate_launch_description():
         package='voxel_grid_nodes',
         executable='voxel_grid_node_exe',
         namespace='lidars',
-        parameters=[("/opt/params/"+environ["param_name"])],
+        parameters=[("/opt/param/"+environ["param_name"])],
         remappings=[
             ("points_in", "points_fused"),
             ("points_downsampled", "points_fused_downsampled")

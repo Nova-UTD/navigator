@@ -16,7 +16,7 @@ def generate_launch_description():
     bridge = Node(
         package='vt_vehicle_bridge',
         executable='svl_bridge_exe',
-        # parameters=[("/opt/params/"+environ["param_name"])],
+        # parameters=[("/opt/param/"+environ["param_name"])],
         # remappings=[
         #     ("output_topic", "points_fused"),
         #     ("input_topic1", "/lidar_front/points_filtered"), 

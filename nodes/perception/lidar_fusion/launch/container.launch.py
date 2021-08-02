@@ -17,7 +17,7 @@ def generate_launch_description():
         package='vt_point_cloud_fusion_nodes',
         executable='pointcloud_fusion_node_exe',
         namespace="lidars",
-        parameters=[("/opt/params/"+environ["param_name"])],
+        parameters=[("/opt/param/"+environ["param_name"])],
         remappings=[
             ("output_topic", "points_fused"),
             ("input_topic1", "/lidar_front/points_filtered"), 

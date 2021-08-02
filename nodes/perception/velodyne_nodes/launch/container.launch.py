@@ -25,7 +25,7 @@ def generate_launch_description():
         package='velodyne_nodes',
         namespace="lidar_rear",
         executable='velodyne_cloud_node_exe',
-        parameters=[("/opt/params/"+environ["rear_param_name"])],
+        parameters=[("/opt/param/"+environ["rear_param_name"])],
         remappings=[("topic", "points_raw")],
         arguments=["--model", "vlp16"])
 

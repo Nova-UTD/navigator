@@ -24,7 +24,7 @@ def generate_launch_description():
         executable='p2d_ndt_localizer_exe',
         namespace='localization',
         name='p2d_ndt_localizer_node',
-        parameters=[("/opt/params/"+environ["param_name"])],
+        parameters=[("/opt/param/"+environ["param_name"])],
         remappings=[
             ("points_in", "/lidars/points_fused_downsampled"),
             ("observation_republish", "/lidars/points_fused_viz"),
