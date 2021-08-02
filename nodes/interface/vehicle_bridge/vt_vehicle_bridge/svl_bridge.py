@@ -24,15 +24,20 @@ from std_msgs.msg import String, Header
 from autoware_auto_msgs.msg import VehicleKinematicState
 from autoware_auto_msgs.msg import Trajectory
 from autoware_auto_msgs.msg import TrajectoryPoint
+from autoware_auto_msgs.msg import VehicleControlCommand
 from geometry_msgs.msg import PoseStamped, Point, PoseWithCovarianceStamped
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker
 from voltron_msgs.msg import Gear
+from lgsvl_msgs.msg import CanBusData
+from lgsvl_msgs.msg import VehicleControlData
 import math
 
 class VehicleBridge(Node):
 
     def __init__(self):
+        self.speed_mps = 0.0
+
         super().__init__('translator')
         self.pose_sub = self.create_subscription(
             PoseWithCovarianceStamped,
@@ -49,6 +54,25 @@ class VehicleBridge(Node):
             VehicleKinematicState,
             '/vehicle/vehicle_kinematic_state',
             10)
+
+        self.vehicle_command_sub = self.create_subscription(
+            VehicleControlCommand,
+            '/vehicle/vehicle_command',
+            self.vehicle_command_cb,
+            10
+        )
+
+        self.vehicle_command_pub = self.create_publisher(
+            VehicleControlData,
+            '/lgsvl/vehicle_control_cmd',
+            10)
+
+        self.svl_can_sub = self.create_subscription(
+            CanBusData,
+            '/lgsvl/state_report',
+            self.svl_can_cb,
+            10
+        )
         # self.path_pub_ = self.create_publisher(Path, '/planning/path_viz', 10)
         # self.command_viz_pub_ = self.create_publisher(Marker, '/vehicle/vehicle_command_viz', 10)
         # self.hack_header = Header()
@@ -122,6 +146,30 @@ class VehicleBridge(Node):
     #     path.poses = poseArray
     #     self.path_pub_.publish(path)
     #     self.hack_header = msg.header
+
+    def vehicle_command_cb(self, msg):
+        desired_speed = 6.0 # mps. How fast we want to go. Manual override.
+
+        svl_command = VehicleControlData()
+
+        # Use bang-bang for accel and brake
+        if (self.speed_mps > desired_speed):
+            # Slow down
+            svl_command.acceleration_pct = 0.0
+            svl_command.braking_pct = 0.5
+        else:
+            # Speed up
+            svl_command.acceleration_pct = 0.5
+            svl_command.braking_pct = 0.0
+        
+        svl_command.target_gear = VehicleControlData.GEAR_DRIVE
+        svl_command.target_wheel_angle = msg.front_wheel_angle_rad
+        svl_command.target_wheel_angular_rate = 3.0 # radians... This is arbitrary... right?
+        
+        self.vehicle_command_pub.publish(svl_command)
+
+    def svl_can_cb(self, msg):
+        self.speed_mps = msg.speed_mps
 
 
 def main(args=None):
