@@ -33,7 +33,7 @@ def generate_launch_description():
             ('HAD_Map_Service', '/had_maps/HAD_Map_Service'),
             ('vehicle_state', '/vehicle/vehicle_kinematic_state'),
             ('route', 'global_path'),
-            ('vehicle_state_report', '/vehicle/state_report'),
+            ('gear_report', '/vehicle/gear'),
             ('vehicle_state_command', '/vehicle/state_command')
         ]
     )

@@ -34,6 +34,7 @@
 #include <autoware_auto_msgs/msg/vehicle_kinematic_state.hpp>
 #include <autoware_auto_msgs/msg/vehicle_state_report.hpp>
 #include <autoware_auto_msgs/msg/vehicle_state_command.hpp>
+#include <voltron_msgs/msg/gear.hpp>
 #include <autoware_auto_msgs/srv/had_map_service.hpp>
 #include <autoware_auto_msgs/srv/modify_trajectory.hpp>
 #include <behavior_planner/behavior_planner.hpp>
@@ -60,6 +61,9 @@ using autoware_auto_msgs::msg::Trajectory;
 using autoware_auto_msgs::msg::Route;
 using autoware_auto_msgs::msg::VehicleStateCommand;
 using autoware_auto_msgs::msg::VehicleStateReport;
+
+using voltron_msgs::msg::Gear;
+
 using State = autoware_auto_msgs::msg::VehicleKinematicState;
 using autoware::behavior_planner::PlannerType;
 using autoware::behavior_planner::RouteWithType;
@@ -89,7 +93,7 @@ private:
   rclcpp::Subscription<Route>::SharedPtr m_route_sub{};
   rclcpp::Subscription<Trajectory>::SharedPtr m_lane_trajectory_sub{};
   rclcpp::Subscription<Trajectory>::SharedPtr m_parking_trajectory_sub{};
-  rclcpp::Subscription<VehicleStateReport>::SharedPtr m_vehicle_state_report_sub{};
+  rclcpp::Subscription<Gear>::SharedPtr m_gear_report_sub{};
   rclcpp::Publisher<Trajectory>::SharedPtr m_trajectory_pub{};
   rclcpp::Publisher<Trajectory>::SharedPtr m_debug_trajectory_pub{};
   rclcpp::Publisher<Trajectory>::SharedPtr m_debug_checkpoints_pub{};
@@ -117,7 +121,7 @@ private:
   void on_route(const Route::SharedPtr & msg);
   void on_lane_trajectory(const Trajectory::SharedPtr & msg);
   void on_parking_trajectory(const Trajectory::SharedPtr & msg);
-  void on_vehicle_state_report(const VehicleStateReport::SharedPtr & msg);
+  void on_gear_report(const Gear::SharedPtr & msg);
   void map_response(rclcpp::Client<HADMapService>::SharedFuture future);
   void modify_trajectory_response(rclcpp::Client<ModifyTrajectory>::SharedFuture future);
   void clear_trajectory_cache();

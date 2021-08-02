@@ -111,6 +111,7 @@ We should consolidate key data into the same namespace. This frees us from relyi
 - `./state/acceleration` (AccelStamped, includes lin and ang)
 - `./state/blinkers` (Custom msg, enum)
 - `./state/headlights` (Custom msg, enum)
+- `./state/gear` (Custom msg, enum)
 - `./state/steering`
     - A custom steering message with a float from -1.0 to 1.0, where *-1.0 is full left and 1.0 is full right*. This can be scaled to steering wheel angle or any tire angle with a vehicle-specific constant that we can store in [voltron.urdf](./data/voltron.urdf).
 

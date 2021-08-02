@@ -17,7 +17,7 @@ def generate_launch_description():
         package='velodyne_nodes',
         namespace="lidar_front",
         executable='velodyne_cloud_node_exe',
-        parameters=[("/opt/params/"+environ["front_param_name"])],
+        parameters=[("/opt/param/"+environ["front_param_name"])],
         remappings=[("topic", "points_raw")],
         arguments=["--model", "vlp16"])
 

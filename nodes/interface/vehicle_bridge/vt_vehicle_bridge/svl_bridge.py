@@ -27,6 +27,7 @@ from autoware_auto_msgs.msg import TrajectoryPoint
 from geometry_msgs.msg import PoseStamped, Point, PoseWithCovarianceStamped
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker
+from voltron_msgs.msg import Gear
 import math
 
 class VehicleBridge(Node):
@@ -39,6 +40,11 @@ class VehicleBridge(Node):
             self.pose_cb,
             10)
 
+        self.gear_pub =  self.create_publisher(
+            Gear, '/vehicle/gear', 10
+        )
+        self.timer = self.create_timer(0.5, self.timer_callback)
+
         self.kinematic_state_pub = self.create_publisher(
             VehicleKinematicState,
             '/vehicle/vehicle_kinematic_state',
@@ -48,6 +54,11 @@ class VehicleBridge(Node):
         # self.hack_header = Header()
 
         # self.subscription  # prevent unused variable warning
+
+    def timer_callback(self):
+        gear_msg = Gear()
+        gear_msg.state = 1;
+        self.gear_pub.publish(gear_msg)
 
     def pose_cb(self, msg):
         position = msg.pose.pose.position
