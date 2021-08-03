@@ -1,25 +1,191 @@
 version: "3.9"
 services:
      base:
-          # To use the prebuilt VDE image, uncomment the 
-               # "image:" line and comment the "build:" line
-               # To build yourself, do the reverse.
-          image: ghcr.io/voltron-utd/vde_x86_64:latest
-          # build: vde
+          build: images/base
           environment: 
-               - DISPLAY=$DISPLAY
-               - QT_X11_NO_MITSHM=1
                - USER=docker
-               - VDE_VERSION=1.0.2
-          hostname: vde
+          profiles:
+               - build
+     pillar:
+          build: 
+               context: roslibs/
+               dockerfile: ../images/pillar/Dockerfile
+          environment: 
+               - USER=docker
+          profiles:
+               - build
+
+     # CONTROL
+     steering_controller:
+          build:
+               context: nodes/control/vt_steering_controller
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_steering_controller
           volumes:
-               - "autoware-vol:/opt/AutowareAuto"
-               - /tmp/.X11-unix:/tmp/.X11-unix:rw
-               - ${HOME}/vdehome:/home/docker/
-          network_mode: "host"
-     # autoware:
-     #      image: registry.gitlab.com/autowarefoundation/autoware.auto/autowareauto/amd64/binary-foxy:1.0.0
-     #      volumes:
-     #           - "autoware-vol:/opt/AutowareAuto"
-volumes:
-     autoware-vol: {}
+               - type: bind
+                 source: ./param
+                 target: /opt/param
+
+     # INTERFACE
+     vehicle_bridge:
+          build: 
+               context: nodes/interface/vehicle_bridge
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_vehicle_bridge
+
+     # LOCALIZATION
+     ndt:
+          build: 
+               context: nodes/localization/ndt_nodes # TODO: Split map provider into separate package
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_ndt_nodes
+               - map_name=borregas
+               - param_name=localization/ndt_localizer.param.yaml
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+               - ./param:/opt/param
+
+     # MAPPING
+     lanelet_provider:
+          build: 
+               context: nodes/mapping/lanelet_provider
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_lanelet_provider
+               - map_name=borregas
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+          depends_on:
+               - ndt
+
+     # MISC
+     urdf_publisher:
+          # network_mode: host
+          # pid: host
+          build: images/frame
+          environment: 
+               - USER=docker
+          command: ros2 run robot_state_publisher robot_state_publisher /opt/data/voltron.urdf
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+     odom_bl_publisher:
+          build: images/frame
+          environment: 
+               - USER=docker
+          command: ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+     visualizations:
+          build:
+               context: nodes/misc/vt_viz
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_viz
+          volumes:
+               - type: bind
+                 source: ./param
+                 target: /opt/param
+
+     
+     # PERCEPTION
+     lidars:
+          # network_mode: host
+          # pid: host
+          build: 
+               context: nodes/perception/velodyne_nodes
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_velodyne_nodes
+               - front_param_name=perception/lidar_front.param.yaml
+               - rear_param_name=perception/lidar_rear.param.yaml
+          volumes:
+               - type: bind
+                 source: ./param
+                 target: /opt/param
+     lidar_filters:
+          # network_mode: host
+          # pid: host
+          build: 
+               context: nodes/perception/lidar_filters
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_point_cloud_filter_transform_nodes
+               - front_param_name=perception/pc_filter_transform_front_sim.param.yaml
+               - rear_param_name=perception/pc_filter_transform_rear_sim.param.yaml
+          volumes:
+               - type: bind
+                 source: ./param
+                 target: /opt/param
+     lidar_downsampler:
+          build: 
+               context: nodes/perception/lidar_downsampler
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=voxel_grid_nodes
+               - param_name=perception/lidar_downsampler.param.yaml
+          volumes:
+               - type: bind
+                 source: ./param
+                 target: /opt/param
+     lidar_fusion:
+          build: 
+               context: nodes/perception/lidar_fusion
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_point_cloud_fusion_nodes
+               - param_name=perception/lidar_fusion.param.yaml
+          volumes:
+               - type: bind
+                 source: ./param
+                 target: /opt/param
+
+
+     # PLANNING
+     route_planner:
+          build: 
+               context: nodes/planning/route_planner
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_route_planner_node
+          depends_on: 
+               - lanelet_provider
+          # volumes:
+          #      - type: bind
+          #        source: ./param
+          #        target: /opt/param
+     path_planner:
+          # This container runs the behavior planner, lane planner
+          # (action server) and parking planner (also action server)
+          build: 
+               context: nodes/planning/path_planner
+               dockerfile: ../../../images/frame/Dockerfile
+          environment: 
+               - USER=docker
+               - package_name=vt_path_planner
+          depends_on: 
+               - route_planner
+          volumes:
+               - type: bind
+                 source: ./param
+                 target: /opt/param
