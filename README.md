@@ -85,8 +85,7 @@ Other files are included, but they're self-explanatory (e.g. README.md).
 
 # `/vehicle` topics
 We should consolidate key data into the same namespace. This frees us from relying on algorithm-specific topic names (e.g. `/localizatin/ndt_pose`). The `/vehicle` topics should include:
-- `./state/pose` (PoseStamped)
-- `./state/velocity` (TwistStamped, includes lin and ang)
+- `./state/odom` ([Odometry Message](http://docs.ros.org/en/api/nav_msgs/html/msg/Odometry.html))
 - `./state/acceleration` (AccelStamped, includes lin and ang)
 - `./state/blinkers` (Custom msg, enum)
 - `./state/headlights` (Custom msg, enum)
