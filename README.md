@@ -24,7 +24,7 @@ From the repository root, run `docker-compose build`.
 Simply run `docker-compose up`. Since our containers share a local network with the host OS, ROS is shared as well.
 
 # Usage
-Use tools like SVL and Rviz2 (you'll need to install ROS2 on the host) to interact with the code. If using SVL, be sure to instal `lgsvl_msgs` and `lgsvl_bridge` as well.
+Use tools like SVL and Rviz2 (you'll need to install ROS2 on the host) to interact with the code. If using SVL, be sure to instal `lgsvl_msgs` and `lgsvl_bridge` as well (you can find both repos here on GitHub).
 
 # Target stack
 Here are the components we wish to include. A check means that it's been successfully integrated. The categories are purely for human clarity.
