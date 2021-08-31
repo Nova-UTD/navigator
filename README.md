@@ -24,7 +24,11 @@ From the repository root, run `docker-compose build`.
 Simply run `docker-compose up`. Since our containers share a local network with the host OS, ROS is shared as well.
 
 # Usage
+Programs running inside VDE interact with the host PC using a bridge network. That means that messages published inside VDE will be visible to ROS programs running on the host (like RViz) thanks to the bridge network.
+
 Use tools like SVL and Rviz2 (you'll need to install ROS2 on the host) to interact with the code. If using SVL, be sure to instal `lgsvl_msgs` and `lgsvl_bridge` as well (you can find both repos here on GitHub).
+
+To develop a new package inside VDE, you'll need to add it to `docker-compose.yml`, add the code to the `nodes/` folder, and build your code using `docker-compose build`. Of course, you can then test the code along with the rest of the stack using `docker-compose up`. Once VDE is running, you can inspect the behavior of your new package using `ros2 topic echo`, `ros2 node info`, `rqt_graph`, and so on using the host's ROS2 installation.
 
 # Target stack
 Here are the components we wish to include. A check means that it's been successfully integrated. The categories are purely for human clarity.
