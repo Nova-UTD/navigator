@@ -12,8 +12,8 @@ services:
                dockerfile: ../images/pillar/Dockerfile
           environment: 
                - USER=docker
-          profiles:
-               - build
+          # profiles:
+          #      - build
 
      # CONTROL
      steering_controller:

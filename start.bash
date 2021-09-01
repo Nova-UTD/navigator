@@ -13,7 +13,7 @@ fi
 if [[ $* == *-b* ]]
 then
     echo "Starting lgsvl_bridge"
-    docker-compose exec -u docker base bash
+    lgsvl_bridge
 fi
 
 if [[ $* == *-i* ]]
@@ -21,7 +21,7 @@ then
     echo "Starting Docker Compose in background..."
     docker-compose up -d
     echo "Starting interactive shell"
-    docker-compose exec -u docker base bash
+    docker exec -it -u docker vde_pillar_1 /bin/bash
 else
     echo "Starting Docker Compose..."
     docker-compose up
