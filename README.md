@@ -30,6 +30,9 @@ Use tools like SVL and Rviz2 (you'll need to install ROS2 on the host) to intera
 
 To develop a new package inside VDE, you'll need to add it to `docker-compose.yml`, add the code to the `nodes/` folder, and build your code using `docker-compose build`. Of course, you can then test the code along with the rest of the stack using `docker-compose up`. Once VDE is running, you can inspect the behavior of your new package using `ros2 topic echo`, `ros2 node info`, `rqt_graph`, and so on using the host's ROS2 installation.
 
+## Helper script
+You can use the (experimental) helper script, which can perform simple commands. Try `./start.sh -h`. It can start an interactive shell inside the "pillar" container, which is helpful in cases where you don't want to install ROS on the host.
+
 # Target stack
 Here are the components we wish to include. A check means that it's been successfully integrated. The categories are purely for human clarity.
 
