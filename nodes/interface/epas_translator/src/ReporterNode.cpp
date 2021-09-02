@@ -12,15 +12,14 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
 
-#include "voltron_can/msg/can_frame.hpp"
-#include "voltron_can/CanFrame.hpp" // Data types
+#include "voltron_msgs/msg/can_frame.hpp"
 
 #include "voltron_epas_steering/ReporterNode.hpp"
 
 using namespace Voltron::EpasSteering;
 
-typedef Voltron::Can::CanFrame::identifier_t can_id_t;
-typedef Voltron::Can::CanFrame::data_t can_data_t;
+typedef uint16_t can_id_t;
+typedef uint64_t can_data_t;
 
 constexpr can_id_t epas_can_message_2_identifier = 0x292;
 constexpr int angle_byte_index = 0;
@@ -35,7 +34,7 @@ ReporterNode::ReporterNode(const std::string & interface, float epas_min, float 
   : rclcpp::Node("steering_reporter_" + interface) {
   this->angle_publisher = this->create_publisher<std_msgs::msg::Float32>
     ("real_steering_angle", 8);
-  this->can_subscription = this->create_subscription<voltron_can::msg::CanFrame>
+  this->can_subscription = this->create_subscription<voltron_msgs::msg::CanFrame>
     ("incoming_can_frames_" + interface, 8,
      std::bind(& ReporterNode::process_frame, this, std::placeholders::_1));
   this->epas_min = epas_min;
@@ -44,7 +43,7 @@ ReporterNode::ReporterNode(const std::string & interface, float epas_min, float 
 
 ReporterNode::~ReporterNode() {}
 
-void ReporterNode::process_frame(const voltron_can::msg::CanFrame::SharedPtr incoming_frame) {
+void ReporterNode::process_frame(const voltron_msgs::msg::CanFrame::SharedPtr incoming_frame) {
   if(incoming_frame->identifier != epas_can_message_2_identifier) return;
   
   float current_angle = (incoming_frame->data & angle_mask) >> angle_bit_shift;

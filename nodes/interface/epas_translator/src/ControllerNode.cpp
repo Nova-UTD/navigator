@@ -8,26 +8,23 @@
  */
 
 #include <algorithm> // std::clamp
+#include <cstdint> // Fixed-width integers
 #include <functional>
 #include <string>
 #include "rclcpp/rclcpp.hpp"
-#include "voltron_can/msg/can_frame.hpp"
+#include "voltron_msgs/msg/can_frame.hpp"
 #include "std_msgs/msg/float32.hpp"
-#include "voltron_can/CanFrame.hpp"
 
 #include "voltron_epas_steering/ControllerNode.hpp"
 
 using namespace Voltron::EpasSteering;
-
-typedef Voltron::Can::CanFrame::identifier_t can_id_t;
-typedef Voltron::Can::CanFrame::data_t can_data_t;
 
 can_id_t can_message_3_identifier = 0x296;
 
 ControllerNode::ControllerNode(const std::string & interface_name) :
   Node("steering_controller_" + interface_name) {
 
-  this->can_publisher = this->create_publisher<voltron_can::msg::CanFrame>
+  this->can_publisher = this->create_publisher<voltron_msgs::msg::CanFrame>
     ("outgoing_can_frames_" + interface_name, 8);
   this->power_subscription = this->create_subscription<std_msgs::msg::Float32>
     ("steering_power", 8, bind(& ControllerNode::update_power, this, std::placeholders::_1));
@@ -38,7 +35,7 @@ ControllerNode::ControllerNode(const std::string & interface_name) :
 ControllerNode::~ControllerNode() {}
 
 void ControllerNode::send_control_message() {
-  auto message = voltron_can::msg::CanFrame();
+  auto message = voltron_msgs::msg::CanFrame();
   message.identifier = can_message_3_identifier;
   message.data = (255 - this->power);
   message.data <<= 8;

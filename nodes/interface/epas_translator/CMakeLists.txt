@@ -44,7 +44,7 @@ if(BUILD_TESTING)
   ament_add_gtest(tests
     test/test_reporter.cpp
     test/test_controller.cpp)
-  ament_target_dependencies(tests rclcpp voltron_can voltron_test_utils std_msgs)
+  ament_target_dependencies(tests rclcpp voltron_msgs voltron_test_utils std_msgs)
   target_link_libraries(tests epas_steering_lib gtest_main)
 endif()
 

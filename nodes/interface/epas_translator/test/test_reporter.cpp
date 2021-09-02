@@ -16,7 +16,7 @@
 #include "rclcpp/rclcpp.hpp" // To control the node
 #include "std_msgs/msg/float32.hpp"
 
-#include "voltron_can/msg/can_frame.hpp" // CAN messages
+#include "voltron_msgs/msg/can_frame.hpp" // CAN messages
 #include "voltron_test_utils/TestSubscriber.hpp" // Our test subscriber
 #include "voltron_test_utils/TestPublisher.hpp" // Our test publisher
 
@@ -35,7 +35,7 @@ protected:
     angle_subscription = std::make_unique<TestSubscriber<
       std_msgs::msg::Float32>>("real_steering_angle");
     can_publisher = std::make_unique<TestPublisher<
-      voltron_can::msg::CanFrame>>("incoming_can_frames_vcan0");
+      voltron_msgs::msg::CanFrame>>("incoming_can_frames_vcan0");
   }
 
   void TearDown() override {
@@ -44,7 +44,7 @@ protected:
 
   std::shared_ptr<ReporterNode> my_reporter;
   std::unique_ptr<TestSubscriber<std_msgs::msg::Float32>> angle_subscription;
-  std::unique_ptr<TestPublisher<voltron_can::msg::CanFrame>> can_publisher;
+  std::unique_ptr<TestPublisher<voltron_msgs::msg::CanFrame>> can_publisher;
 };
 
 TEST_F(TestReporter, test_initializes) {
@@ -53,7 +53,7 @@ TEST_F(TestReporter, test_initializes) {
 }
 
 TEST_F(TestReporter, test_reports_once) {
-  auto message_to_send = voltron_can::msg::CanFrame();
+  auto message_to_send = voltron_msgs::msg::CanFrame();
   message_to_send.data = 0x000000000000003F;
   message_to_send.identifier = can_message_2_identifier;
   can_publisher->send_message(message_to_send);

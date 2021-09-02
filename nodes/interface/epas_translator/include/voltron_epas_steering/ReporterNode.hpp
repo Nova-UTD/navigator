@@ -14,7 +14,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
 
-#include "voltron_can/msg/can_frame.hpp"
+#include "voltron_msgs/msg/can_frame.hpp"
 
 namespace Voltron {
 namespace EpasSteering {
@@ -25,10 +25,10 @@ public:
   virtual ~ReporterNode();
 
 private:
-  void process_frame(const voltron_can::msg::CanFrame::SharedPtr msg);
+  void process_frame(const voltron_msgs::msg::CanFrame::SharedPtr msg);
 
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr angle_publisher;
-  rclcpp::Subscription<voltron_can::msg::CanFrame>::SharedPtr can_subscription;
+  rclcpp::Subscription<voltron_msgs::msg::CanFrame>::SharedPtr can_subscription;
 
   float epas_min;
   float epas_max;

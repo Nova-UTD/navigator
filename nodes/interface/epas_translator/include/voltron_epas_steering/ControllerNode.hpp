@@ -13,9 +13,11 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "voltron_can/CanFrame.hpp" // Data types
-#include "voltron_can/msg/can_frame.hpp" // CAN messages
+#include "voltron_msgs/msg/can_frame.hpp" // CAN messages
 #include "std_msgs/msg/float32.hpp" // UInt8 messages
+
+typedef uint16_t can_id_t;
+typedef uint64_t can_data_t;
 
 using namespace std::chrono_literals;
 
@@ -32,7 +34,7 @@ constexpr auto control_message_frequency = 20ms;
 constexpr uint8_t steering_map = 5;
 
 // The CAN identifier to use when publishing control messages
-constexpr Voltron::Can::CanFrame::identifier_t epas_control_can_identifier = 0x296;
+constexpr can_id_t epas_control_can_identifier = 0x296;
 
 class ControllerNode : public rclcpp::Node {
 public:
@@ -44,7 +46,7 @@ private:
   void update_power(const std_msgs::msg::Float32::SharedPtr message);
   
   uint8_t power = 255/2;
-  rclcpp::Publisher<voltron_can::msg::CanFrame>::SharedPtr can_publisher;
+  rclcpp::Publisher<voltron_msgs::msg::CanFrame>::SharedPtr can_publisher;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr power_subscription;
   rclcpp::TimerBase::SharedPtr control_timer;
 };
