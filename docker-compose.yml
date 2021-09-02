@@ -36,6 +36,22 @@ services:
           environment: 
                - USER=docker
                - package_name=vt_vehicle_bridge
+     
+     epas_translator:
+          build:
+               context: nodes/interface/epas_translator
+               dockerfile: ../../../images/frame/Dockerfile
+          environment:
+               - USER=docker
+               - package_name=epas_translator
+               
+     pid_controller:
+          build:
+               context: nodes/interface/pid_controller
+               dockerfile: ../../../images/frame/Dockerfile
+          environment:
+               - USER=docker
+               - package_name=pid_controller
 
      # LOCALIZATION
      ndt:
