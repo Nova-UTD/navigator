@@ -1,5 +1,5 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  CanFrame.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -11,7 +11,7 @@
 
 #include <linux/can.h>
 
-#include "voltron_can/CanFrame.hpp"
+#include "can_interface/CanFrame.hpp"
 
 using namespace Voltron::Can;
 

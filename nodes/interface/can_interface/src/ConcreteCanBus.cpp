@@ -1,5 +1,5 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  ConcreteCanBus.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -19,8 +19,8 @@
 
 #include <iostream> // Temporary, used for debugging
 
-#include "voltron_can/ConcreteCanBus.hpp" // Obviously, we need the class header
-#include "voltron_can/CanFrame.hpp" // Object-oriented
+#include "can_interface/ConcreteCanBus.hpp" // Obviously, we need the class header
+#include "can_interface/CanFrame.hpp" // Object-oriented
 
 using namespace Voltron::Can;
 

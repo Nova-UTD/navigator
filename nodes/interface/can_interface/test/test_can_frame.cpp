@@ -1,5 +1,5 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  test_can_frame.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -13,7 +13,7 @@
 #include <linux/can.h> // struct can_frame
 #include <memory> // std::unique_ptr
 
-#include "voltron_can/CanFrame.hpp"
+#include "can_interface/CanFrame.hpp"
 
 using namespace Voltron::Can;
 

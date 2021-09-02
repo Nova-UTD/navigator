@@ -1,5 +1,5 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  test_can_bus.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -14,8 +14,8 @@
 #include <gtest/gtest.h> // Testing framework
 #include <memory> // std::unique_ptr
 
-#include "voltron_can/ConcreteCanBus.hpp" // The class we are testing, obviously
-#include "voltron_can/CanFrame.hpp" // Needed to interact with CanBus
+#include "can_interface/ConcreteCanBus.hpp" // The class we are testing, obviously
+#include "can_interface/CanFrame.hpp" // Needed to interact with CanBus
 
 using namespace Voltron::Can;
 

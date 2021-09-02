@@ -1,5 +1,5 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  test_interface.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -17,12 +17,12 @@
 
 #include "voltron_test_utils/TestPublisher.hpp"
 #include "voltron_test_utils/TestSubscriber.hpp"
-#include "voltron_can/msg/can_frame.hpp"
-#include "voltron_can/ConcreteCanBus.hpp"
-#include "voltron_can/CanBus.hpp"
-#include "voltron_can/CanFrame.hpp"
+#include "voltron_msgs/msg/can_frame.hpp"
+#include "can_interface/ConcreteCanBus.hpp"
+#include "can_interface/CanBus.hpp"
+#include "can_interface/CanFrame.hpp"
 
-#include "voltron_can/CanInterfaceNode.hpp" // The class we are testing
+#include "can_interface/CanInterfaceNode.hpp" // The class we are testing
 
 using namespace Voltron::Can;
 using namespace Voltron::TestUtils;
@@ -34,9 +34,9 @@ protected:
     interface_node = std::make_shared<CanInterfaceNode>("vcan0");
     can_bus = std::make_unique<ConcreteCanBus>("vcan0");
     can_publisher = std::make_unique<TestPublisher<
-      voltron_can::msg::CanFrame>>("outgoing_can_frames_vcan0");
+      voltron_msgs::msg::CanFrame>>("outgoing_can_frames_vcan0");
     can_subscriber = std::make_unique<TestSubscriber<
-      voltron_can::msg::CanFrame>>("incoming_can_frames_vcan0");
+      voltron_msgs::msg::CanFrame>>("incoming_can_frames_vcan0");
   }
 
   void TearDown() override {
@@ -45,8 +45,8 @@ protected:
 
   std::shared_ptr<CanInterfaceNode> interface_node;
   std::unique_ptr<CanBus> can_bus;
-  std::unique_ptr<TestPublisher<voltron_can::msg::CanFrame>> can_publisher;
-  std::unique_ptr<TestSubscriber<voltron_can::msg::CanFrame>> can_subscriber;
+  std::unique_ptr<TestPublisher<voltron_msgs::msg::CanFrame>> can_publisher;
+  std::unique_ptr<TestSubscriber<voltron_msgs::msg::CanFrame>> can_subscriber;
 };
 
 TEST_F(TestCanInterfaceNode, test_initializes) {
@@ -59,13 +59,13 @@ TEST_F(TestCanInterfaceNode, test_incoming_frame) {
   usleep(20000); // 20ms, enough that we should receive frames on next spin
   rclcpp::spin_some(this->interface_node);
   ASSERT_TRUE(this->can_subscriber->has_message_ready());
-  voltron_can::msg::CanFrame received_message = *(this->can_subscriber->get_message());
+  voltron_msgs::msg::CanFrame received_message = *(this->can_subscriber->get_message());
   ASSERT_EQ(received_message.identifier, 0x123u);
   ASSERT_EQ(received_message.data, 0x12345678u);
 }
 
 TEST_F(TestCanInterfaceNode, test_outgoing_frame) {
-  voltron_can::msg::CanFrame frame_message;
+  voltron_msgs::msg::CanFrame frame_message;
   frame_message.identifier = 0x123;
   frame_message.data = 0x12345678;
   this->can_publisher->send_message(frame_message);

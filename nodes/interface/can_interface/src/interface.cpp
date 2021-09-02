@@ -1,5 +1,5 @@
 /*
- * Package:   volron_can
+ * Package:   can_interface
  * Filename:  interface.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -10,13 +10,13 @@
 #include <iostream>
 #include <memory> // std::make_shared
 #include "rclcpp/rclcpp.hpp"
-#include "voltron_can/CanInterfaceNode.hpp"
+#include "can_interface/CanInterfaceNode.hpp"
 
 int main(int argc, char ** argv) {
   rclcpp::init(argc, argv);
 
   if(argc < 2) { // We need an interface name to run
-    std::cout << "USAGE: ros2 run voltron_can_interface interface <interface>" << std::endl;
+    std::cout << "USAGE: ros2 run can_interface interface <interface>" << std::endl;
     rclcpp::shutdown();
     return 1;
   }

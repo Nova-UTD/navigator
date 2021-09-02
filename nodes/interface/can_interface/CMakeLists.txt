@@ -1,4 +1,4 @@
-# Package:   voltron_can
+# Package:   can_interface
 # Filename:  CMakeLists.txt
 # Author:    Joshua Williams
 # Email:     joshmackwilliams@protonmail.com
@@ -6,7 +6,7 @@
 # License:   MIT License
 
 cmake_minimum_required(VERSION 3.5)
-project(voltron_can)
+project(can_interface)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
@@ -20,8 +20,6 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-# Build message headers
-rosidl_generate_interfaces(${PROJECT_NAME} "msg/CanFrame.msg")
 ament_export_dependencies(rosidl_default_runtime)
 
 # Build a library from our source files
@@ -31,7 +29,7 @@ ament_auto_add_library(can_lib STATIC
   src/CanInterfaceNode.cpp
   src/CanBusDecorator.cpp)
 target_include_directories(can_lib PUBLIC include)
-rosidl_target_interfaces(can_lib ${PROJECT_NAME} "rosidl_typesupport_cpp")
+#rosidl_target_interfaces(can_lib ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 add_executable(interface src/interface.cpp)
 ament_target_dependencies(interface rclcpp)

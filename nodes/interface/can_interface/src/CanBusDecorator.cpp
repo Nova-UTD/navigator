@@ -1,5 +1,5 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  CanBusDecorator.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -10,9 +10,9 @@
 #include <memory>
 #include <string>
 
-#include "voltron_can/CanBusDecorator.hpp"
-#include "voltron_can/CanBus.hpp"
-#include "voltron_can/CanFrame.hpp"
+#include "can_interface/CanBusDecorator.hpp"
+#include "can_interface/CanBus.hpp"
+#include "can_interface/CanFrame.hpp"
 
 using namespace Voltron::Can;
 

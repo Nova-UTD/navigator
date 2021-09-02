@@ -1,5 +1,5 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  CanBus.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com

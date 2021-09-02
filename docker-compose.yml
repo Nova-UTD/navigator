@@ -52,6 +52,14 @@ services:
           environment:
                - USER=docker
                - package_name=pid_controller
+               
+     can_interface:
+          build:
+               context: nodes/interface/can_interface
+               dockerfile: ../../../images/frame/Dockerfile
+          environment:
+               - USER=docker
+               - package_name=can_interface
 
      # LOCALIZATION
      ndt:
