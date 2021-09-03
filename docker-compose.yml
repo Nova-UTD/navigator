@@ -2,15 +2,15 @@ version: "3.9"
 services:
      base:
           build: images/base
-          environment: 
+          environment:
                - USER=docker
           profiles:
                - build
      pillar:
-          build: 
+          build:
                context: roslibs/
                dockerfile: ../images/pillar/Dockerfile
-          environment: 
+          environment:
                - USER=docker
           # profiles:
           #      - build
@@ -20,7 +20,7 @@ services:
           build:
                context: nodes/control/vt_steering_controller
                dockerfile: ../../../images/frame/Dockerfile
-          environment: 
+          environment:
                - USER=docker
                - package_name=vt_steering_controller
           volumes:
@@ -30,13 +30,13 @@ services:
 
      # INTERFACE
      vehicle_bridge:
-          build: 
+          build:
                context: nodes/interface/vehicle_bridge
                dockerfile: ../../../images/frame/Dockerfile
-          environment: 
+          environment:
                - USER=docker
                - package_name=vt_vehicle_bridge
-     
+
      epas_translator:
           build:
                context: nodes/interface/epas_translator
@@ -44,7 +44,12 @@ services:
           environment:
                - USER=docker
                - package_name=epas_translator
-               
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+               - ./param:/opt/param
+
      pid_controller:
           build:
                context: nodes/interface/pid_controller
@@ -52,21 +57,35 @@ services:
           environment:
                - USER=docker
                - package_name=pid_controller
-               
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+               - ./param:/opt/param
+
      can_interface:
+          network_mode: host
           build:
                context: nodes/interface/can_interface
                dockerfile: ../../../images/frame/Dockerfile
           environment:
                - USER=docker
                - package_name=can_interface
+               - param_name=interface/can_interface.param.yaml
+               - incoming_topic_name=incoming_can_frames
+               - outgoing_topic_name=outgoing_can_frames
+          volumes:
+               - type: bind
+                 source: ./data
+                 target: /opt/data
+               - ./param:/opt/param
 
      # LOCALIZATION
      ndt:
-          build: 
+          build:
                context: nodes/localization/ndt_nodes # TODO: Split map provider into separate package
                dockerfile: ../../../images/frame/Dockerfile
-          environment: 
+          environment:
                - USER=docker
                - package_name=vt_ndt_nodes
                - map_name=borregas
@@ -79,10 +98,10 @@ services:
 
      # MAPPING
      lanelet_provider:
-          build: 
+          build:
                context: nodes/mapping/lanelet_provider
                dockerfile: ../../../images/frame/Dockerfile
-          environment: 
+          environment:
                - USER=docker
                - package_name=vt_lanelet_provider
                - map_name=borregas
@@ -98,7 +117,7 @@ services:
           # network_mode: host
           # pid: host
           build: images/frame
-          environment: 
+          environment:
                - USER=docker
           command: ros2 run robot_state_publisher robot_state_publisher /opt/data/voltron.urdf
           volumes:
@@ -107,7 +126,7 @@ services:
                  target: /opt/data
      odom_bl_publisher:
           build: images/frame
-          environment: 
+          environment:
                - USER=docker
           command: ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link
           volumes:
@@ -118,7 +137,7 @@ services:
           build:
                context: nodes/misc/vt_viz
                dockerfile: ../../../images/frame/Dockerfile
-          environment: 
+          environment:
                - USER=docker
                - package_name=vt_viz
           volumes:
@@ -126,15 +145,15 @@ services:
                  source: ./param
                  target: /opt/param
 
-     
+
      # PERCEPTION
      lidars:
           # network_mode: host
           # pid: host
-          build: 
+          build:
                context: nodes/perception/velodyne_nodes
                dockerfile: ../../../images/frame/Dockerfile
-          environment: 
+          environment:
                - USER=docker
                - package_name=vt_velodyne_nodes
                - front_param_name=perception/lidar_front.param.yaml
@@ -146,10 +165,10 @@ services:
      lidar_filters:
           # network_mode: host
           # pid: host
-          build: 
+          build:
                context: nodes/perception/lidar_filters
                dockerfile: ../../../images/frame/Dockerfile
-          environment: 
+          environment:
                - USER=docker
                - package_name=vt_point_cloud_filter_transform_nodes
                - front_param_name=perception/pc_filter_transform_front_sim.param.yaml
@@ -159,10 +178,10 @@ services:
                  source: ./param
                  target: /opt/param
      lidar_downsampler:
-          build: 
+          build:
                context: nodes/perception/lidar_downsampler
                dockerfile: ../../../images/frame/Dockerfile
-          environment: 
+          environment:
                - USER=docker
                - package_name=voxel_grid_nodes
                - param_name=perception/lidar_downsampler.param.yaml
@@ -171,10 +190,10 @@ services:
                  source: ./param
                  target: /opt/param
      lidar_fusion:
-          build: 
+          build:
                context: nodes/perception/lidar_fusion
                dockerfile: ../../../images/frame/Dockerfile
-          environment: 
+          environment:
                - USER=docker
                - package_name=vt_point_cloud_fusion_nodes
                - param_name=perception/lidar_fusion.param.yaml
@@ -186,13 +205,13 @@ services:
 
      # PLANNING
      route_planner:
-          build: 
+          build:
                context: nodes/planning/route_planner
                dockerfile: ../../../images/frame/Dockerfile
-          environment: 
+          environment:
                - USER=docker
                - package_name=vt_route_planner_node
-          depends_on: 
+          depends_on:
                - lanelet_provider
           # volumes:
           #      - type: bind
@@ -201,13 +220,13 @@ services:
      path_planner:
           # This container runs the behavior planner, lane planner
           # (action server) and parking planner (also action server)
-          build: 
+          build:
                context: nodes/planning/path_planner
                dockerfile: ../../../images/frame/Dockerfile
-          environment: 
+          environment:
                - USER=docker
                - package_name=vt_path_planner
-          depends_on: 
+          depends_on:
                - route_planner
           volumes:
                - type: bind

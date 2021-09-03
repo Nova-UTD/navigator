@@ -21,7 +21,7 @@ namespace Can {
 
 class CanInterfaceNode : public rclcpp::Node {
 public:
-  CanInterfaceNode(const std::string & interface_name);
+  CanInterfaceNode();
   virtual ~CanInterfaceNode();
 
 private:
@@ -29,7 +29,7 @@ private:
   void check_incoming_messages();
   void receive_frame();
 
-  
+
   std::unique_ptr<Voltron::Can::CanBus> can_bus;
   rclcpp::TimerBase::SharedPtr incoming_message_timer;
   rclcpp::Publisher<voltron_msgs::msg::CanFrame>::SharedPtr incoming_message_publisher;

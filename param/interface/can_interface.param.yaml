@@ -1,0 +1,5 @@
+# param/ndt_localizer.param.yaml
+---
+/**:
+  ros__parameters:
+    interface_name: vcan0

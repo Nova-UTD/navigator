@@ -41,13 +41,13 @@ install(TARGETS interface DESTINATION lib/${PROJECT_NAME})
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
-  
-  ament_add_gtest(tests
-    test/test_can_frame.cpp
-    test/test_can_bus.cpp
-    test/test_can_interface_node.cpp)
-  ament_target_dependencies(tests rclcpp voltron_test_utils)
-  target_link_libraries(tests can_lib gtest_main)
+
+#  ament_add_gtest(tests
+#    test/test_can_frame.cpp
+#    test/test_can_bus.cpp
+#    test/test_can_interface_node.cpp)
+#  ament_target_dependencies(tests rclcpp voltron_test_utils)
+#  target_link_libraries(tests can_lib gtest_main)
 endif()
 
-ament_auto_package()
+ament_auto_package(INSTALL_TO_SHARE launch)
