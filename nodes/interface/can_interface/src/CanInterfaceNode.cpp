@@ -26,12 +26,7 @@ using std::placeholders::_1;
 
 const auto receive_frequency = 15ms;
 
-CanInterfaceNode::CanInterfaceNode(/*const std::string & interface_name*/)
-  : Node("can_interface_node") {
-
-  this->declare_parameter("interface_name");
-  std::string interface_name = this->get_parameter("interface_name").as_string();
-
+void CanInterfaceNode::initialize(const std::string & interface_name) {
   this->can_bus = std::make_unique<Voltron::Can::ConcreteCanBus>(interface_name);
 
   // Set up the timer
@@ -47,6 +42,19 @@ CanInterfaceNode::CanInterfaceNode(/*const std::string & interface_name*/)
     this->create_subscription<voltron_msgs::msg::CanFrame>
     ("outgoing_can_frames", 64,
      bind(& CanInterfaceNode::send_frame, this, _1));
+}
+
+CanInterfaceNode::CanInterfaceNode(const std::string & interface_name)
+  : Node("can_interface_node") {
+
+  this->initialize(interface_name);
+}
+
+CanInterfaceNode::CanInterfaceNode() : Node("can_interface_node") {
+  this->declare_parameter("interface_name");
+  std::string interface_name = this->get_parameter("interface_name").as_string();
+
+  this->initialize(interface_name);
 }
 
 CanInterfaceNode::~CanInterfaceNode() {
