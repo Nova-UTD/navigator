@@ -1,5 +1,5 @@
 /*
- * Package:   volron_steering_pid
+ * Package:   pid_controller
  * Filename:  PidController.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -16,7 +16,7 @@
 #include <memory>
 
 namespace Voltron {
-namespace SteeringPid {
+namespace PidController {
 
 class PidController {
 public:
@@ -32,10 +32,10 @@ private:
   float KI;
   float KD;
   float time_delta_cap_seconds;
-  
+
   float target;
   float measurement;
-  
+
   float integral;
   float last_error;
 };

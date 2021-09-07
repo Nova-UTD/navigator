@@ -1,5 +1,5 @@
 /*
- * Package:   volron_steering_pid
+ * Package:   pid_controller
  * Filename:  PidController.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -11,9 +11,9 @@
 #include <memory>
 #include <utility>
 
-#include "voltron_steering_pid/PidController.hpp"
+#include "pid_controller/PidController.hpp"
 
-using namespace Voltron::SteeringPid;
+using namespace Voltron::PidController;
 
 PidController::PidController(float KP, float KI, float KD, float time_delta_cap_seconds) {
   this->KP = KP;
@@ -39,7 +39,7 @@ float PidController::compute(float time_delta_seconds) {
   float error = this->target - measurement;
 
   float P = KP * error;
-  
+
   this->integral += (error * time_delta_seconds);
   float I = KI * this->integral;
 

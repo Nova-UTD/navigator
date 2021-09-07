@@ -1,5 +1,5 @@
 /*
- * Package:   volron_steering_pid
+ * Package:   pid_controller
  * Filename:  PidControllerNode.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -16,16 +16,16 @@
 #include "std_msgs/msg/float32.hpp"
 #include "autoware_auto_msgs/msg/vehicle_control_command.hpp"
 
-#include "voltron_steering_pid/PidController.hpp"
+#include "pid_controller/PidController.hpp"
 
 using namespace std::chrono_literals;
 
 namespace Voltron {
-namespace SteeringPid {
+namespace PidController {
 
 class PidControllerNode : public rclcpp::Node {
 public:
-  PidControllerNode(std::unique_ptr<PidController> controller);
+  PidControllerNode();
   virtual ~PidControllerNode();
 
 private:
@@ -38,7 +38,7 @@ private:
   typedef std::chrono::steady_clock clock_t;
   clock_t clock;
   clock_t::time_point last_update_time;
-  
+
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr steering_control_publisher;
   rclcpp::Subscription<autoware_auto_msgs::msg::VehicleControlCommand>::
     SharedPtr command_subscription;

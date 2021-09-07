@@ -56,13 +56,17 @@ services:
                  target: /opt/data
                - ./param:/opt/param
 
-     pid_controller:
+     steering_pid_controller:
           build:
                context: nodes/interface/pid_controller
                dockerfile: ../../../images/frame/Dockerfile
           environment:
                - USER=docker
                - package_name=pid_controller
+               - param_name=interface/steering_pid_controller.param.yaml
+               - measurement_topic_name=real_steering_angle
+               - target_topic_name=vehicle_commands
+               - output_topic_name=steering_power
           volumes:
                - type: bind
                  source: ./data

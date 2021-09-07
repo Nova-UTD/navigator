@@ -1,5 +1,5 @@
 /*
- * Package:   volron_steering_pid
+ * Package:   pid_controller
  * Filename:  PidControllerNode.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -7,7 +7,7 @@
  * License:   MIT License
  */
 
-#include "voltron_steering_pid/PidControllerNode.hpp"
+#include "pid_controller/PidControllerNode.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "autoware_auto_msgs/msg/vehicle_control_command.hpp"
@@ -16,20 +16,28 @@
 #include <utility>
 #include <time.h>
 
-using namespace Voltron::SteeringPid;
+using namespace Voltron::PidController;
 
 const float max_steering_angle_radians = 0.35;
 
-PidControllerNode::PidControllerNode(std::unique_ptr<PidController> controller)
-  : rclcpp::Node("steering_pid_controller") {
-  this->controller = std::move(controller);
+PidControllerNode::PidControllerNode() : rclcpp::Node("pid_controller") {
+  this->declare_parameter("KP");
+  this->declare_parameter("KI");
+  this->declare_parameter("KD");
+  this->declare_parameter("time_delta_cap_seconds");
+  float KP = this->get_parameter("KP").as_double();
+  float KI = this->get_parameter("KI").as_double();
+  float KD = this->get_parameter("KD").as_double();
+  float time_delta_cap_seconds = this->get_parameter("time_delta_cap_seconds").as_double();
+  this->controller = std::make_unique
+    <PidController>(KP, KI, KD, time_delta_cap_seconds);
   this->steering_control_publisher = this->create_publisher<std_msgs::msg::Float32>
-    ("steering_power", 8);
+    ("output", 8);
   this->command_subscription = this->create_subscription
-    <autoware_auto_msgs::msg::VehicleControlCommand>("vehicle_commands", 8,
+    <autoware_auto_msgs::msg::VehicleControlCommand>("target", 8,
     std::bind(& PidControllerNode::update_target, this, std::placeholders::_1));
   this->measurement_subscription = this->create_subscription
-    <std_msgs::msg::Float32>("real_steering_angle", 8,
+    <std_msgs::msg::Float32>("measurement", 8,
     std::bind(& PidControllerNode::update_measurement, this, std::placeholders::_1));
   this->last_update_time = this->clock.now();
 }
