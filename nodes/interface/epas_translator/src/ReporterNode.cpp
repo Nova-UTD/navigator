@@ -1,5 +1,5 @@
 /*
- * Package:   volron_epas_steering
+ * Package:   epas_translator
  * Filename:  ReporterNode.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -8,13 +8,14 @@
  */
 
 #include <string>
+#include <stdexcept>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
 
 #include "voltron_msgs/msg/can_frame.hpp"
 
-#include "voltron_epas_steering/ReporterNode.hpp"
+#include "epas_translator/ReporterNode.hpp"
 
 using namespace Voltron::EpasSteering;
 
@@ -30,22 +31,33 @@ constexpr can_data_t angle_mask = 0xFF << (8 * angle_bit_shift);
 // Maximum angle we can steer to on either side, in radians
 const float steering_angle_max = 0.58294;
 
-ReporterNode::ReporterNode(const std::string & interface, float epas_min, float epas_max)
-  : rclcpp::Node("steering_reporter_" + interface) {
-  this->angle_publisher = this->create_publisher<std_msgs::msg::Float32>
-    ("real_steering_angle", 8);
-  this->can_subscription = this->create_subscription<voltron_msgs::msg::CanFrame>
-    ("incoming_can_frames_" + interface, 8,
-     std::bind(& ReporterNode::process_frame, this, std::placeholders::_1));
+ReporterNode::ReporterNode() : rclcpp::Node("steering_reporter") {
+  this->declare_parameter("is_calibrated");
+  if(! this->get_parameter("is_calibrated").as_bool()) {
+    throw std::runtime_error("EPAS ECU stops not calibrated!");
+  }
+
+  this->declare_parameter("epas_min");
+  this->declare_parameter("epas_max");
+  this->epas_min = this->get_parameter("epas_min").as_double();
+  this->epas_max = this->get_parameter("epas_max").as_double();
+
+  this->initialize();
+}
+
+ReporterNode::ReporterNode(float epas_min, float epas_max)
+  : rclcpp::Node("steering_reporter") {
+
   this->epas_min = epas_min;
   this->epas_max = epas_max;
+  this->initialize();
 }
 
 ReporterNode::~ReporterNode() {}
 
 void ReporterNode::process_frame(const voltron_msgs::msg::CanFrame::SharedPtr incoming_frame) {
   if(incoming_frame->identifier != epas_can_message_2_identifier) return;
-  
+
   float current_angle = (incoming_frame->data & angle_mask) >> angle_bit_shift;
   current_angle = (current_angle - this->epas_min) /
     (this->epas_max - this->epas_min); // Value from 0 to 1
@@ -54,4 +66,12 @@ void ReporterNode::process_frame(const voltron_msgs::msg::CanFrame::SharedPtr in
   auto message = std_msgs::msg::Float32();
   message.data = current_angle * steering_angle_max; // Angle in radians
   this->angle_publisher->publish(message);
+}
+
+void ReporterNode::initialize() {
+  this->angle_publisher = this->create_publisher<std_msgs::msg::Float32>
+    ("real_steering_angle", 8);
+  this->can_subscription = this->create_subscription<voltron_msgs::msg::CanFrame>
+    ("incoming_can_frames", 8,
+     std::bind(& ReporterNode::process_frame, this, std::placeholders::_1));
 }

@@ -1,5 +1,5 @@
 /*
- * Package:   volron_epas_steering
+ * Package:   epas_translator
  * Filename:  ReporterNode.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -21,10 +21,12 @@ namespace EpasSteering {
 
 class ReporterNode : public rclcpp::Node {
 public:
-  ReporterNode(const std::string & interface_name, float epas_min, float epas_max);
+  ReporterNode();
+  ReporterNode(float epas_min, float epas_max);
   virtual ~ReporterNode();
 
 private:
+  void initialize();
   void process_frame(const voltron_msgs::msg::CanFrame::SharedPtr msg);
 
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr angle_publisher;
@@ -33,6 +35,6 @@ private:
   float epas_min;
   float epas_max;
 };
-  
+
 }
 }

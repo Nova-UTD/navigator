@@ -1,5 +1,5 @@
 /*
- * Package:   volron_epas_steering
+ * Package:   epas_translator
  * Filename:  ControllerNode.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -15,17 +15,15 @@
 #include "voltron_msgs/msg/can_frame.hpp"
 #include "std_msgs/msg/float32.hpp"
 
-#include "voltron_epas_steering/ControllerNode.hpp"
+#include "epas_translator/ControllerNode.hpp"
 
 using namespace Voltron::EpasSteering;
 
 can_id_t can_message_3_identifier = 0x296;
 
-ControllerNode::ControllerNode(const std::string & interface_name) :
-  Node("steering_controller_" + interface_name) {
-
+ControllerNode::ControllerNode() : Node("steering_controller") {
   this->can_publisher = this->create_publisher<voltron_msgs::msg::CanFrame>
-    ("outgoing_can_frames_" + interface_name, 8);
+    ("outgoing_can_frames", 8);
   this->power_subscription = this->create_subscription<std_msgs::msg::Float32>
     ("steering_power", 8, bind(& ControllerNode::update_power, this, std::placeholders::_1));
   this->control_timer = this->create_wall_timer(control_message_frequency,

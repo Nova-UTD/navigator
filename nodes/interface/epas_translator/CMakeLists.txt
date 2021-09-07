@@ -48,4 +48,4 @@ if(BUILD_TESTING)
   target_link_libraries(tests epas_steering_lib gtest_main)
 endif()
 
-ament_auto_package()
+ament_auto_package(INSTALL_TO_SHARE launch)

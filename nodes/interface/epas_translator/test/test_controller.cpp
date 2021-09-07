@@ -1,5 +1,5 @@
 /*
- * Package:   volron_epas_steering
+ * Package:   epas_translator
  * Filename:  test_controller.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -23,7 +23,7 @@
 #include "voltron_test_utils/TestSubscriber.hpp"// Test subscriber
 #include "voltron_test_utils/TestPublisher.hpp" // Test publisher
 
-#include "voltron_epas_steering/ControllerNode.hpp"
+#include "epas_translator/ControllerNode.hpp"
 
 using namespace Voltron::TestUtils;
 using namespace Voltron::EpasSteering;
@@ -34,9 +34,9 @@ class TestController : public ::testing::Test {
 protected:
   void SetUp() override {
     rclcpp::init(0, nullptr);
-    my_controller = std::make_shared<ControllerNode>("vcan0");
+    my_controller = std::make_shared<ControllerNode>();
     can_subscription = std::make_unique<TestSubscriber<
-      voltron_msgs::msg::CanFrame>>("outgoing_can_frames_vcan0");
+      voltron_msgs::msg::CanFrame>>("outgoing_can_frames");
     power_publisher = std::make_unique<TestPublisher<
       std_msgs::msg::Float32>>("steering_power");
   }

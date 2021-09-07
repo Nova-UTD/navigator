@@ -1,5 +1,5 @@
 /*
- * Package:   volron_epas_steering
+ * Package:   epas_translator
  * Filename:  ControllerNode.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -38,13 +38,13 @@ constexpr can_id_t epas_control_can_identifier = 0x296;
 
 class ControllerNode : public rclcpp::Node {
 public:
-  ControllerNode(const std::string & interface_name);
+  ControllerNode();
   virtual ~ControllerNode();
 
 private:
   void send_control_message();
   void update_power(const std_msgs::msg::Float32::SharedPtr message);
-  
+
   uint8_t power = 255/2;
   rclcpp::Publisher<voltron_msgs::msg::CanFrame>::SharedPtr can_publisher;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr power_subscription;

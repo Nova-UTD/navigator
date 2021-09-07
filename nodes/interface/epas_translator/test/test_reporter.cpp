@@ -1,5 +1,5 @@
 /*
- * Package:   voltron_epas_steering
+ * Package:   epas_translator
  * Filename:  test_reporter.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -20,7 +20,7 @@
 #include "voltron_test_utils/TestSubscriber.hpp" // Our test subscriber
 #include "voltron_test_utils/TestPublisher.hpp" // Our test publisher
 
-#include "voltron_epas_steering/ReporterNode.hpp"
+#include "epas_translator/ReporterNode.hpp"
 
 using namespace Voltron::TestUtils;
 using namespace Voltron::EpasSteering;
@@ -31,11 +31,11 @@ class TestReporter : public ::testing::Test {
 protected:
   void SetUp() override {
     rclcpp::init(0, nullptr);
-    my_reporter = std::make_shared<ReporterNode>("vcan0", 49, 71);
+    my_reporter = std::make_shared<ReporterNode>(49, 71);
     angle_subscription = std::make_unique<TestSubscriber<
       std_msgs::msg::Float32>>("real_steering_angle");
     can_publisher = std::make_unique<TestPublisher<
-      voltron_msgs::msg::CanFrame>>("incoming_can_frames_vcan0");
+      voltron_msgs::msg::CanFrame>>("incoming_can_frames");
   }
 
   void TearDown() override {

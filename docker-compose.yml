@@ -44,6 +44,12 @@ services:
           environment:
                - USER=docker
                - package_name=epas_translator
+               - controller_param_name=interface/epas_controller.param.yaml
+               - reporter_param_name=interface/epas_reporter.param.yaml
+               - incoming_can_topic_name=incoming_can_frames
+               - outgoing_can_topic_name=outgoing_can_frames
+               - real_steering_angle_topic_name=real_steering_angle
+               - steering_effort_topic_name=steering_power
           volumes:
                - type: bind
                  source: ./data
