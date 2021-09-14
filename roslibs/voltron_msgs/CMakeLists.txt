@@ -10,6 +10,7 @@ ament_auto_find_build_dependencies()
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Gear.msg"
+  "msg/CanFrame.msg"
   DEPENDENCIES
     "builtin_interfaces"
     "geometry_msgs"
