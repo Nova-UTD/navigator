@@ -1,4 +1,4 @@
 ---
 /**:
   ros__parameters:
-    interface_name: vcan0
+    interface_name: can0
