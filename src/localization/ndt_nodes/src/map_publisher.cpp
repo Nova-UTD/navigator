@@ -123,6 +123,7 @@ void NDTMapPublisherNode::init(
       std::chrono::seconds(1),
       [this]() {
         if (m_downsampled_pc.width > 0U) {
+          m_downsampled_pc.header.frame_id = "map";
           m_viz_pub->publish(m_downsampled_pc);
         }
       });
@@ -193,6 +194,7 @@ void NDTMapPublisherNode::downsample_pc()
 void NDTMapPublisherNode::publish()
 {
   if (m_map_pc.width > 0U) {
+    m_map_pc.header.frame_id = "map";
     m_pub->publish(m_map_pc);
   }
 }
