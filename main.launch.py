@@ -19,6 +19,12 @@ def generate_launch_description():
     interface = "vcan0"
     map_name = "borregas_host"
 
+    with_svl = DeclareLaunchArgument(
+        'with_svl',
+        default_value='False',
+        description='Enable SVL bridge'
+    )
+
     # CONTROL
     steering_controller = Node(
         package='vt_steering_controller',
@@ -187,13 +193,8 @@ def generate_launch_description():
         executable='lanelet2_global_planner_node_exe',
         respawn=True,
         remappings=[('HAD_Map_Client', '/had_maps/HAD_Map_Service'),
-                    ('ndt_pose', '/localization/ndt_pose')]
-    )
-
-    with_obstacles_param = DeclareLaunchArgument(
-        'with_obstacles',
-        default_value='False',
-        description='Enable obstacle detection'
+                    ('ndt_pose', '/localization/ndt_pose'),
+                    ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')]
     )
     
     path_planner = Node(
@@ -237,7 +238,7 @@ def generate_launch_description():
         # INTERFACE
         # can,
         # epas_controller,
-        epas_reporter,
+        # epas_reporter,
         svl_bridge,
         vehicle_bridge,
 
@@ -264,7 +265,6 @@ def generate_launch_description():
 
         # PLANNING
         route_planner,
-        with_obstacles_param,
         path_planner,
         lane_planner,
         parking_planner,

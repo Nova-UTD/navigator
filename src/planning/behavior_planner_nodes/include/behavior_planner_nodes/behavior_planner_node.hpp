@@ -26,6 +26,9 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 
+// Voltron packages
+#include <voltron_msgs/msg/gear.hpp>
+
 // autoware packages
 #include <common/types.hpp>
 #include <autoware_auto_msgs/action/plan_trajectory.hpp>
@@ -51,6 +54,8 @@ namespace autoware
 {
 namespace behavior_planner_nodes
 {
+using voltron_msgs::msg::Gear;
+
 using PlanTrajectoryAction = autoware_auto_msgs::action::PlanTrajectory;
 using PlanTrajectoryGoalHandle = rclcpp_action::ClientGoalHandle<PlanTrajectoryAction>;
 using HADMapService = autoware_auto_msgs::srv::HADMapService;
@@ -90,6 +95,7 @@ private:
   rclcpp::Subscription<HADMapRoute>::SharedPtr m_route_sub{};
   rclcpp::Subscription<Trajectory>::SharedPtr m_lane_trajectory_sub{};
   rclcpp::Subscription<Trajectory>::SharedPtr m_parking_trajectory_sub{};
+  rclcpp::Subscription<Gear>::SharedPtr m_gear_report_sub{};
   rclcpp::Subscription<VehicleStateReport>::SharedPtr m_vehicle_state_report_sub{};
   rclcpp::Publisher<Trajectory>::SharedPtr m_trajectory_pub{};
   rclcpp::Publisher<Trajectory>::SharedPtr m_debug_trajectory_pub{};
@@ -118,7 +124,7 @@ private:
   void on_route(const HADMapRoute::SharedPtr & msg);
   void on_lane_trajectory(const Trajectory::SharedPtr & msg);
   void on_parking_trajectory(const Trajectory::SharedPtr & msg);
-  void on_vehicle_state_report(const VehicleStateReport::SharedPtr & msg);
+  void on_gear_report(const Gear::SharedPtr & msg);
   void map_response(rclcpp::Client<HADMapService>::SharedFuture future);
   void modify_trajectory_response(rclcpp::Client<ModifyTrajectory>::SharedFuture future);
   void clear_trajectory_cache();

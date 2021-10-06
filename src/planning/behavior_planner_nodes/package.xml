@@ -16,6 +16,7 @@
 
   <depend>autoware_auto_common</depend>
   <depend>autoware_auto_msgs</depend>
+  <depend>voltron_msgs</depend>
   <depend>autoware_auto_geometry</depend>
   <depend>had_map_utils</depend>
   <depend>behavior_planner</depend>

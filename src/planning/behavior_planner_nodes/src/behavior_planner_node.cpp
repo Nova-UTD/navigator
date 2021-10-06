@@ -128,9 +128,10 @@ void BehaviorPlannerNode::init()
   m_route_sub = this->create_subscription<HADMapRoute>(
     "route", QoS{10},
     [this](const HADMapRoute::SharedPtr msg) {on_route(msg);});
-  m_vehicle_state_report_sub = this->create_subscription<VehicleStateReport>(
-    "vehicle_state_report", QoS{10},
-    [this](const VehicleStateReport::SharedPtr msg) {on_vehicle_state_report(msg);});
+  
+  m_gear_report_sub = this->create_subscription<Gear>(
+    "gear_report", QoS{10},
+    [this](const Gear::SharedPtr msg) {on_gear_report(msg);});
 
   // Setup publishers
   m_trajectory_pub =
@@ -333,9 +334,9 @@ void BehaviorPlannerNode::on_ego_state(const State::SharedPtr & msg)
   }
 }
 
-void BehaviorPlannerNode::on_vehicle_state_report(const VehicleStateReport::SharedPtr & msg)
+void BehaviorPlannerNode::on_gear_report(const Gear::SharedPtr & msg)
 {
-  m_current_gear = msg->gear;
+  m_current_gear = msg->state;
 }
 
 void BehaviorPlannerNode::on_route(const HADMapRoute::SharedPtr & msg)
