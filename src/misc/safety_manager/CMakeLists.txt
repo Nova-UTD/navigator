@@ -1,0 +1,36 @@
+# Package:   safety_manager
+# Filename:  CMakeLists.txt
+# Author:    Joshua Williams
+# Email:     joshmackwilliams@protonmail.com
+# Copyright: 2021, Nova UTD
+# License:   MIT License
+
+cmake_minimum_required(VERSION 3.5)
+project(safety_manager)
+
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
+
+add_executable(safety_manager src/safety_manager.cpp)
+
+install(TARGETS safety_manager DESTINATION lib/${PROJECT_NAME})
+
+# Tests
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+
+  ament_add_gtest(tests test/hello_world.cpp)
+  target_link_libraries(tests gtest_main)
+endif()
+
+ament_auto_package()
