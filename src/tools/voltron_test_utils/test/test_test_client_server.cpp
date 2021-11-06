@@ -12,27 +12,28 @@
 
 #include <gtest/gtest.h> // Testing framework
 #include "rclcpp/rclcpp.hpp" // For init() and shutdown()
+#include "std_srvs/srv/empty.hpp" // A test message to use
 #include "voltron_test_utils/TestClient.hpp" // Our test client
 #include "voltron_test_utils/TestServer.hpp" // Our test server
+
 
 using namespace Voltron::TestUtils;
 
 class TestTestClientServer : public ::testing::Test {
-  /*
 protected:
   void SetUp() override {
     rclcpp::init(0, nullptr);
-    test_subscriber = std::make_unique<TestSubscriber<std_msgs::msg::Int64>>("test_topic");
-    test_publisher = std::make_unique<TestPublisher<std_msgs::msg::Int64>>("test_topic");
+    std_srvs::srv::Empty::Response default_response;
+    this->test_server = std::make_unique<TestServer<std_srvs::srv::Empty>>("test_topic", default_response);
+    //test_publisher = std::make_unique<TestPublisher<std_msgs::msg::Int64>>("test_topic");
   }
 
   void TearDown() override {
     rclcpp::shutdown();
   }
 
-  std::unique_ptr<TestSubscriber<std_msgs::msg::Int64>> test_subscriber;
-  std::unique_ptr<TestPublisher<std_msgs::msg::Int64>> test_publisher;
-  */
+  std::unique_ptr<TestServer<std_srvs::srv::Empty>> test_server;
+  //std::unique_ptr<TestPublisher<std_srvs::srv::Empty>> test_publisher;
 };
 
 TEST_F(TestTestClientServer, test_initializes) {
