@@ -25,7 +25,7 @@ protected:
     rclcpp::init(0, nullptr);
     std_srvs::srv::Empty::Response default_response;
     this->test_server = std::make_unique<TestServer<std_srvs::srv::Empty>>("test_topic", default_response);
-    //test_publisher = std::make_unique<TestPublisher<std_msgs::msg::Int64>>("test_topic");
+    this->test_client = std::make_unique<TestClient<std_srvs::srv::Empty>>("test_topic");
   }
 
   void TearDown() override {
@@ -33,7 +33,7 @@ protected:
   }
 
   std::unique_ptr<TestServer<std_srvs::srv::Empty>> test_server;
-  //std::unique_ptr<TestPublisher<std_srvs::srv::Empty>> test_publisher;
+  std::unique_ptr<TestClient<std_srvs::srv::Empty>> test_client;
 };
 
 TEST_F(TestTestClientServer, test_initializes) {
