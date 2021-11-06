@@ -39,12 +39,12 @@ public:
     if(! this->current_response.valid()) return false;
     usleep(50);
     rclcpp::spin_some(this->node);
-    return this->node->current_response->wait_for(0s) == std::future_status::ready;
+    return this->current_response.wait_for(0s) == std::future_status::ready;
   }
 
   ResponseType get_response() {
     rclcpp::spin_until_future_complete(this->node, this->current_response);
-    return this->node->current_response->get();
+    return *(this->current_response.get());
   }
 
 private:
@@ -57,7 +57,7 @@ private:
     }
 
     typename ClientType::SharedFuture send_request(RequestType request) {
-      return this->client->async_send_request(request);
+      return this->client->async_send_request(std::make_shared<RequestType>(request));
     }
 
   private:
