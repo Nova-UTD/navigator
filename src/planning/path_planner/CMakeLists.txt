@@ -23,12 +23,15 @@ set(LANE_PLANNER_LIB_SRC
   src/path_planner.cpp
   src/cubic_spline.cpp
   src/offset_spline.cpp
+  src/parameterized_spline.cpp
 )
 
 set(LANE_PLANNER_LIB_HEADERS
   include/path_planner/path_planner.hpp
   include/path_planner/cubic_spline.hpp
   include/path_planner/offset_spline.hpp
+  include/path_planner/spline.hpp
+  include/path_planner/parameterized_spline.hpp
 )
 
 # generate library
@@ -38,19 +41,22 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 )
 autoware_set_compile_options(${PROJECT_NAME})
 
-# Testing
-#if(BUILD_TESTING)
-#  find_package(ament_lint_auto REQUIRED)
-#  ament_lint_auto_find_test_dependencies()
-
-  # Unit tests
-#  set(TEST_SOURCES test/test_lane_planner.cpp)
-#  set(TEST_LANE_PLANNER_EXE test_lane_planner)
-#  ament_add_gtest(${TEST_LANE_PLANNER_EXE} ${TEST_SOURCES})
-#  autoware_set_compile_options(${TEST_LANE_PLANNER_EXE})
-#  target_link_libraries(${TEST_LANE_PLANNER_EXE} ${PROJECT_NAME})
-#  add_dependencies(${TEST_LANE_PLANNER_EXE} ${PROJECT_NAME})
-#endif()
+ Testing
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+ # Unit tests
+  set(TEST_SOURCES 
+    test/test_lane_planner.cpp
+    )
+  set(TEST_LANE_PLANNER_EXE 
+    test_lane_planner
+    )
+  ament_add_gtest(${TEST_LANE_PLANNER_EXE} ${TEST_SOURCES})
+  autoware_set_compile_options(${TEST_LANE_PLANNER_EXE})
+  target_link_libraries(${TEST_LANE_PLANNER_EXE} ${PROJECT_NAME})
+  add_dependencies(${TEST_LANE_PLANNER_EXE} ${PROJECT_NAME})
+endif()
 
 # ament package generation and installing
 ament_auto_package()

@@ -19,19 +19,34 @@
 #ifndef PATH_PLANNER__PATH_PLANNER_HPP_
 #define PATH_PLANNER__PATH_PLANNER_HPP_
 
-#include <path_planner/cublic_spline.hpp>
+#include <path_planner/parameterized_spline.hpp>
+#include <autoware_auto_msgs/msg/vehicle_kinematic_state.hpp>
+#include <autoware_auto_msgs/msg/trajectory.hpp>
+#include <autoware_auto_msgs/msg/had_map_route.hpp>
+#include <common/types.hpp>
+#include <motion_common/config.hpp>
 
+#include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/primitives/Point.h>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 namespace navigator
 {
-namespace path_planner
-{
+    namespace path_planner
+    {
+        class PathPlanner
+        {
+        public:
+            TrajectoryPoints generate_position_trajectory(const HADMapRoute &route, const LaneletMapConstPtr &map);
 
+        private:
+            //probably need to find a way to bound start and end window
+            ParameterizedSpline get_center_line_spline(const std::vector<lanelet::ConstPoint3d> &line_points);
+            std::vector<lanelet::ConstPoint3d> get_center_line_points(const HADMapRoute &route, const LaneletMapConstPtr &map, double resolution)
+        }
+    }
 }
-}
 
-
-
-#endif  // PATH_PLANNER__PATH_PLANNER_HPP_
+#endif // PATH_PLANNER__PATH_PLANNER_HPP_
