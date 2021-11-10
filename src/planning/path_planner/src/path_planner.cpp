@@ -100,8 +100,9 @@ namespace navigator
                 const auto &lanelet = lanelets.at(i);
                 const auto &centerline = autoware::common::had_map_utils::generateFineCenterline(
                     lanelet,
-                    m_planner_config.trajectory_resolution);
+                    resolution);
 
+                //arc length along lane for start point
                 float64_t start_length = 0;
                 if (i == start_index)
                 {
@@ -109,7 +110,7 @@ namespace navigator
                     start_length =
                         lanelet::geometry::toArcCoordinates(to2D(centerline), to2D(start_point)).length;
                 }
-
+                //arc length along lane for end point
                 float64_t end_length = std::numeric_limits<float32_t>::max();
                 if (i == lanelets.size() - 1)
                 {
@@ -121,6 +122,7 @@ namespace navigator
                 // skip first point to avoid inserting overlaps
                 for (size_t j = 1; j < centerline.size(); j++)
                 {
+                    //may be able to make searching for the first length more effecient
                     const auto llt_prev_pt = centerline[j - 1];
                     const auto llt_pt = centerline[j];
                     accumulated_length += lanelet::geometry::distance2d(to2D(llt_prev_pt), to2D(llt_pt));
