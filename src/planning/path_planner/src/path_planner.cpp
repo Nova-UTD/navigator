@@ -18,6 +18,38 @@ namespace navigator
 {
     namespace path_planner
     {
+        LanePoints sample_center_line_and_boundaries(
+            const lanelet::ConstLanelet &lanelet_obj, const float64_t resolution)
+        {
+            // Get length of longer border
+            const float64_t left_length =
+                static_cast<float64_t>(lanelet::geometry::length(lanelet_obj.leftBound()));
+            const float64_t right_length =
+                static_cast<float64_t>(lanelet::geometry::length(lanelet_obj.rightBound()));
+            const float64_t longer_distance = (left_length > right_length) ? left_length : right_length;
+            const int32_t num_segments =
+                std::max(static_cast<int32_t>(ceil(longer_distance / resolution)), 1);
+
+            // Resample points
+            const auto left_points = resamplePoints(lanelet_obj.leftBound(), num_segments);
+            const auto right_points = resamplePoints(lanelet_obj.rightBound(), num_segments);
+
+            // Create centerline
+            lanelet::LineString3d centerline(lanelet::utils::getId());
+            lanelet::LineString3d leftBoundary(lanelet::utils::getId());
+            lanelet::LineString3d rightBoundary(lanelet::utils::getId());
+            for (size_t i = 0; i < static_cast<size_t>(num_segments + 1); i++)
+            {
+                const auto center_basic_point = (right_points.at(i) + left_points.at(i)) / 2.0;
+                const lanelet::Point3d center_point(
+                    lanelet::utils::getId(), center_basic_point.x(), center_basic_point.y(),
+                    center_basic_point.z());
+                centerline.push_back(center_point);
+                leftBoundary.push_back(left_points.at(i));
+                rightBoundary.push_back(right_points.at(i));
+            }
+            return LanePoints(liftBoundary, centerline, rightBoundary);
+        }
         size_t get_closest_lanelet(const lanelet::ConstLanelets &lanelets, const TrajectoryPoint &point)
         {
             float64_t closest_distance = std::numeric_limits<float64_t>::max();
@@ -98,9 +130,10 @@ namespace navigator
             for (size_t i = start_index; i < lanelets.size(); i++)
             {
                 const auto &lanelet = lanelets.at(i);
-                const auto &centerline = autoware::common::had_map_utils::generateFineCenterline(
-                    lanelet,
-                    resolution);
+                const auto &centerline = sample_center_line_and_boundaries(
+                                             lanelet,
+                                             resolution)
+                                             .center;
 
                 //arc length along lane for start point
                 float64_t start_length = 0;

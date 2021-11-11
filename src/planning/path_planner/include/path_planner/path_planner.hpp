@@ -20,6 +20,7 @@
 #define PATH_PLANNER__PATH_PLANNER_HPP_
 
 #include <path_planner/parameterized_spline.hpp>
+#include <path_planner/lane_points.hpp>
 #include <autoware_auto_msgs/msg/vehicle_kinematic_state.hpp>
 #include <autoware_auto_msgs/msg/trajectory.hpp>
 #include <autoware_auto_msgs/msg/had_map_route.hpp>
