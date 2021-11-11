@@ -1,0 +1,17 @@
+services:
+  - docker
+
+sudo: required
+
+branches:
+  only:
+  - develop
+  - master
+
+before_install:
+  - sudo docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+  - sudo docker pull ubuntu:bionic
+  - sudo docker build -t rcldocker .
+
+script:
+  - sudo docker run -v $(pwd):/root/ros2-web-bridge --rm rcldocker bash -i -c 'cd /root/ros2-web-bridge && npm install --unsafe-perm && npm run lint && npm run ci'
