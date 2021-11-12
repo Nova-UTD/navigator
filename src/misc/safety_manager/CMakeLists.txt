@@ -20,7 +20,12 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
+ament_auto_add_library(safety_manager_lib OBJECT
+  src/SafetyManagerNode.cpp)
+target_include_directories(safety_manager_lib PUBLIC include)
+
 add_executable(safety_manager src/safety_manager.cpp)
+target_link_libraries(safety_manager safety_manager_lib)
 
 install(TARGETS safety_manager DESTINATION lib/${PROJECT_NAME})
 
@@ -30,7 +35,7 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 
   ament_add_gtest(tests test/hello_world.cpp)
-  target_link_libraries(tests gtest_main)
+  target_link_libraries(tests gtest_main safety_manager_lib)
 endif()
 
 ament_auto_package()

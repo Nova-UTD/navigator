@@ -9,9 +9,13 @@
 
 // The safety manager. Currently just a hello world, but that's going to change.
 
-#include <iostream>
+#include <memory>
+#include "rclcpp/rclcpp.hpp"
+#include "safety_manager/SafetyManagerNode.hpp"
 
-int main() {
-  std::cout << "Hello world!" << std::endl;
+int main(int argc, char ** argv) {
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<Nova::SafetyManager::SafetyManagerNode>());
+  rclcpp::shutdown();
   return 0;
 }
