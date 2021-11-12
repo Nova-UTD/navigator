@@ -34,7 +34,8 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 
-  ament_add_gtest(tests test/hello_world.cpp)
+  ament_add_gtest(tests test/test_safety_manager.cpp)
+  ament_target_dependencies(tests rclcpp voltron_msgs voltron_test_utils)
   target_link_libraries(tests gtest_main safety_manager_lib)
 endif()
 
