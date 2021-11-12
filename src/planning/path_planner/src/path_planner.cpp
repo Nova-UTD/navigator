@@ -13,44 +13,30 @@
 // limitations under the License.
 
 #include "path_planner/path_planner.hpp"
+#include "path_planner/map_utils.hpp"
+
+#include "autoware_auto_msgs/msg/trajectory.hpp"
+#include <lanelet2_core/geometry/Lanelet.h>
+#include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/primitives/Point.h>
+#include <lanelet2_core/geometry/LineString.h>
+#include <autoware_auto_msgs/msg/trajectory.hpp>
+#include <autoware_auto_msgs/msg/had_map_route.hpp>
+#include <had_map_utils/had_map_utils.hpp>
+#include <common/types.hpp>
+#include <geometry/common_2d.hpp>
+
+using namespace autoware::common::types;
+using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
+using autoware_auto_msgs::msg::HADMapRoute;
+using autoware_auto_msgs::msg::Trajectory;
 
 namespace navigator
 {
     namespace path_planner
     {
-        LanePoints sample_center_line_and_boundaries(
-            const lanelet::ConstLanelet &lanelet_obj, const float64_t resolution)
-        {
-            // Get length of longer border
-            const float64_t left_length =
-                static_cast<float64_t>(lanelet::geometry::length(lanelet_obj.leftBound()));
-            const float64_t right_length =
-                static_cast<float64_t>(lanelet::geometry::length(lanelet_obj.rightBound()));
-            const float64_t longer_distance = (left_length > right_length) ? left_length : right_length;
-            const int32_t num_segments =
-                std::max(static_cast<int32_t>(ceil(longer_distance / resolution)), 1);
-
-            // Resample points
-            const auto left_points = resamplePoints(lanelet_obj.leftBound(), num_segments);
-            const auto right_points = resamplePoints(lanelet_obj.rightBound(), num_segments);
-
-            // Create centerline
-            lanelet::LineString3d centerline(lanelet::utils::getId());
-            lanelet::LineString3d leftBoundary(lanelet::utils::getId());
-            lanelet::LineString3d rightBoundary(lanelet::utils::getId());
-            for (size_t i = 0; i < static_cast<size_t>(num_segments + 1); i++)
-            {
-                const auto center_basic_point = (right_points.at(i) + left_points.at(i)) / 2.0;
-                const lanelet::Point3d center_point(
-                    lanelet::utils::getId(), center_basic_point.x(), center_basic_point.y(),
-                    center_basic_point.z());
-                centerline.push_back(center_point);
-                leftBoundary.push_back(left_points.at(i));
-                rightBoundary.push_back(right_points.at(i));
-            }
-            return LanePoints(liftBoundary, centerline, rightBoundary);
-        }
-        size_t get_closest_lanelet(const lanelet::ConstLanelets &lanelets, const TrajectoryPoint &point)
+        
+        size_t get_closest_lanelet(const lanelet::ConstLanelets &lanelets, const autoware_auto_msgs::msg::TrajectoryPoint &point)
         {
             float64_t closest_distance = std::numeric_limits<float64_t>::max();
             size_t closest_index = 0;
@@ -68,11 +54,6 @@ namespace navigator
             }
             return closest_index;
         }
-        float distance2d(const TrajectoryPoint &p1, const TrajectoryPoint &p2)
-        {
-            const auto diff = autoware::common::geometry::minus_2d(p1, p2);
-            return autoware::common::geometry::norm_2d(diff);
-        }
         lanelet::Point3d convertToLaneletPoint(
             const autoware_auto_msgs::msg::TrajectoryPoint &pt)
         {
@@ -89,8 +70,17 @@ namespace navigator
             }
             return ParameterizedSpline(x_points, y_points);
         }
-        std::vector<lanelet::ConstPoint3d> get_center_line_points(const HADMapRoute &route, const LaneletMapConstPtr &map, double resolution)
+        autoware_auto_msgs::msg::TrajectoryPoint convertToTrajectoryPoint(const lanelet::ConstPoint3d & pt)
         {
+            autoware_auto_msgs::msg::TrajectoryPoint trajectory_point;
+            trajectory_point.x = static_cast<float32_t>(pt.x());
+            trajectory_point.y = static_cast<float32_t>(pt.y());
+            trajectory_point.longitudinal_velocity_mps = 0;
+            return trajectory_point;
+        }
+        std::vector<autoware_auto_msgs::msg::TrajectoryPoint> get_center_line_points(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution)
+        {
+            using lanelet::utils::to2D;
             //a lot of this taken from the autoware implementation of lane_planner
             //add the lanes from the route
             lanelet::ConstLanelets lanelets;
@@ -111,26 +101,26 @@ namespace navigator
             // return empty trajectory if there are no lanes
             if (lanelets.empty())
             {
-                return TrajectoryPoints();
+                return std::vector<autoware_auto_msgs::msg::TrajectoryPoint>();
             }
 
-            TrajectoryPoint trajectory_start_point;
-            trajectory_start_point.x = static_cast<float>(had_map_route.start_point.position.x);
-            trajectory_start_point.y = static_cast<float>(had_map_route.start_point.position.y);
-            trajectory_start_point.heading = had_map_route.start_point.heading;
+            autoware_auto_msgs::msg::TrajectoryPoint trajectory_start_point;
+            trajectory_start_point.x = static_cast<float>(route.start_point.position.x);
+            trajectory_start_point.y = static_cast<float>(route.start_point.position.y);
+            trajectory_start_point.heading = route.start_point.heading;
 
-            TrajectoryPoint trajectory_goal_point;
-            trajectory_goal_point.x = static_cast<float>(had_map_route.goal_point.position.x);
-            trajectory_goal_point.y = static_cast<float>(had_map_route.goal_point.position.y);
-            trajectory_goal_point.heading = had_map_route.goal_point.heading;
+            autoware_auto_msgs::msg::TrajectoryPoint trajectory_goal_point;
+            trajectory_goal_point.x = static_cast<float>(route.goal_point.position.x);
+            trajectory_goal_point.y = static_cast<float>(route.goal_point.position.y);
+            trajectory_goal_point.heading = route.goal_point.heading;
 
             const auto start_index = get_closest_lanelet(lanelets, trajectory_start_point);
-            std::vector<lanelet::ConstPoint3d> line_points;
+            std::vector<autoware_auto_msgs::msg::TrajectoryPoint> line_points;
             // set position and velocity
             for (size_t i = start_index; i < lanelets.size(); i++)
             {
                 const auto &lanelet = lanelets.at(i);
-                const auto &centerline = sample_center_line_and_boundaries(
+                const auto &centerline = map_utils::sample_center_line_and_boundaries(
                                              lanelet,
                                              resolution)
                                              .center;
@@ -167,10 +157,11 @@ namespace navigator
                     {
                         break;
                     }
-                    line_points.push_back(llt_pt);
+                    line_points.push_back(convertToTrajectoryPoint(llt_pt));
                 }
             }
             line_points.push_back(trajectory_goal_point);
+            return line_points;
         }
     }
 }

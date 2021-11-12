@@ -42,6 +42,10 @@
 // into a cpp file if necessary)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
 
 // unnamed namespace only because the implementation is in this
 // header file and we don't want to export symbols to the obj files

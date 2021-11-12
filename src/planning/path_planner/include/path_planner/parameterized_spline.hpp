@@ -20,7 +20,9 @@
 #define PATH_PLANNER__PARAMETERIZED_SPLINE_HPP_
 
 #include <utility>
-#include <spline.hpp>
+#include <path_planner/spline.hpp>
+
+#pragma GCC diagnostic ignored "-Wsubobject-linkage" //disable this warning since the spline library uses an anonymous namespace
 
 namespace navigator
 {
@@ -43,7 +45,7 @@ namespace navigator
                 : sx(sx), sy(sy) {}
             ParameterizedSpline(const std::vector<double> &x, const std::vector<double> &y);
             std::pair<double, double> sample(double s);
-        }
+        };
     }
 }
 

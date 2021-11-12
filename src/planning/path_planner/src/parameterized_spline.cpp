@@ -22,20 +22,21 @@ namespace navigator
     {
         std::pair<double, double> ParameterizedSpline::sample(double s)
         {
-            return std::pair(sx(s), sy(s));
+            return std::pair<double,double>(sx(s), sy(s));
         }
-        ParameterizedSpline::ParameterizedSpline(const std::vector<lanelet::ConstPoint3d> &points)
+        ParameterizedSpline::ParameterizedSpline(const std::vector<double> &x, const std::vector<double> &y)
         {
-            std::vector<double> T(0, points.size());
+            assert(x.size() == y.size());
+            std::vector<double> T(x.size(), 0);
 
             // time proportional to distance, i.e. traverse the curve at constant speed
             // approximate arclength parameter by using straight line distance between points
             T[0] = 0;
             for (size_t i = 1; i < T.size(); i++)
-                T[i] = T[i - 1] + sqrt((points[i].x() - points[i - 1].x()) * (points[i].x() - points[i - 1].x()) + (points[i].y() - points[i - 1].y()) * (points[i].y() - points[i - 1].y()));
+                T[i] = T[i - 1] + sqrt((x[i] - x[i - 1]) * (x[i] - x[i - 1]) + (y[i] - y[i - 1]) * (y[i] - y[i - 1]));
             // setup splines for x and y coordinate
-            sx = tk::spline(T, X);
-            sy = tk::spline(T, Y);
+            sx = tk::spline(T, x);
+            sy = tk::spline(T, y);
         }
     }
 }

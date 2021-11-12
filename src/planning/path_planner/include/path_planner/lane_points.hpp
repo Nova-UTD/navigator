@@ -35,7 +35,7 @@ namespace navigator
             const lanelet::LineString3d center;
             const lanelet::LineString3d right;
             LanePoints(lanelet::LineString3d left, lanelet::LineString3d center, lanelet::LineString3d right)
-                : left(left), cneter(center), right(right)
+                : left(left), center(center), right(right)
             {
             }
         };

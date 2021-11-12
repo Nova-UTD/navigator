@@ -21,17 +21,20 @@
 
 #include <path_planner/parameterized_spline.hpp>
 #include <path_planner/lane_points.hpp>
-#include <autoware_auto_msgs/msg/vehicle_kinematic_state.hpp>
 #include <autoware_auto_msgs/msg/trajectory.hpp>
 #include <autoware_auto_msgs/msg/had_map_route.hpp>
 #include <common/types.hpp>
-#include <motion_common/config.hpp>
 
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Point.h>
 #include <iostream>
 #include <memory>
 #include <vector>
+
+using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
+using autoware_auto_msgs::msg::HADMapRoute;
+using autoware_auto_msgs::msg::Trajectory;
+
 
 namespace navigator
 {
@@ -40,13 +43,13 @@ namespace navigator
         class PathPlanner
         {
         public:
-            TrajectoryPoints generate_position_trajectory(const HADMapRoute &route, const LaneletMapConstPtr &map);
+            std::vector<TrajectoryPoint> generate_position_trajectory(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map);
 
         private:
             //probably need to find a way to bound start and end window
             ParameterizedSpline get_center_line_spline(const std::vector<lanelet::ConstPoint3d> &line_points);
-            std::vector<lanelet::ConstPoint3d> get_center_line_points(const HADMapRoute &route, const LaneletMapConstPtr &map, double resolution)
-        }
+            std::vector<lanelet::ConstPoint3d> get_center_line_points(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution);
+        };
     }
 }
 
