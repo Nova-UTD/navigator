@@ -73,46 +73,51 @@ namespace autoware
           TrajectoryPoint &start_point,
           TrajectoryPoint &end_point, std::vector<lanelet::Id> &route) const
       {
+
+        // Note that for this function there is a terminology mismatch with the rest of nova:
+        // For lanelet, route means the roads to take (with possible lane changes) while path means 
+        // the lanelets to take. For nova, route referes to the lanelets to take while path means 
+        // trajectory of the vehicle. So a lanelet path is the same as a nova route.
+
         const lanelet::Point3d start(lanelet::utils::getId(), start_point.x, start_point.y, 0.0);
         const lanelet::Point3d end(lanelet::utils::getId(), end_point.x, end_point.y, 0.0);
 
-        std::vector<lanelet::Id> lane_start;
-        std::vector<lanelet::Id> lane_end;
+        lanelet::Lanelet lane_start;
+        lanelet::Lanelet lane_end;
 
         // Find the origin lanelet
 
         // Two nearest lanelets should, in theory, be the lanelets for each direction
-        // TODO: (eganj) verify that the right lanelets have been found and if not alert safety
-        auto nearest_lanelets_start = osm_map->laneletLayer.nearest(start, 2);
+        // TODO: (eganj) verify that the right lanelets have been found (car is facing in direction of lane) and if not alert safety
+        auto nearest_lanelets_start = osm_map->laneletLayer.nearest(start, 1);
         if (nearest_lanelets_start.empty())
         {
           std::cerr << "Couldn't find nearest lanelet to start." << std::endl;
         }
         else
         {
-          for (const auto &lanelet : nearest_lanelets_start)
-          {
-            lane_start.push_back(lanelet.id());
-          }
+          lane_start = *(nearest_lanelets_start.begin());
         }
 
         // find the destination lanelet
         // Two nearest lanelets should, in theory, be the lanelets for each direction
-        auto nearest_lanelets_end = osm_map->laneletLayer.nearest(end, 2);
+        auto nearest_lanelets_end = osm_map->laneletLayer.nearest(end, 1);
         if (nearest_lanelets_end.empty())
         {
           std::cerr << "Couldn't find nearest lanelet to goal." << std::endl;
         }
         else
         {
-          for (const auto &lanelet : nearest_lanelets_end)
-          {
-            lane_end.push_back(lanelet.id());
-          }
+          lane_end = *(nearest_lanelets_end.begin());
         }
 
         // plan a route using lanelet2 lib
-        route = get_lane_route(lane_start, lane_end);
+        lanelet::routing::Route lanelet_route;
+        lanelet::routing::LaneletPath lanelet_path;
+        
+        get_lane_route(lane_start, lane_end, lanelet_route, lanelet_path);
+
+        // TODO: fix temp hack, put route in as the path to 
 
         return route.size() > 0;
       }
@@ -142,46 +147,37 @@ namespace autoware
         return lane_id;
       }
 
-      std::vector<lanelet::Id> Lanelet2GlobalPlanner::get_lane_route(
-          const std::vector<lanelet::Id> &from_id, const std::vector<lanelet::Id> &to_id) const
+      /**
+       * @brief Plan a route between the two lane ids given. Pass route and path by reference.
+       * 
+       * @param from_id 
+       * @param to_id 
+       * @return double length of planned route or -1 if route not found
+       */
+      double Lanelet2GlobalPlanner::get_lane_route(
+          const lanelet::Lanelet &from_lane, const lanelet::Lanelet &to_lane, 
+          lanelet::routing::Route &route_found, lanelet::routing::LaneletPath &path_found) const
       {
         lanelet::traffic_rules::TrafficRulesPtr trafficRules =
             lanelet::traffic_rules::TrafficRulesFactory::create(
-                lanelet::Locations::Germany, //TODO: (eganj) figure out if its safe to change locations
+                lanelet::Locations::Germany, //TODO: figure out if its safe to change locations
                 lanelet::Participants::Vehicle);
         lanelet::routing::RoutingGraphUPtr routingGraph =
             lanelet::routing::RoutingGraph::build(*osm_map, *trafficRules);
 
-        // plan a shortest path without a lane change from the given from:to combination
-        float64_t shortest_length = std::numeric_limits<float64_t>::max();
-        std::vector<lanelet::Id> shortest_route;
-        for (auto start_id : from_id)
-        {
-          for (auto end_id : to_id)
-          {
-            lanelet::ConstLanelet fromLanelet = osm_map->laneletLayer.get(start_id);
-            lanelet::ConstLanelet toLanelet = osm_map->laneletLayer.get(end_id);
-            lanelet::Optional<lanelet::routing::Route> route = routingGraph->getRoute(
-                fromLanelet, toLanelet, 0);
+        route_found = *(routingGraph->getRoute(from_lane, to_lane));            // TODO: does this break if no route found?
 
-            // check route validity before continue further
-            if (route)
-            {
-              // op for the use of shortest path in this implementation
-              lanelet::routing::LaneletPath shortestPath = route->shortestPath();
-              lanelet::LaneletSequence fullLane = route->fullLane(fromLanelet);
-              const auto route_length = route->length2d();
-              if (!shortestPath.empty() && !fullLane.empty() && shortest_length > route_length)
-              {
-                // add to the list
-                shortest_length = route_length;
-                shortest_route = fullLane.ids();
-              }
-            }
-          }
+        if (true) //TODO
+        {
+          path_found = route_found.shortestPath();
+          return route_found.length2d();
+        }
+        else
+        {
+          // TODO: route not found
         }
 
-        return shortest_route;
+        return -1;
       }
 
       /**

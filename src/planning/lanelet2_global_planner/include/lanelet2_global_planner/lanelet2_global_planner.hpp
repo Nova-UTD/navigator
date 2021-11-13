@@ -85,9 +85,18 @@ namespace autoware
          */
         lanelet::Id find_lane_id(const lanelet::Id &cad_id) const;
 
-        std::vector<lanelet::Id> get_lane_route(
-            const std::vector<lanelet::Id> &from_id,
-            const std::vector<lanelet::Id> &to) const;
+        /**
+         * @brief Get the shortest route and path and pass them back through route_found and path_found if they exist.
+         * 
+         * @param from_id ID of origin lane
+         * @param to_id ID of destination lane
+         * @param route_found 
+         * @param path_found 
+         * @return float length of route or -1 if not found
+         */
+        double get_lane_route(
+            const lanelet::Lanelet &from_id, const lanelet::Lanelet &to_id, 
+          lanelet::routing::Route &route_found, lanelet::routing::LaneletPath &path_found) const;
 
         /**
          * Euclidean distance between points 1 and 2
