@@ -1,3 +1,6 @@
+// Creates application for Nova web client
+// using the other html folder for testing stuff
+
 'use strict';
 
 const express = require('express');

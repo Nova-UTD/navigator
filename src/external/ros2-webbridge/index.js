@@ -1,5 +1,8 @@
+// Nova server (ROS2 Node)
+
 'use strict';
 
+// dependencies
 const rclnodejs = require('rclnodejs');
 const WebSocket = require('ws');
 const Bridge = require('./lib/bridge.js');
@@ -8,25 +11,25 @@ const debug = require('debug')('ros2-web-bridge:index');
 // rclnodejs node
 let node;
 
-// Websocket server (or client if client mode set via --address)
+// websocket server (or client if client mode set via --address)
 let server;
 let connectionAttempts = 0;
 
 // Map of bridge IDs to Bridge objects
 let bridgeMap = new Map();
 
-function closeAllBridges() {
+function closeAllBridges() { // Close all bridge objects
   bridgeMap.forEach((bridge, bridgeId) => {
     bridge.close();
   });
 }
 
-function shutDown(error) {
+function shutDown(error) { // Properly shutdown server functions
   // Closing the server triggers the individual connections to be closed.
   if (server) {
     server.close();
   }
-  if (!rclnodejs.isShutdown()) {
+  if (!rclnodejs.isShutdown()) { // don't double shutdown
     rclnodejs.shutdown();
   }
   if (error) {
@@ -34,7 +37,7 @@ function shutDown(error) {
   }
 }
 
-function createServer(options) {
+function createServer(options) { // Create server (from startup)
   options = options || {};
   options.address = options.address || null;
   process.on('exit', () => {
@@ -64,8 +67,8 @@ function spin(node, timeout) {
   setTimeout(spin, timeout, node, timeout);
 }
 
-function createConnection(options) {
-  if (options.address != null) {
+function createConnection(options) { // Create connection function (bridge + client)
+  if (options.address != null) { // If no address then do default port of 9090
     debug('Starting in client mode; connecting to ' + options.address);
     server = new WebSocket(options.address);
   } else {
@@ -74,45 +77,43 @@ function createConnection(options) {
     server = new WebSocket.Server({port: options.port});
   }
 
-  const makeBridge = (ws) => {
+  const makeBridge = (ws) => { // New bridge
     let bridge = new Bridge(node, ws, options.status_level);
     bridgeMap.set(bridge.bridgeId, bridge);
 
-    bridge.on('error', (error) => {
+    bridge.on('error', (error) => { // remove bridge if erroring
       debug(`Bridge ${bridge.bridgeId} closing with error: ${error}`);
       bridge.close();
       bridgeMap.delete(bridge.bridgeId);
     });
 
-    bridge.on('close', (bridgeId) => {
+    bridge.on('close', (bridgeId) => { // when bridge closed
       bridgeMap.delete(bridgeId);
     });
   };
 
-  server.on('open', () => {
+  server.on('open', () => { // On bridge connection with webhook
     debug('Connected as client');
     connectionAttempts = 0;
   });
   
-  if (options.address) {
+  if (options.address) { // Creation with port
     makeBridge(server);
   } else {
     server.on('connection', makeBridge);
   }
 
-  server.on('error', (error) => {
+  server.on('error', (error) => { // Close server on error automatically
     closeAllBridges();
     debug(`WebSocket error: ${error}`);
   });
 
-  server.on('close', (event) => {
+  server.on('close', (event) => { // if bridge closing try reconnect
     debug(`Websocket closed: ${event}`);
     if (options.address) {
       closeAllBridges();
       connectionAttempts++;
-      // Gradually increase reconnection interval to prevent
-      // overwhelming the server, up to a maximum delay of ~1 minute
-      // https://en.wikipedia.org/wiki/Exponential_backoff
+      // Gradually increase reconnection interval to prevent overloading server
       const delay = Math.pow(1.5, Math.min(10, Math.floor(Math.random() * connectionAttempts)));
       debug(`Reconnecting to ${options.address} in ${delay.toFixed(2)} seconds`);
       setTimeout(() => createConnection(options), delay*1000);
