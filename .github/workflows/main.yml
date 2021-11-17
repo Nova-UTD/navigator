@@ -8,44 +8,42 @@ on:
   #  branches: [ master ]
 
   # Allows manual starting of the workflow
-    workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   build_and_test:
     runs-on: ubuntu-latest
-      steps:
-
+    steps:
       # Checks-out the repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-        
+      
       # Sets up ROS
       - uses: ros-tooling/setup-ros@v0.2
         with:
           required-ros-distributions: foxy
-
+      
       - name: Enter Workspace
-        run: |
+        run: | 
           cd $GITHUB_WORKSPACE
           echo Workspace directory: $(pwd)
-
       - name: Rosdep
         run: |
           export ROS_DISTRO=foxy
-            rosdep update
-            rosdep install --from-paths src --ignore-src
-
+          rosdep update
+          rosdep install --from-paths src --ignore-src
+      
       - name: Build Workspace
         run: |
           source /opt/ros/foxy/setup.bash
           colcon build
-
+      
       - name: Run Tests
         run: |
           source install/setup.bash
           colcon test
-
+      
       - name: Test Results
         run: colcon test-result
-
+      
       - name: Verbose Test Results
         run: colcon test-result --verbose
