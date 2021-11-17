@@ -2,10 +2,10 @@
 name: Build and Test
 
 on:
-  #push:
-  #  branches: [ master ]
-  #pull_request:
-  #  branches: [ master ]
+  push:
+    branches: [ ]
+  pull_request:
+    branches: [ ]
 
   # Allows manual starting of the workflow
   workflow_dispatch:
@@ -40,7 +40,7 @@ jobs:
       - name: Run Tests
         run: |
           source install/setup.bash
-          colcon test
+          colcon test --packages-skip behavior_planner_nodes ndt_nodes vt_steering_controller vt_vehicle_bridge vt_viz voltron_can
       
       - name: Test Results
         run: colcon test-result
