@@ -26,8 +26,12 @@ jobs:
         run: | 
           cd $GITHUB_WORKSPACE
           echo Workspace directory: $(pwd)
-      - name: Rosdep
+      
+      - name: Install Dependencies
         run: |
+          sudo apt update
+          sudo apt install -y cmake python3-pip
+          pip3 install -U colcon-common-extensions vcstool
           export ROS_DISTRO=foxy
           rosdep update
           rosdep install --from-paths src --ignore-src -r
