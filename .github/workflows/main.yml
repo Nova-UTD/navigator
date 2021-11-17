@@ -33,6 +33,11 @@ jobs:
           sudo apt install -y cmake python3-pip
           pip3 install -U colcon-common-extensions vcstool
           export ROS_DISTRO=foxy
+          colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mixin-repository/master/index.yaml
+          colcon mixin update
+          colcon metadata add default
+          https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml
+          colcon metadata update
           rosdep update
           rosdep install --from-paths src --ignore-src -r
       
