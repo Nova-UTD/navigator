@@ -30,7 +30,7 @@ jobs:
         run: |
           export ROS_DISTRO=foxy
           rosdep update
-          rosdep install --from-paths src --ignore-src
+          rosdep install --from-paths src --ignore-src -r
       
       - name: Build Workspace
         run: |
