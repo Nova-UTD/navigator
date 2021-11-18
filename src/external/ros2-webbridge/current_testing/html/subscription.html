@@ -46,6 +46,7 @@
 
   // Subscribe to topic
   example.subscribe(function(message) {
+    console.log("TEST");
     document.getElementById("subscription").innerText = message.data
   });
 
