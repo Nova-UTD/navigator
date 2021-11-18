@@ -1,16 +1,11 @@
-// Copyright 2020 The Autoware Foundation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * Package:   path_planner
+ * Filename:  path_planner.cpp
+ * Author:    Jim Moore
+ * Email:     jim3moore@gmail.com
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
 
 #include "path_planner/path_planner.hpp"
 #include "path_planner/map_utils.hpp"
@@ -59,14 +54,14 @@ namespace navigator
         {
             return lanelet::Point3d(lanelet::InvalId, pt.x, pt.y, 0.0);
         }
-        ParameterizedSpline get_center_line_spline(const std::vector<lanelet::ConstPoint3d> &line_points)
+        ParameterizedSpline get_center_line_spline(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points)
         {
             std::vector<double> x_points(line_points.size());
             std::vector<double> y_points(line_points.size());
             for (const auto &p : line_points)
             {
-                x_points.push_back(p.x());
-                y_points.push_back(p.y());
+                x_points.push_back(p.x);
+                y_points.push_back(p.y);
             }
             return ParameterizedSpline(x_points, y_points);
         }

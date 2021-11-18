@@ -12,6 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/*
+ * Package:   path_planner
+ * Filename:  parameterized_spline.cpp
+ * Author:    Jim Moore
+ * Email:     jim3moore@gmail.com
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
 #include "path_planner/parameterized_spline.hpp"
 
 #include <math.h>

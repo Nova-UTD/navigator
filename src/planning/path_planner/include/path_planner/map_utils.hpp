@@ -1,3 +1,16 @@
+/*
+ * Package:   path_planner
+ * Filename:  map_utils.hpp
+ * Author:    Jim Moore
+ * Email:     jim3moore@gmail.com
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
+
+#ifndef PATH_PLANNER_MAP_UTILS_HPP
+#define PATH_PLANNER_MAP_UTILS_HPP
+
+
 #include "autoware_auto_msgs/msg/trajectory.hpp"
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_core/LaneletMap.h>
@@ -25,3 +38,5 @@ namespace navigator
         }
     }
 }
+
+#endif
