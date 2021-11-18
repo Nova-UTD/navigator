@@ -167,9 +167,8 @@ namespace autoware
         }
 
         // plan a route using lanelet2 lib
-        lanelet::Optional<Route> lanelet_route;
-        lanelet::routing::LaneletPath lanelet_path;
-        get_lane_route(start_lanes, end_lanes, lanelet_route, lanelet_path);
+        LaneletPath lanelet_path ;
+        lanelet::Optional<Route> lanelet_route = get_lane_route(start_lanes, end_lanes, lanelet_path);
 
         // TODO: Route, Path to vectors
         route = vector<lanelet::Id>();
@@ -232,9 +231,9 @@ namespace autoware
        * @param to_id 
        * @return double length of planned route or -1 if route not found
        */
-      float64_t Lanelet2GlobalPlanner::get_lane_route(
+      lanelet::Optional<Route> Lanelet2GlobalPlanner::get_lane_route(
           const vector<Lanelet> &from_lanes, const vector<Lanelet> &to_lanes, 
-          lanelet::Optional<Route> &route_found, lanelet::routing::LaneletPath &path_found) const
+          lanelet::routing::LaneletPath &path_found) const
       {
 
         // Create routing graph with traffic rules
@@ -249,19 +248,26 @@ namespace autoware
         // tracker for linear search of shortest route
         float64_t route_length = std::numeric_limits<float64_t>().max();
 
+        // Due to lanelet ideosyncracies (deleting the assignment operator for routes)
+        // we must calculate the route exactly when it is returned, so store the lanelets 
+        // that generate it.
+        Lanelet optimal_from;
+        Lanelet optimal_to;
+
         // We have multiple lane candidates that all encapsulate the endpoints.
         // Different selections of lanelets may have different lengths of routes; we want the shortest
         for(Lanelet from_lane : from_lanes){
           for(Lanelet to_lane : to_lanes){
             lanelet::Optional<Route> route_candidate = routingGraph->getRoute(from_lane, to_lane);
             if (route_candidate && route_candidate->length2d() < route_length){
-              route_found = route_candidate;
               path_found = route_candidate->shortestPath();
+              optimal_from = from_lane;
+              optimal_to = to_lane;
             }
           }
         }
 
-        return route_length;
+        return routingGraph->getRoute(optimal_from, optimal_to);
       }
 
       /**

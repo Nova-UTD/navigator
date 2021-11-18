@@ -99,9 +99,9 @@ namespace autoware
          * @param path_found 
          * @return float length of route or -1 if not found
          */
-        float64_t get_lane_route(
+        lanelet::Optional<lanelet::routing::Route> get_lane_route(
             const std::vector<lanelet::Lanelet> &from_lanes, const std::vector<lanelet::Lanelet> &to_lanes, 
-          lanelet::Optional<lanelet::routing::Route> &route_found, lanelet::routing::LaneletPath &path_found) const;
+            lanelet::routing::LaneletPath &path_found) const;
 
         /**
          * Euclidean distance between points 1 and 2
