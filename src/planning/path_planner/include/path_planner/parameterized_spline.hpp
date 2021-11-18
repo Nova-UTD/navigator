@@ -25,6 +25,7 @@ namespace navigator
         // we can sample a point at a given length along the curve s by evaluating (x(s),y(s))
         //      the arc length is based on the chord between points, so it's an approximation.
         //      using points close in distance helps
+        // NOTE: points should be < 0.1 units away from each other for a good approximation
 
         class ParameterizedSpline
         {
@@ -34,6 +35,7 @@ namespace navigator
         public:
             ParameterizedSpline(tk::spline sx, tk::spline sy)
                 : sx(sx), sy(sy) {}
+            // NOTE: points should be < 0.1 units away from each other for a good approximation
             ParameterizedSpline(const std::vector<double> &x, const std::vector<double> &y);
             std::pair<double, double> sample(double s);
         };

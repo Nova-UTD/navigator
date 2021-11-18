@@ -31,6 +31,8 @@ namespace navigator
 {
     namespace path_planner
     {
+        //generates potential paths using cubic splines and gives them costs according to several factors
+        //right now only generates the center line for a lane and the spline for that
         class PathPlanner
         {
         public:

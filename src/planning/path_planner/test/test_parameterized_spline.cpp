@@ -18,39 +18,53 @@ using namespace navigator::path_planner;
 
 class TestSpline : public ::testing::Test {
 public:
-
-  TestSpline() : spline(std::vector<double>(),std::vector<double>()) {
+  std::vector<double> xs;
+  std::vector<double> ys;
+  
+  TestSpline() {
+    //wiggly path that goes loops around and is not a function of x or y
     xs.push_back(0);
     ys.push_back(0);
 
     xs.push_back(0.1);
-    ys.push_back(0.2);
-
-    xs.push_back(0.5);
-    ys.push_back(0.5);
+    ys.push_back(0.1);
 
     xs.push_back(0.2);
-    ys.push_back(0.7);
+    ys.push_back(0.1);
 
-    spline = ParameterizedSpline(xs, ys);
+    xs.push_back(0.3);
+    ys.push_back(0.2);
+
+    xs.push_back(0.3);
+    ys.push_back(0.3);
+
+    xs.push_back(0.2);
+    ys.push_back(0.3);
+
+    xs.push_back(0.2);
+    ys.push_back(0.2);
+
+    xs.push_back(0.1);
+    ys.push_back(0.3);
+
+    xs.push_back(0);
+    ys.push_back(0.2);
+
+    spline = std::make_shared<ParameterizedSpline>(xs, ys);
   };
-  ParameterizedSpline spline;
-  std::vector<double> xs;
-  std::vector<double> ys;
+  std::shared_ptr<ParameterizedSpline> spline;
 };
 
 
 TEST_F(TestSpline, test_arc_length_parameterization) {
-    //estimate arc length by evaluating at small intervals
-    double arclength = 0;
-    double step_size = 0.1;
-    auto old_point = spline.sample(0);
-    for (double p = 0; p < 2; p += step_size) {
-      auto current_point = spline.sample(p);
-      arclength += sqrt((old_point.first - current_point.first) * (old_point.first - current_point.first) + (old_point.second - current_point.second) * (old_point.second - current_point.second));
-      old_point = current_point;
+    const double tolerance = 0.04;
+    const double length_step = 0.1;
+    //validate arc length parameterization by seeing if the distance over small intervals is equal to the change in the parameter
+    auto old = spline->sample(0);
+    for (double s = length_step; s < 1; s += length_step) {
+      auto current = spline->sample(s);
+      double d = sqrt((old.first-current.first)*(old.first-current.first) + (old.second-current.second)*(old.second-current.second));
+      old = current;
+      ASSERT_TRUE(abs(d-length_step) < tolerance);
     }
-    //last point sampled should be approx equal to point sampled at estimated arc length 
-    ASSERT_TRUE(abs(old_point.first-spline.sample(arclength).first < 0.1));
-    ASSERT_TRUE(abs(old_point.second-spline.sample(arclength).second < 0.1));
 }

@@ -79,7 +79,7 @@ public:
   std::shared_ptr<navigator::path_planner::PathPlanner> m_planner_ptr;
 };
 
-TEST_F(PathPlannerTest, get_center_line_points)
+TEST_F(PathPlannerTest, get_center_line)
 {
   // create map
   const auto lane_id = lanelet::utils::getId();
@@ -90,21 +90,22 @@ TEST_F(PathPlannerTest, get_center_line_points)
   // create route message
   const auto had_map_route = getARoute(lane_id, 5.0F);
 
-  const std::vector<TrajectoryPoint> points = m_planner_ptr->get_center_line_points(had_map_route, lanelet_map_ptr, 5);
+  const std::vector<TrajectoryPoint> points = m_planner_ptr->get_center_line_points(had_map_route, lanelet_map_ptr, 1);
 
   // return points should not be empty
   ASSERT_FALSE(points.empty());
   // there should be 5 points total
-  ASSERT_TRUE(points.size() == 5);
+  ASSERT_EQ(size_t(5),points.size());
 
-  TrajectoryPoint start_point;
-  start_point.x = static_cast<float32_t>(had_map_route.start_point.position.x);
-  start_point.y = static_cast<float32_t>(had_map_route.start_point.position.y);
-  start_point.heading = had_map_route.start_point.heading;
-
-  // start point of center line and route should be the same
-  auto distance = sqr_distance(
-    start_point,
-    points.front());
-  ASSERT_DOUBLE_EQ(distance, 0.0);
+  //testing start point position
+  //we expect the center line to be: (0,1) -> (0,2) -> (0,3) -> (0,4) -> (0,5)
+  auto prev = points.front();
+  ASSERT_DOUBLE_EQ(prev.x, 0);
+  ASSERT_DOUBLE_EQ(prev.y, 1);
+  //points should be spaced out by 1 vertically
+  for (size_t i = 1; i < points.size(); i++) {
+    ASSERT_DOUBLE_EQ(prev.y + 1, points[i].y);
+    ASSERT_DOUBLE_EQ(prev.x, points[i].x);
+    prev = points[i];
+  }
 }
