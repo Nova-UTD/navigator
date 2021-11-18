@@ -1,5 +1,5 @@
 #include <lanelet2_global_planner/lanelet2_global_planner.hpp>
-#include <lanelet2_core/geometry/Area.h>
+#include <lanelet2_core/geometry/Lanelet.h>
 
 #include <common/types.hpp>
 #include <geometry/common_2d.hpp>
@@ -14,8 +14,17 @@
 #include <utility>
 #include <vector>
 
+using std::vector;
+
 using autoware::common::types::bool8_t;
 using autoware::common::types::float64_t;
+
+using lanelet::Lanelet;
+using lanelet::routing::Route;
+using lanelet::routing::LaneletPath;
+using lanelet::routing::RoutingGraph;
+using lanelet::routing::LaneletRelation;
+using lanelet::routing::LaneletRelations;
 
 namespace autoware
 {
@@ -71,7 +80,9 @@ namespace autoware
 
       bool8_t Lanelet2GlobalPlanner::plan_route(
           TrajectoryPoint &start_point,
-          TrajectoryPoint &end_point, std::vector<lanelet::Id> &route) const
+          TrajectoryPoint &end_point, 
+          vector<lanelet::Id> &route, 
+          vector<lanelet::Id> &lane_changes) const
       {
 
         // Note that for this function there is a terminology mismatch with the rest of nova:
@@ -82,42 +93,109 @@ namespace autoware
         const lanelet::Point3d start(lanelet::utils::getId(), start_point.x, start_point.y, 0.0);
         const lanelet::Point3d end(lanelet::utils::getId(), end_point.x, end_point.y, 0.0);
 
-        lanelet::Lanelet lane_start;
-        lanelet::Lanelet lane_end;
+        const lanelet::Point2d start2d(start.id(), start.x(), start.y());
+        const lanelet::Point2d end2d(end.id(), end.x(), end.y());
+
+        vector<Lanelet> start_lanes;
+        vector<Lanelet> end_lanes;
 
         // Find the origin lanelet
 
-        // Two nearest lanelets should, in theory, be the lanelets for each direction
-        // TODO: (eganj) verify that the right lanelets have been found (car is facing in direction of lane) and if not alert safety
-        auto nearest_lanelets_start = osm_map->laneletLayer.nearest(start, 1);
+        // Grab all the lanes that encapsulate the vehicles position (up to 5) OR if none are found 
+        // the lane closes to the vehicle. 
+        //TODO: (eganj) Check that lanes are running in the same direction as the vehicle
+
+        auto nearest_lanelets_start = osm_map->laneletLayer.nearest(start, 5);
         if (nearest_lanelets_start.empty())
         {
           std::cerr << "Couldn't find nearest lanelet to start." << std::endl;
         }
         else
         {
-          lane_start = *(nearest_lanelets_start.begin());
+          // Track lanelet with centerline closest to start point in case start point is not inside any lanes
+          Lanelet nearest_candidate;
+          double dist_to_nearest = std::numeric_limits<double>().max();
+
+          for(Lanelet start_candidate : nearest_lanelets_start){
+            if(lanelet::geometry::inside(start_candidate, start2d)){
+              start_lanes.push_back(start_candidate);
+            }else{
+              double dist_to_candidate = lanelet::geometry::distanceToCenterline2d(start_candidate, start2d);
+              if(dist_to_candidate < dist_to_nearest){
+                nearest_candidate = start_candidate;
+                dist_to_nearest = dist_to_candidate;
+              }
+            }
+
+            if(start_lanes.empty()){
+              // use closest guess instead of encapsulating lanelets
+              // TODO: report to console or safety manager?
+              start_lanes.push_back(nearest_candidate);
+            }
+          }
         }
 
-        // find the destination lanelet
-        // Two nearest lanelets should, in theory, be the lanelets for each direction
-        auto nearest_lanelets_end = osm_map->laneletLayer.nearest(end, 1);
+        auto nearest_lanelets_end = osm_map->laneletLayer.nearest(end, 5);
         if (nearest_lanelets_end.empty())
         {
           std::cerr << "Couldn't find nearest lanelet to goal." << std::endl;
         }
         else
         {
-          lane_end = *(nearest_lanelets_end.begin());
+          // Track lanelet with centerline closest to start point in case start point is not inside any lanes
+          Lanelet nearest_candidate;
+          double dist_to_nearest = std::numeric_limits<double>().max();
+
+          for (Lanelet end_candidate : nearest_lanelets_end){
+            if (lanelet::geometry::inside(end_candidate, end2d)) {
+              end_lanes.push_back(end_candidate);
+            }
+            else {
+              double dist_to_candidate = lanelet::geometry::distanceToCenterline2d(end_candidate, end2d);
+              if (dist_to_candidate < dist_to_nearest) {
+                nearest_candidate = end_candidate;
+                dist_to_nearest = dist_to_candidate;
+              }
+            }
+          }
+
+           if (end_lanes.empty()) {
+              // use closest guess instead of encapsulating lanelets
+              // TODO: report to console or safety manager?
+              end_lanes.push_back(nearest_candidate);
+            }
         }
 
         // plan a route using lanelet2 lib
-        lanelet::routing::Route lanelet_route;
+        lanelet::Optional<Route> lanelet_route;
         lanelet::routing::LaneletPath lanelet_path;
-        
-        get_lane_route(lane_start, lane_end, lanelet_route, lanelet_path);
+        get_lane_route(start_lanes, end_lanes, lanelet_route, lanelet_path);
 
-        // TODO: fix temp hack, put route in as the path to 
+        // TODO: Route, Path to vectors
+        route = vector<lanelet::Id>();
+        lane_changes = vector<lanelet::Id>();
+
+        // There is unfortunately no way to ask the route for it's lanelets directly so
+        // we must traverse the route ourselves
+        for(lanelet::ConstLanelet path_segment: lanelet_path){
+          // add the segment to the route
+          route.push_back(path_segment.id());
+
+          LaneletRelations lane_change_options_left = lanelet_route->leftRelations(path_segment);
+          LaneletRelations lane_change_options_right = lanelet_route->leftRelations(path_segment);
+
+          for(LaneletRelation l_option : lane_change_options_left){
+            lane_changes.push_back(l_option.lanelet.id());
+          }
+          for(LaneletRelation r_option : lane_change_options_right){
+            lane_changes.push_back(r_option.lanelet.id());
+          }
+          
+        }
+
+        // Order of the lane changes doesn't matter but should be unique
+        std::sort(lane_changes.begin(), lane_changes.end());
+        std::unique(lane_changes.begin(), lane_changes.end());
 
         return route.size() > 0;
       }
@@ -154,30 +232,36 @@ namespace autoware
        * @param to_id 
        * @return double length of planned route or -1 if route not found
        */
-      double Lanelet2GlobalPlanner::get_lane_route(
-          const lanelet::Lanelet &from_lane, const lanelet::Lanelet &to_lane, 
-          lanelet::routing::Route &route_found, lanelet::routing::LaneletPath &path_found) const
+      float64_t Lanelet2GlobalPlanner::get_lane_route(
+          const vector<Lanelet> &from_lanes, const vector<Lanelet> &to_lanes, 
+          lanelet::Optional<Route> &route_found, lanelet::routing::LaneletPath &path_found) const
       {
+
+        // Create routing graph with traffic rules
         lanelet::traffic_rules::TrafficRulesPtr trafficRules =
             lanelet::traffic_rules::TrafficRulesFactory::create(
                 lanelet::Locations::Germany, //TODO: figure out if its safe to change locations
                 lanelet::Participants::Vehicle);
+
         lanelet::routing::RoutingGraphUPtr routingGraph =
             lanelet::routing::RoutingGraph::build(*osm_map, *trafficRules);
 
-        route_found = *(routingGraph->getRoute(from_lane, to_lane));            // TODO: does this break if no route found?
+        // tracker for linear search of shortest route
+        float64_t route_length = std::numeric_limits<float64_t>().max();
 
-        if (true) //TODO
-        {
-          path_found = route_found.shortestPath();
-          return route_found.length2d();
-        }
-        else
-        {
-          // TODO: route not found
+        // We have multiple lane candidates that all encapsulate the endpoints.
+        // Different selections of lanelets may have different lengths of routes; we want the shortest
+        for(Lanelet from_lane : from_lanes){
+          for(Lanelet to_lane : to_lanes){
+            lanelet::Optional<Route> route_candidate = routingGraph->getRoute(from_lane, to_lane);
+            if (route_candidate && route_candidate->length2d() < route_length){
+              route_found = route_candidate;
+              path_found = route_candidate->shortestPath();
+            }
+          }
         }
 
-        return -1;
+        return route_length;
       }
 
       /**

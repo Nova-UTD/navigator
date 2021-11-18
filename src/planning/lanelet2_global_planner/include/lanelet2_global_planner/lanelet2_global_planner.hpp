@@ -54,6 +54,7 @@ namespace autoware
       class LANELET2_GLOBAL_PLANNER_PUBLIC Lanelet2GlobalPlanner
       {
       public:
+
         Lanelet2GlobalPlanner() = default;
 
         void load_osm_map(const std::string &file, float64_t lat, float64_t lon, float64_t alt);
@@ -64,15 +65,19 @@ namespace autoware
         void parse_lanelet_element();
 
         /**
-         * Plans the optimal series of lanelets leading from the start to the end.
+         * @brief Plans the optimal series of lanelets leading from the start to the end.
          * 
          * If the endpoints are not inside a lanelet the closest is used.
          * 
-         * @return true if a route was found.
+         * @param start map point of start position
+         * @param end  map point of end position
+         * @param route return-by-reference for ordered series of lanelets to take
+         * @param lane_changes return-by-reference unordered Id's of the possible lane changes
+         * @return bool8_t if a route was found
          */
         bool8_t plan_route(
             TrajectoryPoint &start, TrajectoryPoint &end,
-            std::vector<lanelet::Id> &route) const;
+            std::vector<lanelet::Id> &route, std::vector<lanelet::Id> &lane_changes) const;
 
         /**
          * @return type of lanelet if one with matching id has already been parsed;
@@ -94,9 +99,9 @@ namespace autoware
          * @param path_found 
          * @return float length of route or -1 if not found
          */
-        double get_lane_route(
-            const lanelet::Lanelet &from_id, const lanelet::Lanelet &to_id, 
-          lanelet::routing::Route &route_found, lanelet::routing::LaneletPath &path_found) const;
+        float64_t get_lane_route(
+            const std::vector<lanelet::Lanelet> &from_lanes, const std::vector<lanelet::Lanelet> &to_lanes, 
+          lanelet::Optional<lanelet::routing::Route> &route_found, lanelet::routing::LaneletPath &path_found) const;
 
         /**
          * Euclidean distance between points 1 and 2
@@ -116,6 +121,10 @@ namespace autoware
         std::shared_ptr<lanelet::LaneletMap> osm_map;
 
       private:
+
+        // number of lanes to look for when figuring out the endpoint lanelets
+        const int N_ENDPOINT_CANDIDATES = 5; 
+
         std::vector<lanelet::Id> parking_id_list;
 
         std::unordered_map<lanelet::Id, lanelet::Id> road_map;
