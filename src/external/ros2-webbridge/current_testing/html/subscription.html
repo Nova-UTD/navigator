@@ -35,7 +35,7 @@
   });
 
   // Create connection to rosbridge
-  ros.connect('ws://localhost:9090');
+  ros.connect('ws://localhost:9090'); // set to nova websocket
 
   // Create new topic
   var example = new ROSLIB.Topic({
@@ -46,7 +46,8 @@
 
   // Subscribe to topic
   example.subscribe(function(message) {
-    console.log("TEST");
+    console.log("TEST"); // testing subscription
+    console.log(message);
     document.getElementById("subscription").innerText = message.data
   });
 

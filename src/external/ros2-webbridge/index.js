@@ -11,7 +11,7 @@ const debug = require('debug')('ros2-web-bridge:index');
 // rclnodejs node
 let node;
 
-// websocket server (or client if client mode set via --address)
+// websocket server (or client if client mode set via --address flag)
 let server;
 let connectionAttempts = 0;
 
@@ -46,6 +46,12 @@ function createServer(options) { // Create server (from startup)
   });
   return rclnodejs.init()
     .then(() => {
+      // temporary testing (adding publisher)
+      const testNode = new rclnodejs.Node('publisher_example_node');
+      const publisher = node.createPublisher('std_msgs/msg/String', 'topic');
+      publisher.publish(`testing rclnodejs`);
+      testNode.spin();
+      
       node = rclnodejs.createNode('ros2_web_bridge');
       debug('ROS2 node started');
       let timeout = options.delay_between_messages;
