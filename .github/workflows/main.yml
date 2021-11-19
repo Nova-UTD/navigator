@@ -2,10 +2,10 @@
 name: Build and Test
 
 on:
-  #push:
-  #  branches: [ ]
-  #pull_request:
-  #  branches: [ ]
+  push:
+    branches: [ ]
+  pull_request:
+    branches: [ ]
 
   # Allows manual starting of the workflow
   workflow_dispatch:
@@ -17,42 +17,13 @@ jobs:
       # Checks-out the repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       
-      # Sets up ROS
-      - uses: ros-tooling/setup-ros@v0.2
-        with:
-          required-ros-distributions: foxy
-      
       - name: Enter Workspace
         run: | 
           cd $GITHUB_WORKSPACE
           echo Workspace directory: $(pwd)
       
-      - name: Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y cmake python3-pip
-          pip3 install -U colcon-common-extensions vcstool
-          export ROS_DISTRO=foxy
-          colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mixin-repository/master/index.yaml
-          colcon mixin update
-          colcon metadata add default
-          https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml
-          colcon metadata update
-          rosdep update
-          rosdep install --from-paths src --ignore-src -r
-      
       - name: Build Workspace
-        run: |
-          source /opt/ros/foxy/setup.bash
-          colcon build
+        run: sudo docker build . -t navigator
       
       - name: Run Tests
-        run: |
-          source install/setup.bash
-          colcon test --packages-skip behavior_planner_nodes ndt_nodes vt_steering_controller vt_vehicle_bridge vt_viz voltron_can
-      
-      - name: Test Results
-        run: colcon test-result
-      
-      - name: Verbose Test Results
-        run: colcon test-result --verbose
+        run: sudo docker run navigator bash -c "colcon test --packages-skip behavior_planner_nodes lgsvl_interface ndt_nodes voltron_can vt_steering_controller vt_vehicle_bridge vt_viz && colcon test-result"
