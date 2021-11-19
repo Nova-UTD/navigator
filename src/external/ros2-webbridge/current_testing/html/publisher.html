@@ -9,7 +9,7 @@
   // Connecting to ROS
   // -----------------
   var ros = new ROSLIB.Ros();
-
+  
   // If there is an error on the backend, an 'error' emit will be emitted.
   ros.on('error', function(error) {
     document.getElementById('connecting').style.display = 'none';
