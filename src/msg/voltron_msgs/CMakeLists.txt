@@ -11,6 +11,7 @@ ament_auto_find_build_dependencies()
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Gear.msg"
   "msg/CanFrame.msg"
+  "msg/HADMapRoute.msg"
   "srv/SafetyEvent.srv"
   "srv/SafetyCommand.srv"
   DEPENDENCIES
@@ -19,6 +20,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
     "sensor_msgs"
     "shape_msgs"
     "std_msgs"
+    "autoware_auto_msgs"
   ADD_LINTER_TESTS
 )
 

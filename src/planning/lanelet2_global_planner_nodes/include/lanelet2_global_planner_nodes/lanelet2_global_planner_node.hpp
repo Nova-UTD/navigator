@@ -37,6 +37,9 @@
 #include <had_map_utils/had_map_conversion.hpp>
 #include <common/types.hpp>
 
+// nova
+#include <voltron_msgs/msg/had_map_route.hpp>
+
 // c++
 #include <chrono>
 #include <string>
@@ -65,6 +68,7 @@ public:
   void current_pose_cb(const autoware_auto_msgs::msg::VehicleKinematicState::SharedPtr msg);
   void send_global_path(
     const std::vector<lanelet::Id> & had_map_route,
+    const std::vector<lanelet::Id> & lane_changes,
     const autoware_auto_msgs::msg::TrajectoryPoint & start_point,
     const autoware_auto_msgs::msg::TrajectoryPoint & end_point,
     const std_msgs::msg::Header & header);
@@ -77,7 +81,7 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pose_sub_ptr;
   rclcpp::Subscription<autoware_auto_msgs::msg::VehicleKinematicState>::SharedPtr
     current_pose_sub_ptr;
-  rclcpp::Publisher<autoware_auto_msgs::msg::HADMapRoute>::SharedPtr global_path_pub_ptr;
+  rclcpp::Publisher<voltron_msgs::msg::HADMapRoute>::SharedPtr global_path_pub_ptr;
   geometry_msgs::msg::PoseStamped start_pose;
   geometry_msgs::msg::PoseStamped goal_pose;
   bool8_t start_pose_init;

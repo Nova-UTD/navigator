@@ -13,6 +13,7 @@
 
   <depend>autoware_auto_common</depend>
   <depend>autoware_auto_msgs</depend>
+  <depend>voltron_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>had_map_utils</depend>
   <depend>lanelet2_core</depend>

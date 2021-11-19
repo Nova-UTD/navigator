@@ -84,7 +84,7 @@ Lanelet2GlobalPlannerNode::Lanelet2GlobalPlannerNode(
 
   // Global path publisher
   global_path_pub_ptr =
-    this->create_publisher<autoware_auto_msgs::msg::HADMapRoute>(
+    this->create_publisher<voltron_msgs::msg::HADMapRoute>(
     "global_path", rclcpp::QoS(10));
 
   // Create map client
@@ -154,12 +154,13 @@ void Lanelet2GlobalPlannerNode::goal_pose_cb(
 
   // get routes
   std::vector<lanelet::Id> route;
-  if (lanelet2_global_planner->plan_route(start, end, route)) {
+  std::vector<lanelet::Id> lane_change_options;
+  if (lanelet2_global_planner->plan_route(start, end, route, lane_change_options)) {
     // send out the global path
     std_msgs::msg::Header msg_header;
     msg_header.stamp = rclcpp::Clock().now();
     msg_header.frame_id = "map";
-    this->send_global_path(route, start, end, msg_header);
+    this->send_global_path(route, lane_change_options, start, end, msg_header);
   } else {
     RCLCPP_ERROR(this->get_logger(), "Global route has not been found!");
   }
@@ -197,6 +198,7 @@ void Lanelet2GlobalPlannerNode::current_pose_cb(
 
 void Lanelet2GlobalPlannerNode::send_global_path(
   const std::vector<lanelet::Id> & route,
+  const std::vector<lanelet::Id> & lane_changes,
   const autoware_auto_msgs::msg::TrajectoryPoint & start_point,
   const autoware_auto_msgs::msg::TrajectoryPoint & end_point, const std_msgs::msg::Header & header)
 {
@@ -210,7 +212,7 @@ void Lanelet2GlobalPlannerNode::send_global_path(
   // parking id = first/first to last
   // drivable area = second/second to last
   // main route = other
-  autoware_auto_msgs::msg::HADMapRoute global_route;
+  voltron_msgs::msg::HADMapRoute global_route;
   global_route.header = header;
 
   autoware_auto_msgs::msg::RoutePoint start_route_point;
@@ -237,6 +239,19 @@ void Lanelet2GlobalPlannerNode::send_global_path(
     new_segment.primitives.push_back(primitive);
     global_route.segments.push_back(new_segment);
   }
+
+  for (const auto & lane_id : lane_changes) {
+    // add data to the lane change optiosn for global path
+    autoware_auto_msgs::msg::MapPrimitive primitive;
+    primitive.id = lane_id;
+    primitive.primitive_type = lanelet2_global_planner->get_primitive_type(lane_id);
+
+    autoware_auto_msgs::msg::HADMapSegment new_segment;
+    new_segment.preferred_primitive_id = primitive.id;
+    new_segment.primitives.push_back(primitive);
+    global_route.secondary_segments.push_back(new_segment);
+  }
+
   // publish the global path
   global_path_pub_ptr->publish(global_route);
 }

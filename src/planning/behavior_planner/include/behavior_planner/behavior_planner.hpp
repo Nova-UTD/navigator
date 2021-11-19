@@ -24,7 +24,7 @@
 
 // Autoware packages
 #include <common/types.hpp>
-#include <autoware_auto_msgs/msg/had_map_route.hpp>
+#include <voltron_msgs/msg/had_map_route.hpp>
 #include <autoware_auto_msgs/msg/trajectory.hpp>
 #include <autoware_auto_msgs/msg/vehicle_state_command.hpp>
 #include <autoware_auto_msgs/msg/vehicle_kinematic_state.hpp>
@@ -52,7 +52,7 @@ constexpr const char Lane[] = "lane";
 }  // namespace PrimitiveType
 
 
-using autoware_auto_msgs::msg::HADMapRoute;
+using voltron_msgs::msg::HADMapRoute;
 using autoware_auto_msgs::msg::MapPrimitive;
 using autoware_auto_msgs::msg::RoutePoint;
 using State = autoware_auto_msgs::msg::VehicleKinematicState;

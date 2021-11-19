@@ -167,7 +167,7 @@ namespace autoware
         }
 
         // plan a route using lanelet2 lib
-        LaneletPath lanelet_path ;
+        LaneletPath lanelet_path;
         lanelet::Optional<Route> lanelet_route = get_lane_route(start_lanes, end_lanes, lanelet_path);
 
         // TODO: Route, Path to vectors
@@ -194,7 +194,8 @@ namespace autoware
 
         // Order of the lane changes doesn't matter but should be unique
         std::sort(lane_changes.begin(), lane_changes.end());
-        std::unique(lane_changes.begin(), lane_changes.end());
+        auto unique_it = std::unique(lane_changes.begin(), lane_changes.end());
+        lane_changes.resize(static_cast<size_t>(std::distance(lane_changes.begin(), unique_it)));
 
         return route.size() > 0;
       }

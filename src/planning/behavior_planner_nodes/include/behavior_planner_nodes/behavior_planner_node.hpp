@@ -28,6 +28,7 @@
 
 // Voltron packages
 #include <voltron_msgs/msg/gear.hpp>
+#include <voltron_msgs/msg/had_map_route.hpp>
 
 // autoware packages
 #include <common/types.hpp>
@@ -63,7 +64,7 @@ using autoware_auto_msgs::srv::ModifyTrajectory;
 using autoware_auto_msgs::msg::RoutePoint;
 using autoware_auto_msgs::msg::Trajectory;
 using autoware_auto_msgs::msg::TrajectoryPoint;
-using autoware_auto_msgs::msg::HADMapRoute;
+using voltron_msgs::msg::HADMapRoute;
 using autoware_auto_msgs::msg::VehicleStateCommand;
 using autoware_auto_msgs::msg::VehicleStateReport;
 using State = autoware_auto_msgs::msg::VehicleKinematicState;

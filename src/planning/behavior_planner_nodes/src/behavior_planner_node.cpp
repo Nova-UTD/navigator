@@ -27,6 +27,21 @@ namespace autoware
 namespace behavior_planner_nodes
 {
 
+// helper for message switch. If this file remains in use the types should be cleaned up better rather than using
+// this conversion.
+autoware_auto_msgs::msg::HADMapRoute map_route_voltron_to_autoware(const voltron_msgs::msg::HADMapRoute voltron_route)
+{
+  autoware_auto_msgs::msg::HADMapRoute autoware_route{};
+
+  autoware_route.header = voltron_route.header;
+  autoware_route.start_point = voltron_route.start_point;
+  autoware_route.goal_point = voltron_route.goal_point;
+  autoware_route.segments = voltron_route.segments;
+
+  return autoware_route;
+}
+
+
 BehaviorPlannerNode::BehaviorPlannerNode(const rclcpp::NodeOptions & options)
 :  Node("behavior_planner_node", options)
 {
@@ -217,7 +232,7 @@ void BehaviorPlannerNode::request_trajectory(const RouteWithType & route_with_ty
   const auto & planner_type = route_with_type.planner_type;
 
   auto action_goal = PlanTrajectoryAction::Goal();
-  action_goal.sub_route = route;
+  action_goal.sub_route = map_route_voltron_to_autoware(route);
 
   auto send_goal_options = rclcpp_action::Client<PlanTrajectoryAction>::SendGoalOptions();
   send_goal_options.goal_response_callback = std::bind(
@@ -414,6 +429,7 @@ void BehaviorPlannerNode::map_response(rclcpp::Client<HADMapService>::SharedFutu
   }
   m_debug_checkpoints_pub->publish(checkpoints);
 }
+
 }  // namespace behavior_planner_nodes
 }  // namespace autoware
 

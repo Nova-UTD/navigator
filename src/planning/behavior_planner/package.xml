@@ -10,6 +10,7 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_auto_cmake</buildtool_depend>
 
+  <depend>voltron_msgs</depend>
   <depend>autoware_auto_msgs</depend>
   <depend>autoware_auto_common</depend>
   <depend>autoware_auto_geometry</depend>

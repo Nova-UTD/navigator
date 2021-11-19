@@ -1,0 +1,5 @@
+std_msgs/Header header
+autoware_auto_msgs/RoutePoint start_point
+autoware_auto_msgs/RoutePoint goal_point
+autoware_auto_msgs/HADMapSegment[] segments
+autoware_auto_msgs/HADMapSegment[] secondary_segments
