@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name MCU_RaspberryPi_and_Boards)(type Legacy)(uri ${KIPRJMOD}/MCU_RaspberryPi_and_Boards.lib)(options "")(descr ""))
+  (lib (name sidecar)(type Legacy)(uri ${KIPRJMOD}/sidecar.lib)(options "")(descr ""))
+)

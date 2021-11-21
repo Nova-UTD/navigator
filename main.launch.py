@@ -72,6 +72,14 @@ def generate_launch_description():
         arguments=[interface]
     )
 
+    gnss = Node(
+        package='nova_gps',
+        executable='interface',
+        parameters=[],
+        remappings=[],
+        arguments=['/dev/i2c-8']
+    )
+
     # LOCALIZATION
     ndt = Node(
         package='ndt_nodes',
@@ -239,6 +247,7 @@ def generate_launch_description():
         # can,
         # epas_controller,
         # epas_reporter,
+        # gnss,
         svl_bridge,
         vehicle_bridge,
 
