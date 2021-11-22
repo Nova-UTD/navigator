@@ -37,7 +37,7 @@ public:
 
   bool request_complete() {
     if(! this->current_response.valid()) return false;
-    usleep(50);
+    usleep(1000);
     rclcpp::spin_some(this->node);
     return this->current_response.wait_for(0s) == std::future_status::ready;
   }

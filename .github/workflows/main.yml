@@ -24,4 +24,4 @@ jobs:
         run: sudo docker build . -t navigator
       
       - name: Run Tests
-        run: sudo docker run navigator bash -c "colcon test --packages-skip behavior_planner_nodes lgsvl_interface ndt_nodes voltron_can vt_steering_controller vt_vehicle_bridge vt_viz && colcon test-result"
+        run: sudo docker run navigator bash -c ". /opt/ros/foxy/setup.bash && . install/setup.bash && colcon test --packages-skip \$(echo \$(ros2 pkg list | grep _nodes)) voltron_can vt_steering_controller vt_vehicle_bridge vt_viz ne_raptor_interface && colcon test-result --verbose"
