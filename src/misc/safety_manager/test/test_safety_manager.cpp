@@ -11,6 +11,7 @@
 
 #include <gtest/gtest.h>
 #include <memory>
+#include <unistd.h>
 
 #include "rclcpp/rclcpp.hpp"
 #include "voltron_msgs/srv/safety_event.hpp"
@@ -52,6 +53,7 @@ TEST_F(TestSafetyManager, test_event) {
   message_to_send.description = "A test event";
   message_to_send.additional_data = "";
   test_client->send_request(message_to_send);
+  usleep(1000);
   rclcpp::spin_some(my_safety_manager);
   ASSERT_TRUE(test_client->request_complete());
 }
