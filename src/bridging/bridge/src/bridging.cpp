@@ -1,3 +1,14 @@
+/*
+ * Package:   bridge
+ * Filename:  briding.hpp
+ * Author:    Raghav Pillai
+ * Email:     raghavpillai101@gmail.com
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
+
+// Creation of messages to web interface for Nova
+
 #include <iostream>
 #include <chrono>
 #include <string>
