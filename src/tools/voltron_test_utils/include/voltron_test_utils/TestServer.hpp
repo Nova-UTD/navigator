@@ -32,13 +32,13 @@ public:
   }
 
   bool has_received_request() {
-    usleep(50);
+    usleep(1000);
     rclcpp::spin_some(this->node);
     return this->node->has_received_request();
   }
 
   RequestType get_received_request() {
-    usleep(50);
+    usleep(1000);
     rclcpp::spin_some(this->node);
     return this->node->get_received_request();
   }
