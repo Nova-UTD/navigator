@@ -47,6 +47,8 @@ lanelet::LaneletMapPtr getALaneletMapWithLaneId(
   return lanelet::utils::createMap({ll});
 }
 
+//returns a HAD map route with one segment that starts at (0,0) and goes to (0,length)
+//this lets us test the path planner on a very simple route with easily predictable output
 HADMapRoute getARoute(const int64_t lane_id, const float32_t length)
 {
   HADMapRoute had_map_route;
