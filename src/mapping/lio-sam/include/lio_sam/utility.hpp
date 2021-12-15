@@ -92,7 +92,7 @@ public:
     // Lidar Sensor Configuration
     SensorType sensor = SensorType::RINGLESS_VLP_16; // TODO: Move to param file (WSH)
     float fov_deg = 20.0;
-    float fov_below_middle_deg = 10;
+    float fov_below_middle_deg = 10; // This is the portion of the Lidar scan (fov_deg) below the horizon
     int N_SCAN;
     int Horizon_SCAN;
     int downsampleRate;

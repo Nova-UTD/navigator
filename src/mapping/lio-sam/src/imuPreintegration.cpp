@@ -387,6 +387,7 @@ public:
             // pop and integrate imu data that is between two optimizations
             sensor_msgs::msg::Imu *thisImu = &imuQueOpt.front();
             double imuTime = stamp2Sec(thisImu->header.stamp);
+            
             if (imuTime < currentCorrectionTime - delta_t)
             {
                 double dt = (lastImuT_opt < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_opt);
@@ -472,9 +473,9 @@ public:
     bool failureDetection(const gtsam::Vector3& velCur, const gtsam::imuBias::ConstantBias& biasCur)
     {
         Eigen::Vector3f vel(velCur.x(), velCur.y(), velCur.z());
-        if (vel.norm() > 30)
+        if (vel.norm() > 40)
         {
-            RCLCPP_WARN(get_logger(), "Large velocity, reset IMU-preintegration!");
+            RCLCPP_WARN_STREAM(get_logger(), "Large velocity, reset IMU-preintegration! v="<<vel.norm());
             return true;
         }
 

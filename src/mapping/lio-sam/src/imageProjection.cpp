@@ -4,7 +4,7 @@
 
 struct VelodynePointXYZIRT
 {
-    PCL_ADD_POINT4D
+    PCL_ADD_POINT4D // Adds XYZ and padding https://pointclouds.org/documentation/tutorials/adding_custom_ptype.html#id6
     PCL_ADD_INTENSITY;
     uint16_t ring;
     float time;
@@ -13,6 +13,18 @@ struct VelodynePointXYZIRT
 POINT_CLOUD_REGISTER_POINT_STRUCT (VelodynePointXYZIRT,
     (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity)
     (uint16_t, ring, ring) (float, time, time)
+)
+
+struct RinglessVelodynePointXYZIT
+{
+    PCL_ADD_POINT4D // Adds XYZ and padding https://pointclouds.org/documentation/tutorials/adding_custom_ptype.html#id6
+    PCL_ADD_INTENSITY;
+    float timestamp; // "timestamp" is what SVL calls it
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+} EIGEN_ALIGN16;
+POINT_CLOUD_REGISTER_POINT_STRUCT (RinglessVelodynePointXYZIT,
+    (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity)
+    (float, timestamp, timestamp)
 )
 
 struct OusterPointXYZIRT {
@@ -72,6 +84,7 @@ private:
 
     pcl::PointCloud<PointXYZIRT>::Ptr laserCloudIn;
     pcl::PointCloud<OusterPointXYZIRT>::Ptr tmpOusterCloudIn;
+    pcl::PointCloud<RinglessVelodynePointXYZIT>::Ptr inputCloud;
     pcl::PointCloud<PointType>::Ptr   fullCloud;
     pcl::PointCloud<PointType>::Ptr   extractedCloud;
 
@@ -135,6 +148,7 @@ public:
     {
         laserCloudIn.reset(new pcl::PointCloud<PointXYZIRT>());
         tmpOusterCloudIn.reset(new pcl::PointCloud<OusterPointXYZIRT>());
+        inputCloud.reset(new pcl::PointCloud<RinglessVelodynePointXYZIT>());
         fullCloud.reset(new pcl::PointCloud<PointType>());
         extractedCloud.reset(new pcl::PointCloud<PointType>());
 
@@ -175,25 +189,81 @@ public:
     {
         sensor_msgs::msg::Imu thisImu = imuConverter(*imuMsg); // Perform extrinsic rotation on IMU reading
 
+        const int MAX_ACCEL = 10;
+
+        if (thisImu.linear_acceleration.x > MAX_ACCEL) {
+            RCLCPP_WARN_STREAM(get_logger(), "x linear accel out of bounds! Was "<<thisImu.linear_acceleration.x);
+            thisImu.linear_acceleration.x = MAX_ACCEL;
+        }
+        if (thisImu.linear_acceleration.x < MAX_ACCEL*-1) {
+            RCLCPP_WARN_STREAM(get_logger(), "x linear accel out of bounds! Was "<<thisImu.linear_acceleration.x);
+            thisImu.linear_acceleration.x = MAX_ACCEL*-1;
+        }
+        if (thisImu.linear_acceleration.y > MAX_ACCEL) {
+            RCLCPP_WARN_STREAM(get_logger(), "y linear accel out of bounds! Was "<<thisImu.linear_acceleration.y);
+            thisImu.linear_acceleration.y = MAX_ACCEL;
+        }
+        if (thisImu.linear_acceleration.y < MAX_ACCEL*-1) {
+            RCLCPP_WARN_STREAM(get_logger(), "y linear accel out of bounds! Was "<<thisImu.linear_acceleration.y);
+            thisImu.linear_acceleration.y = MAX_ACCEL*-1;
+        }
+        if (thisImu.linear_acceleration.z > MAX_ACCEL) {
+            RCLCPP_WARN_STREAM(get_logger(), "z linear accel out of bounds! Was "<<thisImu.linear_acceleration.z);
+            thisImu.linear_acceleration.z = MAX_ACCEL;
+        }
+        if (thisImu.linear_acceleration.z < MAX_ACCEL*-1) {
+            RCLCPP_WARN_STREAM(get_logger(), "z linear accel out of bounds! Was "<<thisImu.linear_acceleration.z);
+            thisImu.linear_acceleration.z = MAX_ACCEL*-1;
+        }
+
         std::lock_guard<std::mutex> lock1(imuLock); // ???
-        imuQueue.push_back(thisImu); // Add IMU msg to our queue
+        // int imuSmoothSize = 5;
+        // if (imuQueue.size() > imuSmoothSize) { // Perform moving average with window size=5
+        //     sensor_msgs::msg::Imu smoothImu;
+        //     smoothImu.header = thisImu.header;
+        //     smoothImu.orientation_covariance = thisImu.orientation_covariance;
+        //     smoothImu.linear_acceleration_covariance = thisImu.linear_acceleration_covariance;
+        //     double avg_angular_v_x, avg_angular_v_y, avg_angular_v_z = 0;
+        //     double avg_linear_a_x, avg_linear_a_y,avg_linear_a_z = 0;
+
+            
+        //     for (int i = 0; i < imuSmoothSize-1; i++) {
+        //         avg_angular_v_x += imuQueue[i].angular_velocity.x;
+        //         avg_angular_v_y += imuQueue[i].angular_velocity.y;
+        //         avg_angular_v_z += imuQueue[i].angular_velocity.z;
+        //         avg_linear_a_x += imuQueue[i].linear_acceleration.x;
+        //         avg_linear_a_y += imuQueue[i].linear_acceleration.y;
+        //         avg_linear_a_z += imuQueue[i].linear_acceleration.z;
+        //     }
+        //     avg_angular_v_x = avg_angular_v_x/imuSmoothSize;
+        //     avg_angular_v_y = avg_angular_v_y/imuSmoothSize;
+        //     avg_angular_v_z = avg_angular_v_z/imuSmoothSize;
+        //     smoothImu.angular_velocity.x = avg_angular_v_x;
+        //     smoothImu.angular_velocity.y = avg_angular_v_y;
+        //     smoothImu.angular_velocity.z = avg_angular_v_z;
+        //     imuQueue.push_back(smoothImu); // Add IMU msg to our queue
+        // }
+        // else {
+        //     imuQueue.push_back(thisImu);
+        // }
+        imuQueue.push_back(thisImu);
 
         // debug IMU data
-        cout << std::setprecision(6);
-        cout << "IMU acc: " << endl;
-        cout << "x: " << thisImu.linear_acceleration.x << 
-              ", y: " << thisImu.linear_acceleration.y << 
-              ", z: " << thisImu.linear_acceleration.z << endl;
-        cout << "IMU gyro: " << endl;
-        cout << "x: " << thisImu.angular_velocity.x << 
-              ", y: " << thisImu.angular_velocity.y << 
-              ", z: " << thisImu.angular_velocity.z << endl;
-        double imuRoll, imuPitch, imuYaw;
-        tf2::Quaternion orientation;
-        tf2::fromMsg(thisImu.orientation, orientation);
-        tf2::Matrix3x3(orientation).getRPY(imuRoll, imuPitch, imuYaw);
-        cout << "IMU roll pitch yaw: " << endl;
-        cout << "roll: " << imuRoll << ", pitch: " << imuPitch << ", yaw: " << imuYaw << endl << endl;
+        // cout << std::setprecision(6);
+        // cout << "IMU acc: " << endl;
+        // cout << "x: " << thisImu.linear_acceleration.x << 
+        //       ", y: " << thisImu.linear_acceleration.y << 
+        //       ", z: " << thisImu.linear_acceleration.z << endl;
+        // cout << "IMU gyro: " << endl;
+        // cout << "x: " << thisImu.angular_velocity.x << 
+        //       ", y: " << thisImu.angular_velocity.y << 
+        //       ", z: " << thisImu.angular_velocity.z << endl;
+        // double imuRoll, imuPitch, imuYaw;
+        // tf2::Quaternion orientation;
+        // tf2::fromMsg(thisImu.orientation, orientation);
+        // tf2::Matrix3x3(orientation).getRPY(imuRoll, imuPitch, imuYaw);
+        // cout << "IMU roll pitch yaw: " << endl;
+        // cout << "roll: " << imuRoll << ", pitch: " << imuPitch << ", yaw: " << imuYaw << endl << endl;
     }
 
     void odometryHandler(const nav_msgs::msg::Odometry::SharedPtr odometryMsg)
@@ -258,31 +328,54 @@ public:
 
         // Here we cover for a lack of ring data by adding some fake (manually calculated) values
         else if (sensor == SensorType::RINGLESS_VLP_16) {
-            pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn);
-            for (size_t i = 0; i < laserCloudIn->size(); i++)
+            // pcl::PointCloud<RinglessVelodynePointXYZIT>::Ptr inputCloud;
+            // RCLCPP_INFO(get_logger(),"A");
+            pcl::moveFromROSMsg(currentCloudMsg, *inputCloud);
+            // RCLCPP_INFO(get_logger(),"B");
+            laserCloudIn->points.resize(inputCloud->size());
+            // RCLCPP_INFO(get_logger(),"C");
+
+            for (size_t i = 0; i < inputCloud->size(); i++)
             {
                 int ring_count = 16;
+                // RCLCPP_INFO(get_logger(),"D");
 
-                auto point = laserCloudIn->points[i];
+                auto &src = inputCloud->points[i];
+                auto &dst = laserCloudIn->points[i];
 
+                dst.x = src.x;
+                dst.y = src.y;
+                dst.z = src.z;
+                dst.intensity = src.intensity;
+                
+                dst.time = src.timestamp;
                 // Fake a ring value
                 // Ring value is from 0 to 15, with 0 being lowest and 15 being highest
                 
                 // Find pitch of point relative to sensor height, = atan(x/sqrt(x^2+y^2))
-                double pitch_degrees = atan2(point.z, sqrt(pow(point.x,2)+pow(point.y,2))) * 180/3.14159265;
+                double pitch_degrees = atan2(src.z, sqrt(pow(src.x,2)+pow(src.y,2))) * 180/3.14159265;
                 // Find pitch of point from bottom of FOV
                 double pitch_from_bottom = pitch_degrees+fov_below_middle_deg;
                 // RCLCPP_DEBUG_STREAM(get_logger(), "Center ("<<point.x<<","<<point.y<<","<<point.z<<") is "<<pitch_degrees<<"; "<<pitch_from_bottom);
                 // Map this from [0,FOV]->[0,15]
-                int ring_number = floor(pitch_from_bottom * (ring_count) / fov_deg);
-                RCLCPP_INFO_STREAM(get_logger(), "Center ("<<point.x<<","<<point.y<<","<<point.z<<") is "<<pitch_degrees<<"; "<<pitch_from_bottom<<" "<<ring_number);
+                int ring_number = round((pitch_from_bottom/fov_deg)*16); // This will always round DOWN. 
+                // int ring_number = floor(pitch_from_bottom * (ring_count) / fov_deg);
+                // RCLCPP_INFO_STREAM(get_logger(), "("<<src.x<<","<<src.y<<","<<src.z<<")-> atan("<<src.z<<"/"<<sqrt(pow(src.x,2)+pow(src.y,2))<<"+bot="<<pitch_from_bottom<<" "<<ring_number);
                 if(ring_number>=(ring_count-1)) {
                     // RCLCPP_ERROR_STREAM(get_logger(), "Ring number "<<ring_number<<" is above "<<(ring_count-1)<<". Rounding down.");
                     ring_number = 15;
                 }
 
-                point.ring = ring_number;
+                dst.ring = ring_number;
             }
+            // Debug stuff
+            // RCLCPP_INFO_STREAM(get_logger(),laserCloudIn->points[0].ring);
+            // pcl::io::savePCDFile ("test.pcd", *laserCloudIn);
+            // for (size_t i = 0; i < laserCloudIn->size(); i++)
+            // {
+            //     auto &dst = laserCloudIn->points[i];
+                // RCLCPP_INFO_STREAM(get_logger(), "("<<dst.x<<","<<dst.y<<","<<dst.z<<","<<dst.intensity<<","<<dst.ring<<","<<dst.time<<")");
+            // }
         }
         else
         {
@@ -303,24 +396,24 @@ public:
         }
 
         // check ring channel
-        static int ringFlag = 0;
-        if (ringFlag == 0)
-        {
-            ringFlag = -1;
-            for (int i = 0; i < (int)currentCloudMsg.fields.size(); ++i)
-            {
-                if (currentCloudMsg.fields[i].name == "ring")
-                {
-                    ringFlag = 1;
-                    break;
-                }
-            }
-            if (ringFlag == -1)
-            {
-                RCLCPP_ERROR(get_logger(), "Point cloud ring channel not available. Is your sensor type set to 'ringless'?"); // WSH
-                rclcpp::shutdown();
-            }
-        }
+        // static int ringFlag = 0;
+        // if (ringFlag == 0)
+        // {
+        //     ringFlag = -1;
+        //     for (int i = 0; i < (int)currentCloudMsg.fields.size(); ++i)
+        //     {
+        //         if (currentCloudMsg.fields[i].name == "ring")
+        //         {
+        //             ringFlag = 1;
+        //             break;
+        //         }
+        //     }
+        //     if (ringFlag == -1)
+        //     {
+        //         RCLCPP_ERROR(get_logger(), "Point cloud ring channel not available. Is your sensor type set to 'ringless'?"); // WSH
+        //         rclcpp::shutdown();
+        //     }
+        // }
 
         // check point time
         if (deskewFlag == 0)

@@ -5,7 +5,7 @@
     pointCloudTopic: "/lidar_front/points_raw"      # Point cloud data
     imuTopic: "/imu/imu_raw"                        # IMU data
     odomTopic: "odometry/imu"                    # IMU pre-preintegration odometry, same frequency as IMU
-    gpsTopic: "odometry/gpsz"                    # GPS odometry topic from navsat, see module_navsat.launch file
+    gpsTopic: "/lgsvl/gnss_odom"                    # GPS odometry topic from navsat, see module_navsat.launch file
 
     # Frames
     lidarFrame: "lidar_link"
@@ -15,7 +15,7 @@
 
     # GPS Settings
     useImuHeadingInitialization: false           # if using GPS data, set to "true"
-    useGpsElevation: false                       # if GPS elevation is bad, set to "false"
+    useGpsElevation: true                       # if GPS elevation is bad, set to "false"
     gpsCovThreshold: 2.0                         # m^2, threshold for using GPS data
     poseCovThreshold: 25.0                       # m^2, threshold for using GPS data
 
@@ -38,16 +38,18 @@
     imuAccBiasN: 6.4356659353532566e-05
     imuGyrBiasN: 3.5640318696367613e-05
 
+    imuSmoothSize: 5
+
     imuGravity: 9.80511
     imuRPYWeight: 0.01
 
     extrinsicTrans:  [ 0.0,  0.0,  0.0 ]
     extrinsicRot:    [ 1.0,  0.0,  0.0,
-                       0.0, -1.0,  0.0,
-                       0.0,  0.0, -1.0 ]
+                       0.0,  1.0,  0.0,
+                       0.0,  0.0,  1.0 ]
     extrinsicRPY: [ 1.0,  0.0,  0.0,
-                    0.0, -1.0,  0.0,
-                    0.0,  0.0, -1.0 ]
+                    0.0,  1.0,  0.0,
+                    0.0,  0.0,  1.0 ] # Assume IMU shares axes with base_link, so no rotation
 
     # LOAM feature threshold
     edgeThreshold: 1.0
@@ -61,8 +63,8 @@
     mappingSurfLeafSize: 0.4                      # default: 0.4 - outdoor, 0.2 - indoor
 
     # robot motion constraint (in case you are using a 2D robot)
-    z_tollerance: 1000.0                          # meters
-    rotation_tollerance: 1000.0                   # radians
+    z_tollerance: 50.0                          # meters
+    rotation_tollerance: 0.35                   # radians
 
     # CPU Params
     numberOfCores: 4                              # number of cores for mapping optimization
