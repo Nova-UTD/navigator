@@ -276,14 +276,16 @@ public:
         gpsQueue.push_back(*gpsMsg);
     }
 
-    void pointAssociateToMap(PointType const * const pi, PointType * const po)
+    // What is this? point_in, point_out = PointXYZI
+    void pointAssociateToMap(PointType const * const point_in, PointType * const point_out)
     {
-        po->x = transPointAssociateToMap(0,0) * pi->x + transPointAssociateToMap(0,1) * pi->y + transPointAssociateToMap(0,2) * pi->z + transPointAssociateToMap(0,3);
-        po->y = transPointAssociateToMap(1,0) * pi->x + transPointAssociateToMap(1,1) * pi->y + transPointAssociateToMap(1,2) * pi->z + transPointAssociateToMap(1,3);
-        po->z = transPointAssociateToMap(2,0) * pi->x + transPointAssociateToMap(2,1) * pi->y + transPointAssociateToMap(2,2) * pi->z + transPointAssociateToMap(2,3);
-        po->intensity = pi->intensity;
+        point_out->x = transPointAssociateToMap(0,0) * point_in->x + transPointAssociateToMap(0,1) * point_in->y + transPointAssociateToMap(0,2) * point_in->z + transPointAssociateToMap(0,3);
+        point_out->y = transPointAssociateToMap(1,0) * point_in->x + transPointAssociateToMap(1,1) * point_in->y + transPointAssociateToMap(1,2) * point_in->z + transPointAssociateToMap(1,3);
+        point_out->z = transPointAssociateToMap(2,0) * point_in->x + transPointAssociateToMap(2,1) * point_in->y + transPointAssociateToMap(2,2) * point_in->z + transPointAssociateToMap(2,3);
+        point_out->intensity = point_in->intensity;
     }
 
+    // Create transformed version of input cloud using provided tf, as expected
     pcl::PointCloud<PointType>::Ptr transformPointCloud(pcl::PointCloud<PointType>::Ptr cloudIn, PointTypePose* transformIn)
     {
         pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
@@ -291,9 +293,11 @@ public:
         int cloudSize = cloudIn->size();
         cloudOut->resize(cloudSize);
 
+        // Convert transformIn: pointXYZIRT to Eigen::Affine3f
         Eigen::Affine3f transCur = pcl::getTransformation(transformIn->x, transformIn->y, transformIn->z, transformIn->roll, transformIn->pitch, transformIn->yaw);
         
-        #pragma omp parallel for num_threads(numberOfCores)
+        // Transform each point in cloud, assign to cloudOut
+        #pragma omp parallel for num_threads(numberOfCores) //Optimization
         for (int i = 0; i < cloudSize; ++i)
         {
             const auto &pointFrom = cloudIn->points[i];
@@ -380,7 +384,7 @@ public:
 
     void publishGlobalMap()
     {
-        if (pubLaserCloudSurround->get_subscription_count() == 0)
+        if (pubLaserCloudSurround->get_subscription_count() == 0) // Optimization
             return;
 
         if (cloudKeyPoses3D->points.empty() == true)
@@ -393,8 +397,8 @@ public:
         pcl::PointCloud<PointType>::Ptr globalMapKeyFramesDS(new pcl::PointCloud<PointType>());
 
         // kd-tree to find near key frames to visualize
-        std::vector<int> pointSearchIndGlobalMap;
-        std::vector<float> pointSearchSqDisGlobalMap;
+        std::vector<int> pointSearchIndGlobalMap; //Indices map for kd tree
+        std::vector<float> pointSearchSqDisGlobalMap; // Square distance
         // search near key frames to visualize
         mtx.lock();
         kdtreeGlobalMap->setInputCloud(cloudKeyPoses3D);
