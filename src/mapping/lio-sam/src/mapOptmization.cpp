@@ -16,6 +16,8 @@
 
 #include <gtsam/nonlinear/ISAM2.h>
 
+#include <std_srvs/srv/trigger.hpp>
+
 using namespace gtsam;
 
 // symbol_shorthand is part of gtsam. See http://docs.ros.org/en/kinetic/api/gtsam/html/namespacegtsam_1_1symbol__shorthand.html
@@ -76,6 +78,7 @@ public:
     rclcpp::Subscription<lio_sam::msg::CloudInfo>::SharedPtr subCloud; // Sub to feature p-clouds from featureExtraction
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subGPS; // Sub to GPS odom
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr subLoop;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr saveMapService;
 
     std::deque<nav_msgs::msg::Odometry> gpsQueue;
     lio_sam::msg::CloudInfo cloudInfo;
@@ -175,6 +178,11 @@ public:
         subLoop = create_subscription<std_msgs::msg::Float64MultiArray>(
             "lio_loop/loop_closure_detection", qos,
             std::bind(&mapOptimization::loopInfoHandler, this, std::placeholders::_1));
+        saveMapService = create_service<std_srvs::srv::Trigger>("save_map", std::bind(&mapOptimization::saveMap, this, std::placeholders::_1, std::placeholders::_2));
+    //     this->create_service<autoware_auto_msgs::srv::HADMapService>(
+    // "HAD_Map_Service", std::bind(
+    //   &Lanelet2MapProviderNode::handle_request, this,
+    //   std::placeholders::_1, std::placeholders::_2));
 
         pubHistoryKeyFrames = create_publisher<sensor_msgs::msg::PointCloud2>("lio_sam/mapping/icp_loop_closure_history_cloud", 1);
         pubIcpKeyFrames = create_publisher<sensor_msgs::msg::PointCloud2>("lio_sam/mapping/icp_loop_closure_history_cloud", 1);
@@ -343,15 +351,8 @@ public:
         return thisPose6D;
     }
 
-    void visualizeGlobalMapThread()
-    {
-        rclcpp::Rate rate(0.2);
-        while (rclcpp::ok()){
-            rate.sleep();
-            publishGlobalMap();
-        }
-        if (savePCD == false)
-            return;
+    void saveMap(const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+          std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
         cout << "****************************************************" << endl;
         cout << "Saving map to pcd files ..." << endl;
         savePCDDirectory = std::getenv("HOME") + savePCDDirectory;
@@ -371,15 +372,58 @@ public:
         }
         downSizeFilterCorner.setInputCloud(globalCornerCloud);
         downSizeFilterCorner.filter(*globalCornerCloudDS);
-        pcl::io::savePCDFileASCII(savePCDDirectory + "cloudCorner.pcd", *globalCornerCloudDS);
+        std::string rand_id = std::to_string(rand());
+        pcl::io::savePCDFileASCII(savePCDDirectory + "/cloudCorner.pcd", *globalCornerCloudDS);
         downSizeFilterSurf.setInputCloud(globalSurfCloud);
         downSizeFilterSurf.filter(*globalSurfCloudDS);
-        pcl::io::savePCDFileASCII(savePCDDirectory + "cloudSurf.pcd", *globalSurfCloudDS);
+        pcl::io::savePCDFileASCII(savePCDDirectory + "/cloudSurf.pcd", *globalSurfCloudDS);
         *globalMapCloud += *globalCornerCloud;
         *globalMapCloud += *globalSurfCloud;
-        pcl::io::savePCDFileASCII(savePCDDirectory + "cloudGlobal.pcd", *globalMapCloud);
+        pcl::io::savePCDFileASCII(savePCDDirectory + "/cloudGlobal.pcd", *globalMapCloud);
         cout << "****************************************************" << endl;
         cout << "Saving map to pcd files completed" << endl;
+        response->success = true;
+        response->message = "Successfully saved map to "+savePCDDirectory;
+    }
+
+    void visualizeGlobalMapThread()
+    {
+        rclcpp::Rate rate(0.2);
+        while (rclcpp::ok()){
+            rate.sleep();
+            publishGlobalMap();
+        }
+        if (savePCD == false)
+            return;
+        // cout << "****************************************************" << endl;
+        // cout << "Saving map to pcd files ..." << endl;
+        // savePCDDirectory = std::getenv("HOME") + savePCDDirectory;
+        // int unused = system((std::string("exec rm -r ") + savePCDDirectory).c_str());
+        // unused = system((std::string("mkdir ") + savePCDDirectory).c_str());
+        // pcl::io::savePCDFileASCII(savePCDDirectory + "trajectory.pcd", *cloudKeyPoses3D);
+        // pcl::io::savePCDFileASCII(savePCDDirectory + "transformations.pcd", *cloudKeyPoses6D);
+        // pcl::PointCloud<PointType>::Ptr globalCornerCloud(new pcl::PointCloud<PointType>());
+        // pcl::PointCloud<PointType>::Ptr globalCornerCloudDS(new pcl::PointCloud<PointType>());
+        // pcl::PointCloud<PointType>::Ptr globalSurfCloud(new pcl::PointCloud<PointType>());
+        // pcl::PointCloud<PointType>::Ptr globalSurfCloudDS(new pcl::PointCloud<PointType>());
+        // pcl::PointCloud<PointType>::Ptr globalMapCloud(new pcl::PointCloud<PointType>());
+        // for (int i = 0; i < (int)cloudKeyPoses3D->size(); i++) {
+        //     *globalCornerCloud += *transformPointCloud(cornerCloudKeyFrames[i],  &cloudKeyPoses6D->points[i]);
+        //     *globalSurfCloud   += *transformPointCloud(surfCloudKeyFrames[i],    &cloudKeyPoses6D->points[i]);
+        //     cout << "\r" << std::flush << "Processing feature cloud " << i << " of " << cloudKeyPoses6D->size() << " ...";
+        // }
+        // downSizeFilterCorner.setInputCloud(globalCornerCloud);
+        // downSizeFilterCorner.filter(*globalCornerCloudDS);
+        // std::string rand_id = std::to_string(rand());
+        // pcl::io::savePCDFileASCII(savePCDDirectory + "cloudCorner.pcd"+rand_id, *globalCornerCloudDS);
+        // downSizeFilterSurf.setInputCloud(globalSurfCloud);
+        // downSizeFilterSurf.filter(*globalSurfCloudDS);
+        // pcl::io::savePCDFileASCII(savePCDDirectory + "cloudSurf.pcd"+rand_id, *globalSurfCloudDS);
+        // *globalMapCloud += *globalCornerCloud;
+        // *globalMapCloud += *globalSurfCloud;
+        // pcl::io::savePCDFileASCII(savePCDDirectory + "cloudGlobal.pcd"+rand_id, *globalMapCloud);
+        // cout << "****************************************************" << endl;
+        // cout << "Saving map to pcd files completed" << endl;
     }
 
     void publishGlobalMap()
