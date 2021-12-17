@@ -78,6 +78,7 @@ void GPSInterfaceNode::send_pose() {
   this->gps_interface->gather_messages();
 
   while(this->gps_interface->has_nmea_message()) {
+      RCLCPP_INFO(get_logger(), "Found NMEA message!");
       NMEAMessage msg = *this->gps_interface->get_nmea_message();
       if(!found_gga && msg.substr(3, 3) == "GGA") {
         gga = msg;
@@ -90,9 +91,9 @@ void GPSInterfaceNode::send_pose() {
   }
   if(found_gga && found_vtg) {
     geometry_msgs::msg::PoseWithCovarianceStamped message;
-    message.header.frame_id = "/earth";
+    // message.header.frame_id = "/earth";
     // for correctness, we should use the utc from the message.
-    message.header.stamp = rclcpp::Clock().now();
+    // message.header.stamp = rclcpp::Clock().now();
     std::vector<std::string> frames_gga;
     std::vector<std::string> frames_vtg;
 
@@ -104,6 +105,7 @@ void GPSInterfaceNode::send_pose() {
     
     if(frames_gga[6] == "0") {
       // reject as no lock.
+      RCLCPP_INFO(get_logger(), "NMEA message rejected-- No lock.");
       return;
     }
     // warning: we assume NW
@@ -162,10 +164,9 @@ void GPSInterfaceNode::send_pose() {
     // this->heading_publisher->publish(hdg);
     // this->velocity_publisher->publish(vel);
     
-    auto odom_msg = nav_msgs::msg::Odometry();
-    odom_msg.header.stamp.sec = this->get_clock()->now().seconds();
-    odom_msg.header.stamp.nanosec = this->get_clock()->now().nanoseconds();
+    nav_msgs::msg::Odometry odom_msg;
     odom_msg.header.frame_id = "/earth";
+    odom_msg.header.stamp = rclcpp::Clock().now();
 
     odom_msg.pose.pose.position = gps_position;
 
@@ -179,6 +180,8 @@ void GPSInterfaceNode::send_pose() {
     // TODO: Add angular components from GPS IMU. WSH.
     odom_msg.twist.twist.linear.x = sin(heading_rad) * speed;
     odom_msg.twist.twist.linear.y = cos(heading_rad) * speed;
-    odom_msg.twist.twist.linear.z = 0; // Assume that the car is travelling on a level plane.
+    odom_msg.twist.twist.linear.z = 0; // Assume that the car is traveling on a level plane.
+    RCLCPP_INFO(get_logger(), "Publishing GPS message.");
+    this->odometry_publisher->publish(odom_msg);
   }
 }

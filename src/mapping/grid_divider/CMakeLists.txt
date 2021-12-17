@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(hubble)
+project(grid_divider)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -22,13 +22,13 @@ ament_auto_find_build_dependencies()
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-add_executable(hubble_exe src/hubble_exe.cpp)
-target_include_directories(hubble_exe PUBLIC
+add_executable(grid_divider_exe src/grid_divider_exe.cpp)
+target_include_directories(grid_divider_exe PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(
-  hubble_exe
+  grid_divider_exe
   rclcpp
   nav_msgs
   geometry_msgs
@@ -36,7 +36,7 @@ ament_target_dependencies(
   PCL
 )
 
-install(TARGETS hubble_exe
+install(TARGETS grid_divider_exe
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

@@ -355,9 +355,10 @@ public:
           std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
         cout << "****************************************************" << endl;
         cout << "Saving map to pcd files ..." << endl;
-        savePCDDirectory = std::getenv("HOME") + savePCDDirectory;
-        int unused = system((std::string("exec rm -r ") + savePCDDirectory).c_str());
-        unused = system((std::string("mkdir ") + savePCDDirectory).c_str());
+        int timestamp = this->get_clock()->now().seconds();
+        savePCDDirectory = std::getenv("HOME") + savePCDDirectory + std::to_string(timestamp) + "/";
+        int unused = system((std::string("exec rm -r ") + savePCDDirectory).c_str()); // Clear existing directory
+        unused = system((std::string("mkdir ") + savePCDDirectory).c_str()); // Create new directory
         pcl::io::savePCDFileASCII(savePCDDirectory + "trajectory.pcd", *cloudKeyPoses3D);
         pcl::io::savePCDFileASCII(savePCDDirectory + "transformations.pcd", *cloudKeyPoses6D);
         pcl::PointCloud<PointType>::Ptr globalCornerCloud(new pcl::PointCloud<PointType>());
@@ -372,7 +373,6 @@ public:
         }
         downSizeFilterCorner.setInputCloud(globalCornerCloud);
         downSizeFilterCorner.filter(*globalCornerCloudDS);
-        std::string rand_id = std::to_string(rand());
         pcl::io::savePCDFileASCII(savePCDDirectory + "/cloudCorner.pcd", *globalCornerCloudDS);
         downSizeFilterSurf.setInputCloud(globalSurfCloud);
         downSizeFilterSurf.filter(*globalSurfCloudDS);
