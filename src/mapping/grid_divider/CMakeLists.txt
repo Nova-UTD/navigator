@@ -34,6 +34,7 @@ ament_target_dependencies(
   geometry_msgs
   sensor_msgs
   PCL
+  PDAL
 )
 
 install(TARGETS grid_divider_exe

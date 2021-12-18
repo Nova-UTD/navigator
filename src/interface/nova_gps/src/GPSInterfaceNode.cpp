@@ -70,6 +70,9 @@ inline void tokenize(Nova::GPS::NMEAMessage msg, std::vector<std::string> & vec)
 }
 
 void GPSInterfaceNode::send_pose() {
+  // Check interface for new messages
+  this->gps_interface->gather_messages();
+
   bool found_gga = false;
   bool found_vtg = false;
   NMEAMessage gga;

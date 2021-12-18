@@ -5,6 +5,54 @@ import numpy as np
 from tqdm import tqdm
 import math
 import os, pathlib
+import json
+import subprocess
+
+MIN_FILTER_SIZE = 500 # Number of points that cell must contain for it to be filtered
+
+PIPELINE_STR = """
+{
+    "pipeline":[
+        {
+            "type":"readers.las",
+            "filename":"tmp.las"
+        },
+        {
+            "type":"filters.assign",
+            "assignment":"Classification[:]=0"
+        },
+        {
+            "type":"filters.elm"
+        },
+        {
+            "type":"filters.outlier"
+        },
+        {
+            "type":"filters.smrf",
+            "ignore":"Classification[7:7]",
+            "slope":0.2,
+            "window":16,
+            "threshold":0.45,
+            "scalar":1.2
+        },
+        {
+            "type":"filters.range",
+            "limits":"Classification![2:2]"
+        },
+        {
+            "type":"filters.range",
+            "limits":"Classification![7:7]"
+        },
+        {
+            "type":"writers.pcd",
+            "filename":"res.pcd",
+            "order": "X,Y,Z",
+            "keep_unspecified": false
+        }
+    ]
+}
+"""
+pipeline_json = json.loads(PIPELINE_STR)
 
 def main(argv):
     if len(sys.argv) < 3:
@@ -12,6 +60,7 @@ def main(argv):
         sys.exit(2)
     filename = sys.argv[1]
     cellSize = int(sys.argv[2])
+
     # print(filename)
     print("Reading from file. This might take a while...")
     points = np.loadtxt(filename, skiprows=11)
@@ -26,6 +75,7 @@ def main(argv):
     # Starting with the min corner (min x, min y)
     cellCorner = [min_x, min_y]
     cell_i = 0
+    rejected_count = 0
     cell_width = math.ceil((max_x/cellSize))
     for i in tqdm(range(cell_width)): # Cell columns (x)
         points_in_column_mask = (points[:,0]>=cellCorner[0]) & \
@@ -42,20 +92,32 @@ def main(argv):
             points_in_cell = points_in_column[points_in_cell_mask]
             #print("Writing cell to {}_{}.pcd".format(cell_i, cell_j))
             saveToPcd(points_in_cell, "{}_{}.pcd".format(cell_i, cell_j))
+            if points_in_cell.size > MIN_FILTER_SIZE:
+                # print(points_in_cell.size)
+                removeGroundPointsWithPDAL("{}_{}.pcd".format(cell_i, cell_j))
+            else:
+                rejected_count += 1
             cell_j += 1
             cellCorner[1] += cellSize
         cell_i += 1
         cellCorner[0] += cellSize
-    print(cell_i, cell_j)
+    print("Generated {}x{} grid, with {}/{} cells unfiltered".format(cell_i, cell_j, rejected_count, cell_i*cell_j))
 
 def removeGroundPointsWithPDAL(filename):
-    # Get path to pipeline.json
-    script_path = os.path.dirname(os.path.realpath(__file__))
-    pipeline_path = os.join(Path(script_path).parents[0], "pipeline.json")
-    # Translate to LAS format tmp.las
-    # Apply pipeline
-    print(pipeline_path)
-    # return res
+    # Convert to LAS format for PDAL
+    bashCommand = "pdal translate {} tmp.las".format(filename)
+    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
+
+    # Write to pipeline.json
+    pipeline_json["pipeline"][7]["filename"] = filename
+    with open("pipeline.json", 'w') as file:
+        json.dump(pipeline_json, file)
+
+    # Apply ground smoothing pipeline, which overwrites file with filtered version
+    bashCommand = "pdal pipeline pipeline.json"
+    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
             
 def saveToPcd(point_array, filename):
     header = generateHeader(point_array)
