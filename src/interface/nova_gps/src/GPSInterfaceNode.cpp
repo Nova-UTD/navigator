@@ -73,6 +73,9 @@ void GPSInterfaceNode::send_pose() {
   bool found_vtg = false;
   NMEAMessage gga;
   NMEAMessage vtg;
+
+  this->gps_interface->gather_messages();
+
   while(this->gps_interface->has_nmea_message()) {
       NMEAMessage msg = *this->gps_interface->get_nmea_message();
       if(!found_gga && msg.substr(3, 3) == "GGA") {
