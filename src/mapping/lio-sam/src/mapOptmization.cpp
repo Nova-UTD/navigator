@@ -281,6 +281,7 @@ public:
 
     void gpsHandler(const nav_msgs::msg::Odometry::SharedPtr gpsMsg)
     {
+        // RCLCPP_INFO(get_logger(), "Adding GPS to queue");
         gpsQueue.push_back(*gpsMsg);
     }
 
@@ -475,6 +476,7 @@ public:
         downSizeFilterGlobalMapKeyFrames.setLeafSize(globalMapVisualizationLeafSize, globalMapVisualizationLeafSize, globalMapVisualizationLeafSize); // for global map visualization
         downSizeFilterGlobalMapKeyFrames.setInputCloud(globalMapKeyFrames);
         downSizeFilterGlobalMapKeyFrames.filter(*globalMapKeyFramesDS);
+        RCLCPP_INFO(get_logger(), "Publishing global map");
         publishCloud(pubLaserCloudSurround, globalMapKeyFramesDS, timeLaserInfoStamp, odometryFrame);
     }
 
@@ -1394,24 +1396,27 @@ public:
         }
 
         // pose covariance small, no need to correct
-        if (poseCovariance(3,3) < poseCovThreshold && poseCovariance(4,4) < poseCovThreshold)
+        if (poseCovariance(3,3) < poseCovThreshold && poseCovariance(4,4) < poseCovThreshold) {
+            RCLCPP_WARN(get_logger(), "Skipping GPS, pose cov below threshold");
             return;
+        }
 
         // last gps position
         static PointType lastGPSPoint;
 
         while (!gpsQueue.empty())
         {
-            if (stamp2Sec(gpsQueue.front().header.stamp) < timeLaserInfoCur - 0.2)
+            if (stamp2Sec(gpsQueue.front().header.stamp) < timeLaserInfoCur - 0.5)
             {
                 // message too old
                 gpsQueue.pop_front();
+                RCLCPP_WARN(get_logger(), "GPS too old, skipping input");
             }
-            else if (stamp2Sec(gpsQueue.front().header.stamp) > timeLaserInfoCur + 0.2)
-            {
-                // message too new
-                break;
-            }
+            // else if (stamp2Sec(gpsQueue.front().header.stamp) > timeLaserInfoCur + 0.5)
+            // {
+            //     RCLCPP_WARN_STREAM(get_logger(), "GPS too new, skipping input: "<<stamp2Sec(gpsQueue.front().header.stamp)<<" > "<<timeLaserInfoCur + 0.5);
+            //     break;
+            // }
             else
             {
                 nav_msgs::msg::Odometry thisGPS = gpsQueue.front();
@@ -1422,6 +1427,7 @@ public:
                 float noise_y = thisGPS.pose.covariance[7];
                 float noise_z = thisGPS.pose.covariance[14];
                 if (noise_x > gpsCovThreshold || noise_y > gpsCovThreshold)
+                    RCLCPP_WARN(get_logger(), "GPS too noisy, skipping input");
                     continue;
 
                 float gps_x = thisGPS.pose.pose.position.x;
@@ -1435,6 +1441,7 @@ public:
 
                 // GPS not properly initialized (0,0,0)
                 if (abs(gps_x) < 1e-6 && abs(gps_y) < 1e-6)
+                    RCLCPP_WARN(get_logger(), "GPS too big, skipping input");
                     continue;
 
                 // Add GPS every a few meters
@@ -1442,15 +1449,18 @@ public:
                 curGPSPoint.x = gps_x;
                 curGPSPoint.y = gps_y;
                 curGPSPoint.z = gps_z;
-                if (pointDistance(curGPSPoint, lastGPSPoint) < 1.0)
+                if (pointDistance(curGPSPoint, lastGPSPoint) < 1.0){
+                    RCLCPP_WARN(get_logger(), "GPS too close, skipping input");
                     continue;
-                else
+                } else {
                     lastGPSPoint = curGPSPoint;
+                }
 
                 gtsam::Vector Vector3(3);
                 Vector3 << max(noise_x, 1.0f), max(noise_y, 1.0f), max(noise_z, 1.0f);
                 noiseModel::Diagonal::shared_ptr gps_noise = noiseModel::Diagonal::Variances(Vector3);
                 gtsam::GPSFactor gps_factor(cloudKeyPoses3D->size(), gtsam::Point3(gps_x, gps_y, gps_z), gps_noise);
+                RCLCPP_INFO(get_logger(), "Adding GPS");
                 gtSAMgraph.add(gps_factor);
 
                 aLoopIsClosed = true;
@@ -1481,6 +1491,7 @@ public:
 
     void saveKeyFramesAndFactor()
     {
+        // RCLCPP_INFO(get_logger(),"Adding odom, gps, loop factors");
         if (saveFrame() == false)
             return;
 

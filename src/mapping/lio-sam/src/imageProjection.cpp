@@ -125,7 +125,7 @@ public:
             std::bind(&ImageProjection::imuHandler, this, std::placeholders::_1),
             imuOpt);
         subOdom = create_subscription<nav_msgs::msg::Odometry>( // IMU pre-integration topic
-            odomTopic + "_incremental", qos_imu,
+            "/zed2i/zed_node/odometry", qos_imu,
             std::bind(&ImageProjection::odometryHandler, this, std::placeholders::_1),
             odomOpt);
         subLaserCloud = create_subscription<sensor_msgs::msg::PointCloud2>( // /lidar_front/points_raw
@@ -249,21 +249,21 @@ public:
         imuQueue.push_back(thisImu);
 
         // debug IMU data
-        cout << std::setprecision(6);
-        cout << "IMU acc: " << endl;
-        cout << "x: " << thisImu.linear_acceleration.x << 
-              ", y: " << thisImu.linear_acceleration.y << 
-              ", z: " << thisImu.linear_acceleration.z << endl;
-        cout << "IMU gyro: " << endl;
-        cout << "x: " << thisImu.angular_velocity.x << 
-              ", y: " << thisImu.angular_velocity.y << 
-              ", z: " << thisImu.angular_velocity.z << endl;
-        double imuRoll, imuPitch, imuYaw;
-        tf2::Quaternion orientation;
-        tf2::fromMsg(thisImu.orientation, orientation);
-        tf2::Matrix3x3(orientation).getRPY(imuRoll, imuPitch, imuYaw);
-        cout << "IMU roll pitch yaw: " << endl;
-        cout << "roll: " << imuRoll << ", pitch: " << imuPitch << ", yaw: " << imuYaw << endl << endl;
+        // cout << std::setprecision(6);
+        // cout << "IMU acc: " << endl;
+        // cout << "x: " << thisImu.linear_acceleration.x << 
+        //       ", y: " << thisImu.linear_acceleration.y << 
+        //       ", z: " << thisImu.linear_acceleration.z << endl;
+        // cout << "IMU gyro: " << endl;
+        // cout << "x: " << thisImu.angular_velocity.x << 
+        //       ", y: " << thisImu.angular_velocity.y << 
+        //       ", z: " << thisImu.angular_velocity.z << endl;
+        // double imuRoll, imuPitch, imuYaw;
+        // tf2::Quaternion orientation;
+        // tf2::fromMsg(thisImu.orientation, orientation);
+        // tf2::Matrix3x3(orientation).getRPY(imuRoll, imuPitch, imuYaw);
+        // cout << "IMU roll pitch yaw: " << endl;
+        // cout << "roll: " << imuRoll << ", pitch: " << imuPitch << ", yaw: " << imuYaw << endl << endl;
     }
 
     void odometryHandler(const nav_msgs::msg::Odometry::SharedPtr odometryMsg)
@@ -440,13 +440,13 @@ public:
         std::lock_guard<std::mutex> lock2(odoLock);
 
         // make sure IMU data available for the scan
-        if (imuQueue.empty() ||
-            stamp2Sec(imuQueue.front().header.stamp) > timeScanCur ||
-            stamp2Sec(imuQueue.back().header.stamp) < timeScanEnd)
-        {
-            RCLCPP_INFO(get_logger(), "Waiting for IMU data ...");
-            return false;
-        }
+        // if (imuQueue.empty() ||
+        //     stamp2Sec(imuQueue.front().header.stamp) > timeScanCur ||
+        //     stamp2Sec(imuQueue.back().header.stamp) < timeScanEnd)
+        // {
+        //     RCLCPP_INFO(get_logger(), "Waiting for IMU data ...");
+        //     return false;
+        // }
 
         imuDeskewInfo();
 
