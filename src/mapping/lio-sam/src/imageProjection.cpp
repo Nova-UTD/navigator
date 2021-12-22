@@ -207,14 +207,14 @@ public:
             RCLCPP_WARN_STREAM(get_logger(), "y linear accel out of bounds! Was "<<thisImu.linear_acceleration.y);
             thisImu.linear_acceleration.y = MAX_ACCEL*-1;
         }
-        if (thisImu.linear_acceleration.z > MAX_ACCEL) {
-            RCLCPP_WARN_STREAM(get_logger(), "z linear accel out of bounds! Was "<<thisImu.linear_acceleration.z);
-            thisImu.linear_acceleration.z = MAX_ACCEL;
-        }
-        if (thisImu.linear_acceleration.z < MAX_ACCEL*-1) {
-            RCLCPP_WARN_STREAM(get_logger(), "z linear accel out of bounds! Was "<<thisImu.linear_acceleration.z);
-            thisImu.linear_acceleration.z = MAX_ACCEL*-1;
-        }
+        // if (thisImu.linear_acceleration.z > MAX_ACCEL) {
+        //     RCLCPP_WARN_STREAM(get_logger(), "z linear accel out of bounds! Was "<<thisImu.linear_acceleration.z);
+        //     thisImu.linear_acceleration.z = MAX_ACCEL;
+        // }
+        // if (thisImu.linear_acceleration.z < MAX_ACCEL*-1) {
+        //     RCLCPP_WARN_STREAM(get_logger(), "z linear accel out of bounds! Was "<<thisImu.linear_acceleration.z);
+        //     thisImu.linear_acceleration.z = MAX_ACCEL*-1;
+        // }
 
         std::lock_guard<std::mutex> lock1(imuLock); // ???
         // int imuSmoothSize = 5;
@@ -249,21 +249,21 @@ public:
         imuQueue.push_back(thisImu);
 
         // debug IMU data
-        // cout << std::setprecision(6);
-        // cout << "IMU acc: " << endl;
-        // cout << "x: " << thisImu.linear_acceleration.x << 
-        //       ", y: " << thisImu.linear_acceleration.y << 
-        //       ", z: " << thisImu.linear_acceleration.z << endl;
-        // cout << "IMU gyro: " << endl;
-        // cout << "x: " << thisImu.angular_velocity.x << 
-        //       ", y: " << thisImu.angular_velocity.y << 
-        //       ", z: " << thisImu.angular_velocity.z << endl;
-        // double imuRoll, imuPitch, imuYaw;
-        // tf2::Quaternion orientation;
-        // tf2::fromMsg(thisImu.orientation, orientation);
-        // tf2::Matrix3x3(orientation).getRPY(imuRoll, imuPitch, imuYaw);
-        // cout << "IMU roll pitch yaw: " << endl;
-        // cout << "roll: " << imuRoll << ", pitch: " << imuPitch << ", yaw: " << imuYaw << endl << endl;
+        cout << std::setprecision(6);
+        cout << "IMU acc: " << endl;
+        cout << "x: " << thisImu.linear_acceleration.x << 
+              ", y: " << thisImu.linear_acceleration.y << 
+              ", z: " << thisImu.linear_acceleration.z << endl;
+        cout << "IMU gyro: " << endl;
+        cout << "x: " << thisImu.angular_velocity.x << 
+              ", y: " << thisImu.angular_velocity.y << 
+              ", z: " << thisImu.angular_velocity.z << endl;
+        double imuRoll, imuPitch, imuYaw;
+        tf2::Quaternion orientation;
+        tf2::fromMsg(thisImu.orientation, orientation);
+        tf2::Matrix3x3(orientation).getRPY(imuRoll, imuPitch, imuYaw);
+        cout << "IMU roll pitch yaw: " << endl;
+        cout << "roll: " << imuRoll << ", pitch: " << imuPitch << ", yaw: " << imuYaw << endl << endl;
     }
 
     void odometryHandler(const nav_msgs::msg::Odometry::SharedPtr odometryMsg)
