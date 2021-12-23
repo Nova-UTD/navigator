@@ -1392,6 +1392,7 @@ public:
         else
         {
             if (pointDistance(cloudKeyPoses3D->front(), cloudKeyPoses3D->back()) < 5.0)
+                RCLCPP_INFO(get_logger(), "Adding GPS");
                 return;
         }
 
