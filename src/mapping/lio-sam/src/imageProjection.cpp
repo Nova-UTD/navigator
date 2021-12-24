@@ -125,7 +125,7 @@ public:
             std::bind(&ImageProjection::imuHandler, this, std::placeholders::_1),
             imuOpt);
         subOdom = create_subscription<nav_msgs::msg::Odometry>( // IMU pre-integration topic
-            "/zed2i/zed_node/odometry", qos_imu,
+            "/zed2i/zed_node/odom", qos_imu,
             std::bind(&ImageProjection::odometryHandler, this, std::placeholders::_1),
             odomOpt);
         subLaserCloud = create_subscription<sensor_msgs::msg::PointCloud2>( // /lidar_front/points_raw

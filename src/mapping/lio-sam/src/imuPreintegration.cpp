@@ -66,7 +66,7 @@ public:
             std::bind(&TransformFusion::lidarOdometryHandler, this, std::placeholders::_1),
             laserOdomOpt);
         subImuOdometry = create_subscription<nav_msgs::msg::Odometry>(
-            "/zed2i/zed_node/odometry", qos_imu,
+            "/zed2i/zed_node/odom", qos_imu,
             std::bind(&TransformFusion::imuOdometryHandler, this, std::placeholders::_1),
             imuOdomOpt);
 
@@ -130,7 +130,7 @@ public:
             try
             {
                 tf2::fromMsg(tfBuffer->lookupTransform(
-                    lidarFrame, baselinkFrame, rclcpp::Time(0)), lidar2Baselink);
+                    lidarFrame, baselinkFrame, rclcpp::Time(-10)), lidar2Baselink);
             }
             catch (tf2::TransformException ex)
             {

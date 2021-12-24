@@ -29,22 +29,29 @@ def generate_launch_description():
 
     return LaunchDescription([
         params_declare,
-        Node(
+        # Node(
+        #     package='tf2_ros', # Fuse the map and odom frames
+        #     executable='static_transform_publisher',
+        #     arguments='0.0 0.0 0.0 0.0 0.0 0.7372773 0.6755902 map odom'.split(' '),
+        #     parameters=[parameter_file],
+        #     output='screen'
+        #     ),
+                Node(
             package='tf2_ros', # Fuse the map and odom frames
             executable='static_transform_publisher',
-            arguments='0.0 0.0 0.0 1.0 0.0 0.0 map odom'.split(' '),
+            arguments='0.0 0.0 0.0 0.0 0.0 0.7372773 0.6755902 map odom'.split(' '),
             parameters=[parameter_file],
             output='screen'
             ),
-        Node(
-            package='robot_state_publisher', # Publish robot URDF
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            output='screen',
-            parameters=[{
-                'robot_description': Command(['xacro', ' ', xacro_path])
-            }]
-        ),
+        # Node(
+        #     package='robot_state_publisher', # Publish robot URDF
+        #     executable='robot_state_publisher',
+        #     name='robot_state_publisher',
+        #     output='screen',
+        #     parameters=[{
+        #         'robot_description': Command(['xacro', ' ', xacro_path])
+        #     }]
+        # ),
         Node(
             package='lio_sam',
             executable='lio_sam_imuPreintegration',
@@ -73,8 +80,8 @@ def generate_launch_description():
             parameters=[parameter_file],
             output='screen'
         ),
-        Node(
-            executable='lgsvl_bridge',
-        ),
-        bag_player
+        # Node(
+        #     executable='lgsvl_bridge',
+        # ),
+        # bag_player
     ])

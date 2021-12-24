@@ -6,6 +6,7 @@
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/navigation/GPSFactor.h>
+#include <gtsam/navigation/AttitudeFactor.h>
 #include <gtsam/navigation/ImuFactor.h>
 #include <gtsam/navigation/CombinedImuFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -13,10 +14,14 @@
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/inference/Symbol.h>
+#include <std_msgs/msg/float32.hpp>
 
 #include <gtsam/nonlinear/ISAM2.h>
 
 #include <std_srvs/srv/trigger.hpp>
+
+#define ROLL_TOLERANCE_RADS 0.35 // ~35 degrees
+#define PITCH_TOLERANCE_RADS 0.35 // ~35 degrees
 
 using namespace gtsam;
 
@@ -81,6 +86,7 @@ public:
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr saveMapService;
 
     std::deque<nav_msgs::msg::Odometry> gpsQueue;
+    float m_gpsHeading;
     lio_sam::msg::CloudInfo cloudInfo;
 
     vector<pcl::PointCloud<PointType>::Ptr> cornerCloudKeyFrames; // Pointcloud for corner features
@@ -175,6 +181,9 @@ public:
         subGPS = create_subscription<nav_msgs::msg::Odometry>(
             gpsTopic, 200,
             std::bind(&mapOptimization::gpsHandler, this, std::placeholders::_1));
+        auto subGPS = create_subscription<std_msgs::msg::Float32>(
+            "/gps/heading", 200,
+            std::bind(&mapOptimization::gpsHeadingCb, this, std::placeholders::_1));
         subLoop = create_subscription<std_msgs::msg::Float64MultiArray>(
             "lio_loop/loop_closure_detection", qos,
             std::bind(&mapOptimization::loopInfoHandler, this, std::placeholders::_1));
@@ -283,6 +292,10 @@ public:
     {
         // RCLCPP_INFO(get_logger(), "Adding GPS to queue");
         gpsQueue.push_back(*gpsMsg);
+    }
+
+    void gpsHeadingCb(const std_msgs::msg::Float32::SharedPtr gpsHeading) {
+        m_gpsHeading = gpsHeading->data;
     }
 
     // What is this? point_in, point_out = PointXYZI
@@ -1327,19 +1340,49 @@ public:
             }
         }
 
-        transformTobeMapped[0] = constraintTransformation(transformTobeMapped[0], rotation_tollerance);
-        transformTobeMapped[1] = constraintTransformation(transformTobeMapped[1], rotation_tollerance);
-        transformTobeMapped[5] = constraintTransformation(transformTobeMapped[5], z_tollerance);
+        transformTobeMapped[0] = constrainRoll(transformTobeMapped[0], ROLL_TOLERANCE_RADS);
+        transformTobeMapped[1] = constrainPitch(transformTobeMapped[1], PITCH_TOLERANCE_RADS);
+        transformTobeMapped[5] = constrainZ(transformTobeMapped[5], z_tollerance);
 
         incrementalOdometryAffineBack = trans2Affine3f(transformTobeMapped);
     }
 
-    float constraintTransformation(float value, float limit)
+    float constrainPitch(float value, float limit)
     {
-        if (value < -limit)
+        if (value < -limit){
+            RCLCPP_INFO(get_logger(), "Pitch was below limit!");
             value = -limit;
-        if (value > limit)
+        }
+        if (value > limit) {
+            RCLCPP_INFO(get_logger(), "Pitch was above limit!");
             value = limit;
+        }
+
+        return value;
+    }
+    float constrainZ(float value, float limit)
+    {
+        if (value < -limit){
+            RCLCPP_INFO(get_logger(), "Z was below limit!");
+            value = -limit;
+        }
+        if (value > limit) {
+            RCLCPP_INFO(get_logger(), "Z was above limit!");
+            value = limit;
+        }
+
+        return value;
+    }
+    float constrainRoll(float value, float limit)
+    {
+        if (value < -limit){
+            RCLCPP_INFO(get_logger(), "Roll was below limit!");
+            value = -limit;
+        }
+        if (value > limit) {
+            RCLCPP_INFO(get_logger(), "Roll was above limit!");
+            value = limit;
+        }
 
         return value;
     }
@@ -1373,7 +1416,7 @@ public:
             gtSAMgraph.add(PriorFactor<Pose3>(0, trans2gtsamPose(transformTobeMapped), priorNoise));
             initialEstimate.insert(0, trans2gtsamPose(transformTobeMapped));
         }else{
-            noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Variances((Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished());
+            noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Variances((Vector(6) << 1e-7, 1e-7, 1e-5, 1e-2, 1e-2, 1e-2).finished());
             gtsam::Pose3 poseFrom = pclPointTogtsamPose3(cloudKeyPoses6D->points.back());
             gtsam::Pose3 poseTo   = trans2gtsamPose(transformTobeMapped);
             gtSAMgraph.add(BetweenFactor<Pose3>(cloudKeyPoses3D->size()-1, cloudKeyPoses3D->size(), poseFrom.between(poseTo), odometryNoise));
@@ -1383,24 +1426,27 @@ public:
 
     void addGPSFactor()
     {
-        if (gpsQueue.empty())
+        // RCLCPP_INFO(get_logger(), "Trying to add GPS");
+        if (gpsQueue.empty()) {
+            // RCLCPP_INFO(get_logger(), "No GPS msgs in queue.");
             return;
+        }
 
         // wait for system initialized and settles down
-        if (cloudKeyPoses3D->points.empty())
+        if (cloudKeyPoses3D->points.empty()){
+            RCLCPP_INFO(get_logger(), "Skipping GPS. No keypoints saved.");
             return;
-        else
-        {
-            if (pointDistance(cloudKeyPoses3D->front(), cloudKeyPoses3D->back()) < 5.0)
-                RCLCPP_INFO(get_logger(), "Adding GPS");
+        }
+        else if (pointDistance(cloudKeyPoses3D->front(), cloudKeyPoses3D->back()) < 5.0){
+                RCLCPP_INFO(get_logger(), "Distance too small, skipping");
                 return;
         }
 
         // pose covariance small, no need to correct
-        if (poseCovariance(3,3) < poseCovThreshold && poseCovariance(4,4) < poseCovThreshold) {
-            RCLCPP_WARN(get_logger(), "Skipping GPS, pose cov below threshold");
-            return;
-        }
+        // if (poseCovariance(3,3) < poseCovThreshold && poseCovariance(4,4) < poseCovThreshold) {
+        //     RCLCPP_WARN(get_logger(), "Skipping GPS, pose cov below threshold");
+        //     return;
+        // }
 
         // last gps position
         static PointType lastGPSPoint;
@@ -1413,11 +1459,11 @@ public:
                 gpsQueue.pop_front();
                 RCLCPP_WARN(get_logger(), "GPS too old, skipping input");
             }
-            // else if (stamp2Sec(gpsQueue.front().header.stamp) > timeLaserInfoCur + 0.5)
-            // {
-            //     RCLCPP_WARN_STREAM(get_logger(), "GPS too new, skipping input: "<<stamp2Sec(gpsQueue.front().header.stamp)<<" > "<<timeLaserInfoCur + 0.5);
-            //     break;
-            // }
+            else if (stamp2Sec(gpsQueue.front().header.stamp) > timeLaserInfoCur + 0.5)
+            {
+                RCLCPP_WARN_STREAM(get_logger(), "GPS too new, should skip input: "<<stamp2Sec(gpsQueue.front().header.stamp)<<" > "<<timeLaserInfoCur + 0.5);
+                // break;
+            }
             else
             {
                 nav_msgs::msg::Odometry thisGPS = gpsQueue.front();
@@ -1427,9 +1473,10 @@ public:
                 float noise_x = thisGPS.pose.covariance[0];
                 float noise_y = thisGPS.pose.covariance[7];
                 float noise_z = thisGPS.pose.covariance[14];
-                if (noise_x > gpsCovThreshold || noise_y > gpsCovThreshold)
+                if (noise_x > gpsCovThreshold || noise_y > gpsCovThreshold){
                     RCLCPP_WARN(get_logger(), "GPS too noisy, skipping input");
                     continue;
+                }
 
                 float gps_x = thisGPS.pose.pose.position.x;
                 float gps_y = thisGPS.pose.pose.position.y;
@@ -1441,15 +1488,17 @@ public:
                 }
 
                 // GPS not properly initialized (0,0,0)
-                if (abs(gps_x) < 1e-6 && abs(gps_y) < 1e-6)
+                if (abs(gps_x) < 1e-6 && abs(gps_y) < 1e-6) {
                     RCLCPP_WARN(get_logger(), "GPS too big, skipping input");
                     continue;
+                }
 
                 // Add GPS every a few meters
                 PointType curGPSPoint;
                 curGPSPoint.x = gps_x;
                 curGPSPoint.y = gps_y;
                 curGPSPoint.z = gps_z;
+                // RCLCPP_INFO(get_logger(), "Checking GPS dist");
                 if (pointDistance(curGPSPoint, lastGPSPoint) < 1.0){
                     RCLCPP_WARN(get_logger(), "GPS too close, skipping input");
                     continue;
@@ -1461,8 +1510,15 @@ public:
                 Vector3 << max(noise_x, 1.0f), max(noise_y, 1.0f), max(noise_z, 1.0f);
                 noiseModel::Diagonal::shared_ptr gps_noise = noiseModel::Diagonal::Variances(Vector3);
                 gtsam::GPSFactor gps_factor(cloudKeyPoses3D->size(), gtsam::Point3(gps_x, gps_y, gps_z), gps_noise);
-                RCLCPP_INFO(get_logger(), "Adding GPS");
+                float heading_x = cos(m_gpsHeading);
+                float heading_y = sin(m_gpsHeading);
+                gtsam::Vector Vector2(2);
+                Vector2 << max(noise_x, 1.0f), max(noise_y, 1.0f);
+                noiseModel::Diagonal::shared_ptr gps_heading_noise = noiseModel::Diagonal::Variances(Vector2);
+                gtsam::Pose3AttitudeFactor gps_heading_factor(cloudKeyPoses3D->size(), gtsam::Unit3(heading_x, heading_y, 0), gps_heading_noise);
+                RCLCPP_INFO(get_logger(), "ADDING GPS");
                 gtSAMgraph.add(gps_factor);
+                gtSAMgraph.add(gps_heading_factor);
 
                 aLoopIsClosed = true;
                 break;
