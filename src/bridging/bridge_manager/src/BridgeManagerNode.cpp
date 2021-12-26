@@ -9,6 +9,7 @@
 
 #include "bridge_manager/BridgeManagerNode.hpp"
 #include "bridge_manager/HTTPRequest.hpp"
+#include "rclcpp/rclcpp.hpp"
 
 #include <string>
 //#include <iostream>
@@ -27,7 +28,7 @@ std::string construct(std::vector< std::array<std::string, 2> > list) {
 }
 
 BridgeManagerNode::BridgeManagerNode() : Node("bridge_manager") {
-  std::cout << "Started bridging manager" << std::endl;
+  //std::cout << "Started bridging manager" << std::endl;
   RCLCPP_INFO( // Logg to rclcpp
     this->get_logger(),
     "Started bridging manager"
