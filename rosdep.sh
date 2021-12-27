@@ -1,4 +1,8 @@
-#!/bin/sh
+# If you're having troubles running your build, run this script to ensure you have all dependencies
+# This only works on debian based distributions of linux, if you have a different distro, you'll have to source them elsehow
+# To run: Make sure you're in the navigator folder and run ./rosdep.sh
+
+# !/bin/sh
 
 apt-get install -y ros-foxy-ros-testing
 apt-get install -y python3-psutil

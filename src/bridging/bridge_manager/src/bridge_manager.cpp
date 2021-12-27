@@ -15,7 +15,7 @@
 
 int main(int argc, char ** argv) {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<Nova::BridgeManager::BridgeManagerNode>());
+  rclcpp::spin(std::make_shared<Nova::BridgeManagerNode>());
   rclcpp::shutdown();
   return 0;
 }

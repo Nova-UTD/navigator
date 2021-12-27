@@ -16,10 +16,11 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# find dependencies
+# Find dependencies
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
+# Build library from source files
 ament_auto_add_library(bridge_manager_lib OBJECT
   src/BridgeManagerNode.cpp)
 target_include_directories(bridge_manager_lib PUBLIC include)
@@ -39,4 +40,4 @@ if(BUILD_TESTING)
   target_link_libraries(tests gtest_main bridge_manager_lib)
 endif()
 
-ament_auto_package()
+ament_auto_package(INSTALL_TO_SHARE launch)

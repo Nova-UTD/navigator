@@ -25,6 +25,15 @@ def generate_launch_description():
         description='Enable SVL bridge'
     )
 
+    # BRIDGING
+    interface_bridge = Node(
+        package='bridge_manager',
+        executable='bridge_manager',
+        remappings=[
+            ("incoming_bridge_messages", "incoming_bridge_messages")
+        ]
+    )
+
     # CONTROL
     steering_controller = Node(
         package='vt_steering_controller',
@@ -239,6 +248,8 @@ def generate_launch_description():
         # can,
         # epas_controller,
         # epas_reporter,
+        interface_bridge,
+
         svl_bridge,
         vehicle_bridge,
 

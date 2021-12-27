@@ -21,7 +21,7 @@
 #include "bridge_manager/BridgeManagerNode.hpp"
 
 using namespace Voltron::TestUtils;
-using namespace Nova::BridgeManager;
+using namespace Nova;
 
 class TestBridgeManager : public ::testing::Test {
 protected:
