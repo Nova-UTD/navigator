@@ -1,4 +1,4 @@
-from os import path, environ
+from os import name, path, environ
 
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import IncludeLaunchDescription
@@ -92,6 +92,25 @@ def generate_launch_description():
             ("observation_republish", "/lidars/points_fused_viz"),
         ]
     )
+    localization_odom_bl = Node(
+        package='robot_localization',
+        executable='ukf_node',
+        name='localization_odom_bl',
+        parameters=[(path.join(param_dir,"localization","localization_odom_bl.param.yaml"))],
+        remappings=[
+            ("/imu0", "/zed2i/zed_node/imu/data_raw"),
+            ("/odom0", "/zed2i/zed_node/odom")
+        ]
+    )
+    localization_map_odom = Node(
+        package='robot_localization',
+        executable='ukf_node',
+        name='localization_map_odom',
+        parameters=[(path.join(param_dir,"localization","localization_map_odom.param.yaml"))],
+        remappings=[
+            ("/odom0", "/gps/odom")
+        ]
+    )
 
     # MAPPING
     lanelet_server = Node(
@@ -117,11 +136,11 @@ def generate_launch_description():
     )
 
     # MISC
-    odom_bl_publisher = Node(
+    zed_odom_tf = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0','0','0','0','0','0','odom','base_link'
+            '0','0','0','0','0','0.7372773','0.6755902','odom','odom_zed'
         ]
     )
 
@@ -241,7 +260,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         # CONTROL
-        steering_controller,
+        # steering_controller,
 
         # INTERFACE
         # can,
@@ -249,32 +268,34 @@ def generate_launch_description():
         # epas_reporter,
         # gnss,
         svl_bridge,
-        vehicle_bridge,
+        # vehicle_bridge,
 
         # LOCALIZATION
-        ndt,
+        # ndt,
+        localization_odom_bl,
+        localization_map_odom,
 
         # MAPPING
-        lanelet_server,
-        lanelet_visualizer,
-        pcd_publisher,
+        # lanelet_server,
+        # lanelet_visualizer,
+        # pcd_publisher,
 
         # MISC
-        odom_bl_publisher,
-        urdf_publisher,
-        visuals,
+        # odom_bl_publisher,
+        # urdf_publisher,
+        # visuals,
 
         # PERCEPTION
-        lidar_front,
-        lidar_rear,
-        lidar_front_filter,
-        lidar_rear_filter,
-        lidar_fusion,
-        lidar_downsampler,
+        # lidar_front,
+        # lidar_rear,
+        # lidar_front_filter,
+        # lidar_rear_filter,
+        # lidar_fusion,
+        # lidar_downsampler,
 
         # PLANNING
-        route_planner,
-        path_planner,
-        lane_planner,
-        parking_planner,
+        # route_planner,
+        # path_planner,
+        # lane_planner,
+        # parking_planner,
     ])
