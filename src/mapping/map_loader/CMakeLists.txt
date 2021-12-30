@@ -17,12 +17,19 @@ endif()
 
 # find dependencies
 find_package(ament_cmake_auto REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(lanelet2_core REQUIRED)
 find_package(lanelet2_io REQUIRED)
 find_package(lanelet2_projection REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
+
+ament_auto_add_library(polypartition STATIC
+  src/polypartition.cpp)
+target_include_directories(polypartition PUBLIC include)
 
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -34,8 +41,17 @@ target_include_directories(map_grid_loader_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(lanelet_loader_node rclcpp lanelet2_core lanelet2_io lanelet2_projection)
-
+ament_target_dependencies(
+                          lanelet_loader_node
+                          geometry_msgs
+                          rclcpp 
+                          lanelet2_core
+                          lanelet2_io
+                          lanelet2_projection
+                          std_msgs
+                          visualization_msgs
+                          )
+target_link_libraries(lanelet_loader_node polypartition)
 install(TARGETS map_grid_loader_node lanelet_loader_node
   DESTINATION lib/${PROJECT_NAME})
 

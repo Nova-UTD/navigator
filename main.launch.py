@@ -121,12 +121,12 @@ def generate_launch_description():
         parameters=[(path.join(launch_dir, "data", "maps", map_name, "lanelet_server.param.yaml"))]
     )
 
-    lanelet_visualizer = Node(
-        package='lanelet2_map_provider',
-        executable='lanelet2_map_visualizer_exe',
-        name='lanelet2_map_visualizer_node',
-        namespace='had_maps'
-    )
+    # lanelet_visualizer = Node(
+    #     package='lanelet2_map_provider',
+    #     executable='lanelet2_map_visualizer_exe',
+    #     name='lanelet2_map_visualizer_node',
+    #     namespace='had_maps'
+    # )
 
     pcd_publisher = Node(
         package='ndt_nodes',
@@ -258,6 +258,13 @@ def generate_launch_description():
         remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
     )
 
+    # VIZ
+    lanelet_visualizer = Node(
+        package='map_loader',
+        name='lanelet_loader_node',
+        executable='lanelet_loader_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         # steering_controller,
@@ -277,7 +284,7 @@ def generate_launch_description():
 
         # MAPPING
         # lanelet_server,
-        # lanelet_visualizer,
+        lanelet_visualizer,
         # pcd_publisher,
 
         # MISC

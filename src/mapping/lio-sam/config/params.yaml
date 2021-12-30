@@ -29,8 +29,8 @@
     Horizon_SCAN: 1800                            # lidar horizontal resolution (Velodyne:1800, Ouster:512,1024,2048). Not verified.
     downsampleRate: 1                            # default: 1. Downsample your data if too many
     # points. i.e., 16 = 64 / 4, 16 = 16 / 1
-    lidarMinRange: 1.0                           # default: 1.0, minimum lidar range to be used
-    lidarMaxRange: 150.0                        # default: 1000.0, maximum lidar range to be used
+    lidarMinRange: 10.0                           # default: 1.0, minimum lidar range to be used
+    lidarMaxRange: 50.0                        # default: 1000.0, maximum lidar range to be used
 
     # IMU Settings
     imuAccNoise: 3.9939570888238808e-03
@@ -52,8 +52,8 @@
     # LOAM feature threshold
     edgeThreshold: 1.0
     surfThreshold: 0.1
-    edgeFeatureMinValidNum: 10
-    surfFeatureMinValidNum: 100
+    edgeFeatureMinValidNum: 20
+    surfFeatureMinValidNum: 200
 
     # voxel filter paprams
     odometrySurfLeafSize: 0.4                     # default: 0.4 - outdoor, 0.2 - indoor
@@ -66,26 +66,26 @@
 
     # CPU Params
     numberOfCores: 4                              # number of cores for mapping optimization
-    mappingProcessInterval: 0.15                  # seconds, regulate mapping frequency
+    mappingProcessInterval: 0.05                  # seconds, regulate mapping frequency
 
     # Surrounding map
     surroundingkeyframeAddingDistThreshold: 1.0   # meters, regulate keyframe adding threshold
     surroundingkeyframeAddingAngleThreshold: 0.2  # radians, regulate keyframe adding threshold
-    surroundingKeyframeDensity: 2.0               # meters, downsample surrounding keyframe poses   
-    surroundingKeyframeSearchRadius: 50.0         # meters, within n meters scan-to-map optimization
+    surroundingKeyframeDensity: 1.0               # meters, downsample surrounding keyframe poses   
+    surroundingKeyframeSearchRadius: 70.0         # meters, within n meters scan-to-map optimization
     # (when loop closure disabled)
 
     # Loop closure
     loopClosureEnableFlag: true
     loopClosureFrequency: 1.0                     # Hz, regulate loop closure constraint add frequency
     surroundingKeyframeSize: 50                   # submap size (when loop closure enabled)
-    historyKeyframeSearchRadius: 35.0             # meters, key frame that is within n meters from
+    historyKeyframeSearchRadius: 100.0             # meters, key frame that is within n meters from
     # current pose will be considerd for loop closure
     historyKeyframeSearchTimeDiff: 45.0           # seconds, key frame that is n seconds older will be
     # considered for loop closure
     historyKeyframeSearchNum: 45                  # number of hostory key frames will be fused into a
     # submap for loop closure
-    historyKeyframeFitnessScore: 0.15              # icp threshold, the smaller the better alignment
+    historyKeyframeFitnessScore: 0.10              # icp threshold, the smaller the better alignment
 
     # Visualization
     globalMapVisualizationSearchRadius: 1000.0    # meters, global map visualization radius
