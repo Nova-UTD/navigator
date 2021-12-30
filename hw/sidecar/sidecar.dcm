@@ -1,0 +1,20 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP JETSON_GPIO
+D Generic connector, double row, 02x20, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)
+K connector
+F ~
+$ENDCMP
+#
+$CMP MCP2515-xP
+D Stand-Alone CAN Controller with SPI Interface, TSSOP-20
+K CAN Controller SPI
+F http://ww1.microchip.com/downloads/en/DeviceDoc/21801e.pdf
+$ENDCMP
+#
+$CMP TN2106
+K N-Channel MOSFET
+F https://www.mouser.com/datasheet/2/268/TN2106_N_Channel_Enhancement_Mode_Vertical_DMOS_FE-1919873.pdf
+$ENDCMP
+#
+#End Doc Library

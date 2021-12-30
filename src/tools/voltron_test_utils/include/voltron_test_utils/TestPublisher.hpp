@@ -28,7 +28,7 @@ public:
   void send_message(MsgType message) {
     this->node->send_message(message);
     rclcpp::spin_some(this->node);
-    usleep(50);
+    usleep(1000);
   }
 
 private:

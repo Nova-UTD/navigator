@@ -27,13 +27,13 @@ public:
   virtual ~TestSubscriber() {}
 
   bool has_message_ready() {
-    usleep(50);
+    usleep(1000);
     rclcpp::spin_some(this->node);
     return this->node->has_message_ready();
   }
 
   std::shared_ptr<MsgType> get_message() {
-    usleep(50);
+    usleep(1000);
     rclcpp::spin_some(this->node);
     return this->node->get_message();
   }
