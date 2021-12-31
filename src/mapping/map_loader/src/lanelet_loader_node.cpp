@@ -77,7 +77,7 @@ class LaneletLoader : public rclcpp::Node
 
         auto basic_poly = lanelet_poly.basicPolygon();
         Marker triangleList;
-        RCLCPP_INFO_STREAM(this->get_logger(), "Polygon points: "<<basic_poly.size());
+        // RCLCPP_INFO_STREAM(this->get_logger(), "Polygon points: "<<basic_poly.size());
         // auto triangles = lanelet::geometry::convexPartition(lanelet_poly);
         // RCLCPP_INFO_STREAM(this->get_logger(), lanelet_poly.size());
         // RCLCPP_INFO_STREAM(this->get_logger(), "Triangles: "<<triangles.size());
@@ -95,15 +95,12 @@ class LaneletLoader : public rclcpp::Node
         TPPLPartition partitioner;
         partitioner.Triangulate_EC(inpoly, triangulationResults);
 
-        
-        RCLCPP_INFO_STREAM(this->get_logger(), std::endl<<std::endl);
-
         // Construct an array of Point messages
         std::vector<Point> triangle_points;
         for(TPPLPoly triangle : *triangulationResults) {
-          RCLCPP_INFO_STREAM(this->get_logger(), triangle[0].x<<" "<<triangle[0].y<<" "
-                                               <<triangle[1].x<<" "<<triangle[1].y<<" "
-                                               <<triangle[2].x<<" "<<triangle[2].y);
+          // RCLCPP_INFO_STREAM(this->get_logger(), triangle[0].x<<" "<<triangle[0].y<<" "
+          //                                      <<triangle[1].x<<" "<<triangle[1].y<<" "
+          //                                      <<triangle[2].x<<" "<<triangle[2].y);
           Point a;
           a.x = triangle[0].x;
           a.y = triangle[0].y;
@@ -135,11 +132,12 @@ class LaneletLoader : public rclcpp::Node
 
         // Set color
         ColorRGBA color;
-        color.r = 1;
-        color.g = 1;
-        color.b = 1;
-        color.a = 1;
+        color.r = .588;
+        color.g = .675;
+        color.b = .718;
+        color.a = .8;
         triangleList.color = color;
+        triangleList.frame_locked = true;
 
         _lanelet_viz_publisher->publish(triangleList);
 

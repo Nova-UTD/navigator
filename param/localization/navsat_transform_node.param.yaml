@@ -1,9 +1,0 @@
-# param/navsat_transform_node.param.yaml
----
-/**:
-  ros__parameters:
-    magnetic_declination_radians: 0.0
-    yaw_offset: 0.0
-    # zero_altitude: true # Assume z=0
-    datum: [32.9903275000000, -96.7522478333333, 0.0]
-    wait_for_datum: true

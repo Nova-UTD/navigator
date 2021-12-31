@@ -99,7 +99,8 @@ def generate_launch_description():
         parameters=[(path.join(param_dir,"localization","localization_odom_bl.param.yaml"))],
         remappings=[
             ("/imu0", "/zed2i/zed_node/imu/data_raw"),
-            ("/odom0", "/zed2i/zed_node/odom")
+            ("/odom0", "/zed2i/zed_node/odom"),
+            ("/odom1", "/gps/odom")
         ]
     )
     localization_map_odom = Node(
@@ -110,6 +111,10 @@ def generate_launch_description():
         remappings=[
             ("/odom0", "/gps/odom")
         ]
+    )
+    deviation_reporter = Node(
+        package='state_estimate_monitoring',
+        executable='lanelet_deviation_reporter'
     )
 
     # MAPPING
@@ -128,11 +133,9 @@ def generate_launch_description():
     #     namespace='had_maps'
     # )
 
-    pcd_publisher = Node(
-        package='ndt_nodes',
-        executable='ndt_map_publisher_exe',
-        namespace='localization',
-        parameters=[(path.join(launch_dir, "data", "maps", map_name, "pcd_publisher.param.yaml"))]
+    pcd_loader = Node(
+        package='map_loader',
+        executable='pcd_loader_node'
     )
 
     # MISC
@@ -281,11 +284,12 @@ def generate_launch_description():
         # ndt,
         localization_odom_bl,
         localization_map_odom,
+        deviation_reporter,
 
         # MAPPING
         # lanelet_server,
         lanelet_visualizer,
-        # pcd_publisher,
+        pcd_loader,
 
         # MISC
         # odom_bl_publisher,

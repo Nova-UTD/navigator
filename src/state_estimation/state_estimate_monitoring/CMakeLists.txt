@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(map_loader)
+project(state_estimate_monitoring)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -22,10 +22,9 @@ find_package(lanelet2_core REQUIRED)
 find_package(lanelet2_io REQUIRED)
 find_package(lanelet2_projection REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_package(PCL REQUIRED)
-find_package(pcl_conversions REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
 
@@ -33,48 +32,29 @@ find_package(visualization_msgs REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-ament_auto_add_library(polypartition STATIC
-  src/polypartition.cpp)
-target_include_directories(polypartition PUBLIC include)
-
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-add_executable(pcd_loader_node src/pcd_loader_node.cpp)
-add_executable(lanelet_loader_node src/lanelet_loader_node.cpp)
-target_include_directories(pcd_loader_node PUBLIC
+add_executable(lanelet_deviation_reporter src/lanelet_deviation_reporter.cpp)
+target_include_directories(lanelet_deviation_reporter PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(
-                          lanelet_loader_node
+                          lanelet_deviation_reporter
                           geometry_msgs
                           rclcpp 
                           lanelet2_core
                           lanelet2_io
                           lanelet2_projection
                           std_msgs
+                          tf2_ros
+                          tf2
                           visualization_msgs
                           )
-ament_target_dependencies(
-                          pcd_loader_node
-                          geometry_msgs
-                          nav_msgs
-                          PCL
-                          pcl_conversions
-                          rclcpp
-                          sensor_msgs
-                          tf2_ros
-                          )
 
-include_directories(${PCL_INCLUDE_DIRS})
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
-
-target_link_libraries (pcd_loader_node ${PCL_LIBRARIES})
-target_link_libraries(lanelet_loader_node polypartition)
-install(TARGETS pcd_loader_node lanelet_loader_node
+install(TARGETS lanelet_deviation_reporter
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
