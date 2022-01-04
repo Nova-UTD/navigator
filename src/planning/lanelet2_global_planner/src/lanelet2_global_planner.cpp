@@ -14,8 +14,15 @@
 #include <utility>
 #include <vector>
 
+// TODO for this file: 
+//  - make sure that get_routing_costs checks for cost map and routing graph
+//  - improve horizon function and general configurability
+//  - work in non-default cost configurables for both routing cost and horizon calculations
+
 using autoware::common::types::bool8_t;
 using autoware::common::types::float64_t;
+
+using namespace lanelet::routing;
 
 namespace autoware
 {
@@ -24,29 +31,26 @@ namespace autoware
     namespace lanelet2_global_planner
     {
 
+      Lanelet2GlobalPlanner::Lanelet2GlobalPlanner(): cost_map(){}
+
       void Lanelet2GlobalPlanner::load_osm_map(
           const std::string &file,
           float64_t lat, float64_t lon, float64_t alt)
       {
-        if (osm_map)
-        {
+        if (osm_map){
           osm_map.reset();
         }
-        osm_map = load(
-            file, lanelet::projection::UtmProjector(
-                      lanelet::Origin({lat, lon, alt})));
+
+        osm_map = load(file, lanelet::projection::UtmProjector(lanelet::Origin({lat, lon, alt})));
 
         // throw map load error
-        if (!osm_map)
-        {
+        if (!osm_map){
           throw std::runtime_error("Lanelet2GlobalPlanner: Map load fail");
         }
       }
 
-      void Lanelet2GlobalPlanner::parse_lanelet_element()
-      {
-        if (osm_map)
-        {
+      void Lanelet2GlobalPlanner::parse_lanelet_element(){
+        if (osm_map){
           // parsing lanelet layer
           typedef std::unordered_map<lanelet::Id, lanelet::Id>::iterator it_lane;
           std::pair<it_lane, bool8_t> result_lane;
@@ -69,53 +73,147 @@ namespace autoware
         }
       }
 
-      bool8_t Lanelet2GlobalPlanner::plan_route(
-          TrajectoryPoint &start_point,
-          TrajectoryPoint &end_point, std::vector<lanelet::Id> &route) const
-      {
-        const lanelet::Point3d start(lanelet::utils::getId(), start_point.x, start_point.y, 0.0);
-        const lanelet::Point3d end(lanelet::utils::getId(), end_point.x, end_point.y, 0.0);
+      bool Lanelet2GlobalPlanner::find_lanelets(TrajectoryPoint location, uint depth, std::vector<lanelet::Lanelet> &result_wb) const{
+        const lanelet::Point2d point(lanelet::utils::getId(), location.x, location.y, 0.0);
+        auto nearby_lanelets = osm_map->laneletLayer.nearest(point, depth);
 
-        std::vector<lanelet::Id> lane_start;
-        std::vector<lanelet::Id> lane_end;
-
-        // Find the origin lanelet
-
-        // Two nearest lanelets should, in theory, be the lanelets for each direction
-        // TODO: (eganj) verify that the right lanelets have been found and if not alert safety
-        auto nearest_lanelets_start = osm_map->laneletLayer.nearest(start, 2);
-        if (nearest_lanelets_start.empty())
+        if (nearby_lanelets.empty())
         {
-          std::cerr << "Couldn't find nearest lanelet to start." << std::endl;
+          return false;
         }
         else
         {
-          for (const auto &lanelet : nearest_lanelets_start)
+          bool flag_found_containing = false;
+          // only want the closest lanelet, and lanelet2 doesn't provide in order
+          // do linear search on lanelets if containing not found
+          lanelet::Lanelet nearest_lanelet;
+          double nearest_distance = std::numeric_limits<double>::max();
+
+          for (const auto &lanelet : nearby_lanelets)
           {
-            lane_start.push_back(lanelet.id());
+            if(lanelet::geometry::inside(lanelet, point)){
+              // Add to results and update flag
+              flag_found_containing = true;
+              result_wb.push_back(lanelet);
+            } else {
+              // check if it's the nearest
+              double cur_dist = lanelet::geometry::distance2d(lanelet.polygon2d(), point);
+              if (cur_dist < nearest_distance)
+              {
+                nearest_lanelet = lanelet;
+                nearest_distance = cur_dist;
+              }
+            }
           }
-        }
 
-        // find the destination lanelet
-        // Two nearest lanelets should, in theory, be the lanelets for each direction
-        auto nearest_lanelets_end = osm_map->laneletLayer.nearest(end, 2);
-        if (nearest_lanelets_end.empty())
-        {
-          std::cerr << "Couldn't find nearest lanelet to goal." << std::endl;
-        }
-        else
-        {
-          for (const auto &lanelet : nearest_lanelets_end)
-          {
-            lane_end.push_back(lanelet.id());
+          if(!flag_found_containing){
+            result_wb.push_back(nearest_lanelet);
           }
+
+          return flag_found_containing;
         }
-
-        // plan a route using lanelet2 lib
-        route = get_lane_route(lane_start, lane_end);
-
-        return route.size() > 0;
       }
+
+
+      /**
+         * Fetches lanelets near current location and labels them with routing cost.
+         * 
+         * If the location is not inside a lanelet the closest is used.
+         * 
+         * Writes <Id, cost> pairs to a new vector passed back to provided address
+         */
+        void Lanelet2GlobalPlanner::fetch_routing_costs(TrajectoryPoint &location, LaneRouteCosts &costs) const {
+          // using a map initially since it is possible a lane might be added multiple times
+          std::map<lanelet::Id, double> message_cost_map;
+          
+          std::vector<lanelet::Lanelet> origin_lanelets;
+          find_lanelets(location, 5, origin_lanelets);
+
+          double horizon = get_current_horizon();
+
+          // find lanelets within horizon and add them to the message if 
+          // routing costs exists
+          for(lanelet::Lanelet l : origin_lanelets){
+            double cur_cost;
+            if(get_cost(l.id(), cur_cost)){
+              // only add to message if lanelets can reach destination
+              lanelet::ConstLanelets reachable = routing_graph->reachableSet(l, horizon);
+              for(lanelet::ConstLanelet r : reachable){
+                lanelet::Id r_id = r.id();
+                double r_cost;
+                if(get_cost(r_id, r_cost)){
+                  // want cost relative to current position
+                  r_cost = r_cost - cur_cost;
+                  // only add to message if lanelets can reach destination
+                  // it is possible that if our origin position included multiple 
+                  // lanelets that r already has a cost. We want to keep the lowest.
+                  auto msg_cost_search = message_cost_map.find(r_id);
+                  if(msg_cost_search == message_cost_map.end()){
+                    message_cost_map.emplace(r_id, r_cost);
+                  } else{
+                    message_cost_map[r_id] = std::min(r_cost, message_cost_map[r_id]);
+                  }
+                }
+              }
+            }            
+          }
+
+          // from message map extract all pairs and put to output vector
+          for(auto map_pair : message_cost_map){
+            LaneRouteCost cost_pair;
+            cost_pair.first = map_pair.first;
+            cost_pair.second= static_cast<float>(map_pair.second);
+            costs.push_back(cost_pair);
+          }
+
+        }
+
+        bool Lanelet2GlobalPlanner::get_cost(lanelet::Id id, double &cost_wb) const{
+          auto search_res = cost_map.find(id);
+          if(search_res == cost_map.end()){
+            // no route from given lane to destination exists
+            return false;
+          }else{
+            // route exists. Update cost and return
+            cost_wb = search_res->second;
+            return true;
+          }
+        }
+
+        /* WARNING: this current code is slow and is not meant to be used
+         * while the car is in operation. It is designed for when the whole
+         * map is loaded at once and provides rapid lookup for lane costs.
+         */
+        void Lanelet2GlobalPlanner::set_destination(TrajectoryPoint &goal) {
+          // Visit each lane that can lead to the destination point and add 
+          // its routing cost to the map
+
+          cost_map.clear();
+
+          // Create routing graph with traffic rules
+          lanelet::traffic_rules::TrafficRulesPtr trafficRules =
+              lanelet::traffic_rules::TrafficRulesFactory::create(
+                  lanelet::Locations::Germany, // TODO: figure out if its safe to change locations
+                  lanelet::Participants::Vehicle);
+
+          routing_graph = RoutingGraph::build(*osm_map, *trafficRules);
+
+          std::vector<lanelet::Lanelet> containing_lanelets;
+          find_lanelets(goal, 5, containing_lanelets);
+
+          LaneletVisitFunction visit_func = [=](const LaneletVisitInformation &info)->bool {
+              // each lanelet should only be traversed once with its lowest cost, so we 
+              // shouldn't have to worry about double visits
+              cost_map.emplace(info.lanelet.id(), info.cost);
+              return true;
+            };
+
+          for(lanelet::Lanelet &dest_lanelet : containing_lanelets){
+            // forEachPredecessor with lane changes allowed *should* automatically
+            // handle adjacent but non-preceeding relations. Using default cost for now
+            routing_graph->forEachPredecessor(dest_lanelet, visit_func);
+          }
+        }
 
       std::string Lanelet2GlobalPlanner::get_primitive_type(const lanelet::Id &prim_id)
       {
@@ -142,51 +240,9 @@ namespace autoware
         return lane_id;
       }
 
-      std::vector<lanelet::Id> Lanelet2GlobalPlanner::get_lane_route(
-          const std::vector<lanelet::Id> &from_id, const std::vector<lanelet::Id> &to_id) const
-      {
-        lanelet::traffic_rules::TrafficRulesPtr trafficRules =
-            lanelet::traffic_rules::TrafficRulesFactory::create(
-                lanelet::Locations::Germany, //TODO: (eganj) figure out if its safe to change locations
-                lanelet::Participants::Vehicle);
-        lanelet::routing::RoutingGraphUPtr routingGraph =
-            lanelet::routing::RoutingGraph::build(*osm_map, *trafficRules);
-
-        // plan a shortest path without a lane change from the given from:to combination
-        float64_t shortest_length = std::numeric_limits<float64_t>::max();
-        std::vector<lanelet::Id> shortest_route;
-        for (auto start_id : from_id)
-        {
-          for (auto end_id : to_id)
-          {
-            lanelet::ConstLanelet fromLanelet = osm_map->laneletLayer.get(start_id);
-            lanelet::ConstLanelet toLanelet = osm_map->laneletLayer.get(end_id);
-            lanelet::Optional<lanelet::routing::Route> route = routingGraph->getRoute(
-                fromLanelet, toLanelet, 0);
-
-            // check route validity before continue further
-            if (route)
-            {
-              // op for the use of shortest path in this implementation
-              lanelet::routing::LaneletPath shortestPath = route->shortestPath();
-              lanelet::LaneletSequence fullLane = route->fullLane(fromLanelet);
-              const auto route_length = route->length2d();
-              if (!shortestPath.empty() && !fullLane.empty() && shortest_length > route_length)
-              {
-                // add to the list
-                shortest_length = route_length;
-                shortest_route = fullLane.ids();
-              }
-            }
-          }
-        }
-
-        return shortest_route;
-      }
-
       /**
-      * Fancy autoware pythagorean theorem
-      */
+       * Fancy autoware pythagorean theorem
+       */
       float64_t Lanelet2GlobalPlanner::p2p_euclidean(
           const lanelet::Point3d &p1,
           const lanelet::Point3d &p2) const

@@ -26,7 +26,7 @@
 #include <vector>
 
 #if defined(__cplusplus) && __cplusplus >= 201703L && defined(__has_include) && \
-  __has_include(<filesystem>)
+    __has_include(<filesystem>)
 #include <filesystem>
 namespace fs = std::filesystem;
 #else
@@ -34,28 +34,233 @@ namespace fs = std::filesystem;
 namespace fs = ghc::filesystem;
 #endif
 
-using autoware::common::types::float64_t;
 using autoware::common::types::bool8_t;
+using autoware::common::types::float64_t;
 using autoware::planning::lanelet2_global_planner::Lanelet2GlobalPlanner;
+using autoware::planning::lanelet2_global_planner::LaneRouteCosts;
+using autoware_auto_msgs::msg::TrajectoryPoint;
 
-class TestGlobalPlannerBasicMap : public ::testing::Test
+class TestGlobalPlannerBaseTest : public ::testing::Test
 {
-// public:
-//   TestGlobalPlannerBasicMap()
-//   {
-//     node_ptr = std::make_shared<Lanelet2GlobalPlanner>();
-//     std::string root_folder =
-//       ament_index_cpp::get_package_share_directory("lanelet2_global_planner");
-//     std::string file_path = std::string("/test/map_data/mapping_example_pk.osm");
-//     std::string file = root_folder + file_path;
-//     float64_t lat = 51.502091;
-//     float64_t lon = -0.08719;
-//     float64_t alt = 39.0144;
-//     node_ptr->load_osm_map(file, lat, lon, alt);
-//     node_ptr->parse_lanelet_element();
-//   }
-//   std::shared_ptr<Lanelet2GlobalPlanner> node_ptr;
-// };
+public:
+  // consts to map the number of encapsulating lanelets to the indices
+  // of their trajectory points in origin and destination arrays
+  const int NO_LANELETS = 0;
+  const int ONE_LANELET = 1;
+  const int MULTIPLE_LANELETS = 2;
+
+  // there should be a route from each origin to destination lanelet
+  // useful lanelet Ids to start from
+  TrajectoryPoint origins[3];
+  // useful lanelet IDs to end at
+  TrajectoryPoint destinations[3];
+
+  std::shared_ptr<Lanelet2GlobalPlanner> node_ptr;
+
+  TestGlobalPlannerBaseTest(
+      std::string map_file_path,
+      float64_t lat,
+      float64_t lon,
+      float64_t alt)
+  {
+    node_ptr = std::make_shared<Lanelet2GlobalPlanner>();
+    std::string root_folder =
+        ament_index_cpp::get_package_share_directory("lanelet2_global_planner");
+    // std::string file_path = std::string("/test/map_data/mapping_example_pk.osm");
+    std::string file = root_folder + map_file_path;
+
+    node_ptr->load_osm_map(file, lat, lon, alt);
+    node_ptr->parse_lanelet_element();
+  }
+
+  /**
+   * A collection of assertions on the output of fetch_routing_costs that
+   * should hold true in any scenario
+   *
+   * @param costs: output vector from fetch_routing_costs
+   */
+  void validate_routing_costs(LaneRouteCosts costs, TrajectoryPoint destination)
+  {
+    // each lanelet should be included in the message only once
+    // run an (inefficient) linear search for each entry
+    bool failed_uniqueness = false;
+    for (auto &check_pair : costs)
+    {
+      for (auto &search_pair : costs)
+      {
+        if (check_pair != search_pair)
+        {
+          failed_uniqueness = failed_uniqueness || (check_pair.first == search_pair.first);
+        }
+      }
+    }
+    if (failed_uniqueness)
+    {
+      EXPECT_FALSE(failed_uniqueness) << "Lanelet Ids should appear only once in output";
+      print_route_results(costs);
+    }
+
+    // each lanelet included in the message should be able to reach the destination
+    std::unordered_map<lanelet::Id, double> abs_costs; // store for later
+    lanelet::Lanelets dests;
+    node_ptr->find_lanelets(destination, 5, dests);
+    for (auto &check_pair : costs)
+    {
+      double abs_cost = std::numeric_limits<double>::max();
+      lanelet::ConstLanelet origin_lanelet = node_ptr->osm_map->laneletLayer.get(check_pair.first);
+
+      for (lanelet::Lanelet dest : dests)
+      {
+        lanelet::Optional<lanelet::routing::Route> route = node_ptr->routing_graph->getRoute(origin_lanelet, dest);
+        if (!!route)
+        {
+          abs_cost = std::min(abs_cost, route->length2d()); // TODO: what if cost is not length?
+        }
+      }
+      ASSERT_TRUE(abs_cost != std::numeric_limits<double>::max())
+          << "Each lanelet should have route to destination" << std::endl
+          << "Lanelet ID: " << check_pair.first;
+
+      abs_costs[check_pair.first] = abs_cost;
+    }
+    // The relative ordering of the costs from the message should match the relative
+    // ordering of the absolute costs of the routes from those lanelets
+    // more effiecient would be to sort and check, but checking every pair instead
+    // only want to fail once to avoid flooding console.
+    bool failed_relative_ordering = false;
+    for (auto p1 : costs)
+    {
+      for (auto p2 : costs)
+      {
+        failed_relative_ordering = failed_relative_ordering || !((p1.second < p2.second) == (abs_costs[p1.first] < abs_costs[p2.first]));
+      }
+    }
+    EXPECT_FALSE(failed_relative_ordering) << "Relative ordering of costs should remain the same";
+  }
+
+  void print_route_results(LaneRouteCosts results)
+  {
+    std::cerr << "Route contents: " << std::endl;
+    std::cerr << "\t{ ID , COST }" << std::endl;
+    for (auto lcpair : results)
+    {
+      std::cerr << "\t{ " << lcpair.first << " , " << lcpair.second << "}" << std::endl;
+    }
+  }
+};
+
+class TestGlobalPlannerMapNoCycles : public TestGlobalPlannerBaseTest
+{
+public:
+  TestGlobalPlannerMapNoCycles() : TestGlobalPlannerBaseTest("/test/map_data/borregas_test.osm", 37.41691154328607, -122.01603989032715, 1.0)
+  {
+    origins[NO_LANELETS].set__x(21.71507); // above lanelet 7
+    origins[NO_LANELETS].set__y(15.71280);
+    origins[ONE_LANELET].set__x(21.71507); // inside lanelet 7
+    origins[ONE_LANELET].set__y(4.55727);
+    origins[MULTIPLE_LANELETS].set__x(-16.352); // lanelets 282, 251
+    origins[MULTIPLE_LANELETS].set__y(22.959);
+
+    destinations[NO_LANELETS].set__x(-3.4); // below lanelet 137
+    destinations[NO_LANELETS].set__y(-388.8);
+    destinations[ONE_LANELET].set__x(7.9156); // inside lanelet 137
+    destinations[ONE_LANELET].set__y(-367.4506);
+    destinations[MULTIPLE_LANELETS].set__x(-96.6244); // lanelets 402, 452, 380
+    destinations[MULTIPLE_LANELETS].set__y(-338.9100);
+  }
+};
+
+TEST_F(TestGlobalPlannerMapNoCycles, TestMapSetup)
+{
+  // TrajectoryPoint to Lanelet lookup
+  lanelet::Lanelets lanelets_found;
+
+  EXPECT_FALSE(node_ptr->find_lanelets(origins[NO_LANELETS], 5, lanelets_found)) << "Should not find encapsulating lanelet";
+  EXPECT_EQ(lanelets_found.size(), std::size_t(1)) << "Should find exactly 1 nearest lanelet";
+  EXPECT_EQ(lanelets_found[0].id(), lanelet::Id(7)) << "Found unexpected lanelet";
+  lanelets_found.clear();
+
+  EXPECT_FALSE(node_ptr->find_lanelets(destinations[NO_LANELETS], 5, lanelets_found)) << "Should not find encapsulating lanelet";
+  EXPECT_EQ(lanelets_found.size(), std::size_t(1)) << "Should find exactly 1 nearest lanelet";
+  EXPECT_EQ(lanelets_found[0].id(), lanelet::Id(137)) << "Found unexpected lanelet";
+  lanelets_found.clear();
+
+  EXPECT_TRUE(node_ptr->find_lanelets(origins[ONE_LANELET], 5, lanelets_found)) << "Should find encapsulating lanelet";
+  EXPECT_EQ(lanelets_found.size(), std::size_t(1)) << "Should find exactly 1 encapsulating lanelet";
+  EXPECT_EQ(lanelets_found[0].id(), lanelet::Id(7)) << "Found unexpected lanelet";
+  lanelets_found.clear();
+
+  EXPECT_TRUE(node_ptr->find_lanelets(destinations[ONE_LANELET], 5, lanelets_found)) << "Should find encapsulating lanelet";
+  EXPECT_EQ(lanelets_found.size(), std::size_t(1)) << "Should find exactly 1 encapsulating lanelet";
+  EXPECT_EQ(lanelets_found[0].id(), lanelet::Id(137)) << "Found unexpected lanelet";
+  lanelets_found.clear();
+
+  EXPECT_TRUE(node_ptr->find_lanelets(origins[MULTIPLE_LANELETS], 5, lanelets_found)) << "Should find encapsulating lanelet";
+  EXPECT_EQ(lanelets_found.size(), std::size_t(2)) << "Should find multiple encapsulating lanelets";
+  for (lanelet::Lanelet l : lanelets_found)
+  {
+    lanelet::Id l_id = l.id();
+    EXPECT_TRUE(l_id == lanelet::Id(282) || l_id == lanelet::Id(251)) << "Found unexpected lanelet";
+  }
+  lanelets_found.clear();
+
+  EXPECT_TRUE(node_ptr->find_lanelets(destinations[MULTIPLE_LANELETS], 5, lanelets_found)) << "Should find encapsulating lanelet";
+  EXPECT_EQ(lanelets_found.size(), std::size_t(3)) << "Should find multiple encapsulating lanelets";
+  for (lanelet::Lanelet l : lanelets_found)
+  {
+    lanelet::Id l_id = l.id();
+    EXPECT_TRUE(l_id == lanelet::Id(402) || l_id == lanelet::Id(452) || l_id == lanelet::Id(380)) << "Found unexpected lanelet";
+  }
+  lanelets_found.clear();
+
+  // Map autovalidation
+  for (auto dest : destinations)
+  {
+    node_ptr->set_destination(dest);
+    auto errors = node_ptr->routing_graph->checkValidity(false);
+    for (auto error : errors)
+    {
+      EXPECT_TRUE(false) << "Routing graph error: " << error;
+    }
+  }
+}
+
+TEST_F(TestGlobalPlannerMapNoCycles, TestRoutes)
+{
+  // for each possible origin -> destination pair validate results
+  for (auto dest : destinations)
+  {
+    node_ptr->set_destination(dest);
+    for (auto origin : origins)
+    {
+      LaneRouteCosts results;
+      node_ptr->fetch_routing_costs(origin, results);
+      EXPECT_NE(results.size(), std::size_t(0)) << "Route should exist and costs should not be empty";
+      validate_routing_costs(results, dest);
+    }
+  }
+}
+
+TEST_F(TestGlobalPlannerMapNoCycles, TestRouteDirectionality)
+{
+  // for each possible destination -> origin pair try to find route.
+  // since this map has no cycles and routes should exist from origin
+  // to destination, no route should exist from destinations to origin
+  for (auto dest_flipped : origins)
+  {
+    node_ptr->set_destination(dest_flipped);
+    for (auto origin_flipped : destinations)
+    {
+      LaneRouteCosts results;
+      node_ptr->fetch_routing_costs(origin_flipped, results);
+      EXPECT_EQ(results.size(), std::size_t(0)) << "Routes should follow lanelet direction";
+      if (results.size() > 0)
+      {
+        print_route_results(results);
+      }
+    }
+  }
+}
 
 // class TestGlobalPlannerFullMap : public ::testing::Test
 // {
@@ -196,7 +401,6 @@ class TestGlobalPlannerBasicMap : public ::testing::Test
 //   ASSERT_EQ(num[2], 3798);
 // }
 
-
 // TEST_F(TestGlobalPlannerFullMap, TestFindParkingaccess)
 // {
 //   lanelet::Id parking_id = 8008;
@@ -326,6 +530,6 @@ class TestGlobalPlannerBasicMap : public ::testing::Test
 //   bool8_t result = node_ptr->plan_route(from_point, to_point, route);
 //   EXPECT_TRUE(result);
 // }
-
-};
-#endif  // TEST_LANELET2_GLOBAL_PLANNER_HPP_
+//
+// };
+#endif // TEST_LANELET2_GLOBAL_PLANNER_HPP_
