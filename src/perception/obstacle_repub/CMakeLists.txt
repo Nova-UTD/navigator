@@ -29,13 +29,9 @@ find_package(voltron_msgs REQUIRED)
 add_executable(obstacle_republisher_exe src/obstacle_republisher.cpp)
 ament_target_dependencies(obstacle_republisher_exe rclcpp lgsvl_msgs voltron_msgs)
 
-#add_executable(svl_pub_exe src/svl_object_publisher.cpp)
-#ament_target_dependencies(svl_pub_exe rclcpp lgsvl_msgs)
-
 
 install(TARGETS
   obstacle_republisher_exe
-  #svl_pub_exe
   DESTINATION lib/${PROJECT_NAME})
 
 
