@@ -239,6 +239,12 @@ def generate_launch_description():
         remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
     )
 
+    obstacle_republisher = Node(
+        package='obstacle_repub',
+        name='obstacle_republisher',
+        executable='obstacle_republisher_exe'
+    )
+
     return LaunchDescription([
         # CONTROL
         steering_controller,
@@ -271,6 +277,7 @@ def generate_launch_description():
         lidar_rear_filter,
         lidar_fusion,
         lidar_downsampler,
+        obstacle_republisher,
 
         # PLANNING
         route_planner,

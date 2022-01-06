@@ -11,6 +11,9 @@ ament_auto_find_build_dependencies()
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Gear.msg"
   "msg/CanFrame.msg"
+  "msg/Obstacle3D.msg"
+  "msg/Obstacle3DArray.msg"
+  "msg/BoundingBox3D.msg"
   "srv/SafetyEvent.srv"
   "srv/SafetyCommand.srv"
   DEPENDENCIES
