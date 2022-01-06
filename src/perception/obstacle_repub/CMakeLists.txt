@@ -23,11 +23,12 @@ find_package(ament_cmake REQUIRED)
 
 find_package(rclcpp REQUIRED)
 find_package(lgsvl_msgs REQUIRED)
+find_package(zed_interfaces REQUIRED)
 find_package(voltron_msgs REQUIRED)
 
 
 add_executable(obstacle_republisher_exe src/obstacle_republisher.cpp)
-ament_target_dependencies(obstacle_republisher_exe rclcpp lgsvl_msgs voltron_msgs)
+ament_target_dependencies(obstacle_republisher_exe rclcpp lgsvl_msgs zed_interfaces voltron_msgs)
 
 
 install(TARGETS
