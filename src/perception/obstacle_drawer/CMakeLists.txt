@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(obstacle_repub)
+project(obstacle_drawer)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -22,20 +22,15 @@ find_package(ament_cmake REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 find_package(rclcpp REQUIRED)
-find_package(lgsvl_msgs REQUIRED)
-find_package(zed_interfaces REQUIRED)
 find_package(voltron_msgs REQUIRED)
-find_package(tf2 REQUIRED)
-find_package(tf2_geometry_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
-
-
-add_executable(obstacle_republisher_exe src/obstacle_republisher.cpp)
-ament_target_dependencies(obstacle_republisher_exe rclcpp lgsvl_msgs zed_interfaces voltron_msgs tf2 tf2_geometry_msgs)
-
+add_executable(obstacle_drawer_exe src/obstacle_drawer.cpp)
+ament_target_dependencies(obstacle_drawer_exe rclcpp voltron_msgs visualization_msgs geometry_msgs)
 
 install(TARGETS
-  obstacle_republisher_exe
+  obstacle_drawer_exe
   DESTINATION lib/${PROJECT_NAME})
 
 

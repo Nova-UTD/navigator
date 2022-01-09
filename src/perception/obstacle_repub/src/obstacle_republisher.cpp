@@ -12,6 +12,8 @@
 #include "zed_interfaces/msg/objects_stamped.hpp"
 #include "voltron_msgs/msg/obstacle3_d.hpp"
 #include "voltron_msgs/msg/obstacle3_d_array.hpp"
+#include "tf2/convert.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
 #include <memory>
 
@@ -48,6 +50,8 @@ private:
 
         auto std_vehicle_array = voltron_msgs::msg::Obstacle3DArray();
         auto std_pedestrian_array = voltron_msgs::msg::Obstacle3DArray();
+        std_vehicle_array.header = msg->header;
+        std_pedestrian_array.header = msg->header;
 
         for (const auto detection : msg->detections) {
             auto std_obstacle = voltron_msgs::msg::Obstacle3D();
@@ -55,8 +59,49 @@ private:
             std_obstacle.id = detection.id;
             std_obstacle.confidence = detection.score;
             std_obstacle.velocity = detection.velocity.linear;
-            std_obstacle.bounding_box.box_pose = detection.bbox.position;
-            std_obstacle.bounding_box.box_size = detection.bbox.size;
+            std_obstacle.bounding_box.size = detection.bbox.size;
+  
+            // maping each index of corners array into this format
+            //      1 ------- 2
+            //     /.        /|
+            //    0 ------- 3 |               +z        x = forward
+            //    | .       | |               |         y = left
+            //    | 5.......| 6               | +x      z = up
+            //    |.        |/                |/
+            //    4 ------- 7       +y -------*
+
+            auto box_transform = geometry_msgs::msg::TransformStamped();
+            box_transform.transform.set__rotation(detection.bbox.position.orientation);
+            geometry_msgs::msg::Point temp_corners[8];
+
+            for (int i = 0; i < 8; i++){
+                if (i % 4 == 1 || i % 4 == 2)
+                    temp_corners[i].set__x(detection.bbox.size.x / 2.0);
+                else
+                    temp_corners[i].set__x(-detection.bbox.size.x / 2.0);
+                if (i % 4 == 0 || i % 4 == 1)
+                    temp_corners[i].set__y(detection.bbox.size.y / 2.0);
+                else 
+                    temp_corners[i].set__y(-detection.bbox.size.y / 2.0);
+                if (i < 4)
+                    temp_corners[i].set__z(detection.bbox.size.z / 2.0);
+                else 
+                    temp_corners[i].set__z(-detection.bbox.size.z / 2.0);
+
+                // for some reason, it has to be PointStamped for doTransform to work
+                auto to_tranform = geometry_msgs::msg::PointStamped();
+                to_tranform.point = temp_corners[i];
+                auto tranformed = geometry_msgs::msg::PointStamped();
+                tranformed.point = std_obstacle.bounding_box.corners[i];
+
+                tf2::doTransform(to_tranform, tranformed, box_transform);
+    
+                std_obstacle.bounding_box.corners[i].set__x(tranformed.point.x + detection.bbox.position.position.x);
+                std_obstacle.bounding_box.corners[i].set__y(tranformed.point.y + detection.bbox.position.position.y);
+                std_obstacle.bounding_box.corners[i].set__z(tranformed.point.z + detection.bbox.position.position.z);
+            }   
+
+            std_obstacle.bounding_box.position = detection.bbox.position.position;
 
             if (detection.label != "Pedestrian"){
                 std_obstacle.label = "Vehicle";
@@ -75,6 +120,8 @@ private:
     void zed_obstacle_callback(const zed_interfaces::msg::ObjectsStamped::SharedPtr msg) const {
         auto std_vehicle_array = voltron_msgs::msg::Obstacle3DArray();
         auto std_pedestrian_array = voltron_msgs::msg::Obstacle3DArray();
+        std_vehicle_array.header = msg->header;
+        std_pedestrian_array.header = msg->header;
         
         for (const auto detection : msg->objects) {
             auto std_obstacle = voltron_msgs::msg::Obstacle3D();
@@ -87,17 +134,19 @@ private:
             std_obstacle.velocity.set__y(static_cast<double>(detection.velocity.at(1)));
             std_obstacle.velocity.set__z(static_cast<double>(detection.velocity.at(2)));
 
-            std_obstacle.bounding_box.box_size.set__x(static_cast<double>(detection.dimensions_3d.at(0)));
-            std_obstacle.bounding_box.box_size.set__y(static_cast<double>(detection.dimensions_3d.at(1)));
-            std_obstacle.bounding_box.box_size.set__z(static_cast<double>(detection.dimensions_3d.at(2)));
+            std_obstacle.bounding_box.size.set__x(static_cast<double>(detection.dimensions_3d.at(0)));
+            std_obstacle.bounding_box.size.set__y(static_cast<double>(detection.dimensions_3d.at(1)));
+            std_obstacle.bounding_box.size.set__z(static_cast<double>(detection.dimensions_3d.at(2)));
 
-            std_obstacle.bounding_box.box_pose.position.set__x(static_cast<double>(detection.position.at(0)));
-            std_obstacle.bounding_box.box_pose.position.set__y(static_cast<double>(detection.position.at(1)));
-            std_obstacle.bounding_box.box_pose.position.set__z(static_cast<double>(detection.position.at(2)));
-
-            // TO-DO: find the orientation of the bounding box object, requires some knowledge of quaternions
-            // std_obstacle.bounding_box.box_pose.orientation 
-
+            std_obstacle.bounding_box.position.set__x(static_cast<double>(detection.position.at(0)));
+            std_obstacle.bounding_box.position.set__y(static_cast<double>(detection.position.at(1)));
+            std_obstacle.bounding_box.position.set__z(static_cast<double>(detection.position.at(2)));
+            
+            for (int i = 0; i < 8; i++){
+                std_obstacle.bounding_box.corners[i].set__x(static_cast<double>(detection.bounding_box_3d.corners[i].kp[0]));
+                std_obstacle.bounding_box.corners[i].set__x(static_cast<double>(detection.bounding_box_3d.corners[i].kp[1]));
+                std_obstacle.bounding_box.corners[i].set__x(static_cast<double>(detection.bounding_box_3d.corners[i].kp[2]));
+            }
 
             if (detection.label == "Vehicle"){
                 std_obstacle.label = "Vehicle";

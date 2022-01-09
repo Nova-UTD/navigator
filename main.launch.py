@@ -245,6 +245,13 @@ def generate_launch_description():
         executable='obstacle_republisher_exe'
     )
 
+    obstacle_drawer = Node(
+        package='obstacle_drawer',
+        name='obstacle_drawer_node',
+        executable='obstacle_drawer_exe'
+    )
+
+
     return LaunchDescription([
         # CONTROL
         steering_controller,
@@ -278,6 +285,7 @@ def generate_launch_description():
         lidar_fusion,
         lidar_downsampler,
         obstacle_republisher,
+        obstacle_drawer,
 
         # PLANNING
         route_planner,
