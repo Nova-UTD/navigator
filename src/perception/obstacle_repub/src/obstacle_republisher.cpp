@@ -14,10 +14,12 @@
 #include "voltron_msgs/msg/obstacle3_d_array.hpp"
 #include "tf2/convert.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
-
 #include <memory>
 
 using std::placeholders::_1;
+
+namespace navigator {
+namespace obstacle_repub {
 
 class ObstacleRepublisher : public rclcpp::Node {
 
@@ -39,6 +41,7 @@ public:
         // an publishers that republishes 3D pedestrian detections into our own abstract format
         std_pedestrian_publisher = this->create_publisher<voltron_msgs::msg::Obstacle3DArray>("/obstacles/pedestrians", 10);
     }
+
 private:
 
     rclcpp::Subscription<lgsvl_msgs::msg::Detection3DArray>::SharedPtr svl_obstacle_subscription;
@@ -76,17 +79,17 @@ private:
 
             for (int i = 0; i < 8; i++){
                 if (i % 4 == 1 || i % 4 == 2)
-                    temp_corners[i].set__x(detection.bbox.size.x / 2.0);
+                    temp_corners[i].x = detection.bbox.size.x / 2.0;
                 else
-                    temp_corners[i].set__x(-detection.bbox.size.x / 2.0);
+                    temp_corners[i].x = -detection.bbox.size.x / 2.0;
                 if (i % 4 == 0 || i % 4 == 1)
-                    temp_corners[i].set__y(detection.bbox.size.y / 2.0);
+                    temp_corners[i].y = detection.bbox.size.y / 2.0;
                 else 
-                    temp_corners[i].set__y(-detection.bbox.size.y / 2.0);
+                    temp_corners[i].y = -detection.bbox.size.y / 2.0;
                 if (i < 4)
-                    temp_corners[i].set__z(detection.bbox.size.z / 2.0);
+                    temp_corners[i].z = detection.bbox.size.z / 2.0;
                 else 
-                    temp_corners[i].set__z(-detection.bbox.size.z / 2.0);
+                    temp_corners[i].z = -detection.bbox.size.z / 2.0;
 
                 // for some reason, it has to be PointStamped for doTransform to work
                 auto to_tranform = geometry_msgs::msg::PointStamped();
@@ -96,9 +99,9 @@ private:
 
                 tf2::doTransform(to_tranform, tranformed, box_transform);
     
-                std_obstacle.bounding_box.corners[i].set__x(tranformed.point.x + detection.bbox.position.position.x);
-                std_obstacle.bounding_box.corners[i].set__y(tranformed.point.y + detection.bbox.position.position.y);
-                std_obstacle.bounding_box.corners[i].set__z(tranformed.point.z + detection.bbox.position.position.z);
+                std_obstacle.bounding_box.corners[i].x = tranformed.point.x + detection.bbox.position.position.x;
+                std_obstacle.bounding_box.corners[i].y = tranformed.point.y + detection.bbox.position.position.y;
+                std_obstacle.bounding_box.corners[i].z = tranformed.point.z + detection.bbox.position.position.z;
             }   
 
             std_obstacle.bounding_box.position = detection.bbox.position.position;
@@ -130,22 +133,22 @@ private:
             
             std_obstacle.confidence = detection.confidence / 100.0f;
 
-            std_obstacle.velocity.set__x(static_cast<double>(detection.velocity.at(0)));
-            std_obstacle.velocity.set__y(static_cast<double>(detection.velocity.at(1)));
-            std_obstacle.velocity.set__z(static_cast<double>(detection.velocity.at(2)));
+            std_obstacle.velocity.x = static_cast<double>(detection.velocity.at(0));
+            std_obstacle.velocity.y = static_cast<double>(detection.velocity.at(1));
+            std_obstacle.velocity.z = static_cast<double>(detection.velocity.at(2));
 
-            std_obstacle.bounding_box.size.set__x(static_cast<double>(detection.dimensions_3d.at(0)));
-            std_obstacle.bounding_box.size.set__y(static_cast<double>(detection.dimensions_3d.at(1)));
-            std_obstacle.bounding_box.size.set__z(static_cast<double>(detection.dimensions_3d.at(2)));
+            std_obstacle.bounding_box.size.x = static_cast<double>(detection.dimensions_3d.at(0));
+            std_obstacle.bounding_box.size.y = static_cast<double>(detection.dimensions_3d.at(1));
+            std_obstacle.bounding_box.size.z = static_cast<double>(detection.dimensions_3d.at(2));
 
-            std_obstacle.bounding_box.position.set__x(static_cast<double>(detection.position.at(0)));
-            std_obstacle.bounding_box.position.set__y(static_cast<double>(detection.position.at(1)));
-            std_obstacle.bounding_box.position.set__z(static_cast<double>(detection.position.at(2)));
+            std_obstacle.bounding_box.position.x = static_cast<double>(detection.position.at(0));
+            std_obstacle.bounding_box.position.y = static_cast<double>(detection.position.at(1));
+            std_obstacle.bounding_box.position.z = static_cast<double>(detection.position.at(2));
             
             for (int i = 0; i < 8; i++){
-                std_obstacle.bounding_box.corners[i].set__x(static_cast<double>(detection.bounding_box_3d.corners[i].kp[0]));
-                std_obstacle.bounding_box.corners[i].set__x(static_cast<double>(detection.bounding_box_3d.corners[i].kp[1]));
-                std_obstacle.bounding_box.corners[i].set__x(static_cast<double>(detection.bounding_box_3d.corners[i].kp[2]));
+                std_obstacle.bounding_box.corners[i].x = static_cast<double>(detection.bounding_box_3d.corners[i].kp[0]);
+                std_obstacle.bounding_box.corners[i].y = static_cast<double>(detection.bounding_box_3d.corners[i].kp[1]);
+                std_obstacle.bounding_box.corners[i].z = static_cast<double>(detection.bounding_box_3d.corners[i].kp[2]);
             }
 
             if (detection.label == "Vehicle"){
@@ -158,18 +161,19 @@ private:
             }
 
         }
-        
         std_vehicle_publisher->publish(std_vehicle_array);
         std_pedestrian_publisher->publish(std_pedestrian_array);
     }
 
 };
+}
+}
 
 
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<ObstacleRepublisher>());
+  rclcpp::spin(std::make_shared<navigator::obstacle_repub::ObstacleRepublisher>());
   rclcpp::shutdown();
   return 0;
 }
