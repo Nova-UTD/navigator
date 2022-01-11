@@ -162,7 +162,7 @@ namespace autoware
           for(auto map_pair : message_cost_map){
             LaneRouteCost cost_pair;
             cost_pair.first = map_pair.first;
-            cost_pair.second= static_cast<float>(map_pair.second);
+            cost_pair.second= map_pair.second;
             costs.push_back(cost_pair);
           }
 

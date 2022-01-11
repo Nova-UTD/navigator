@@ -32,8 +32,9 @@
 #include <common/types.hpp>
 #include <autoware_auto_msgs/srv/had_map_service.hpp>
 #include <autoware_auto_msgs/msg/had_map_bin.hpp>
-#include <autoware_auto_msgs/msg/had_map_route.hpp>
 #include <autoware_auto_msgs/msg/vehicle_kinematic_state.hpp>
+#include <voltron_msgs/msg/route_cost.hpp>
+#include <voltron_msgs/msg/route_costs.hpp>
 #include <had_map_utils/had_map_conversion.hpp>
 #include <common/types.hpp>
 
@@ -57,17 +58,16 @@ namespace lanelet2_global_planner_nodes
 {
 class LANELET2_GLOBAL_PLANNER_NODES_PUBLIC Lanelet2GlobalPlannerNode : public rclcpp::Node
 {
+
+
 public:
   explicit Lanelet2GlobalPlannerNode(const rclcpp::NodeOptions & node_options);
 
   void request_osm_binary_map();
+  void update_loop_cb();
   void goal_pose_cb(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
   void current_pose_cb(const autoware_auto_msgs::msg::VehicleKinematicState::SharedPtr msg);
-  void send_global_path(
-    const std::vector<lanelet::Id> & had_map_route,
-    const autoware_auto_msgs::msg::TrajectoryPoint & start_point,
-    const autoware_auto_msgs::msg::TrajectoryPoint & end_point,
-    const std_msgs::msg::Header & header);
+  void publish_route_costs(lanelet2_global_planner::LaneRouteCosts &costs);
   bool8_t transform_pose_to_map(
     const geometry_msgs::msg::PoseStamped & pose_in, geometry_msgs::msg::PoseStamped & pose_out);
 
@@ -77,10 +77,12 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pose_sub_ptr;
   rclcpp::Subscription<autoware_auto_msgs::msg::VehicleKinematicState>::SharedPtr
     current_pose_sub_ptr;
-  rclcpp::Publisher<autoware_auto_msgs::msg::HADMapRoute>::SharedPtr global_path_pub_ptr;
-  geometry_msgs::msg::PoseStamped start_pose;
+  rclcpp::Publisher<voltron_msgs::msg::RouteCosts>::SharedPtr route_costs_pub_ptr;
+  rclcpp::TimerBase::SharedPtr update_loop_timer;
+  geometry_msgs::msg::PoseStamped current_pose;
   geometry_msgs::msg::PoseStamped goal_pose;
-  bool8_t start_pose_init;
+  bool8_t current_pose_init;
+  bool8_t goal_pose_init;
   tf2::BufferCore tf_buffer;
   tf2_ros::TransformListener tf_listener;
 };

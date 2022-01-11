@@ -101,12 +101,12 @@ public:
     }
 
     // each lanelet included in the message should be able to reach the destination
-    std::unordered_map<lanelet::Id, double> abs_costs; // store for later
+    std::unordered_map<lanelet::Id, float64_t> abs_costs; // store for later
     lanelet::Lanelets dests;
     node_ptr->find_lanelets(destination, 5, dests);
     for (auto &check_pair : costs)
     {
-      double abs_cost = std::numeric_limits<double>::max();
+      float64_t abs_cost = std::numeric_limits<float64_t>::max();
       lanelet::ConstLanelet origin_lanelet = node_ptr->osm_map->laneletLayer.get(check_pair.first);
 
       for (lanelet::Lanelet dest : dests)
@@ -117,7 +117,7 @@ public:
           abs_cost = std::min(abs_cost, route->length2d()); // TODO: what if cost is not length?
         }
       }
-      ASSERT_TRUE(abs_cost != std::numeric_limits<double>::max())
+      ASSERT_TRUE(abs_cost != std::numeric_limits<float64_t>::max())
           << "Each lanelet should have route to destination" << std::endl
           << "Lanelet ID: " << check_pair.first;
 

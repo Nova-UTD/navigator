@@ -51,7 +51,7 @@ namespace autoware
 
       using autoware_auto_msgs::msg::TrajectoryPoint;
       
-      using LaneRouteCost = std::pair<lanelet::Id, float>;
+      using LaneRouteCost = std::pair<lanelet::Id, float64_t>;
       using LaneRouteCosts = std::vector<LaneRouteCost>;
 
       class LANELET2_GLOBAL_PLANNER_PUBLIC Lanelet2GlobalPlanner
