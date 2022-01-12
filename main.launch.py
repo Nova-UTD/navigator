@@ -151,7 +151,7 @@ def generate_launch_description():
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        arguments=[path.join(launch_dir, "data", "voltron_sim.urdf")]
+        arguments=[path.join(launch_dir, "data", "voltron.urdf")]
     )
     
     visuals = Node(
