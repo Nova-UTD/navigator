@@ -1,18 +1,30 @@
-// Copyright 2021 the Autoware Foundation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Co-developed by Tier IV, Inc. and Apex.AI, Inc.
+/*
+ * Package:   lanelet2_global_planner
+ * Filename:  lanelet2_global_planner.hpp
+ * Author:    Egan Johnson
+ * Email:     egan.johnson@utdallas.edu
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
+
+// This file lays out the logic half of the route planner, implemented
+// in lanelet2_global_planner.cpp. It is intended for use when the destination
+// is change infrequently but the current position/origin changes often.
+// It provides routing costs paired with lanelet IDs. Routing costs are 
+// relative to the routing cost of the current position:
+//  - a cost of 0 means moving to that lanelet from current does not
+//    move closer to or farther from the goal
+//  - a positive cost means that moving to that lanelet from current
+//    moves further from the goal
+//  - a negative cost means moving to that lanelet from current moves
+//    closer to the goal
+
+
+// The following aspects of this file and the implementation need improvement:
+//  - Configurability: Pull values like horizon from a param file
+//  - Cost flexibility: add in the custom cost function. WARNING: THIS MAY
+//    CAUSE TESTS TO FAIL: SEE THE TODO COMMENT IN TEST FILE
+
 
 #ifndef LANELET2_GLOBAL_PLANNER__LANELET2_GLOBAL_PLANNER_HPP_
 #define LANELET2_GLOBAL_PLANNER__LANELET2_GLOBAL_PLANNER_HPP_
@@ -135,12 +147,12 @@ namespace autoware
         float64_t p2p_euclidean(const lanelet::Point3d &p1, const lanelet::Point3d &p2) const;
 
         /**
-         * Parsing, currently not sure what
+         * Parsing strings to lanelet ids
          */
         std::vector<lanelet::Id> lanelet_chr2num(const std::string &str) const;
 
         /**
-         * Parsing, currently not sure what
+         * Parsing strings to lanelet ids
          */
         std::vector<lanelet::Id> lanelet_str2num(const std::string &str) const;
 

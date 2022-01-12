@@ -1,18 +1,11 @@
-// Copyright 2019 the Autoware Foundation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Co-developed by Tier IV, Inc. and Apex.AI, Inc.
+/*
+ * Package:   lanelet2_global_planner
+ * Filename:  test_lanelet2_global_planner.hpp
+ * Author:    Egan Johnson
+ * Email:     egan.johnson@utdallas.edu
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
 
 #ifndef TEST_LANELET2_GLOBAL_PLANNER_HPP_
 #define TEST_LANELET2_GLOBAL_PLANNER_HPP_
@@ -114,7 +107,8 @@ public:
         lanelet::Optional<lanelet::routing::Route> route = node_ptr->routing_graph->getRoute(origin_lanelet, dest);
         if (!!route)
         {
-          abs_cost = std::min(abs_cost, route->length2d()); // TODO: what if cost is not length?
+          // TODO: If the cost has changed from distance-only, this does not work.
+          abs_cost = std::min(abs_cost, route->length2d());
         }
       }
       ASSERT_TRUE(abs_cost != std::numeric_limits<float64_t>::max())

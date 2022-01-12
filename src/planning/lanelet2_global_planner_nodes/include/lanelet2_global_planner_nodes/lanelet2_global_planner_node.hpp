@@ -1,21 +1,14 @@
-// Copyright 2019 the Autoware Foundation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Co-developed by Tier IV, Inc. and Apex.AI, Inc.
+/*
+ * Package:   lanelet2_global_planner_nodes
+ * Filename:  lanelet2_global_planner_node.hpp
+ * Author:    Egan Johnson
+ * Email:     egan.johnson@utdallas.edu
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
 
-#ifndef  LANELET2_GLOBAL_PLANNER_NODES__LANELET2_GLOBAL_PLANNER_NODE_HPP_
-#define  LANELET2_GLOBAL_PLANNER_NODES__LANELET2_GLOBAL_PLANNER_NODE_HPP_
+#ifndef LANELET2_GLOBAL_PLANNER_NODES__LANELET2_GLOBAL_PLANNER_NODE_HPP_
+#define LANELET2_GLOBAL_PLANNER_NODES__LANELET2_GLOBAL_PLANNER_NODE_HPP_
 // ros2
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
@@ -52,42 +45,41 @@ using autoware::planning::lanelet2_global_planner::Lanelet2GlobalPlanner;
 
 namespace autoware
 {
-namespace planning
-{
-namespace lanelet2_global_planner_nodes
-{
-class LANELET2_GLOBAL_PLANNER_NODES_PUBLIC Lanelet2GlobalPlannerNode : public rclcpp::Node
-{
+  namespace planning
+  {
+    namespace lanelet2_global_planner_nodes
+    {
+      class LANELET2_GLOBAL_PLANNER_NODES_PUBLIC Lanelet2GlobalPlannerNode : public rclcpp::Node
+      {
 
+      public:
+        explicit Lanelet2GlobalPlannerNode(const rclcpp::NodeOptions &node_options);
 
-public:
-  explicit Lanelet2GlobalPlannerNode(const rclcpp::NodeOptions & node_options);
+        void request_osm_binary_map();
+        void update_loop_cb();
+        void goal_pose_cb(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+        void current_pose_cb(const autoware_auto_msgs::msg::VehicleKinematicState::SharedPtr msg);
+        void publish_route_costs(lanelet2_global_planner::LaneRouteCosts &costs);
+        bool8_t transform_pose_to_map(
+            const geometry_msgs::msg::PoseStamped &pose_in, geometry_msgs::msg::PoseStamped &pose_out);
 
-  void request_osm_binary_map();
-  void update_loop_cb();
-  void goal_pose_cb(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
-  void current_pose_cb(const autoware_auto_msgs::msg::VehicleKinematicState::SharedPtr msg);
-  void publish_route_costs(lanelet2_global_planner::LaneRouteCosts &costs);
-  bool8_t transform_pose_to_map(
-    const geometry_msgs::msg::PoseStamped & pose_in, geometry_msgs::msg::PoseStamped & pose_out);
+      private:
+        std::shared_ptr<Lanelet2GlobalPlanner> lanelet2_global_planner;
+        rclcpp::Client<autoware_auto_msgs::srv::HADMapService>::SharedPtr map_client;
+        rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pose_sub_ptr;
+        rclcpp::Subscription<autoware_auto_msgs::msg::VehicleKinematicState>::SharedPtr
+            current_pose_sub_ptr;
+        rclcpp::Publisher<voltron_msgs::msg::RouteCosts>::SharedPtr route_costs_pub_ptr;
+        rclcpp::TimerBase::SharedPtr update_loop_timer;
+        geometry_msgs::msg::PoseStamped current_pose;
+        geometry_msgs::msg::PoseStamped goal_pose;
+        bool8_t current_pose_init;
+        bool8_t goal_pose_init;
+        tf2::BufferCore tf_buffer;
+        tf2_ros::TransformListener tf_listener;
+      };
+    } // namespace lanelet2_global_planner_nodes
+  }   // namespace planning
+} // namespace autoware
 
-private:
-  std::shared_ptr<Lanelet2GlobalPlanner> lanelet2_global_planner;
-  rclcpp::Client<autoware_auto_msgs::srv::HADMapService>::SharedPtr map_client;
-  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pose_sub_ptr;
-  rclcpp::Subscription<autoware_auto_msgs::msg::VehicleKinematicState>::SharedPtr
-    current_pose_sub_ptr;
-  rclcpp::Publisher<voltron_msgs::msg::RouteCosts>::SharedPtr route_costs_pub_ptr;
-  rclcpp::TimerBase::SharedPtr update_loop_timer;
-  geometry_msgs::msg::PoseStamped current_pose;
-  geometry_msgs::msg::PoseStamped goal_pose;
-  bool8_t current_pose_init;
-  bool8_t goal_pose_init;
-  tf2::BufferCore tf_buffer;
-  tf2_ros::TransformListener tf_listener;
-};
-}  // namespace lanelet2_global_planner_nodes
-}  // namespace planning
-}  // namespace autoware
-
-#endif  // LANELET2_GLOBAL_PLANNER_NODES__LANELET2_GLOBAL_PLANNER_NODE_HPP_
+#endif // LANELET2_GLOBAL_PLANNER_NODES__LANELET2_GLOBAL_PLANNER_NODE_HPP_
