@@ -11,8 +11,8 @@
 
     # Only reports orientation, linear accel in SVO
     frequency: 100.0 # Estimate update frequency, Hz, double
-    two_d_mode: true # Assume z=0
-    world_frame: map
+    two_d_mode: false # Assume z=0
+    world_frame: odom
 
     odom0: "/odom0"
     odom0_config: [true, true, true, false, false, true,

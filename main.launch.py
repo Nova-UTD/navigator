@@ -17,7 +17,7 @@ def generate_launch_description():
     launch_dir = path.dirname(launch_path)
     param_dir = path.join(launch_dir,"param")
     interface = "vcan0"
-    map_name = "borregas_host"
+    map_name = "gomentum"
 
     with_svl = DeclareLaunchArgument(
         'with_svl',
@@ -92,30 +92,30 @@ def generate_launch_description():
             ("observation_republish", "/lidars/points_fused_viz"),
         ]
     )
-    localization_odom_bl = Node(
-        package='robot_localization',
-        executable='ukf_node',
-        name='localization_odom_bl',
-        parameters=[(path.join(param_dir,"localization","localization_odom_bl.param.yaml"))],
+    icp_nudger = Node(
+        package='icp_nudger',
+        executable='icp_nudger',
+        parameters=[(path.join(param_dir,"state_estimation","icp_nudger.param.yaml"))],
         remappings=[
-            ("/imu0", "/zed2i/zed_node/imu/data_raw"),
-            ("/odom0", "/zed2i/zed_node/odom"),
-            ("/odom1", "/gps/odom")
-        ]
+            ("/gps", "/gps/odom"),
+            ("/lidar", "/lidar_front/points_raw"),
+            ("/map", "/map/pcd")
+        ],
+        output='screen'
     )
-    localization_map_odom = Node(
+    robot_localization = Node(
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=[(path.join(param_dir,"localization","localization_map_odom.param.yaml"))],
+        parameters=[(path.join(param_dir,"state_estimation","robot_localization.param.yaml"))],
         remappings=[
             ("/odom0", "/gps/odom")
         ]
     )
-    deviation_reporter = Node(
-        package='state_estimate_monitoring',
-        executable='lanelet_deviation_reporter'
-    )
+    # deviation_reporter = Node(
+    #     package='state_estimate_monitoring',
+    #     executable='lanelet_deviation_reporter'
+    # )
 
     # MAPPING
     lanelet_server = Node(
@@ -134,23 +134,24 @@ def generate_launch_description():
     # )
 
     pcd_loader = Node(
-        package='map_loader',
-        executable='pcd_loader_node'
+        package='map_publishers',
+        executable='pcd_loader',
+        parameters=[(path.join(launch_dir, "data", "maps", map_name, "map.param.yaml"))]
     )
 
     # MISC
-    zed_odom_tf = Node(
+    odom_bl_link = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0','0','0','0','0','0.7372773','0.6755902','odom','odom_zed'
+            '0','0','0','0','0','0.0','1.0','map','odom'
         ]
     )
 
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        arguments=[path.join(launch_dir, "data", "voltron.urdf")]
+        arguments=[path.join(launch_dir, "data", "voltron_sim.urdf")]
     )
     
     visuals = Node(
@@ -263,9 +264,8 @@ def generate_launch_description():
 
     # VIZ
     lanelet_visualizer = Node(
-        package='map_loader',
-        name='lanelet_loader_node',
-        executable='lanelet_loader_node'
+        package='map_publishers',
+        executable='lanelet_loader'
     )
 
     return LaunchDescription([
@@ -282,9 +282,9 @@ def generate_launch_description():
 
         # LOCALIZATION
         # ndt,
-        localization_odom_bl,
-        localization_map_odom,
-        deviation_reporter,
+        robot_localization,
+        icp_nudger,
+        # deviation_reporter,
 
         # MAPPING
         # lanelet_server,
@@ -292,8 +292,8 @@ def generate_launch_description():
         pcd_loader,
 
         # MISC
-        # odom_bl_publisher,
-        # urdf_publisher,
+        odom_bl_link,
+        urdf_publisher,
         # visuals,
 
         # PERCEPTION

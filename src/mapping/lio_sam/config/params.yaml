@@ -3,7 +3,7 @@
 
     # Topics
     pointCloudTopic: "/lidar_front/points_raw"      # Point cloud data
-    imuTopic: "/imu"                        # IMU data
+    imuTopic: "/fakeimu"                        # IMU data
     odomTopic: "odometry/imu"                    # IMU pre-preintegration odometry, same frequency as IMU
     gpsTopic: "/gps/odom"                    # GPS odometry topic from navsat, see module_navsat.launch file
 

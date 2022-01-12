@@ -12,6 +12,8 @@ def generate_launch_description():
     parameter_file = LaunchConfiguration('params_file')
     xacro_path = os.path.join(share_dir, 'config', 'robot.urdf.xacro')
     rviz_config_file = os.path.join(share_dir, 'config', 'rviz2.rviz')
+    launch_path = os.path.realpath(__file__)
+    launch_dir = os.path.dirname(launch_path)
 
     params_declare = DeclareLaunchArgument(
         'params_file',
@@ -39,7 +41,7 @@ def generate_launch_description():
                 Node(
             package='tf2_ros', # Fuse the map and odom frames
             executable='static_transform_publisher',
-            arguments='0.0 0.0 0.0 0.0 0.0 0.7372773 0.6755902 map odom'.split(' '),
+            arguments='0.0 0.0 0.0 0.0 0.0 0.0 1.0 map odom'.split(' '),
             parameters=[parameter_file],
             output='screen'
             ),
@@ -80,8 +82,9 @@ def generate_launch_description():
             parameters=[parameter_file],
             output='screen'
         ),
-        # Node(
-        #     executable='lgsvl_bridge',
-        # ),
-        # bag_player
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            arguments=[os.path.join(launch_dir, "data", "voltron.urdf")]
+        )
     ])

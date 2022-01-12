@@ -66,7 +66,7 @@ public:
             std::bind(&TransformFusion::lidarOdometryHandler, this, std::placeholders::_1),
             laserOdomOpt);
         subImuOdometry = create_subscription<nav_msgs::msg::Odometry>(
-            "/zed2i/zed_node/odom", qos_imu,
+            "/gps/odom", qos_imu,
             std::bind(&TransformFusion::imuOdometryHandler, this, std::placeholders::_1),
             imuOdomOpt);
 

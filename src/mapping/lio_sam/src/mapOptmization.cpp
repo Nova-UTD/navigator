@@ -1426,7 +1426,7 @@ public:
 
     void addGPSFactor()
     {
-        // RCLCPP_INFO(get_logger(), "Trying to add GPS");
+        RCLCPP_INFO(get_logger(), "Trying to add GPS");
         if (gpsQueue.empty()) {
             // RCLCPP_INFO(get_logger(), "No GPS msgs in queue.");
             return;
