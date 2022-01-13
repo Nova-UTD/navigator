@@ -45,7 +45,7 @@ private:
         
         // setting up marker settings
         auto marker = visualization_msgs::msg::Marker();
-        marker.header.frame_id = "base_link";
+        marker.header.frame_id = msg->header.frame_id;
         marker.action = visualization_msgs::msg::Marker::ADD;
         marker.lifetime = rclcpp::Duration(250ms);
         marker.type = visualization_msgs::msg::Marker::LINE_LIST;
@@ -65,7 +65,7 @@ private:
         
         // setting up marker settings
         auto marker = visualization_msgs::msg::Marker();
-        marker.header.frame_id = "base_link";
+        marker.header.frame_id = msg->header.frame_id;
         marker.action = visualization_msgs::msg::Marker::ADD;
         marker.lifetime = rclcpp::Duration(250ms);
         marker.type = visualization_msgs::msg::Marker::LINE_LIST;
@@ -84,30 +84,17 @@ private:
     // this will push line segments (two points) into the marker
     void draw_3d_box(const std::array<geometry_msgs::msg::Point, 8UL>& corners, visualization_msgs::msg::Marker& marker) const
     {
-        marker.points.push_back(corners[0]);
-        marker.points.push_back(corners[1]);
-        marker.points.push_back(corners[0]);
-        marker.points.push_back(corners[3]);
-        marker.points.push_back(corners[0]);
-        marker.points.push_back(corners[4]);
-        marker.points.push_back(corners[2]);
-        marker.points.push_back(corners[1]);
-        marker.points.push_back(corners[2]);
-        marker.points.push_back(corners[3]);
-        marker.points.push_back(corners[2]);
-        marker.points.push_back(corners[6]);
-        marker.points.push_back(corners[5]);
-        marker.points.push_back(corners[1]);
-        marker.points.push_back(corners[5]);
-        marker.points.push_back(corners[4]);
-        marker.points.push_back(corners[5]);
-        marker.points.push_back(corners[6]);
-        marker.points.push_back(corners[7]);
-        marker.points.push_back(corners[3]);
-        marker.points.push_back(corners[7]);
-        marker.points.push_back(corners[4]);
-        marker.points.push_back(corners[7]);
-        marker.points.push_back(corners[6]);
+        for (int i = 0; i < 4; i++){
+            // top line segments (0,1), (1,2), (2,3), (3,0)
+            marker.points.push_back(corners[i]);
+            marker.points.push_back(corners[(i+1) % 4]);
+            // bottom line segments (4,5), (5,6), (6,7), (7,4)
+            marker.points.push_back(corners[i+4]);
+            marker.points.push_back(corners[(i+1) % 4 + 4]);
+            // side line segments (0, 4), (1, 5), (2, 6), (3, 7)
+            marker.points.push_back(corners[i]);
+            marker.points.push_back(corners[i+4]);
+        }
     }
 
 };

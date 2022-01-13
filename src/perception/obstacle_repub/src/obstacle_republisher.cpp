@@ -14,6 +14,7 @@
 #include "voltron_msgs/msg/obstacle3_d_array.hpp"
 #include "tf2/convert.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "../include/obstacle_repub/obstacle_classes.hpp"
 #include <memory>
 
 using std::placeholders::_1;
@@ -107,11 +108,11 @@ private:
             std_obstacle.bounding_box.position = detection.bbox.position.position;
 
             if (detection.label != "Pedestrian"){
-                std_obstacle.label = "Vehicle";
+                std_obstacle.label = navigator::obstacle_repub::OBSTACLE_CLASS::VEHICLE;
                 std_vehicle_array.obstacles.push_back(std_obstacle);
             }
             else{
-                std_obstacle.label = detection.label;
+                std_obstacle.label = navigator::obstacle_repub::OBSTACLE_CLASS::PEDESTRIAN;
                 std_pedestrian_array.obstacles.push_back(std_obstacle);
             }
         }
@@ -152,11 +153,11 @@ private:
             }
 
             if (detection.label == "Vehicle"){
-                std_obstacle.label = "Vehicle";
+                std_obstacle.label = navigator::obstacle_repub::OBSTACLE_CLASS::VEHICLE;
                 std_vehicle_array.obstacles.push_back(std_obstacle);
             }
             else if (detection.label == "Person"){
-                std_obstacle.label = "Pedestrian";
+                std_obstacle.label = navigator::obstacle_repub::OBSTACLE_CLASS::PEDESTRIAN;
                 std_pedestrian_array.obstacles.push_back(std_obstacle);
             }
 

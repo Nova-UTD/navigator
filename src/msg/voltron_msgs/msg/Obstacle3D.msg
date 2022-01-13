@@ -1,5 +1,5 @@
 # car, pedestrian, etc.
-string label
+uint8 label
 
 # The numeric ID of the detected object
 uint32 id
