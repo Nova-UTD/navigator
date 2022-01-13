@@ -2,4 +2,5 @@
 ---
 /**:
   ros__parameters:
-    nudge_period: 0.5
+    nudge_period: 1.0
+    publish_tf: true

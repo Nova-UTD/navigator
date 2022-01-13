@@ -12,16 +12,18 @@
 #include <tf2/convert.h>
 #include <tf2/exceptions.h>
 #include <tf2_eigen/tf2_eigen.h>
+#include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.h>
 #include <vector>
 #include <Eigen/Core>
 
+#include <pcl/filters/approximate_voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <pcl/registration/icp.h>
+#include <pcl/registration/ndt.h>
 #include <pcl/common/transforms.h>
 
 #include "rclcpp/rclcpp.hpp"
@@ -30,6 +32,7 @@
 using namespace std::chrono_literals;
 using namespace sensor_msgs::msg;
 using namespace nav_msgs::msg;
+using geometry_msgs::msg::TransformStamped;
 
 /*
 PSEUDOCODE
@@ -58,6 +61,8 @@ class ICPNudger : public rclcpp::Node
 		: Node("icp_nudger")
 		{
 			this->declare_parameter<double>("nudge_period", 1.0); // Time between ICP updates, in seconds
+			this->declare_parameter<bool>("publish_tf", false); // If true, ICPNudger will publish result as tf.
+																// If enabled, no other node should publish a map tf.
 			this->get_parameter<double>("nudge_period", nudge_period_);
 
 			lidar_sub_ = this->create_subscription<PointCloud2>("/lidar", 1, //Only one message, too slow for queue!
@@ -72,7 +77,7 @@ class ICPNudger : public rclcpp::Node
 
 			aligned_lidar_pub_ = this->create_publisher<PointCloud2>("/lidar/nudged", 10);
 
-			timer_ = this->create_wall_timer(std::chrono::duration<double>(nudge_period_), std::bind(&ICPNudger::tryICP, this));
+			timer_ = this->create_wall_timer(std::chrono::duration<double>(nudge_period_), std::bind(&ICPNudger::tryNDT, this));
 
 			// TF2
 			tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
@@ -84,8 +89,8 @@ class ICPNudger : public rclcpp::Node
 			cached_lidar_ = msg;
 		}
 
-		void tryICP() {
-			// RCLCPP_INFO(this->get_logger(), "Trying ICP...");
+		void tryNDT() {
+			RCLCPP_INFO(this->get_logger(), "Trying NDT...");
 
 			// TF lidar to /map using GPS odom, convert to PCL PCD
 			auto transformed_lidar = new PointCloud2();
@@ -117,24 +122,33 @@ class ICPNudger : public rclcpp::Node
 			pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_map(new pcl::PointCloud<pcl::PointXYZ>(5,1));; // Input to ICP, in PCL's pcd format
 			pcl::fromROSMsg(*pcd_map_, *pcl_map);
 
+			pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud (new pcl::PointCloud<pcl::PointXYZ>);
+			pcl::ApproximateVoxelGrid<pcl::PointXYZ> approximate_voxel_filter;
+			approximate_voxel_filter.setLeafSize (0.5, 0.5, 0.5);
+			approximate_voxel_filter.setInputCloud (pcl_lidar);
+			approximate_voxel_filter.filter (*filtered_cloud);
 			
 			// Apply ICP https://pointclouds.org/documentation/tutorials/iterative_closest_point.html
-			pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-			icp.setInputSource(pcl_lidar);
-			icp.setInputTarget(pcl_map);
+			pcl::NormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> ndt;
+			ndt.setTransformationEpsilon(0.01);
+			ndt.setStepSize(0.1);
+			ndt.setResolution(1.0);
+			ndt.setMaximumIterations(35);
+			ndt.setInputSource(filtered_cloud);
+			ndt.setInputTarget(pcl_map);
 
 			pcl::PointCloud<pcl::PointXYZ> Final;
-			icp.align(Final);
+			ndt.align(Final);
 
-			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
-			icp.getFitnessScore() << std::endl;
-			// std::cout << icp.getFinalTransformation() << std::endl;
+			std::cout << "has converged:" << ndt.hasConverged() << " score: " <<
+			ndt.getFitnessScore() << std::endl;
+			std::cout << ndt.getMaximumIterations() << std::endl;
 
 			Eigen::Affine3d eigen_affine_transform;
-			eigen_affine_transform.matrix() = icp.getFinalTransformation().cast<double>();
-			auto icp_tf_stamped = tf2::eigenToTransform(eigen_affine_transform);
+			eigen_affine_transform.matrix() = ndt.getFinalTransformation().cast<double>();
+			auto ndt_tf_stamped = tf2::eigenToTransform(eigen_affine_transform);
 			auto nudged_lidar = new PointCloud2();
-			tf2::doTransform(*transformed_lidar, *nudged_lidar, icp_tf_stamped);
+			tf2::doTransform(*transformed_lidar, *nudged_lidar, ndt_tf_stamped);
 			tf2::doTransform(*nudged_lidar, *nudged_lidar, gps_to_map);
 
 			aligned_lidar_pub_->publish(*nudged_lidar);
@@ -148,23 +162,41 @@ class ICPNudger : public rclcpp::Node
 													<<gps_to_map.transform.rotation.y<<", "
 													<<gps_to_map.transform.rotation.z);
 
-			RCLCPP_INFO_STREAM(this->get_logger(), "ICP TF: "<<
-													icp_tf_stamped.transform.translation.x<<", "
-													<<icp_tf_stamped.transform.translation.y<<", "
-													<<icp_tf_stamped.transform.translation.z<<" - "
-													<<icp_tf_stamped.transform.rotation.w<<", "
-													<<icp_tf_stamped.transform.rotation.x<<", "
-													<<icp_tf_stamped.transform.rotation.y<<", "
-													<<icp_tf_stamped.transform.rotation.z);
+			RCLCPP_INFO_STREAM(this->get_logger(), "ndt TF: "<<
+													ndt_tf_stamped.transform.translation.x<<", "
+													<<ndt_tf_stamped.transform.translation.y<<", "
+													<<ndt_tf_stamped.transform.translation.z<<" - "
+													<<ndt_tf_stamped.transform.rotation.w<<", "
+													<<ndt_tf_stamped.transform.rotation.x<<", "
+													<<ndt_tf_stamped.transform.rotation.y<<", "
+													<<ndt_tf_stamped.transform.rotation.z);
 
 			RCLCPP_INFO_STREAM(this->get_logger(), "Final TF: "<<
-													icp_tf_stamped.transform.translation.x+gps_to_map.transform.translation.x<<", "
-													<<icp_tf_stamped.transform.translation.y+gps_to_map.transform.translation.y<<", "
-													<<icp_tf_stamped.transform.translation.z+gps_to_map.transform.translation.z<<" - "
-													<<icp_tf_stamped.transform.rotation.w<<", "
-													<<icp_tf_stamped.transform.rotation.x<<", "
-													<<icp_tf_stamped.transform.rotation.y<<", "
-													<<icp_tf_stamped.transform.rotation.z);
+													ndt_tf_stamped.transform.translation.x+gps_to_map.transform.translation.x<<", "
+													<<ndt_tf_stamped.transform.translation.y+gps_to_map.transform.translation.y<<", "
+													<<ndt_tf_stamped.transform.translation.z+gps_to_map.transform.translation.z<<" - "
+													<<ndt_tf_stamped.transform.rotation.w<<", "
+													<<ndt_tf_stamped.transform.rotation.x<<", "
+													<<ndt_tf_stamped.transform.rotation.y<<", "
+													<<ndt_tf_stamped.transform.rotation.z);
+			
+			bool publish_tf;
+			this->get_parameter<bool>("publish_tf", publish_tf);
+			if(publish_tf) {
+				std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+				TransformStamped t;
+				
+				t.header.frame_id = "map";
+				t.header.stamp = this->get_clock()->now();
+
+				t.child_frame_id = "base_link";
+				t.transform.translation.x = ndt_tf_stamped.transform.translation.x+gps_to_map.transform.translation.x;
+				t.transform.translation.y = ndt_tf_stamped.transform.translation.y+gps_to_map.transform.translation.y;
+				t.transform.translation.z = ndt_tf_stamped.transform.translation.z+gps_to_map.transform.translation.z;
+				t.transform.rotation = cached_gps_->pose.pose.orientation;
+				tf_broadcaster->sendTransform(t);
+			}
+			
 			// Generate PoseWithCovariance using fitness score, bias, and GPS odom
 
 			// Publish nudged odom as Odometry msg

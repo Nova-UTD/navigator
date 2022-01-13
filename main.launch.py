@@ -17,7 +17,7 @@ def generate_launch_description():
     launch_dir = path.dirname(launch_path)
     param_dir = path.join(launch_dir,"param")
     interface = "vcan0"
-    map_name = "gomentum"
+    map_name = "grandloop"
 
     with_svl = DeclareLaunchArgument(
         'with_svl',
@@ -282,7 +282,7 @@ def generate_launch_description():
 
         # LOCALIZATION
         # ndt,
-        robot_localization,
+        # robot_localization,
         icp_nudger,
         # deviation_reporter,
 
