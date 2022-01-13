@@ -2,17 +2,12 @@
 ---
 /**:
   ros__parameters:
-    # ZED IMU
-    # GPS Pose GGA
-    # GPS Twist VTG
-    # GEM speedometer
-    # EPAS steering angle
-    # [X,Y,Z,roll,pitch,yaw,X˙,Y˙,Z˙,roll˙,pitch˙,yaw˙,X¨,Y¨,Z¨]
 
-    # Only reports orientation, linear accel in SVO
+    # Future iterations of Hubble will include data from speedometer,
+    # IMUs, and Lidar odometry (NDT).
+
     frequency: 100.0 # Estimate update frequency, Hz, double
-    two_d_mode: false # Assume z=0
-    world_frame: odom
+    world_frame: "map"
 
     odom0: "/odom0"
     odom0_config: [true, true, true, false, false, true,

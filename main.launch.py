@@ -19,12 +19,6 @@ def generate_launch_description():
     interface = "vcan0"
     map_name = "grandloop"
 
-    with_svl = DeclareLaunchArgument(
-        'with_svl',
-        default_value='False',
-        description='Enable SVL bridge'
-    )
-
     # CONTROL
     steering_controller = Node(
         package='vt_steering_controller',
@@ -109,13 +103,11 @@ def generate_launch_description():
         name='localization_map_odom',
         parameters=[(path.join(param_dir,"state_estimation","robot_localization.param.yaml"))],
         remappings=[
-            ("/odom0", "/gps/odom")
+            ("/odom0", "/gps/odom"),
+            ("/odom1", "/zed2i/zed_node/odom"),
+            ("/imu0", "/zed2i/zed_node/imu/data_raw")
         ]
     )
-    # deviation_reporter = Node(
-    #     package='state_estimate_monitoring',
-    #     executable='lanelet_deviation_reporter'
-    # )
 
     # MAPPING
     lanelet_server = Node(
@@ -144,7 +136,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0','0','0','0','0','0.0','1.0','map','odom'
+            '0','0','0','0','0','0.0','1.0','odom','base_link'
         ]
     )
 
@@ -282,8 +274,8 @@ def generate_launch_description():
 
         # LOCALIZATION
         # ndt,
-        # robot_localization,
-        icp_nudger,
+        robot_localization,
+        # icp_nudger,
         # deviation_reporter,
 
         # MAPPING
