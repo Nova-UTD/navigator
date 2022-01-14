@@ -7,7 +7,7 @@
  * License:   MIT License
  */
 #pragma once
-
+#include "nova_gps/types.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -30,7 +30,7 @@ namespace Nova {
 
         virtual std::unique_ptr<NMEAMessage> get_nmea_message() = 0;
 
-        virtual void write_config(const std::vector<uint8_t> & config_message) = 0; // this needs a better interface
+        virtual void write_config(Nova::ByteBuffer & config_message) = 0; // this needs a better interface
     };
   }
 }

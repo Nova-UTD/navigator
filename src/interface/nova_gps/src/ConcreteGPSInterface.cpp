@@ -88,13 +88,13 @@ bool ConcreteGPSInterface::gather_messages() {
   // in theory we should be checking for 0xFFs throughout this process, but it's unlikely.
   // no UBX message support (yet)
   auto raw_block = this->i2c_interface->read_block(DATA_REGISTER, message_buffer_size);
-  std::shared_ptr<std::vector<NMEAMessage>> nmea_messages = parse_nmea_messages(split_ascii_buffer(*raw_block));
+  /*std::shared_ptr<std::vector<NMEAMessage>> nmea_messages = parse_nmea_messages(split_ascii_buffer(*raw_block));
   for(auto message_iter = nmea_messages->begin(); message_iter < nmea_messages->end(); message_iter++) {
       this->nmea_message_buffer.push_back(*message_iter);
-  }
+  }*/
   return true;
 }
 
-void ConcreteGPSInterface::write_config(const std::vector<uint8_t> & config) {
+void ConcreteGPSInterface::write_config(Nova::ByteBuffer & config) {
   this->i2c_interface->write_block(config);
 }

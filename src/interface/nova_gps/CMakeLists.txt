@@ -24,30 +24,29 @@ ament_auto_find_build_dependencies()
 #rosidl_generate_interfaces(${PROJECT_NAME} "msg/CanFrame.msg")
 ament_export_dependencies(rosidl_default_runtime)
 
-# Build a library from our source files
-ament_auto_add_library(i2c_lib STATIC
-  src/I2CInterface.cpp)
-target_include_directories(i2c_lib PUBLIC include)
 #rosidl_target_interfaces(i2c_lib ${PROJECT_NAME} "rosidl_typesupport_cpp")
-
-add_executable(interface src/interface.cpp src/ConcreteGPSInterface.cpp src/GPSInterfaceNode.cpp)
+ament_auto_add_library(i2c_lib STATIC
+  src/I2CInterface.cpp
+  src/Buffer.cpp
+  src/ConcreteGPSInterface.cpp
+  src/GPSInterfaceNode.cpp)
+target_include_directories(i2c_lib PUBLIC include)
+add_executable(interface src/interface.cpp)
 target_include_directories(interface PUBLIC include)
-ament_target_dependencies(interface rclcpp)
+ament_target_dependencies(interface rclcpp geometry_msgs)
 target_link_libraries(interface i2c_lib)
 
 install(TARGETS interface DESTINATION lib/${PROJECT_NAME})
 
 # Tests
 if(BUILD_TESTING)
-#  find_package(ament_lint_auto REQUIRED)
-#  ament_lint_auto_find_test_dependencies()
-#  
-#  ament_add_gtest(tests
-#    test/test_can_frame.cpp
-#    test/test_can_bus.cpp
-#    test/test_can_interface_node.cpp)
-#  ament_target_dependencies(tests rclcpp voltron_test_utils)
-#  target_link_libraries(tests can_lib gtest_main)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+  
+  ament_add_gtest(tests
+    test/test_buffer.cpp)
+  ament_target_dependencies(tests rclcpp voltron_test_utils)
+  target_link_libraries(tests i2c_lib gtest_main)
 endif()
 
 ament_auto_package()

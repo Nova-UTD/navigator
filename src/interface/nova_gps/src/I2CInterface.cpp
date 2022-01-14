@@ -8,6 +8,7 @@
  */
 
 #include "nova_gps/I2CInterface.hpp"
+#include "nova_gps/types.hpp"
 #include <linux/i2c-dev.h>
 #include <linux/i2c.h>
 #include <sys/ioctl.h>
@@ -30,6 +31,13 @@ inline int close_syscall(int fd) {
     return close(fd);
 }
 
+void check_read(int, int) {
+
+}
+
+void check_write(int, int) {
+
+}
 
 int i2c_action(int device, char rw, uint8_t command, int size, union i2c_smbus_data *data) {
     struct i2c_smbus_ioctl_data arguments;
@@ -44,13 +52,13 @@ int i2c_action(int device, char rw, uint8_t command, int size, union i2c_smbus_d
     return status;
 }
 
-int device_write(int device, uint8_t value) {
-	return i2c_action(device, I2C_SMBUS_WRITE, value, I2C_SMBUS_BYTE_DATA, nullptr);
+int I2CInterface::device_write(uint8_t value) {
+	return i2c_action(this->i2c_device_handle, I2C_SMBUS_WRITE, value, I2C_SMBUS_BYTE_DATA, nullptr);
 }
 
-int device_read(int device, uint8_t register_, uint8_t *value) {
+int I2CInterface::device_read(uint8_t register_, uint8_t *value) {
     union i2c_smbus_data data;
-	int err = i2c_action(device, I2C_SMBUS_READ, register_, I2C_SMBUS_BYTE_DATA, &data);
+	int err = i2c_action(this->i2c_device_handle, I2C_SMBUS_READ, register_, I2C_SMBUS_BYTE_DATA, &data);
 	if (err < 0)
 		return err;
     *value = data.byte;
@@ -98,74 +106,41 @@ void I2CInterface::close() {
     }
 }
 
-inline int internal_write_n_bytes(const int handle, const uint8_t * buf, int number_of_bytes, bool fail_if_less = true) {
-    int bytes_written = 0;
-    for(int i = 0; i < number_of_bytes; i++) {
-        bytes_written += device_write(handle, buf[i]);
-    }
-    if(fail_if_less && bytes_written != number_of_bytes) {
-        throw std::runtime_error("Error while writing to I2C device: errno is "+
-                    std::to_string(errno));
-    }
-    return bytes_written;
-}
-
-inline int internal_read_block(const int handle, std::vector<char> store_to, int number_of_bytes, const uint8_t register_, bool fail_if_less = true) {
-    int bytes_read = 0;
-    for(int i = 0; i < number_of_bytes; i++) {
-        uint8_t last_read;
-        bytes_read += device_read(handle, register_, &last_read);
-        //todo: buffers really aren't vectors... really we just want a nice wrapper around a fixed size block of memory
-        store_to.push_back(last_read);
-    }
-    if(fail_if_less && bytes_read != number_of_bytes) {
-        throw std::runtime_error("Error while reading from I2C device: errno is "+
-                        std::to_string(errno));
-    }
-    return bytes_read;
-}
-
-inline int internal_read_byte(const int handle, uint8_t * value, const uint8_t register_, bool fail_if_less = true) {
-    if(fail_if_less && device_read(handle, register_, value) != 1) {
-        throw std::runtime_error("Error while reading from I2C device: errno is "+
-                        std::to_string(errno));
-    }
-    return 1;
-}
-
-
 void I2CInterface::write_byte(const uint8_t byte) {
-    const uint8_t buf[1] = {byte};
-    internal_write_n_bytes(this->i2c_device_handle, buf, 2);
+    check_write(device_write(byte), 1);
 }
 
 char I2CInterface::read_byte(const uint8_t register_) {
-    char buf[1] = {0};
-    internal_read_byte(this->i2c_device_handle, (uint8_t*)buf, register_);
+    uint8_t buf[1] = {0};
+    check_read(device_read(register_, buf), 1);
     return buf[0];
 }
 uint16_t I2CInterface::read_word_pair(const uint8_t register_lo, const uint8_t register_hi) {
     uint8_t buf[2] = {register_lo, register_hi};
-    internal_read_byte(this->i2c_device_handle, buf, register_lo);
-    internal_read_byte(this->i2c_device_handle, buf+1, register_hi);
+    check_read(device_read(register_lo, buf), 1);
+    check_read(device_read(register_hi, buf + 1), 1);
     return (uint16_t)(buf[1]) | (uint16_t)(buf[0] << 8);
 }
 
 uint16_t I2CInterface::read_word(const uint8_t register_) {
     uint8_t buf[2] = {0, 0};
-    internal_read_byte(this->i2c_device_handle, buf, register_);
+    check_read(device_read(register_, buf), 1);
+    check_read(device_read(register_, buf + 1), 1);
     return (uint16_t)(buf[1]) | (uint16_t)(buf[0] << 8);
 }
 
-std::unique_ptr<std::vector<char>> I2CInterface::read_block(const uint8_t register_, const int count) {
-    std::unique_ptr<std::vector<char>> buffer = std::make_unique<std::vector<char>>();
-    buffer->reserve(count);
-    internal_read_block(this->i2c_device_handle, *buffer, count, register_);
-    return buffer;
+std::unique_ptr<Nova::ByteBuffer> I2CInterface::read_block(const uint8_t register_, const std::size_t count) {
+    Nova::ByteBuffer buffer = Nova::ByteBuffer(count);
+    for(std::size_t i = 0; i < count; i++) {
+        check_read(device_read(register_, &buffer[i]), 1);
+    }
+    return std::make_unique<Nova::ByteBuffer>(std::move(buffer));
 }
 
-void I2CInterface::write_block(const std::vector<uint8_t> & block) {
-    internal_write_n_bytes(this->i2c_device_handle, &(block)[0], block.size());
+void I2CInterface::write_block(Nova::ByteBuffer & block) {
+    for(std::size_t i = 0; i < block.size(); i++) {
+        check_write(device_write(block[i]), 1);
+    }
 }
 
 bool I2CInterface::is_open() {

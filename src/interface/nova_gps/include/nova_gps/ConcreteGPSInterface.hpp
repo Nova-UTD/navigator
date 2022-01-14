@@ -21,7 +21,7 @@ namespace Nova {
 
         virtual std::unique_ptr<NMEAMessage> get_nmea_message() override; // pops a message off the queue
 
-        virtual void write_config(const std::vector<uint8_t> & config) override; // pass a configuration string to the device
+        virtual void write_config(Nova::ByteBuffer & config) override; // pass a configuration string to the device
 
       private:
         std::unique_ptr<Nova::I2C::I2CInterface> i2c_interface;
