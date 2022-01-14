@@ -13,7 +13,6 @@
 #include <nav_msgs/msg/odometry.hpp>
 
 #include "rclcpp/rclcpp.hpp"
-#include <ros/time.h>
 
 using std::placeholders::_1;
 using namespace std::chrono_literals;
@@ -45,6 +44,7 @@ class PcdLoader : public rclcpp::Node
      * 
      * @param msg The odometry message from GPS, used for location
      */
+    // TODO: Use base_link tf, not GPS.
     void gps_cb(Odometry::SharedPtr msg) {
       /*
       PSEUDOCODE

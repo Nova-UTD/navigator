@@ -89,7 +89,7 @@ def generate_launch_description():
     icp_nudger = Node(
         package='icp_nudger',
         executable='icp_nudger',
-        parameters=[(path.join(param_dir,"state_estimation","icp_nudger.param.yaml"))],
+        parameters=[(path.join(param_dir,"hubble","icp_nudger.param.yaml"))],
         remappings=[
             ("/gps", "/gps/odom"),
             ("/lidar", "/lidar_front/points_raw"),
@@ -101,7 +101,7 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=[(path.join(param_dir,"state_estimation","robot_localization.param.yaml"))],
+        parameters=[(path.join(param_dir,"hubble","robot_localization.param.yaml"))],
         remappings=[
             ("/odom0", "/gps/odom"),
             ("/odom1", "/zed2i/zed_node/odom"),
