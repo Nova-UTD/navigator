@@ -10,8 +10,11 @@
 #ifndef PATH_PLANNER__PATH_PLANNER_HPP_
 #define PATH_PLANNER__PATH_PLANNER_HPP_
 
-#include <path_planner/parameterized_spline.hpp>
+#include <path_planner/segmented_path.hpp>
 #include <path_planner/lane_points.hpp>
+#include <path_planner/path_point.hpp>
+#include <path_planner/ideal_point.hpp>
+#include <path_planner/car_pose.hpp>
 #include <autoware_auto_msgs/msg/trajectory.hpp>
 #include <autoware_auto_msgs/msg/had_map_route.hpp>
 #include <common/types.hpp>
@@ -31,18 +34,25 @@ namespace navigator
 {
     namespace path_planner
     {
-        //generates potential paths using cubic splines and gives them costs according to several factors
-        //right now only generates the center line for a lane and the spline for that
+        //generates potential paths using line segements and gives them costs according to several factors (distance from center line/target, collisions, etc)
         class PathPlanner
         {
         public:
-            std::vector<TrajectoryPoint> generate_position_trajectory(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map);
-            ParameterizedSpline get_center_line_spline(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points);
+            segmented_path get_center_line_segments(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points);
             std::vector<autoware_auto_msgs::msg::TrajectoryPoint> get_center_line_points(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution);
-
+            std::shared_ptr<const std::vector<path_point>> get_trajectory(const std::vector<ideal_point> &ideal_path, const car_pose pose);
+            double cost_path(const segmented_path &path, const std::vector<ideal_point> &ideal_path, const car_pose pose) const;
         private:
-            //probably need to find a way to bound start and end window
-            
+            //currently, these numbers are chosen as a guess. they will need to be determined later for safety.
+            //(all units are in meters, seconds, radians if not mentioned)
+            const size_t paths = 12; //number of paths to consider at a time
+            const size_t points = 100; //number of points on path
+            const double spacing = 0.1; //meters between points on path
+            const double max_steering_angle = 0.5; //max angle the car can turn in radians
+            const double max_steering_speed = 0.1; //max speed we can change the car's direction in radians/sec (ignoring speed)
+            const double max_lateral_accel = 10; //max acceleration of the car on turns (used to prevent skidding/flipping)
+            const double car_size_x = 1.5; //width of the car
+            const double car_size_y = 3; //length of the car
         };
     }
 }

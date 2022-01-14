@@ -21,6 +21,8 @@
 #include <common/types.hpp>
 #include <geometry/common_2d.hpp>
 
+#include <math.h>
+
 using namespace autoware::common::types;
 using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
 using autoware_auto_msgs::msg::HADMapRoute;
@@ -53,16 +55,15 @@ lanelet::Point3d convertToLaneletPoint(
 {
     return lanelet::Point3d(lanelet::InvalId, pt.x, pt.y, 0.0);
 }
-ParameterizedSpline PathPlanner::get_center_line_spline(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points)
+segmented_path PathPlanner::get_center_line_segments(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points)
 {
-    std::vector<double> x_points(line_points.size());
-    std::vector<double> y_points(line_points.size());
+    using namespace std;
+    shared_ptr<vector<path_point>> points = make_shared<vector<path_point>>();
     for (const auto &p : line_points)
     {
-        x_points.push_back(p.x);
-        y_points.push_back(p.y);
+        points->push_back(path_point(p.x,p.y));
     }
-    return ParameterizedSpline(x_points, y_points);
+    return segmented_path(points);
 }
 autoware_auto_msgs::msg::TrajectoryPoint convertToTrajectoryPoint(const lanelet::ConstPoint3d &pt)
 {
@@ -72,7 +73,7 @@ autoware_auto_msgs::msg::TrajectoryPoint convertToTrajectoryPoint(const lanelet:
     trajectory_point.longitudinal_velocity_mps = 0;
     return trajectory_point;
 }
-//resolution should be < 0.1 to get good approximation
+
 std::vector<autoware_auto_msgs::msg::TrajectoryPoint> PathPlanner::get_center_line_points(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution)
 {
     using lanelet::utils::to2D;
@@ -159,4 +160,58 @@ std::vector<autoware_auto_msgs::msg::TrajectoryPoint> PathPlanner::get_center_li
     }
     line_points.push_back(trajectory_goal_point);
     return line_points;
+}
+
+std::shared_ptr<const std::vector<path_point>> PathPlanner::get_trajectory(const std::vector<ideal_point> &ideal_path, const car_pose pose) {
+    //generates a bunch of different paths for the car, assigns them costs, and picks the lowest cost path
+    //if memory becomes an issue, could generate and cost the paths on demand, and recreate the lowest cost one.
+    using namespace std;
+
+    const double car_angle = atan2(pose.vy, pose.vx);
+    const double car_speed = sqrt(pose.vx*pose.vx+pose.vy*pose.vy);
+    const double car_vx_norm = pose.vx/car_speed;
+    const double car_vy_norm = pose.vy/car_speed;
+    const double max_steer_speed_time = max_steering_speed/car_speed; //convert from rad/m to rad/s
+
+    shared_ptr<vector<path_point>> linear_points = make_shared<vector<path_point>>();
+    for (size_t i = 0; i < points; i++) {
+        linear_points->push_back(path_point(pose.x + car_vx_norm*i/spacing, pose.y+car_vy_norm*i/spacing));
+    }
+    
+    auto base_path = segmented_path(linear_points);
+    vector<segmented_path> candidates;
+
+    //for now, keep start angle the same and vary the end angle and turn speed.
+    //this should change to be more flexible later
+    for (size_t i = 0; i < paths; i++) {
+        double end_angle = -max_steering_angle+(i/4)*max_steering_angle;
+        double turn_speed = -max_steering_speed+(i%4)*max_steering_speed;
+        auto branch_points = base_path.create_branch(car_angle,end_angle,turn_speed,points);
+        candidates.push_back(segmented_path(branch_points));
+    }
+
+    //find min cost path
+    double min_cost = -1;
+    size_t min_index = -1;
+    for (size_t i = 0; i < candidates.size(); i++) {
+        double cost = cost_path(candidates[i], ideal_path, pose);
+        if (cost < min_cost || cost == -1) {
+            min_cost = cost;
+            min_index = i;
+        }
+    }
+
+    return candidates[min_index].points;
+}
+
+double PathPlanner::cost_path(const segmented_path &path, const std::vector<ideal_point> &ideal_path, const car_pose pose) const {
+    //temporary cost function, very basic attempt at following the ideal path.
+    double dist = 0;
+    for (const auto ideal : ideal_path) {
+        dist += path.distance(path_point(ideal.x,ideal.y));
+    }
+    return dist;
+    /*path.sum([&](path_point p) {
+        can do comfortability cost function like this
+    });*/
 }

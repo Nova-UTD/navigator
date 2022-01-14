@@ -26,11 +26,14 @@ ament_auto_find_build_dependencies()
 # mechanism to prevent having to explicitly list all files for every
 # executable.
 ament_auto_add_library(path_planner_lib STATIC
-  src/path_planner.cpp
-  src/parameterized_spline.cpp
-  src/map_utils.cpp
-  include/path_planner/spline.hpp
   include/path_planner/lane_points.hpp
+  include/path_planner/path_point.hpp
+  include/path_planner/segmented_path.hpp
+  include/path_planner/ideal_point.hpp
+  include/path_planner/car_pose.hpp
+  src/path_planner.cpp
+  src/map_utils.cpp
+  src/segmented_path.cpp
 )
 target_include_directories(path_planner_lib PUBLIC include)
 
@@ -41,7 +44,7 @@ if(BUILD_TESTING)
 
   ament_add_gtest(tests
     test/test_path_planner.cpp
-    test/test_parameterized_spline.cpp)
+    test/test_segmented_path.cpp)
 
   ament_target_dependencies(tests
     autoware_auto_common autoware_auto_geometry
