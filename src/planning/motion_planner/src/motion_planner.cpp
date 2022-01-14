@@ -1,14 +1,14 @@
 /*
- * Package:   path_planner
- * Filename:  path_planner.cpp
+ * Package:   motion_planner
+ * Filename:  motion_planner.cpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
  * License:   MIT License
  */
 
-#include "path_planner/path_planner.hpp"
-#include "path_planner/map_utils.hpp"
+#include "motion_planner/motion_planner.hpp"
+#include "motion_planner/map_utils.hpp"
 
 #include "autoware_auto_msgs/msg/trajectory.hpp"
 #include <lanelet2_core/geometry/Lanelet.h>
@@ -28,7 +28,7 @@ using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
 using autoware_auto_msgs::msg::HADMapRoute;
 using autoware_auto_msgs::msg::Trajectory;
 
-using namespace navigator::path_planner;
+using namespace navigator::motion_planner;
 
 
 
@@ -55,7 +55,7 @@ lanelet::Point3d convertToLaneletPoint(
 {
     return lanelet::Point3d(lanelet::InvalId, pt.x, pt.y, 0.0);
 }
-segmented_path PathPlanner::get_center_line_segments(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points)
+segmented_path MotionPlanner::get_center_line_segments(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points)
 {
     using namespace std;
     shared_ptr<vector<path_point>> points = make_shared<vector<path_point>>();
@@ -74,7 +74,7 @@ autoware_auto_msgs::msg::TrajectoryPoint convertToTrajectoryPoint(const lanelet:
     return trajectory_point;
 }
 
-std::vector<autoware_auto_msgs::msg::TrajectoryPoint> PathPlanner::get_center_line_points(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution)
+std::vector<autoware_auto_msgs::msg::TrajectoryPoint> MotionPlanner::get_center_line_points(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution)
 {
     using lanelet::utils::to2D;
     //a lot of this taken from the autoware implementation of lane_planner
@@ -162,7 +162,7 @@ std::vector<autoware_auto_msgs::msg::TrajectoryPoint> PathPlanner::get_center_li
     return line_points;
 }
 
-std::shared_ptr<const std::vector<path_point>> PathPlanner::get_trajectory(const std::vector<ideal_point> &ideal_path, const car_pose pose) {
+std::shared_ptr<const std::vector<path_point>> MotionPlanner::get_trajectory(const std::vector<ideal_point> &ideal_path, const car_pose pose) {
     //generates a bunch of different paths for the car, assigns them costs, and picks the lowest cost path
     //if memory becomes an issue, could generate and cost the paths on demand, and recreate the lowest cost one.
     using namespace std;
@@ -204,7 +204,7 @@ std::shared_ptr<const std::vector<path_point>> PathPlanner::get_trajectory(const
     return candidates[min_index].points;
 }
 
-double PathPlanner::cost_path(const segmented_path &path, const std::vector<ideal_point> &ideal_path, const car_pose pose) const {
+double MotionPlanner::cost_path(const segmented_path &path, const std::vector<ideal_point> &ideal_path, const car_pose pose) const {
     //temporary cost function, very basic attempt at following the ideal path.
     double dist = 0;
     for (const auto ideal : ideal_path) {

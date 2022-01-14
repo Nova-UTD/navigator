@@ -1,4 +1,13 @@
-#include "path_planner/segmented_path.hpp"
+/*
+ * Package:   motion_planner
+ * Filename:  motion_planner.cpp
+ * Author:    Jim Moore
+ * Email:     jim3moore@gmail.com
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
+
+#include "motion_planner/segmented_path.hpp"
 #include <stdlib.h>
 #include <stdexcept>
 #include <string>
@@ -12,7 +21,7 @@ using std::floor;
 using std::sqrt;
 using std::atan2;
 
-using namespace navigator::path_planner;
+using namespace navigator::motion_planner;
 
 //checks if this path's points are spaced uniformly by spacing units apart.
 //allows slight tolerance for floating point weirdness (0.00000001 on the square distance between each point)

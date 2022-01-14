@@ -1,5 +1,5 @@
 /*
- * Package:   path_planner
+ * Package:   motion_planner
  * Filename:  test_segemented_path.cpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
@@ -13,10 +13,10 @@
 #include <memory>
 #include <math.h>
 
-#include <path_planner/segmented_path.hpp>
-#include <path_planner/path_point.hpp>
+#include <motion_planner/segmented_path.hpp>
+#include <motion_planner/path_point.hpp>
 
-using namespace navigator::path_planner;
+using namespace navigator::motion_planner;
 
 class test_segmented_path : public ::testing::Test {
 public:

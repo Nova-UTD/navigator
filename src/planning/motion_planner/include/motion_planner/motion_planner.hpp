@@ -1,20 +1,20 @@
 /*
- * Package:   path_planner
- * Filename:  path_planner.hpp
+ * Package:   motion_planner
+ * Filename:  motion_planner.hpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
  * License:   MIT License
  */
 
-#ifndef PATH_PLANNER__PATH_PLANNER_HPP_
-#define PATH_PLANNER__PATH_PLANNER_HPP_
+#ifndef MOTION_PLANNER__MOTION_PLANNER_HPP_
+#define MOTION_PLANNER__MOTION_PLANNER_HPP_
 
-#include <path_planner/segmented_path.hpp>
-#include <path_planner/lane_points.hpp>
-#include <path_planner/path_point.hpp>
-#include <path_planner/ideal_point.hpp>
-#include <path_planner/car_pose.hpp>
+#include <motion_planner/segmented_path.hpp>
+#include <motion_planner/lane_points.hpp>
+#include <motion_planner/path_point.hpp>
+#include <motion_planner/ideal_point.hpp>
+#include <motion_planner/car_pose.hpp>
 #include <autoware_auto_msgs/msg/trajectory.hpp>
 #include <autoware_auto_msgs/msg/had_map_route.hpp>
 #include <common/types.hpp>
@@ -32,10 +32,10 @@ using autoware_auto_msgs::msg::Trajectory;
 
 namespace navigator
 {
-    namespace path_planner
+    namespace motion_planner
     {
         //generates potential paths using line segements and gives them costs according to several factors (distance from center line/target, collisions, etc)
-        class PathPlanner
+        class MotionPlanner
         {
         public:
             segmented_path get_center_line_segments(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points);
@@ -57,4 +57,4 @@ namespace navigator
     }
 }
 
-#endif // PATH_PLANNER__PATH_PLANNER_HPP_
+#endif // MOTION_PLANNER__MOTION_PLANNER_HPP_

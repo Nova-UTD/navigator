@@ -1,6 +1,14 @@
+/*
+ * Package:   motion_planner
+ * Filename:  motion_planner.cpp
+ * Author:    Jim Moore
+ * Email:     jim3moore@gmail.com
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
 #pragma once
 
-#include "path_planner/path_point.hpp"
+#include "motion_planner/path_point.hpp"
 #include <vector>
 #include <memory>
 #include <functional>
@@ -10,7 +18,7 @@
 //The class assumes this to be the case in other methods.
 namespace navigator
 {
-namespace path_planner
+namespace motion_planner
 {
 class segmented_path
 {

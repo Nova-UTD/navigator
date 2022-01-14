@@ -1,13 +1,13 @@
 /*
- * Package:   path_planner
- * Filename:  test_path_planner.cpp
+ * Package:   motion_planner
+ * Filename:  test_motion_planner.cpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
  * License:   MIT License
  */
 
-#include <path_planner/path_planner.hpp>
+#include <motion_planner/motion_planner.hpp>
 #include <geometry/common_2d.hpp>
 #include <memory>
 
@@ -48,7 +48,7 @@ lanelet::LaneletMapPtr getALaneletMapWithLaneId(
 }
 
 //returns a HAD map route with one segment that starts at (0,0) and goes to (0,length)
-//this lets us test the path planner on a very simple route with easily predictable output
+//this lets us test the motion planner on a very simple route with easily predictable output
 HADMapRoute getARoute(const int64_t lane_id, const float32_t length)
 {
   HADMapRoute had_map_route;
@@ -71,17 +71,17 @@ double sqr_distance(TrajectoryPoint a, TrajectoryPoint b) {
   return (a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+(a.z-b.z)*(a.z-b.z);
 }
 
-class PathPlannerTest : public ::testing::Test
+class MotionPlannerTest : public ::testing::Test
 {
 public:
-  PathPlannerTest()
+  MotionPlannerTest()
   {
-    m_planner_ptr = std::make_shared<navigator::path_planner::PathPlanner>();
+    m_planner_ptr = std::make_shared<navigator::motion_planner::MotionPlanner>();
   }
-  std::shared_ptr<navigator::path_planner::PathPlanner> m_planner_ptr;
+  std::shared_ptr<navigator::motion_planner::MotionPlanner> m_planner_ptr;
 };
 
-TEST_F(PathPlannerTest, get_center_line)
+TEST_F(MotionPlannerTest, get_center_line)
 {
   // create map
   const auto lane_id = lanelet::utils::getId();

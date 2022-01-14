@@ -1,9 +1,18 @@
+/*
+ * Package:   motion_planner
+ * Filename:  motion_planner.cpp
+ * Author:    Jim Moore
+ * Email:     jim3moore@gmail.com
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
+
 #pragma once
 
 //temporary class for input from behavior planner
 namespace navigator
 {
-	namespace path_planner
+	namespace motion_planner
 	{
 		class car_pose
 		{
