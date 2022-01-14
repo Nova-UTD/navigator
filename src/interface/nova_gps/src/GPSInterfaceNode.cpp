@@ -14,6 +14,7 @@
 #include "nova_gps/GPSInterface.hpp"
 #include "nova_gps/ConcreteGPSInterface.hpp"
 #include "nova_gps/GPSInterfaceNode.hpp"
+#include "nova_gps/UBX.hpp"
 
 using namespace std::chrono_literals;
 using Nova::GPS::GPSInterfaceNode;
@@ -53,8 +54,8 @@ double nmea_to_deg(std::string & nmea) {
 }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-Nova::GPS::HNRPVT parse_hnrpvt(const std::unique_ptr<Nova::GPS::UBXMessage> msg) {
-  Nova::GPS::HNRPVT st = {
+Nova::UBX::HNRPVT parse_hnrpvt(const std::unique_ptr<Nova::UBX::UBXMessage> msg) {
+  Nova::UBX::HNRPVT st = {
     .iTOW = msg->data->read_dword(),
     .year = msg->data->read_word(),
     .month = msg->data->read_byte(),
@@ -90,7 +91,7 @@ Nova::GPS::HNRPVT parse_hnrpvt(const std::unique_ptr<Nova::GPS::UBXMessage> msg)
 #pragma GCC diagnostic pop
 void GPSInterfaceNode::send_pose() {
   bool found = false;
-  std::unique_ptr<UBXMessage> raw_msg;
+  std::unique_ptr<Nova::UBX::UBXMessage> raw_msg;
 
   this->gps_interface->gather_messages();
 
@@ -104,7 +105,7 @@ void GPSInterfaceNode::send_pose() {
     // message.header.frame_id = "/earth";
     // for correctness, we should use the utc from the message.
 
-    HNRPVT hnrpvt = parse_hnrpvt(std::move(raw_msg));
+    Nova::UBX::HNRPVT hnrpvt = parse_hnrpvt(std::move(raw_msg));
     
     double lat = hnrpvt.lat / (double)1e7;
     double lon = hnrpvt.lon / (double)1e7;

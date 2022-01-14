@@ -7,7 +7,8 @@
  * License:   MIT License
  */
 #pragma once
-#include "nova_gps/types.hpp"
+#include "types.hpp"
+#include "UBX.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,7 +29,7 @@ namespace Nova {
         virtual bool gather_messages() = 0;
         virtual bool has_message() = 0;
 
-        virtual std::unique_ptr<UBXMessage> get_message() = 0;
+        virtual std::unique_ptr<UBX::UBXMessage> get_message() = 0;
 
         virtual void write_config(Nova::ByteBuffer & config_message) = 0; // this needs a better interface
     };

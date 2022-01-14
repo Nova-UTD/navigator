@@ -29,7 +29,8 @@ ament_auto_add_library(i2c_lib STATIC
   src/I2CInterface.cpp
   src/Buffer.cpp
   src/ConcreteGPSInterface.cpp
-  src/GPSInterfaceNode.cpp)
+  src/GPSInterfaceNode.cpp
+  src/UBX.cpp)
 target_include_directories(i2c_lib PUBLIC include)
 add_executable(interface src/interface.cpp)
 target_include_directories(interface PUBLIC include)
@@ -44,7 +45,8 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
   
   ament_add_gtest(tests
-    test/test_buffer.cpp)
+    test/test_buffer.cpp
+    test/test_ubx.cpp)
   ament_target_dependencies(tests rclcpp voltron_test_utils)
   target_link_libraries(tests i2c_lib gtest_main)
 endif()
