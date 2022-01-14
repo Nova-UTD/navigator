@@ -8,6 +8,8 @@
  */
 
 #include "nova_gps/ConcreteGPSInterface.hpp"
+#include "nova_gps/types.hpp"
+#include "string.h"
 #define GPS_I2C_ADDRESS 0x42
 
 #define BYTES_LO 0xFD
@@ -40,36 +42,44 @@ void ConcreteGPSInterface::open(const std::string & interface_name) {
   this->i2c_interface = std::make_unique<Nova::I2C::I2CInterface>(Nova::I2C::I2CInterface(GPS_I2C_ADDRESS, interface_name));
 }
 
-bool ConcreteGPSInterface::has_nmea_message() {
+bool ConcreteGPSInterface::has_message() {
   return this->nmea_message_buffer.size() > 0;
 }
 
-std::unique_ptr<NMEAMessage> ConcreteGPSInterface::get_nmea_message() {
-  auto ptr = std::move(std::make_unique<NMEAMessage>(this->nmea_message_buffer.back()));
+std::unique_ptr<UBXMessage> ConcreteGPSInterface::get_message() {
+  auto ptr = std::move(this->nmea_message_buffer.back());
   this->nmea_message_buffer.pop_back();
   return ptr;
 }
 
-std::shared_ptr<std::vector<std::string>> split_ascii_buffer(const std::vector<char> & buffer) {
-  std::vector<std::string> substrings;
-  std::string buf_as_string(buffer.begin(), buffer.end());
-
-  substrings.reserve(buffer.size() / 84); // NMEA0183 says messages are capped at 84 characters, but this is frequently violated.
-
-  int substring_start = 0;
-  int substring_end = buf_as_string.find('\n'); // messages end with a CR-LF
-  while(substring_end != -1) {
-    substrings.push_back(buf_as_string.substr(substring_start, substring_end - substring_start - 1)); // trim the CR as well
-    substring_start = substring_end + 1;
-    substring_end = buf_as_string.find('\n', substring_start);
+std::unique_ptr<std::vector<std::unique_ptr<UBXMessage>>> parse_ubx_messages(Nova::ByteBuffer & buf) {
+  auto split = std::make_unique<std::vector<std::unique_ptr<UBXMessage>>>();
+  std::size_t marker_data;
+  while(buf.get_pos() < buf.size()) {
+    auto first = buf.read_byte();
+    auto second = buf.read_byte();
+    if(first != 0xB5 && second != 0x62) {
+      throw std::runtime_error("Didn't read sync characters first");
+    }
+    auto mclass = buf.read_byte();
+    auto id = buf.read_byte();
+    auto length = buf.read_word();
+    marker_data = buf.get_pos();
+    if(length + marker_data > buf.size()) {
+      throw std::runtime_error("Possible block segmentation");
+    }
+    std::unique_ptr<Nova::ByteBuffer> data_buffer = std::make_unique<Nova::ByteBuffer>(length);
+    memcpy(&(*data_buffer)[0], &buf[buf.get_pos()], length);
+    buf.seek(length, SEEK_CUR);
+    auto checksum = buf.read_word();
+    auto msg = std::make_unique<UBXMessage>();
+    msg->mclass = mclass;
+    msg->id = id;
+    msg->checksum = checksum;
+    msg->data = std::move(data_buffer);
+    split->push_back(std::move(msg));
   }
-  
-  return std::make_shared<std::vector<std::string>>(substrings);
-}
-
-std::shared_ptr<std::vector<NMEAMessage>> parse_nmea_messages(std::shared_ptr<std::vector<std::string>> raw_messages) {
-    // todo: parse into a number of frames with data validation based on message type
-    return raw_messages;
+  return split;
 }
 
 bool ConcreteGPSInterface::gather_messages() {
@@ -86,12 +96,11 @@ bool ConcreteGPSInterface::gather_messages() {
   }
 
   // in theory we should be checking for 0xFFs throughout this process, but it's unlikely.
-  // no UBX message support (yet)
   auto raw_block = this->i2c_interface->read_block(DATA_REGISTER, message_buffer_size);
-  /*std::shared_ptr<std::vector<NMEAMessage>> nmea_messages = parse_nmea_messages(split_ascii_buffer(*raw_block));
+  auto nmea_messages = parse_ubx_messages(*raw_block);
   for(auto message_iter = nmea_messages->begin(); message_iter < nmea_messages->end(); message_iter++) {
-      this->nmea_message_buffer.push_back(*message_iter);
-  }*/
+      this->nmea_message_buffer.push_back(std::move(*message_iter));
+  }
   return true;
 }
 

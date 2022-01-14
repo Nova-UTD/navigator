@@ -19,7 +19,7 @@ using namespace std::chrono_literals;
 using Nova::GPS::GPSInterfaceNode;
 using std::placeholders::_1;
 
-const auto receive_frequency = 0.5s; // This should be moved to a param file, and should be in Hz, not seconds. WSH.
+const auto receive_frequency = 50ms;
 
 GPSInterfaceNode::GPSInterfaceNode(const std::string & interface_name) // The interface name should also definitely be a ROS param, like above. WSH.
   : Node("gps_interface_node") {
@@ -51,65 +51,65 @@ double nmea_to_deg(std::string & nmea) {
   }
   return value;
 }
-
-// todo: remove when NMEAMessage is split upstream
-inline void tokenize(Nova::GPS::NMEAMessage msg, std::vector<std::string> & vec) {
-  int sub_start = 0;
-  int sub_end = msg.find(',');
-  while(sub_end != -1) {
-    vec.push_back(msg.substr(sub_start + 1, sub_end - sub_start - 1));
-    sub_start = sub_end;
-    sub_end = msg.find(',', sub_start + 1);
-  }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+Nova::GPS::HNRPVT parse_hnrpvt(const std::unique_ptr<Nova::GPS::UBXMessage> msg) {
+  Nova::GPS::HNRPVT st = {
+    .iTOW = msg->data->read_dword(),
+    .year = msg->data->read_word(),
+    .month = msg->data->read_byte(),
+    .day = msg->data->read_byte(),
+    .hour = msg->data->read_byte(),
+    .min = msg->data->read_byte(),
+    .sec = msg->data->read_byte(),
+    .valid = msg->data->read_byte(),
+    .nano = msg->data->read_signed_int(),
+    .gpsFix = msg->data->read_byte(),
+    .flags = msg->data->read_byte(),
+    ._1 = msg->data->read_byte(),
+    ._2 = msg->data->read_byte(),
+    .lon = msg->data->read_signed_int(),
+    .lat = msg->data->read_signed_int(),
+    .height = msg->data->read_signed_int(),
+    .hMSL = msg->data->read_signed_int(),
+    .gSpeed = msg->data->read_signed_int(),
+    .speed = msg->data->read_signed_int(),
+    .headMot = msg->data->read_signed_int(),
+    .headVeh = msg->data->read_signed_int(),
+    .hAcc = msg->data->read_dword(),
+    .vAcc = msg->data->read_dword(),
+    .sAcc = msg->data->read_dword(),
+    .headAcc = msg->data->read_dword(),
+    .__1 = msg->data->read_byte(),
+    .__2 = msg->data->read_byte(),
+    .__3 = msg->data->read_byte(),
+    .__4 = msg->data->read_byte(),
+  };
+  return st;
 }
-
+#pragma GCC diagnostic pop
 void GPSInterfaceNode::send_pose() {
-  // Check interface for new messages
-  this->gps_interface->gather_messages();
-  bool found_gga = false;
-  bool found_vtg = false;
-  NMEAMessage gga;
-  NMEAMessage vtg;
+  bool found = false;
+  std::unique_ptr<UBXMessage> raw_msg;
 
   this->gps_interface->gather_messages();
 
-  while(this->gps_interface->has_nmea_message()) {
-      RCLCPP_INFO(get_logger(), "Found NMEA message!");
-      NMEAMessage msg = *this->gps_interface->get_nmea_message();
-      if(!found_gga && msg.substr(3, 3) == "GGA") {
-        gga = msg;
-        found_gga = true;
-      }
-      if(!found_vtg && msg.substr(3, 3) == "VTG") {
-        vtg = msg;
-        found_vtg = true;
+  while(this->gps_interface->has_message()) {
+      auto msg = this->gps_interface->get_message();
+      if(msg->id == 0x00 && msg->mclass == 0x28) {
+        raw_msg = std::move(msg);
       }
   }
-  if(found_gga && found_vtg) {
-    geometry_msgs::msg::PoseWithCovarianceStamped message;
+  if(found) {
     // message.header.frame_id = "/earth";
     // for correctness, we should use the utc from the message.
-    // message.header.stamp = rclcpp::Clock().now();
-    std::vector<std::string> frames_gga;
-    std::vector<std::string> frames_vtg;
 
-    tokenize(gga, frames_gga);
-    tokenize(vtg, frames_vtg);
-
-    // todo: replace all these magic frame numbers with proper accesses, e.g.
-    // double lat = gga->latitude;
+    HNRPVT hnrpvt = parse_hnrpvt(std::move(raw_msg));
     
-    if(frames_gga[6] == "0") {
-      // reject as no lock.
-      RCLCPP_INFO(get_logger(), "NMEA message rejected-- No lock.");
-      return;
-    }
-    // warning: we assume NW
-      // We assume what? What's NW? WSH.
-    double lat = nmea_to_deg(frames_gga[2]);
-    double lon = -nmea_to_deg(frames_gga[4]);
+    double lat = hnrpvt.lat / (double)1e7;
+    double lon = hnrpvt.lon / (double)1e7;
 
-    double altitude = std::stod(frames_gga[9]);
+    double altitude = hnrpvt.hMSL / 1000.0;
 
     double lat_rad = lat * M_PI / 180.0;
     double lon_rad = lon * M_PI / 180.0;
@@ -145,7 +145,7 @@ void GPSInterfaceNode::send_pose() {
                                0, 0, 0, 0, 1, 0,
                                0, 0, 0, 0, 0, 1};
 
-    double heading_deg = frames_vtg[1] == "" ? NAN : std::stod(frames_vtg[1]);
+    double heading_deg = hnrpvt.headVeh / (double)1e5;
     double heading_rad = heading_deg * M_PI / 180.0;
 
     // this->publisher->publish(message);
@@ -155,7 +155,7 @@ void GPSInterfaceNode::send_pose() {
 
     // hdg.data = heading_rad;
 
-    
+    double speed = hnrpvt.gSpeed / 1000.0;
 
     // this->heading_publisher->publish(hdg);
     // this->velocity_publisher->publish(vel);
@@ -171,8 +171,6 @@ void GPSInterfaceNode::send_pose() {
     odom_msg.pose.pose.orientation.z = sin(heading_rad); // This should do the trick. 🤞 WSH.
     odom_msg.pose.pose.orientation.w = cos(heading_rad); // <w,x,y,z> = cos(θ)+sin(θ)<i,j,k>
 
-    const double KNOTS_TO_MPS = 0.5144456333854638;
-    double speed = std::stod(frames_vtg[5]) * KNOTS_TO_MPS;
     // TODO: Add angular components from GPS IMU. WSH.
     odom_msg.twist.twist.linear.x = sin(heading_rad) * speed;
     odom_msg.twist.twist.linear.y = cos(heading_rad) * speed;

@@ -26,9 +26,9 @@ namespace Nova {
         virtual void close() = 0;
 
         virtual bool gather_messages() = 0;
-        virtual bool has_nmea_message() = 0;
+        virtual bool has_message() = 0;
 
-        virtual std::unique_ptr<NMEAMessage> get_nmea_message() = 0;
+        virtual std::unique_ptr<UBXMessage> get_message() = 0;
 
         virtual void write_config(Nova::ByteBuffer & config_message) = 0; // this needs a better interface
     };
