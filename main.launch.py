@@ -206,22 +206,18 @@ def generate_launch_description():
     )
     
     path_planner = Node(
-        package='behavior_planner_nodes',
-        name='behavior_planner_node',
+        package='path_planner_new',
+        name='path_planner_node',
         namespace='planning',
-        executable='behavior_planner_node_exe',
-        parameters=[
-            (path.join(param_dir,"planning","path_planner.param.yaml"))
-        ],
+        executable='path_planner_new_exe',
         output='screen',
         remappings=[
-            ('HAD_Map_Service', '/had_maps/HAD_Map_Service'),
-            ('vehicle_state', '/vehicle/vehicle_kinematic_state'),
-            ('route', 'global_path'),
-            ('gear_report', '/vehicle/gear'),
-            ('vehicle_state_command', '/vehicle/state_command')
+            ('HAD_Map_Client', '/had_maps/HAD_Map_Service'),
+            ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state'),
+            ('route_costs', '/planning/route_costs'),
         ]
     )
+
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
