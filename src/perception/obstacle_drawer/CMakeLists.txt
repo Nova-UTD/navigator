@@ -25,9 +25,16 @@ find_package(rclcpp REQUIRED)
 find_package(voltron_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(obstacle_classes REQUIRED)
 
 add_executable(obstacle_drawer_exe src/obstacle_drawer.cpp)
-ament_target_dependencies(obstacle_drawer_exe rclcpp voltron_msgs visualization_msgs geometry_msgs)
+ament_target_dependencies(obstacle_drawer_exe 
+  rclcpp 
+  voltron_msgs 
+  visualization_msgs 
+  geometry_msgs
+  obstacle_classes
+)
 
 install(TARGETS
   obstacle_drawer_exe

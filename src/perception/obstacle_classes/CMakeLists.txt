@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(obstacle_repub)
+project(obstacle_classes)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -21,32 +21,26 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-find_package(rclcpp REQUIRED)
-find_package(lgsvl_msgs REQUIRED)
-find_package(zed_interfaces REQUIRED)
-find_package(voltron_msgs REQUIRED)
-find_package(obstacle_classes REQUIRED)
-find_package(tf2 REQUIRED)
-find_package(tf2_geometry_msgs REQUIRED)
+include_directories(include/${PROJECT_NAME})
+set(HEADER_FILES include/${PROJECT_NAME}/obstacle_classes.hpp)
+add_library(obstacle_classes_lib src/obstacle_classes.cpp ${HEADER_FILES})
+ament_export_targets(obstacle_classes_lib HAS_LIBRARY_TARGET)
 
+install(
+  DIRECTORY include/${PROJECT_NAME}
+  DESTINATION include
+)
 
-add_executable(obstacle_republisher_exe src/obstacle_republisher.cpp)
-ament_target_dependencies(obstacle_republisher_exe 
-  rclcpp 
-  lgsvl_msgs 
-  zed_interfaces 
-  voltron_msgs 
-  obstacle_classes
-  tf2 
-  tf2_geometry_msgs
+install(
+  TARGETS obstacle_classes_lib
+  EXPORT obstacle_classes_lib
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
 )
 
 
-install(TARGETS
-  obstacle_republisher_exe
-  DESTINATION lib/${PROJECT_NAME}
-)
-  
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

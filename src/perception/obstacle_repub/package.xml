@@ -12,10 +12,9 @@
   <depend>rclcpp</depend>
   <depend>lgsvl_msgs</depend>
   <depend>voltron_msgs</depend>
+  <depend>obstacle_classes</depend>
   <depend>tf2</depend>
   <depend>tf2_geometry_msgs</depend>
-
-
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

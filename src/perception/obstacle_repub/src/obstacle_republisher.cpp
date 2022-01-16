@@ -14,7 +14,7 @@
 #include "voltron_msgs/msg/obstacle3_d_array.hpp"
 #include "tf2/convert.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
-#include "../include/obstacle_repub/obstacle_classes.hpp"
+#include "obstacle_classes/obstacle_classes.hpp"
 #include <memory>
 
 using std::placeholders::_1;
@@ -36,34 +36,29 @@ public:
         zed_obstacle_subscription = this->create_subscription<zed_interfaces::msg::ObjectsStamped>(
         "/obj_det/objects", 10, std::bind(&ObstacleRepublisher::zed_obstacle_callback, this, _1));
 
-        // an publishers that republishes 3D vehicle detections into our own abstract format
-        std_vehicle_publisher = this->create_publisher<voltron_msgs::msg::Obstacle3DArray>("/obstacles/vehicles", 10);
-
-        // an publishers that republishes 3D pedestrian detections into our own abstract format
-        std_pedestrian_publisher = this->create_publisher<voltron_msgs::msg::Obstacle3DArray>("/obstacles/pedestrians", 10);
+        // a publisher that republishes 3D vehicle detections into our own abstract format
+        nova_obstacle_publisher = this->create_publisher<voltron_msgs::msg::Obstacle3DArray>("/obstacles/array", 10);
     }
 
 private:
 
     rclcpp::Subscription<lgsvl_msgs::msg::Detection3DArray>::SharedPtr svl_obstacle_subscription;
     rclcpp::Subscription<zed_interfaces::msg::ObjectsStamped>::SharedPtr zed_obstacle_subscription;
-    rclcpp::Publisher<voltron_msgs::msg::Obstacle3DArray>::SharedPtr std_vehicle_publisher;
-    rclcpp::Publisher<voltron_msgs::msg::Obstacle3DArray>::SharedPtr std_pedestrian_publisher;
+    rclcpp::Publisher<voltron_msgs::msg::Obstacle3DArray>::SharedPtr nova_obstacle_publisher;
 
     void svl_obstacle_callback(const lgsvl_msgs::msg::Detection3DArray::SharedPtr msg) const {
 
-        auto std_vehicle_array = voltron_msgs::msg::Obstacle3DArray();
-        auto std_pedestrian_array = voltron_msgs::msg::Obstacle3DArray();
-        std_vehicle_array.header = msg->header;
-        std_pedestrian_array.header = msg->header;
+        auto nova_obstacle_array = voltron_msgs::msg::Obstacle3DArray();
+        nova_obstacle_array.header.frame_id = msg->header.frame_id;
+        nova_obstacle_array.header.stamp = this->now();
 
         for (const auto detection : msg->detections) {
-            auto std_obstacle = voltron_msgs::msg::Obstacle3D();
+            auto nova_obstacle = voltron_msgs::msg::Obstacle3D();
 
-            std_obstacle.id = detection.id;
-            std_obstacle.confidence = detection.score;
-            std_obstacle.velocity = detection.velocity.linear;
-            std_obstacle.bounding_box.size = detection.bbox.size;
+            nova_obstacle.id = detection.id;
+            nova_obstacle.confidence = detection.score;
+            nova_obstacle.velocity = detection.velocity.linear;
+            nova_obstacle.bounding_box.size = detection.bbox.size;
   
             // maping each index of corners array into this format
             //      1 ------- 2
@@ -75,7 +70,7 @@ private:
             //    4 ------- 7       +y -------*
 
             auto box_transform = geometry_msgs::msg::TransformStamped();
-            box_transform.transform.set__rotation(detection.bbox.position.orientation);
+            box_transform.transform.rotation = detection.bbox.position.orientation;
             geometry_msgs::msg::Point temp_corners[8];
 
             for (int i = 0; i < 8; i++){
@@ -96,77 +91,76 @@ private:
                 auto to_tranform = geometry_msgs::msg::PointStamped();
                 to_tranform.point = temp_corners[i];
                 auto tranformed = geometry_msgs::msg::PointStamped();
-                tranformed.point = std_obstacle.bounding_box.corners[i];
+                tranformed.point = nova_obstacle.bounding_box.corners[i];
 
                 tf2::doTransform(to_tranform, tranformed, box_transform);
     
-                std_obstacle.bounding_box.corners[i].x = tranformed.point.x + detection.bbox.position.position.x;
-                std_obstacle.bounding_box.corners[i].y = tranformed.point.y + detection.bbox.position.position.y;
-                std_obstacle.bounding_box.corners[i].z = tranformed.point.z + detection.bbox.position.position.z;
+                nova_obstacle.bounding_box.corners[i].x = tranformed.point.x + detection.bbox.position.position.x;
+                nova_obstacle.bounding_box.corners[i].y = tranformed.point.y + detection.bbox.position.position.y;
+                nova_obstacle.bounding_box.corners[i].z = tranformed.point.z + detection.bbox.position.position.z;
             }   
 
-            std_obstacle.bounding_box.position = detection.bbox.position.position;
+            nova_obstacle.bounding_box.position = detection.bbox.position.position;
 
             if (detection.label != "Pedestrian"){
-                std_obstacle.label = navigator::obstacle_repub::OBSTACLE_CLASS::VEHICLE;
-                std_vehicle_array.obstacles.push_back(std_obstacle);
+                nova_obstacle.label = navigator::obstacle_classes::OBSTACLE_CLASS::VEHICLE;
+                nova_obstacle_array.obstacles.push_back(nova_obstacle);
             }
-            else{
-                std_obstacle.label = navigator::obstacle_repub::OBSTACLE_CLASS::PEDESTRIAN;
-                std_pedestrian_array.obstacles.push_back(std_obstacle);
+            else {
+                nova_obstacle.label = navigator::obstacle_classes::OBSTACLE_CLASS::PEDESTRIAN;
+                nova_obstacle_array.obstacles.push_back(nova_obstacle);
             }
         }
 
-        std_vehicle_publisher->publish(std_vehicle_array);
-        std_pedestrian_publisher->publish(std_pedestrian_array);
+        nova_obstacle_publisher->publish(nova_obstacle_array);
     }
 
     void zed_obstacle_callback(const zed_interfaces::msg::ObjectsStamped::SharedPtr msg) const {
-        auto std_vehicle_array = voltron_msgs::msg::Obstacle3DArray();
-        auto std_pedestrian_array = voltron_msgs::msg::Obstacle3DArray();
-        std_vehicle_array.header = msg->header;
-        std_pedestrian_array.header = msg->header;
+        auto nova_obstacle_array = voltron_msgs::msg::Obstacle3DArray();
+        nova_obstacle_array.header.frame_id = msg->header.frame_id;
+        nova_obstacle_array.header.stamp = this->now();
         
         for (const auto detection : msg->objects) {
-            auto std_obstacle = voltron_msgs::msg::Obstacle3D();
+            auto nova_obstacle = voltron_msgs::msg::Obstacle3D();
 
-            std_obstacle.id = detection.label_id;
+            nova_obstacle.id = detection.label_id;
             
-            std_obstacle.confidence = detection.confidence / 100.0f;
+            nova_obstacle.confidence = detection.confidence / 100.0f;
 
-            std_obstacle.velocity.x = static_cast<double>(detection.velocity.at(0));
-            std_obstacle.velocity.y = static_cast<double>(detection.velocity.at(1));
-            std_obstacle.velocity.z = static_cast<double>(detection.velocity.at(2));
+            nova_obstacle.velocity.x = static_cast<double>(detection.velocity.at(0));
+            nova_obstacle.velocity.y = static_cast<double>(detection.velocity.at(1));
+            nova_obstacle.velocity.z = static_cast<double>(detection.velocity.at(2));
 
-            std_obstacle.bounding_box.size.x = static_cast<double>(detection.dimensions_3d.at(0));
-            std_obstacle.bounding_box.size.y = static_cast<double>(detection.dimensions_3d.at(1));
-            std_obstacle.bounding_box.size.z = static_cast<double>(detection.dimensions_3d.at(2));
+            nova_obstacle.bounding_box.size.x = static_cast<double>(detection.dimensions_3d.at(0));
+            nova_obstacle.bounding_box.size.y = static_cast<double>(detection.dimensions_3d.at(1));
+            nova_obstacle.bounding_box.size.z = static_cast<double>(detection.dimensions_3d.at(2));
 
-            std_obstacle.bounding_box.position.x = static_cast<double>(detection.position.at(0));
-            std_obstacle.bounding_box.position.y = static_cast<double>(detection.position.at(1));
-            std_obstacle.bounding_box.position.z = static_cast<double>(detection.position.at(2));
+            nova_obstacle.bounding_box.position.x = static_cast<double>(detection.position.at(0));
+            nova_obstacle.bounding_box.position.y = static_cast<double>(detection.position.at(1));
+            nova_obstacle.bounding_box.position.z = static_cast<double>(detection.position.at(2));
             
             for (int i = 0; i < 8; i++){
-                std_obstacle.bounding_box.corners[i].x = static_cast<double>(detection.bounding_box_3d.corners[i].kp[0]);
-                std_obstacle.bounding_box.corners[i].y = static_cast<double>(detection.bounding_box_3d.corners[i].kp[1]);
-                std_obstacle.bounding_box.corners[i].z = static_cast<double>(detection.bounding_box_3d.corners[i].kp[2]);
+                nova_obstacle.bounding_box.corners[i].x = static_cast<double>(detection.bounding_box_3d.corners[i].kp[0]);
+                nova_obstacle.bounding_box.corners[i].y = static_cast<double>(detection.bounding_box_3d.corners[i].kp[1]);
+                nova_obstacle.bounding_box.corners[i].z = static_cast<double>(detection.bounding_box_3d.corners[i].kp[2]);
             }
 
+            // this needs to be tested
             if (detection.label == "Vehicle"){
-                std_obstacle.label = navigator::obstacle_repub::OBSTACLE_CLASS::VEHICLE;
-                std_vehicle_array.obstacles.push_back(std_obstacle);
+                nova_obstacle.label = navigator::obstacle_classes::OBSTACLE_CLASS::VEHICLE;
+                nova_obstacle_array.obstacles.push_back(nova_obstacle);
             }
             else if (detection.label == "Person"){
-                std_obstacle.label = navigator::obstacle_repub::OBSTACLE_CLASS::PEDESTRIAN;
-                std_pedestrian_array.obstacles.push_back(std_obstacle);
+                nova_obstacle.label = navigator::obstacle_classes::OBSTACLE_CLASS::PEDESTRIAN;
+                nova_obstacle_array.obstacles.push_back(nova_obstacle);
             }
 
         }
-        std_vehicle_publisher->publish(std_vehicle_array);
-        std_pedestrian_publisher->publish(std_pedestrian_array);
+        nova_obstacle_publisher->publish(nova_obstacle_array);
     }
 
 };
+
 }
 }
 
