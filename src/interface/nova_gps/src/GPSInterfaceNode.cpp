@@ -19,20 +19,21 @@ using namespace std::chrono_literals;
 using Nova::GPS::GPSInterfaceNode;
 using std::placeholders::_1;
 
-const auto receive_frequency = 1s;
+const auto receive_frequency = 0.5s; // This should be moved to a param file, and should be in Hz, not seconds. WSH.
 
-GPSInterfaceNode::GPSInterfaceNode(const std::string & interface_name)
+GPSInterfaceNode::GPSInterfaceNode(const std::string & interface_name) // The interface name should also definitely be a ROS param, like above. WSH.
   : Node("gps_interface_node") {
 
   this->gps_interface = std::make_unique<Nova::GPS::ConcreteGPSInterface>(interface_name);
   this->pose_timer = this->create_wall_timer
     (receive_frequency, bind(& GPSInterfaceNode::send_pose, this));
-  this->publisher = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>
-    ("gps/pose", 64);
-  this->heading_publisher = this->create_publisher<std_msgs::msg::Float64>
-    ("gps/heading", 64);
-  this->velocity_publisher = this->create_publisher<std_msgs::msg::Float64>
-    ("gps/velocity", 64);
+  // this->publisher = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>
+  //   ("gps/pose", 64);
+  // this->heading_publisher = this->create_publisher<std_msgs::msg::Float64>
+  //   ("gps/heading", 64);
+  // this->velocity_publisher = this->create_publisher<std_msgs::msg::Float64>
+  //   ("gps/velocity", 64);
+  this->odometry_publisher = this->create_publisher<nav_msgs::msg::Odometry>("/gps/odometry", 10);
 }
 
 GPSInterfaceNode::~GPSInterfaceNode() {
@@ -69,6 +70,9 @@ inline void tokenize(Nova::GPS::NMEAMessage msg, std::vector<std::string> & vec)
 }
 
 void GPSInterfaceNode::send_pose() {
+  // Check interface for new messages
+  this->gps_interface->gather_messages();
+
   bool found_gga = false;
   bool found_vtg = false;
   NMEAMessage gga;
@@ -77,6 +81,7 @@ void GPSInterfaceNode::send_pose() {
   this->gps_interface->gather_messages();
 
   while(this->gps_interface->has_nmea_message()) {
+      RCLCPP_INFO(get_logger(), "Found NMEA message!");
       NMEAMessage msg = *this->gps_interface->get_nmea_message();
       if(!found_gga && msg.substr(3, 3) == "GGA") {
         gga = msg;
@@ -89,9 +94,9 @@ void GPSInterfaceNode::send_pose() {
   }
   if(found_gga && found_vtg) {
     geometry_msgs::msg::PoseWithCovarianceStamped message;
-    message.header.frame_id = "/earth";
+    // message.header.frame_id = "/earth";
     // for correctness, we should use the utc from the message.
-    message.header.stamp = rclcpp::Clock().now();
+    // message.header.stamp = rclcpp::Clock().now();
     std::vector<std::string> frames_gga;
     std::vector<std::string> frames_vtg;
 
@@ -103,9 +108,11 @@ void GPSInterfaceNode::send_pose() {
     
     if(frames_gga[6] == "0") {
       // reject as no lock.
+      RCLCPP_INFO(get_logger(), "NMEA message rejected-- No lock.");
       return;
     }
     // warning: we assume NW
+      // We assume what? What's NW? WSH.
     double lat = nmea_to_deg(frames_gga[2]);
     double lon = -nmea_to_deg(frames_gga[4]);
 
@@ -132,11 +139,11 @@ void GPSInterfaceNode::send_pose() {
     double x = (N + altitude) * cos_lat * cos(lon_rad);
     double y = (N + altitude) * cos_lat * sin(lon_rad);
     double z = ((1 - e_sq)*N + altitude) * sin_lat;
-    geometry_msgs::msg::Point point;
-    point.x = x;
-    point.y = y;
-    point.z = z;
-    message.pose.pose.position = point;
+    geometry_msgs::msg::Point gps_position;
+    gps_position.x = x;
+    gps_position.y = y;
+    gps_position.z = z;
+    // message.pose.pose.position = point;
     // utterly useless, but let's control what we send
     message.pose.covariance = {1, 0, 0, 0, 0, 0,
                                0, 1, 0, 0, 0, 0,
@@ -147,26 +154,37 @@ void GPSInterfaceNode::send_pose() {
 
     double heading_deg = frames_vtg[1] == "" ? NAN : std::stod(frames_vtg[1]);
     double heading_rad = heading_deg * M_PI / 180.0;
+
+    // this->publisher->publish(message);
+
+    // std_msgs::msg::Float64 hdg;
+    // std_msgs::msg::Float64 vel;
+
+    // hdg.data = heading_rad;
+
     
-    // todo: proper quaternion rotation via axis-angle?
 
-    message.pose.pose.orientation.x = 0;
-    message.pose.pose.orientation.y = 0;
-    message.pose.pose.orientation.z = 0;
-    message.pose.pose.orientation.w = 1;
+    // this->heading_publisher->publish(hdg);
+    // this->velocity_publisher->publish(vel);
+    
+    nav_msgs::msg::Odometry odom_msg;
+    odom_msg.header.frame_id = "/earth";
+    odom_msg.header.stamp = rclcpp::Clock().now();
 
-    this->publisher->publish(message);
+    odom_msg.pose.pose.position = gps_position;
 
-    std_msgs::msg::Float64 hdg;
-    std_msgs::msg::Float64 vel;
-
-    hdg.data = heading_rad;
+    odom_msg.pose.pose.orientation.x = 0;
+    odom_msg.pose.pose.orientation.y = 0;
+    odom_msg.pose.pose.orientation.z = sin(heading_rad); // This should do the trick. 🤞 WSH.
+    odom_msg.pose.pose.orientation.w = cos(heading_rad); // <w,x,y,z> = cos(θ)+sin(θ)<i,j,k>
 
     const double KNOTS_TO_MPS = 0.5144456333854638;
-    vel.data = std::stod(frames_vtg[5]) * KNOTS_TO_MPS;
-
-    this->heading_publisher->publish(hdg);
-    this->velocity_publisher->publish(vel);
-    
+    double speed = std::stod(frames_vtg[5]) * KNOTS_TO_MPS;
+    // TODO: Add angular components from GPS IMU. WSH.
+    odom_msg.twist.twist.linear.x = sin(heading_rad) * speed;
+    odom_msg.twist.twist.linear.y = cos(heading_rad) * speed;
+    odom_msg.twist.twist.linear.z = 0; // Assume that the car is traveling on a level plane.
+    RCLCPP_INFO(get_logger(), "Publishing GPS message.");
+    this->odometry_publisher->publish(odom_msg);
   }
 }
