@@ -1,6 +1,6 @@
 /*
- * Package:   obstacle_drawer
- * Filename:  obstacle_drawer.cpp
+ * Package:   obstacle_classes
+ * Filename:  obstacle_classes.cpp
  * Author:    Ragib "Rae" Arnab
  * Email:     ria190000@utdallas.edu
  * Copyright: 2021, Nova UTD

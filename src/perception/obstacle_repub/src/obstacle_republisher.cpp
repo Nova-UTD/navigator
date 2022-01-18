@@ -60,7 +60,7 @@ private:
             nova_obstacle.velocity = detection.velocity.linear;
             nova_obstacle.bounding_box.size = detection.bbox.size;
   
-            // maping each index of corners array into this format
+            // mapping each index of corners array into this format
             //      1 ------- 2
             //     /.        /|
             //    0 ------- 3 |               +z        x = forward

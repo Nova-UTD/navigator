@@ -94,15 +94,6 @@ private:
         }
     }
 
-    // this will push line segments (two points) into the marker
-    void clear_current_box(visualization_msgs::msg::Marker& marker) const
-    {
-        while (!marker.points.empty())
-        {
-            marker.points.pop_back();
-        }
-    }
-
 };
 }
 }

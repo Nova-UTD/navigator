@@ -241,7 +241,7 @@ def generate_launch_description():
 
     obstacle_republisher = Node(
         package='obstacle_repub',
-        name='obstacle_republisher',
+        name='obstacle_republisher_node',
         executable='obstacle_republisher_exe'
     )
 
