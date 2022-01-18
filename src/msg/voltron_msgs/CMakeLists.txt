@@ -14,6 +14,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Obstacle3D.msg"
   "msg/Obstacle3DArray.msg"
   "msg/BoundingBox3D.msg"
+  "msg/RouteCost.msg"
+  "msg/RouteCosts.msg"
   "srv/SafetyEvent.srv"
   "srv/SafetyCommand.srv"
   DEPENDENCIES
