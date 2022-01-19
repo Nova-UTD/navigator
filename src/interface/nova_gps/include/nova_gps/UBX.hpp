@@ -17,6 +17,8 @@ struct UBXMessage {
 std::unique_ptr<std::vector<std::unique_ptr<UBXMessage>>> parse_ubx_messages
                 (Nova::ByteBuffer & buf);
 
+uint16_t calculate_checksum(Nova::UBX::UBXMessage & message);
+
 
 enum GPSFix {
   NO_FIX,

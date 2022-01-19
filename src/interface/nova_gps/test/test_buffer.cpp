@@ -28,10 +28,10 @@ TEST(TestBuffer, empty) {
 
 TEST(TestBuffer, seek) {
   ByteBuffer buf(6, std::unique_ptr<uint8_t[]>(new uint8_t[6]{1, 2, 3, 4, 5, 6}));
-  ASSERT_EQ(buf.get_pos(), 0);
-  ASSERT_EQ(buf.seek(0, SEEK_CUR), 0);
-  ASSERT_EQ(buf.seek(3, SEEK_CUR), 3);
-  ASSERT_EQ(buf.seek(-1, SEEK_CUR), 2);
-  ASSERT_EQ(buf.seek(5, SEEK_SET), 5);
-  ASSERT_EQ(buf.seek(-1, SEEK_END), 4);
+  ASSERT_EQ(buf.get_pos(), 0u);
+  ASSERT_EQ(buf.seek(0, SEEK_CUR), 0u);
+  ASSERT_EQ(buf.seek(3, SEEK_CUR), 3u);
+  ASSERT_EQ(buf.seek(-1, SEEK_CUR), 2u);
+  ASSERT_EQ(buf.seek(5, SEEK_SET), 5u);
+  ASSERT_EQ(buf.seek(-1, SEEK_END), 4u);
 }
