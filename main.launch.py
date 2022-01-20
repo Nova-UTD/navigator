@@ -140,6 +140,15 @@ def generate_launch_description():
         ]
     )
 
+    speedometer = Node(
+        package='speedometer',
+        executable='speedometer',
+        remappings=[
+            ('/odom', '/gps/odom')
+        ],
+        parameters=[(path.join(launch_dir, "param", "misc", "speedometer.param.yaml"))]
+    )
+
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -274,17 +283,18 @@ def generate_launch_description():
 
         # LOCALIZATION
         # ndt,
-        robot_localization,
+        # robot_localization,
         # icp_nudger,
         # deviation_reporter,
 
         # MAPPING
         # lanelet_server,
         lanelet_visualizer,
-        pcd_loader,
+        # pcd_loader,
 
         # MISC
         odom_bl_link,
+        speedometer,
         urdf_publisher,
         # visuals,
 
