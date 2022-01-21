@@ -5,9 +5,21 @@ find_package(ros_environment REQUIRED)
 set(ROS_VERSION $ENV{ROS_VERSION})
 
 set(MSG_FILES
+  "BoundingBox2D.msg"
   "BoundingBox3D.msg"
+  "CanBusData.msg"
+  "DetectedRadarObjectArray.msg"
+  "DetectedRadarObject.msg"
+  "Detection2D.msg"
+  "Detection2DArray.msg"
   "Detection3D.msg"
   "Detection3DArray.msg"
+  "Signal.msg"
+  "SignalArray.msg"
+  "Ultrasonic.msg"
+  "VehicleControlData.msg"
+  "VehicleStateData.msg"
+  "VehicleOdometry.msg"
 )
 
 if(${ROS_VERSION} EQUAL 1)
