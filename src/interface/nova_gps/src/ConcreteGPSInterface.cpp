@@ -62,7 +62,7 @@ bool ConcreteGPSInterface::send_messages() {
   }
   while(this->send_queue.size() > 0) {
     auto msg = std::move(this->send_queue.back());
-    this->nmea_message_buffer.pop_back();
+    this->send_queue.pop_back();
     this->i2c_interface->write_byte(0xB5);
     this->i2c_interface->write_byte(0x62);
     this->i2c_interface->write_byte(msg->mclass);
