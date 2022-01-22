@@ -46,3 +46,21 @@ uint16_t Nova::UBX::calculate_checksum(Nova::UBX::UBXMessage & message) {
   }
   return CB_A | (CB_B << 8);
 }
+
+std::unique_ptr<Nova::UBX::UBXMessage> Nova::UBX::set_message_rate(uint8_t message_class, uint8_t message_id, uint8_t rate) {
+  auto buf = std::make_unique<Nova::ByteBuffer>(8);
+  auto msg = std::make_unique<Nova::UBX::UBXMessage>();
+  (*buf)[0] = message_class;
+  (*buf)[1] = message_id;
+  (*buf)[2] = 0;
+  (*buf)[3] = 0;
+  (*buf)[4] = 0;
+  (*buf)[5] = 0;
+  (*buf)[6] = rate;
+  (*buf)[7] = 0;
+  msg->mclass = 0x05u;
+  msg->id = 0x01u;
+  msg->data = std::move(buf);
+  msg->checksum = calculate_checksum(*msg);
+  return msg;
+}

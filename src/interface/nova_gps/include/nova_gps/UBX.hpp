@@ -19,6 +19,7 @@ std::unique_ptr<std::vector<std::unique_ptr<UBXMessage>>> parse_ubx_messages
 
 uint16_t calculate_checksum(Nova::UBX::UBXMessage & message);
 
+std::unique_ptr<Nova::UBX::UBXMessage> set_message_rate(uint8_t message_class, uint8_t message_id, uint8_t rate);
 
 enum GPSFix {
   NO_FIX,
@@ -61,6 +62,17 @@ struct HNRPVT {
   uint8_t __2;
   uint8_t __3;
   uint8_t __4;
+};
+struct CFGPRT_I2C {
+  uint8_t portID;       // set to 0 for I2C
+  uint8_t reserved1;
+  uint16_t txReady;     // 32.10.25.5 Fig 1
+  uint32_t mode;        // 32.10.25.5 Fig 2
+  uint8_t reserved2[4]; 
+  uint16_t inProtoMask; // 32.10.25.5 Fig 3
+  uint16_t outProtoMask;// 32.10.25.5 Fig 4
+  uint16_t flags;       // 32.10.25.5 Fig 5
+  uint8_t reserved3[2];
 };
 }
 }

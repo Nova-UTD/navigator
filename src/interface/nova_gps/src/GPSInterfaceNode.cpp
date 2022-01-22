@@ -97,6 +97,13 @@ void GPSInterfaceNode::send_pose() {
 
   while(this->gps_interface->has_message()) {
       auto msg = this->gps_interface->get_message();
+      if(msg->mclass == 0x05) {
+        if(msg->id == 0) {
+          std::cout << "NACK" << std::endl;
+        } else {
+          std::cout << "ACK" << std::endl;
+        }
+      } else
       if(msg->id == 0x00 && msg->mclass == 0x28) {
         raw_msg = std::move(msg);
       }

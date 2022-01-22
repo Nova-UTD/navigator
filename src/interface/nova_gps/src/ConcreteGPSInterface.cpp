@@ -52,7 +52,29 @@ std::unique_ptr<Nova::UBX::UBXMessage> ConcreteGPSInterface::get_message() {
   return ptr;
 }
 
+void ConcreteGPSInterface::enqueue_outgoing_message(std::unique_ptr<Nova::UBX::UBXMessage> message) {
+  this->send_queue.push_back(std::move(message));
+}
 
+bool ConcreteGPSInterface::send_messages() {
+  if(!this->i2c_interface) {
+    throw std::runtime_error("No I2C interface opened before write");
+  }
+  while(this->send_queue.size() > 0) {
+    auto msg = std::move(this->send_queue.back());
+    this->nmea_message_buffer.pop_back();
+    this->i2c_interface->write_byte(0xB5);
+    this->i2c_interface->write_byte(0x62);
+    this->i2c_interface->write_byte(msg->mclass);
+    this->i2c_interface->write_byte(msg->id);
+    this->i2c_interface->write_byte(msg->data->size() & 0xFF);
+    this->i2c_interface->write_byte((msg->data->size() >> 8) & 0xFF);
+    this->i2c_interface->write_block(*msg->data);
+    this->i2c_interface->write_byte(msg->checksum & 0xFF);
+    this->i2c_interface->write_byte((msg->checksum >> 8) & 0xFF);
+  }
+  return true;
+}
 
 bool ConcreteGPSInterface::gather_messages() {
   if(!this->i2c_interface) {
@@ -74,8 +96,4 @@ bool ConcreteGPSInterface::gather_messages() {
       this->nmea_message_buffer.push_back(std::move(*message_iter));
   }
   return true;
-}
-
-void ConcreteGPSInterface::write_config(Nova::ByteBuffer & config) {
-  this->i2c_interface->write_block(config);
 }

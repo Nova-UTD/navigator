@@ -15,10 +15,6 @@
 
 namespace Nova {
   namespace GPS {
-    // :-)
-    // see impl notes
-    typedef std::string NMEAMessage;
-
     class GPSInterface {
       public:
         virtual ~GPSInterface() {}
@@ -29,9 +25,10 @@ namespace Nova {
         virtual bool gather_messages() = 0;
         virtual bool has_message() = 0;
 
+        virtual void enqueue_outgoing_message(std::unique_ptr<UBX::UBXMessage> message) = 0;
+        virtual bool send_messages() = 0;
+        
         virtual std::unique_ptr<UBX::UBXMessage> get_message() = 0;
-
-        virtual void write_config(Nova::ByteBuffer & config_message) = 0; // this needs a better interface
     };
   }
 }
