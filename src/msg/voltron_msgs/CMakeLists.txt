@@ -13,6 +13,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/CanFrame.msg"
   "msg/RouteCost.msg"
   "msg/RouteCosts.msg"
+  "msg/CostedPath.msg"
+  "msg/CostedPaths.msg"
   "srv/SafetyEvent.srv"
   "srv/SafetyCommand.srv"
   DEPENDENCIES

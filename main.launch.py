@@ -215,6 +215,7 @@ def generate_launch_description():
             ('HAD_Map_Client', '/had_maps/HAD_Map_Service'),
             ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state'),
             ('route_costs', '/planning/route_costs'),
+            ('paths','paths'),
         ]
     )
 
@@ -272,5 +273,5 @@ def generate_launch_description():
         route_planner,
         path_planner,
         lane_planner,
-        parking_planner,
+        # parking_planner,
     ])

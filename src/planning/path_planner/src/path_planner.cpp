@@ -53,7 +53,7 @@ lanelet::Point3d convertToLaneletPoint(
 {
     return lanelet::Point3d(lanelet::InvalId, pt.x, pt.y, 0.0);
 }
-ParameterizedSpline PathPlanner::get_center_line_spline(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points)
+ParameterizedSpline MotionPlanner::get_center_line_spline(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points)
 {
     std::vector<double> x_points(line_points.size());
     std::vector<double> y_points(line_points.size());
@@ -73,7 +73,7 @@ autoware_auto_msgs::msg::TrajectoryPoint convertToTrajectoryPoint(const lanelet:
     return trajectory_point;
 }
 //resolution should be < 0.1 to get good approximation
-std::vector<autoware_auto_msgs::msg::TrajectoryPoint> PathPlanner::get_center_line_points(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution)
+std::vector<autoware_auto_msgs::msg::TrajectoryPoint> MotionPlanner::get_center_line_points(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution)
 {
     using lanelet::utils::to2D;
     //a lot of this taken from the autoware implementation of lane_planner

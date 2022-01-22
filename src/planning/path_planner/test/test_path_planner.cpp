@@ -76,9 +76,9 @@ class PathPlannerTest : public ::testing::Test
 public:
   PathPlannerTest()
   {
-    m_planner_ptr = std::make_shared<navigator::path_planner::PathPlanner>();
+    m_planner_ptr = std::make_shared<navigator::path_planner::MotionPlanner>();
   }
-  std::shared_ptr<navigator::path_planner::PathPlanner> m_planner_ptr;
+  std::shared_ptr<navigator::path_planner::MotionPlanner> m_planner_ptr;
 };
 
 TEST_F(PathPlannerTest, get_center_line)

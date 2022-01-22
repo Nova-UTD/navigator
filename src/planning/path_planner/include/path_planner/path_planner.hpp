@@ -33,7 +33,7 @@ namespace navigator
     {
         //generates potential paths using cubic splines and gives them costs according to several factors
         //right now only generates the center line for a lane and the spline for that
-        class PathPlanner
+        class MotionPlanner
         {
         public:
             std::vector<TrajectoryPoint> generate_position_trajectory(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map);
