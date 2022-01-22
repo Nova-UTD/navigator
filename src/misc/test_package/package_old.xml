@@ -7,8 +7,10 @@
   <maintainer email="joshmackwilliams@protonmail.com">Joshua Williams</maintainer>
   <license>MIT License</license>
 
-  <buildtool_depend>nova_auto_package</buildtool_depend>
-  
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+
+  <test_depend>ament_cmake_gtest</test_depend>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>
