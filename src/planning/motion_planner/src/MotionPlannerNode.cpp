@@ -7,8 +7,6 @@
  * License:   MIT License
  */
 
-#include <algorithm> // std::clamp
-#include <cstdint>   // Fixed-width integers
 #include <functional>
 #include <string>
 #include "rclcpp/rclcpp.hpp"

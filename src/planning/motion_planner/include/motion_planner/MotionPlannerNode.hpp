@@ -14,13 +14,10 @@
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-#include "voltron_msgs/msg/trajectory.hpp" // CAN messages
-#include "std_msgs/msg/float32.hpp" // UInt8 messages
+#include "voltron_msgs/msg/trajectory.hpp"
+#include "std_msgs/msg/float32.hpp"
 
 #include "motion_planner/MotionPlanner.hpp"
-
-typedef uint16_t can_id_t;
-typedef uint64_t can_data_t;
 
 using namespace std::chrono_literals;
 

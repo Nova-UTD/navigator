@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>motion_planner_visuals</name>
+  <version>0.0.1</version>
+  <description>Rviz visuals for the Motion Planner</description>
+  <maintainer email="jim3moore@gmail.com">Jim Moore</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <buildtool_depend>autoware_auto_cmake</buildtool_depend>
+
+  <depend>motion_common</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>voltron_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>motion_planner</depend>
+
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>voltron_test_utils</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
