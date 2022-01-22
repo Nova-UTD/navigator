@@ -1,6 +1,6 @@
 /*
- * Package:   motion_planner
- * Filename:  motion_planner.cpp
+ * Package:   MotionPlanner
+ * Filename:  MotionPlanner.cpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
@@ -12,16 +12,16 @@
 #include <math.h>
 namespace navigator
 {
-	namespace motion_planner
+	namespace MotionPlanner
 	{
-		class path_point
+		class PathPoint
 		{
 		public:
 			double x;
 			double y;
-			path_point(double x, double y) : x(x), y(y) {}
-			path_point() : x(0), y(0) {}
-			double distance(const path_point &other) const {
+			PathPoint(double x, double y) : x(x), y(y) {}
+			PathPoint() : x(0), y(0) {}
+			double distance(const PathPoint &other) const {
 				return std::sqrt((x - other.x) * (x - other.x) + (y - other.y) * (y - other.y));
 			}
 		};

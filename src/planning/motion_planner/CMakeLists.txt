@@ -1,5 +1,5 @@
 #
-# Package:   motion_planner
+# Package:   MotionPlanner
 # Filename:  CMakeLists.txt
 # Author:    Jim Moore
 # Email:     jim3moore@gmail.com
@@ -26,14 +26,16 @@ ament_auto_find_build_dependencies()
 # mechanism to prevent having to explicitly list all files for every
 # executable.
 ament_auto_add_library(motion_planner_lib STATIC
-  include/motion_planner/lane_points.hpp
-  include/motion_planner/path_point.hpp
-  include/motion_planner/segmented_path.hpp
-  include/motion_planner/ideal_point.hpp
-  include/motion_planner/car_pose.hpp
-  src/motion_planner.cpp
+  include/motion_planner/LanePoints.hpp
+  include/motion_planner/PathPoint.hpp
+  include/motion_planner/SegmentedPath.hpp
+  include/motion_planner/IdealPoint.hpp
+  include/motion_planner/CarPose.hpp
+  include/motion_planner/MotionPlannerNode.hpp
+  src/MotionPlanner.cpp
   src/map_utils.cpp
-  src/segmented_path.cpp
+  src/SegmentedPath.cpp
+  src/MotionPlannerNode.cpp
 )
 target_include_directories(motion_planner_lib PUBLIC include)
 
@@ -43,8 +45,8 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies() # Find any test dependencies declared in package.xml
 
   ament_add_gtest(tests
-    test/test_motion_planner.cpp
-    test/test_segmented_path.cpp)
+    test/test_MotionPlanner.cpp
+    test/test_SegmentedPath.cpp)
 
   ament_target_dependencies(tests
     autoware_auto_common autoware_auto_geometry

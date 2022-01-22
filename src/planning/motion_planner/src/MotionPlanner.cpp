@@ -1,13 +1,13 @@
 /*
- * Package:   motion_planner
- * Filename:  motion_planner.cpp
+ * Package:   MotionPlanner
+ * Filename:  MotionPlanner.cpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
  * License:   MIT License
  */
 
-#include "motion_planner/motion_planner.hpp"
+#include "motion_planner/MotionPlanner.hpp"
 #include "motion_planner/map_utils.hpp"
 
 #include "autoware_auto_msgs/msg/trajectory.hpp"
@@ -28,7 +28,7 @@ using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
 using autoware_auto_msgs::msg::HADMapRoute;
 using autoware_auto_msgs::msg::Trajectory;
 
-using namespace navigator::motion_planner;
+using namespace navigator::MotionPlanner;
 
 
 
@@ -55,15 +55,15 @@ lanelet::Point3d convertToLaneletPoint(
 {
     return lanelet::Point3d(lanelet::InvalId, pt.x, pt.y, 0.0);
 }
-segmented_path MotionPlanner::get_center_line_segments(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points)
+SegmentedPath MotionPlanner::get_center_line_segments(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points)
 {
     using namespace std;
-    shared_ptr<vector<path_point>> points = make_shared<vector<path_point>>();
+    shared_ptr<vector<PathPoint>> points = make_shared<vector<PathPoint>>();
     for (const auto &p : line_points)
     {
-        points->push_back(path_point(p.x,p.y));
+        points->push_back(PathPoint(p.x,p.y));
     }
-    return segmented_path(points);
+    return SegmentedPath(points);
 }
 autoware_auto_msgs::msg::TrajectoryPoint convertToTrajectoryPoint(const lanelet::ConstPoint3d &pt)
 {
@@ -162,7 +162,7 @@ std::vector<autoware_auto_msgs::msg::TrajectoryPoint> MotionPlanner::get_center_
     return line_points;
 }
 
-std::shared_ptr<const std::vector<path_point>> MotionPlanner::get_trajectory(const std::vector<ideal_point> &ideal_path, const car_pose pose) {
+std::shared_ptr<const std::vector<PathPoint>> MotionPlanner::get_trajectory(const std::vector<IdealPoint> &ideal_path, const CarPose pose) {
     //generates a bunch of different paths for the car, assigns them costs, and picks the lowest cost path
     //if memory becomes an issue, could generate and cost the paths on demand, and recreate the lowest cost one.
     using namespace std;
@@ -173,13 +173,13 @@ std::shared_ptr<const std::vector<path_point>> MotionPlanner::get_trajectory(con
     const double car_vy_norm = pose.vy/car_speed;
     const double max_steer_speed_time = max_steering_speed/car_speed; //convert from rad/m to rad/s
 
-    shared_ptr<vector<path_point>> linear_points = make_shared<vector<path_point>>();
+    shared_ptr<vector<PathPoint>> linear_points = make_shared<vector<PathPoint>>();
     for (size_t i = 0; i < points; i++) {
-        linear_points->push_back(path_point(pose.x + car_vx_norm*i/spacing, pose.y+car_vy_norm*i/spacing));
+        linear_points->push_back(PathPoint(pose.x + car_vx_norm*i/spacing, pose.y+car_vy_norm*i/spacing));
     }
     
-    auto base_path = segmented_path(linear_points);
-    vector<segmented_path> candidates;
+    auto base_path = SegmentedPath(linear_points);
+    vector<SegmentedPath> candidates;
 
     //for now, keep start angle the same and vary the end angle and turn speed.
     //this should change to be more flexible later
@@ -187,7 +187,7 @@ std::shared_ptr<const std::vector<path_point>> MotionPlanner::get_trajectory(con
         double end_angle = -max_steering_angle+(i/4)*max_steering_angle;
         double turn_speed = -max_steering_speed+(i%4)*max_steering_speed;
         auto branch_points = base_path.create_branch(car_angle,end_angle,turn_speed,points);
-        candidates.push_back(segmented_path(branch_points));
+        candidates.push_back(SegmentedPath(branch_points));
     }
 
     //find min cost path
@@ -204,14 +204,14 @@ std::shared_ptr<const std::vector<path_point>> MotionPlanner::get_trajectory(con
     return candidates[min_index].points;
 }
 
-double MotionPlanner::cost_path(const segmented_path &path, const std::vector<ideal_point> &ideal_path, const car_pose pose) const {
+double MotionPlanner::cost_path(const SegmentedPath &path, const std::vector<IdealPoint> &ideal_path, const CarPose pose) const {
     //temporary cost function, very basic attempt at following the ideal path.
     double dist = 0;
     for (const auto ideal : ideal_path) {
-        dist += path.distance(path_point(ideal.x,ideal.y));
+        dist += path.distance(PathPoint(ideal.x,ideal.y));
     }
     return dist;
-    /*path.sum([&](path_point p) {
+    /*path.sum([&](PathPoint p) {
         can do comfortability cost function like this
     });*/
 }

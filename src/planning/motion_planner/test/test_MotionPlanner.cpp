@@ -1,13 +1,13 @@
 /*
- * Package:   motion_planner
- * Filename:  test_motion_planner.cpp
+ * Package:   MotionPlanner
+ * Filename:  test_MotionPlanner.cpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
  * License:   MIT License
  */
 
-#include <motion_planner/motion_planner.hpp>
+#include <motion_planner/MotionPlanner.hpp>
 #include <geometry/common_2d.hpp>
 #include <memory>
 
@@ -76,9 +76,9 @@ class MotionPlannerTest : public ::testing::Test
 public:
   MotionPlannerTest()
   {
-    m_planner_ptr = std::make_shared<navigator::motion_planner::MotionPlanner>();
+    m_planner_ptr = std::make_shared<navigator::MotionPlanner::MotionPlanner>();
   }
-  std::shared_ptr<navigator::motion_planner::MotionPlanner> m_planner_ptr;
+  std::shared_ptr<navigator::MotionPlanner::MotionPlanner> m_planner_ptr;
 };
 
 TEST_F(MotionPlannerTest, get_center_line)

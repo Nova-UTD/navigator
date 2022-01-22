@@ -1,5 +1,5 @@
 /*
- * Package:   motion_planner
+ * Package:   MotionPlanner
  * Filename:  test_segemented_path.cpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
@@ -7,41 +7,41 @@
  * License:   MIT License
  */
 
-// Basic tests for the segmented_path
+// Basic tests for the SegmentedPath
 
 #include <gtest/gtest.h>
 #include <memory>
 #include <math.h>
 
-#include <motion_planner/segmented_path.hpp>
-#include <motion_planner/path_point.hpp>
+#include <motion_planner/SegmentedPath.hpp>
+#include <motion_planner/PathPoint.hpp>
 
-using namespace navigator::motion_planner;
+using namespace navigator::MotionPlanner;
 
-class test_segmented_path : public ::testing::Test {
+class test_SegmentedPath : public ::testing::Test {
 public:
-  std::shared_ptr<std::vector<path_point>> ps;
+  std::shared_ptr<std::vector<PathPoint>> ps;
   
-  test_segmented_path() {
-    ps = std::make_shared<std::vector<path_point>>();
+  test_SegmentedPath() {
+    ps = std::make_shared<std::vector<PathPoint>>();
     //wiggly path that goes loops around and is not a function of x or y
-    ps->push_back(path_point(0,0));
-    ps->push_back(path_point(0.1,0.1));
-    ps->push_back(path_point(0,0.2));
-    ps->push_back(path_point(-0.1,0.1));
-    ps->push_back(path_point(-0.2,0));
-    ps->push_back(path_point(-0.3,-0.1));
+    ps->push_back(PathPoint(0,0));
+    ps->push_back(PathPoint(0.1,0.1));
+    ps->push_back(PathPoint(0,0.2));
+    ps->push_back(PathPoint(-0.1,0.1));
+    ps->push_back(PathPoint(-0.2,0));
+    ps->push_back(PathPoint(-0.3,-0.1));
 
-    segments = std::make_shared<segmented_path>(ps);
+    segments = std::make_shared<SegmentedPath>(ps);
   };
-  std::shared_ptr<segmented_path> segments;
+  std::shared_ptr<SegmentedPath> segments;
 };
 
-TEST_F(test_segmented_path, test_valid) {
+TEST_F(test_SegmentedPath, test_valid) {
   ASSERT_TRUE(segments->valid_points());
 }
 
-TEST_F(test_segmented_path, test_arc_length_parameterization) {
+TEST_F(test_SegmentedPath, test_arc_length_parameterization) {
     const double tolerance = 0.000001;
     const double length_step = std::sqrt(2);
     //validate arc length parameterization by seeing if the distance over small intervals is equal to the change in the parameter
@@ -54,19 +54,19 @@ TEST_F(test_segmented_path, test_arc_length_parameterization) {
     }
 }
 
-TEST_F(test_segmented_path, test_closest_point_distance) {
+TEST_F(test_SegmentedPath, test_closest_point_distance) {
   const double tolerance = 0.000001;
-  auto p = path_point(0,0);
+  auto p = PathPoint(0,0);
   ASSERT_EQ(0, segments->distance(p));
-  p = path_point(-0.3,-0.1);
+  p = PathPoint(-0.3,-0.1);
   ASSERT_EQ(0, segments->distance(p));
-  p = path_point(0,0.2);
+  p = PathPoint(0,0.2);
   ASSERT_EQ(0, segments->distance(p));
-  p = path_point(0.2,0.2);
+  p = PathPoint(0.2,0.2);
   ASSERT_TRUE(abs(std::sqrt(0.02)-segments->distance(p)) < tolerance);
 }
 
-TEST_F(test_segmented_path, test_branch) {
+TEST_F(test_SegmentedPath, test_branch) {
   using std::size_t;
   //should create a branch at 0,0 initially going in the positive x direction, that increases the steering angle until it
   //  eventually reaches PI/2 radians per point
@@ -74,7 +74,7 @@ TEST_F(test_segmented_path, test_branch) {
   //spacing is sqrt(2) like the other path
   auto points = *segments->create_branch(0, M_PI_2, 1, 20).get();
   ASSERT_TRUE(segments->valid_points(segments->spacing, points));
-  ASSERT_EQ(20, points.size());
+  ASSERT_EQ(static_cast<size_t>(20), points.size());
   const double turn_per_segment = segments->spacing;
   const double tolerance = 0.0001;
   //round down because the last segment that turns doesn't turn all the way

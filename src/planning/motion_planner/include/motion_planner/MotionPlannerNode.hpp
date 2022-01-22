@@ -1,5 +1,5 @@
 /*
- * Package:   motion_planner
+ * Package:   MotionPlanner
  * Filename:  MotionPlanner.hpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
@@ -14,18 +14,18 @@
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-#include "voltron_msgs/msg/can_frame.hpp" // CAN messages
+#include "voltron_msgs/msg/trajectory.hpp" // CAN messages
 #include "std_msgs/msg/float32.hpp" // UInt8 messages
 
-#include "motion_planner.hpp"
+#include "motion_planner/MotionPlanner.hpp"
 
 typedef uint16_t can_id_t;
 typedef uint64_t can_data_t;
 
 using namespace std::chrono_literals;
 
-namespace Nova {
-namespace motion_planner {
+namespace navigator {
+namespace MotionPlanner {
 
 // How often to publish the new trajectory message
 constexpr auto message_frequency = 20ms;
@@ -46,8 +46,8 @@ private:
     rclcpp::TimerBase::SharedPtr control_timer;
 
     MotionPlanner planner;
-    std::shared_ptr<std::vector<ideal_point>> ideal_path;
-    car_pose pose;
+    std::shared_ptr<std::vector<IdealPoint>> ideal_path;
+    CarPose pose;
 };
 }
 }

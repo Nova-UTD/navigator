@@ -1,6 +1,6 @@
 /*
- * Package:   motion_planner
- * Filename:  motion_planner.cpp
+ * Package:   MotionPlanner
+ * Filename:  MotionPlanner.cpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
@@ -12,17 +12,17 @@
 //temporary class for input from behavior planner
 namespace navigator
 {
-	namespace motion_planner
+	namespace MotionPlanner
 	{
-		class car_pose
+		class CarPose
 		{
 		public:
 			double x;
 			double y;
             double vx;
             double vy;
-			car_pose(double x, double y, double vx, double vy) : x(x), y(y), vx(vx), vy(vy) {}
-			car_pose() : x(0), y(0), vx(0), vy(0) {}
+			CarPose(double x, double y, double vx, double vy) : x(x), y(y), vx(vx), vy(vy) {}
+			CarPose() : x(0), y(0), vx(0), vy(0) {}
 		};
 	}
 }

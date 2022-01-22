@@ -1,6 +1,6 @@
 /*
- * Package:   motion_planner
- * Filename:  motion_planner.cpp
+ * Package:   MotionPlanner
+ * Filename:  MotionPlanner.cpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
@@ -12,16 +12,16 @@
 //temporary class for input from behavior planner
 namespace navigator
 {
-	namespace motion_planner
+	namespace MotionPlanner
 	{
-		class ideal_point
+		class IdealPoint
 		{
 		public:
 			double x;
 			double y;
             double speed;
-			ideal_point(double x, double y, double speed) : x(x), y(y), speed(speed) {}
-			ideal_point() : x(0), y(0), speed(0) {}
+			IdealPoint(double x, double y, double speed) : x(x), y(y), speed(speed) {}
+			IdealPoint() : x(0), y(0), speed(0) {}
 		};
 	}
 }

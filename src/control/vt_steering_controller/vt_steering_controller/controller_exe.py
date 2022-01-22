@@ -155,9 +155,9 @@ class Translator(Node):
         return(result_theta*-1)
         
 
-    def get_distance(pose: PoseWithCovarianceStamped, path_point: TrajectoryPoint):
+    def get_distance(pose: PoseWithCovarianceStamped, PathPoint: TrajectoryPoint):
         current_pos = pose.pose.pose.position
-        return math.sqrt(math.pow((current_pos.x-path_point.x),2)+math.pow((current_pos.y-path_point.y),2))
+        return math.sqrt(math.pow((current_pos.x-PathPoint.x),2)+math.pow((current_pos.y-PathPoint.y),2))
 
     def viz_vectors(self, v_0_x, v_0_y, v_1_x, v_1_y, v_2_x, v_2_y, header, o_x, o_y, v_r_x, v_r_y):
         v_0_marker = Marker()

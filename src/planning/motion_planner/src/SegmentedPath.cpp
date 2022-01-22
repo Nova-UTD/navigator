@@ -1,13 +1,13 @@
 /*
- * Package:   motion_planner
- * Filename:  motion_planner.cpp
+ * Package:   MotionPlanner
+ * Filename:  MotionPlanner.cpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
  * License:   MIT License
  */
 
-#include "motion_planner/segmented_path.hpp"
+#include "motion_planner/SegmentedPath.hpp"
 #include <stdlib.h>
 #include <stdexcept>
 #include <string>
@@ -21,16 +21,16 @@ using std::floor;
 using std::sqrt;
 using std::atan2;
 
-using namespace navigator::motion_planner;
+using namespace navigator::MotionPlanner;
 
 //checks if this path's points are spaced uniformly by spacing units apart.
 //allows slight tolerance for floating point weirdness (0.00000001 on the square distance between each point)
-bool segmented_path::valid_points() const {
+bool SegmentedPath::valid_points() const {
 	return valid_points(spacing, *points);
 }
 //checks if points are spaced uniformly by spacing units apart.
 //allows slight tolerance for floating point weirdness (0.00000001 on the square distance between each point)
-bool segmented_path::valid_points(double spacing, const vector<path_point>& points) const
+bool SegmentedPath::valid_points(double spacing, const vector<PathPoint>& points) const
 {
 	const double TOLERANCE = 0.00000001;
 	if (spacing < 0) return false;
@@ -47,15 +47,15 @@ bool segmented_path::valid_points(double spacing, const vector<path_point>& poin
 //max_change: the maximum amount the angle can change
 //steer_speed: radians/unit traveled. how quickly the angle changes from start to end angle.
 //size: the number of points to generate
-std::shared_ptr<std::vector<path_point>> segmented_path::create_branch(double start_angle, double max_change, double steer_speed, size_t size) const
+std::shared_ptr<std::vector<PathPoint>> SegmentedPath::create_branch(double start_angle, double max_change, double steer_speed, size_t size) const
 {
 	double current_angle = start_angle;
-	path_point current = points->front();
-	std::shared_ptr<vector<path_point>> result = std::make_shared<vector<path_point>>();
+	PathPoint current = points->front();
+	std::shared_ptr<vector<PathPoint>> result = std::make_shared<vector<PathPoint>>();
 	for (size_t i = 0; i < size; i++) {
 		double dx = cos(current_angle) * spacing;
 		double dy = sin(current_angle) * spacing;
-		path_point p(current.x + dx, current.y + dy);
+		PathPoint p(current.x + dx, current.y + dy);
 		result->push_back(p);
 		
 		current = p;
@@ -68,7 +68,7 @@ std::shared_ptr<std::vector<path_point>> segmented_path::create_branch(double st
 	return result;
 }
 
-double segmented_path::sum(std::function<double(path_point)> func) const
+double SegmentedPath::sum(std::function<double(PathPoint)> func) const
 {
 	double sum = 0;
 	for (const auto& point : *points) {
@@ -77,7 +77,7 @@ double segmented_path::sum(std::function<double(path_point)> func) const
 	return sum;
 }
 
-path_point segmented_path::sample(double arclength) const
+PathPoint SegmentedPath::sample(double arclength) const
 {
 	//first check if arclength is outside the curve's bounds
 	if (arclength < 0 || arclength > spacing * points->size()) {
@@ -86,24 +86,24 @@ path_point segmented_path::sample(double arclength) const
 	double segment = floor(arclength / spacing);
 	
 	size_t segment_id = static_cast<size_t>(segment); //index of the first point
-	path_point a = points->at(segment_id);
-	path_point b = points->at(segment_id);
+	PathPoint a = points->at(segment_id);
+	PathPoint b = points->at(segment_id);
 	//we assume a and b are spacing units apart (can check with valid_points)
 	double progress = (arclength - segment) / arclength; //proportion between a and b the target point is
 
-	return path_point(a.x + (b.x - a.x) * progress, a.y + (b.y - a.y) * progress);
+	return PathPoint(a.x + (b.x - a.x) * progress, a.y + (b.y - a.y) * progress);
 }
 
 //probably should optimize this later. currently does a linear scan of all segments
-double segmented_path::distance(path_point p) const
+double SegmentedPath::distance(PathPoint p) const
 {
 	//-1 gets returned if path is empty
 	double min = -1;
 	//using approach from https://monkeyproofsolutions.nl/wordpress/how-to-calculate-the-shortest-distance-between-a-point-and-a-line/
 	for (size_t i = 0; i < points->size() - 1; i++) {
 		
-		path_point a = points->at(i);
-		path_point b = points->at(i + 1);
+		PathPoint a = points->at(i);
+		PathPoint b = points->at(i + 1);
 		double m_x = b.x - a.x;
 		double m_y = b.y - a.y;
 		double da_x = p.x - a.x;

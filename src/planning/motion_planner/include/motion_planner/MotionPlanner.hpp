@@ -1,20 +1,20 @@
 /*
- * Package:   motion_planner
- * Filename:  motion_planner.hpp
+ * Package:   MotionPlanner
+ * Filename:  MotionPlanner.hpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
  * License:   MIT License
  */
 
-#ifndef MOTION_PLANNER__MOTION_PLANNER_HPP_
-#define MOTION_PLANNER__MOTION_PLANNER_HPP_
+#ifndef MotionPlanner__MotionPlanner_HPP_
+#define MotionPlanner__MotionPlanner_HPP_
 
-#include <motion_planner/segmented_path.hpp>
-#include <motion_planner/lane_points.hpp>
-#include <motion_planner/path_point.hpp>
-#include <motion_planner/ideal_point.hpp>
-#include <motion_planner/car_pose.hpp>
+#include <motion_planner/SegmentedPath.hpp>
+#include <motion_planner/LanePoints.hpp>
+#include <motion_planner/PathPoint.hpp>
+#include <motion_planner/IdealPoint.hpp>
+#include <motion_planner/CarPose.hpp>
 #include <autoware_auto_msgs/msg/trajectory.hpp>
 #include <autoware_auto_msgs/msg/had_map_route.hpp>
 #include <common/types.hpp>
@@ -32,16 +32,16 @@ using autoware_auto_msgs::msg::Trajectory;
 
 namespace navigator
 {
-    namespace motion_planner
+    namespace MotionPlanner
     {
         //generates potential paths using line segements and gives them costs according to several factors (distance from center line/target, collisions, etc)
         class MotionPlanner
         {
         public:
-            segmented_path get_center_line_segments(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points);
+            SegmentedPath get_center_line_segments(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points);
             std::vector<autoware_auto_msgs::msg::TrajectoryPoint> get_center_line_points(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution);
-            std::shared_ptr<const std::vector<path_point>> get_trajectory(const std::vector<ideal_point> &ideal_path, const car_pose pose);
-            double cost_path(const segmented_path &path, const std::vector<ideal_point> &ideal_path, const car_pose pose) const;
+            std::shared_ptr<const std::vector<PathPoint>> get_trajectory(const std::vector<IdealPoint> &ideal_path, const CarPose pose);
+            double cost_path(const SegmentedPath &path, const std::vector<IdealPoint> &ideal_path, const CarPose pose) const;
         private:
             //currently, these numbers are chosen as a guess. they will need to be determined later for safety.
             //(all units are in meters, seconds, radians if not mentioned)
@@ -57,4 +57,4 @@ namespace navigator
     }
 }
 
-#endif // MOTION_PLANNER__MOTION_PLANNER_HPP_
+#endif // MotionPlanner__MotionPlanner_HPP_
