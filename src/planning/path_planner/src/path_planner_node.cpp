@@ -20,8 +20,8 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2/utils.h>
 
-#include <path_planner_new/path_planner_node.hpp>
-#include <path_planner_new/path_planner.hpp>
+#include <path_planner/path_planner_node.hpp>
+#include <path_planner/path_planner.hpp>
 
 #include <visualization_msgs/msg/marker_array.hpp>
 #include <visualization_msgs/msg/marker.hpp>

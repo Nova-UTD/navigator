@@ -17,7 +17,7 @@
 #include <voltron_msgs/msg/costed_path.hpp>
 #include <voltron_msgs/msg/costed_paths.hpp>
 
-#include <path_planner_new/path_planner.hpp>
+#include <path_planner/path_planner.hpp>
 
 namespace navigator
 {
