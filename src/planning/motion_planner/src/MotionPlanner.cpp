@@ -165,16 +165,16 @@ std::shared_ptr<const std::vector<PathPoint>> MotionPlanner::get_trajectory(cons
     using namespace std;
 
     const double car_angle = pose.heading;
-    const double car_speed = sqrt(pose.longitudinal_v*pose.longitudinal_v+pose.lateral_v*pose.lateral_v);
+    const double car_speed = sqrt(pose.xv*pose.xv+pose.yv*pose.yv);
     //no idea if this works like this. will have to test. cannot find documentation
-    const double car_vx_norm = cos(car_angle);
-    const double car_vy_norm = sin(car_angle);
+    const double car_vx_norm = pose.xv/car_speed;
+    const double car_vy_norm = pose.yv/car_speed;
     const double max_steer_speed_time = max_steering_speed/car_speed; //convert from rad/m to rad/s
 
     shared_ptr<vector<PathPoint>> linear_points = make_shared<vector<PathPoint>>();
     for (size_t i = 0; i < points; i++) {
         double index = static_cast<double>(i);
-        linear_points->push_back(PathPoint(pose.x + car_vx_norm*index/spacing, pose.y+car_vy_norm*index/spacing));
+        linear_points->push_back(PathPoint(pose.x + car_vx_norm*index*spacing, pose.y+car_vy_norm*index*spacing));
     }
     
     auto base_path = SegmentedPath(linear_points);
