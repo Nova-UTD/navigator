@@ -28,8 +28,6 @@ MotionPlannerVisualsNode::MotionPlannerVisualsNode(const rclcpp::NodeOptions &no
 void MotionPlannerVisualsNode::send_message(const voltron_msgs::msg::Trajectory::SharedPtr msg) {
     auto markers = visualization_msgs::msg::MarkerArray();
 
-    for (size_t i = 0; i < msg->points.size(); i++) {
-        auto point = msg->points.at(i);
         auto marker = visualization_msgs::msg::Marker();
         marker.header.stamp = this->now();
         marker.header.frame_id = "map";
@@ -37,21 +35,22 @@ void MotionPlannerVisualsNode::send_message(const voltron_msgs::msg::Trajectory:
         marker.action = visualization_msgs::msg::Marker::ADD;
         marker.lifetime = rclcpp::Duration(250ms);
         marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
-        marker.id = static_cast<int>(i);
-
+        marker.id = 0;
         marker.scale.x = 0.2;
         marker.color.r = 0.0;
         marker.color.g = 0.0;
         marker.color.b = 1.0;
         marker.color.a = 1.0;
 
-        marker.pose.position.x = point.x;
-        marker.pose.position.z = point.y;
-
-        markers.markers.push_back(marker);
-
+    for (size_t i = 0; i < msg->points.size(); i++) {
+        auto point = msg->points.at(i);
+        auto message_point = geometry_msgs::msg::Point();
+        message_point.x = point.x;
+        message_point.y = point.y;
+        message_point.z = 0;
+        marker.points.push_back(message_point);
     }
-    
+    markers.markers.push_back(marker);
     this->visuals_publisher->publish(markers);
 }
 

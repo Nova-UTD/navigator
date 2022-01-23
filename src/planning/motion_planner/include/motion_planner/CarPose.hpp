@@ -20,10 +20,10 @@ namespace navigator
 			double x;
 			double y;
 			double heading;
-            double longitudinal_v;
-            double lateral_v;
-			CarPose(double x, double y, double heading, double longitudinal_v, double lateral_v) : x(x), y(y), heading(heading), longitudinal_v(longitudinal_v), lateral_v(lateral_v) {}
-			CarPose() : x(0), y(0), heading(0), longitudinal_v(0), lateral_v(0) {}
+            double xv;
+            double yv;
+			CarPose(double x, double y, double heading, double xv, double yv) : x(x), y(y), heading(heading), xv(xv), yv(yv) {}
+			CarPose() : x(0), y(0), heading(0), xv(0), yv(0) {}
 		};
 	}
 }

@@ -40,7 +40,7 @@ MotionPlannerNode::MotionPlannerNode(const rclcpp::NodeOptions &node_options) :
     //todo update names
     trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectory>("outgoing_trajectories", 8);
     path_subscription = this->create_subscription<voltron_msgs::msg::CostedPaths>("paths", 8, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
-    current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10),std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
+    current_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/lgsvl/gnss_odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
     control_timer = this->create_wall_timer(message_frequency, bind(&MotionPlannerNode::send_message, this));
     planner = std::make_shared<MotionPlanner>();
 }
@@ -58,11 +58,11 @@ void MotionPlannerNode::send_message() {
         trajectory_message.points.push_back(point);
     }
     trajectory_publisher->publish(trajectory_message);
-    RCLCPP_WARN(this->get_logger(), "published trajectory");
+    //RCLCPP_WARN(this->get_logger(), "published trajectory");
 }
 
 void MotionPlannerNode::update_path(voltron_msgs::msg::CostedPaths::SharedPtr ptr) {
-    RCLCPP_WARN(this->get_logger(), "Got path");
+    //RCLCPP_WARN(this->get_logger(), "Got path");
     //select minimum cost path
     size_t min_index = 0;
     double min_cost = ptr->paths[min_index].safety_cost+ptr->paths[min_index].routing_cost;
@@ -79,8 +79,8 @@ void MotionPlannerNode::update_path(voltron_msgs::msg::CostedPaths::SharedPtr pt
 void MotionPlannerNode::update_pose(const geometry_msgs::msg::PoseStamped& pose_in) {
     pose.x = pose_in.pose.position.x;
     pose.y = pose_in.pose.position.y;
-    pose.heading = asin(pose_in.pose.orientation.z);
-    //velocity updated in current_pose_cb
+    
+    //velocity, heading updated in current_pose_cb
 }
 
 /**
@@ -91,20 +91,18 @@ void MotionPlannerNode::update_pose(const geometry_msgs::msg::PoseStamped& pose_
  * 
  * @param state 
  */
-void MotionPlannerNode::current_pose_cb(const VehicleKinematicState::SharedPtr state_msg)
+void MotionPlannerNode::current_pose_cb(const nav_msgs::msg::Odometry::SharedPtr state_msg)
 {
-  RCLCPP_WARN(this->get_logger(), "Current position!");
   // convert msg to geometry_msgs::msg::Pose
-  current_pose.pose.position.x = state_msg->state.x;
-  current_pose.pose.position.y = state_msg->state.y;
+  current_pose.pose.position.x = state_msg->pose.pose.position.x;
+  current_pose.pose.position.y = state_msg->pose.pose.position.y;
   current_pose.pose.position.z = 0.0;
-  current_pose.pose.orientation =
-      motion::motion_common::to_quat<geometry_msgs::msg::Quaternion>(
-          state_msg->state.heading);
+  current_pose.pose.orientation = state_msg->pose.pose.orientation;
   current_pose.header = state_msg->header;
   //update velocity
-  pose.longitudinal_v = state_msg->state.longitudinal_velocity_mps;
-  pose.lateral_v = state_msg->state.lateral_velocity_mps;
+  pose.xv = state_msg->twist.twist.linear.x;//.state.longitudinal_velocity_mps;
+  pose.yv = state_msg->twist.twist.linear.y;//state_msg->state.lateral_velocity_mps;
+  pose.heading = state_msg->twist.twist.angular.z;
 
   // transform to "map" frame if needed
   if (current_pose.header.frame_id != "map")
@@ -128,7 +126,6 @@ void MotionPlannerNode::current_pose_cb(const VehicleKinematicState::SharedPtr s
     // No transform required
     //current_pose_init = true;
   }
-      RCLCPP_WARN(this->get_logger(), "Marker pose1");
     update_pose(current_pose);
 
 }
