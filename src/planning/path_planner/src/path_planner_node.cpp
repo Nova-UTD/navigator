@@ -1,3 +1,12 @@
+/*
+ * Package:   path_planner
+ * Filename:  path_planner_node.cpp
+ * Author:    Egan Johnson
+ * Email:     egan.johnson@utdallas.edu
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
+
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/node_options.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
@@ -12,7 +21,6 @@
 #include <voltron_msgs/msg/costed_paths.hpp>
 #include <voltron_msgs/msg/costed_path.hpp>
 
-
 #include <lanelet2_core/LaneletMap.h>
 #include <motion_common/motion_common.hpp>
 #include <tf2/buffer_core.h>
@@ -26,7 +34,6 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 
-
 #include <chrono>
 #include <functional>
 
@@ -34,23 +41,19 @@ using namespace std::chrono_literals;
 
 using namespace navigator::path_planner;
 
-using voltron_msgs::msg::RouteCosts;
-using voltron_msgs::msg::RouteCost;
-using voltron_msgs::msg::CostedPaths;
-using voltron_msgs::msg::CostedPath;
 using autoware_auto_msgs::msg::VehicleKinematicState;
 using std::placeholders::_1;
+using voltron_msgs::msg::CostedPath;
+using voltron_msgs::msg::CostedPaths;
+using voltron_msgs::msg::RouteCost;
+using voltron_msgs::msg::RouteCosts;
 
-PathPlannerNode::PathPlannerNode(const rclcpp::NodeOptions &node_options) : 
-  rclcpp::Node::Node("path_planner_node", node_options),
-  tf_listener(tf_buffer, std::shared_ptr<rclcpp::Node>(this, [](auto) {}), false)
+PathPlannerNode::PathPlannerNode(const rclcpp::NodeOptions &node_options) : rclcpp::Node::Node("path_planner_node", node_options),
+                                                                            tf_listener(tf_buffer, std::shared_ptr<rclcpp::Node>(this, [](auto) {}), false)
 {
-  RCLCPP_WARN(this->get_logger(), "Path planner constructor");
-
   path_planner = std::make_shared<PathPlanner>();
-  path_planner->set_logger(this->get_logger());
 
-  // Placeholder route cost object
+  // Placeholder route cost object. Needed to access current_route_costs->costs, even if empty
   current_route_costs = std::make_shared<RouteCosts>();
 
   // Give map to path planner
@@ -62,103 +65,132 @@ PathPlannerNode::PathPlannerNode(const rclcpp::NodeOptions &node_options) :
   route_costs_sub_ptr = this->create_subscription<RouteCosts>("route_costs", rclcpp::QoS(10), std::bind(&PathPlannerNode::route_costs_cb, this, _1));
 
   // Subcribers Current Pose
-  current_pose_sub_ptr = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10),std::bind(&PathPlannerNode::current_pose_cb, this, _1));
+  current_pose_sub_ptr = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&PathPlannerNode::current_pose_cb, this, _1));
 
   // Create publisher
   path_pub_ptr = this->create_publisher<CostedPaths>("paths", rclcpp::QoS(10));
+
+  // Publisher for vizualization in rviz2. This should eventually move to a different node
   viz_pub_ptr = this->create_publisher<visualization_msgs::msg::MarkerArray>("paths_viz", rclcpp::QoS(10));
 
-
-  // Start execution loop
-  execute_timer = this->create_wall_timer( 100ms, std::bind(&PathPlannerNode::execute, this));
+  // Start execution loop. Todo: check if 300ms is a good number
+  execute_timer = this->create_wall_timer(300ms, std::bind(&PathPlannerNode::execute, this));
 }
 
-void PathPlannerNode::execute(){
-  if(!current_pose_init){
+/**
+ * @brief The main loop for this node. Runs path planner logic and publishes messages.
+ *
+ * Called by execute_timer frequently
+ */
+void PathPlannerNode::execute()
+{
+
+  if (!current_pose_init)
+  {
     RCLCPP_WARN(this->get_logger(), "Not publishing paths because no known location");
     return;
   }
-  
-  RCLCPP_WARN(this->get_logger(), "Marker exe1a");
-  auto costs = current_route_costs->costs;
-  RCLCPP_WARN(this->get_logger(), "Costs: "+std::to_string(costs.size()));
+  // don't need to worry about missing route data- paths will still generate
 
-  RCLCPP_WARN(this->get_logger(), "Marker exe1b");
-  auto pose = current_pose.pose;
-  RCLCPP_WARN(this->get_logger(), "Pose: "+std::to_string(pose.position.x));
-  path_planner->set_logger(this->get_logger());
-  RCLCPP_WARN(this->get_logger(), "Marker exe1c");
-  //path_planner->get_paths(current_pose.pose, current_route_costs->costs, results);
-  std::vector<CostedPath> results{};
-  path_planner->get_paths(pose, costs, results);
-  RCLCPP_WARN(this->get_logger(), "Marker exe2");
+  // Call on path planner logic
+  std::vector<CostedPath> results;
+  path_planner->get_paths(current_pose.pose, current_route_costs->costs, results);
 
+  // publish results
   publish_paths(results);
-    RCLCPP_WARN(this->get_logger(), "Marker exe3");
-
   publish_paths_viz(results);
-
 }
 
-void PathPlannerNode::publish_paths(std::vector<CostedPath> paths){
+/**
+ * @brief Forms and publishes a CostedPaths message out of the provided paths
+ *
+ * @param paths
+ */
+void PathPlannerNode::publish_paths(std::vector<CostedPath> paths)
+{
   CostedPaths path_msg;
   path_msg.header.stamp = this->now();
   path_msg.header.frame_id = "map";
   path_msg.paths = paths;
-      RCLCPP_WARN(this->get_logger(), "Marker pub1");
 
   path_pub_ptr->publish(path_msg);
-      RCLCPP_WARN(this->get_logger(), "Marker pub2");
-
 }
 
-void PathPlannerNode::publish_paths_viz(std::vector<CostedPath> paths){
+/**
+ * @brief Forms and publishes a MarkerArray for paths
+ *
+ * Currently bugged. Paths are overwritten each time a new message
+ * is published, but if a previously published message had more paths
+ * than the currently publishing message, only a number of paths matching
+ * the current number will be updated. (If the previous message had N1 paths
+ * and the current message has N2 paths, there will be an extra N1-N2 paths displayed)
+ *
+ * This is purely visual and does not effect the actual paths being published.
+ *
+ * @param paths
+ */
+void PathPlannerNode::publish_paths_viz(std::vector<CostedPath> paths)
+{
   visualization_msgs::msg::MarkerArray marker_array;
+
+  // Counter for the unique path ID and source of the bug
   int marker_id = 0;
-  for(CostedPath path : paths){
+
+  for (CostedPath path : paths)
+  {
     visualization_msgs::msg::Marker marker;
-    marker.points = path.points;
-    marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+
+    // Set header and identifiers
     marker.header.frame_id = "map";
     marker.header.stamp = this->now();
-    marker.id = marker_id;
-    marker.scale.x=1;
-    marker_id++;
     marker.ns = "path_planner_viz";
+    marker.id = marker_id;
+    marker_id++;
+
+    // Add data contents
+    marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
     marker.action = visualization_msgs::msg::Marker::ADD;
-    marker.color.a = 1.0; 
+    marker.points = path.points;
+    
+    // Set visual display. Not sure if this is needed
+    marker.scale.x = 1;
+    marker.color.a = 1.0;
     marker.color.r = 0.0;
     marker.color.g = 1.0;
     marker.color.b = 0.0;
+
+    // Add path to array
     marker_array.markers.push_back(marker);
   }
+
   viz_pub_ptr->publish(marker_array);
 }
 
 /**
  * @brief Callback for route cost subscriber
- * 
+ *
  * Pass updated costs to PathPlanner logic
- * 
- * @param costs 
+ *
+ * @param costs
  */
-void PathPlannerNode::route_costs_cb(const RouteCosts::SharedPtr costs_msg){
-  RCLCPP_WARN(this->get_logger(), "Recieved costs!");
+void PathPlannerNode::route_costs_cb(const RouteCosts::SharedPtr costs_msg)
+{
   // TODO: validate header
   current_route_costs = costs_msg;
 }
 
 /**
  * @brief Callback for kinematic state subscriber
- * 
+ *
  * Transform to TrajectoryPoint and pass to PathPlanner logic.
  * Copied from autoware code in Lanelet2GlobalPlannerNode
- * 
- * @param state 
+ *
+ * @param state
  */
 void PathPlannerNode::current_pose_cb(const VehicleKinematicState::SharedPtr state_msg)
 {
-  RCLCPP_WARN(this->get_logger(), "Current position!");
+  // TODO: validate header
+
   // convert msg to geometry_msgs::msg::Pose
   current_pose.pose.position.x = state_msg->state.x;
   current_pose.pose.position.y = state_msg->state.y;
@@ -190,17 +222,15 @@ void PathPlannerNode::current_pose_cb(const VehicleKinematicState::SharedPtr sta
     // No transform required
     current_pose_init = true;
   }
-      RCLCPP_WARN(this->get_logger(), "Marker pose1");
-
 }
 
 /**
  * @brief Requests and returns the current lanelet map.
- * 
+ *
  * Needs the map client to be initialized first.
  * Copied from autoware code in Lanelet2GlobalPlannerNode
- * 
- * @return lanelet::LaneletMapPtr 
+ *
+ * @return lanelet::LaneletMapPtr
  */
 lanelet::LaneletMapPtr PathPlannerNode::request_osm_binary_map()
 {
@@ -233,48 +263,47 @@ lanelet::LaneletMapPtr PathPlannerNode::request_osm_binary_map()
   // Convert binary map msg to lanelet2 map and set the map for global path planner
   auto osm_map = std::make_shared<lanelet::LaneletMap>();
   autoware::common::had_map_utils::fromBinaryMsg(msg, osm_map);
-  RCLCPP_WARN(this->get_logger(), "Returning Map");
   return osm_map;
 }
 
 /**
  * Copied from Lanelet2GlobalPlannerNode autoware code
- * 
- * @param pose_in 
- * @param pose_out 
- * @return true 
- * @return false 
+ *
+ * @param pose_in
+ * @param pose_out
+ * @return true
+ * @return false
  */
 bool PathPlannerNode::transform_pose_to_map(
-          const geometry_msgs::msg::PoseStamped &pose_in,
-          geometry_msgs::msg::PoseStamped &pose_out)
-      {
-        std::string source_frame = pose_in.header.frame_id;
-        // lookup transform validity
-        if (!tf_buffer.canTransform("map", source_frame, tf2::TimePointZero))
-        {
-          RCLCPP_ERROR(this->get_logger(), "Failed to transform Pose to map frame");
-          return false;
-        }
+    const geometry_msgs::msg::PoseStamped &pose_in,
+    geometry_msgs::msg::PoseStamped &pose_out)
+{
+  std::string source_frame = pose_in.header.frame_id;
+  // lookup transform validity
+  if (!tf_buffer.canTransform("map", source_frame, tf2::TimePointZero))
+  {
+    RCLCPP_ERROR(this->get_logger(), "Failed to transform Pose to map frame");
+    return false;
+  }
 
-        // transform pose into map frame
-        geometry_msgs::msg::TransformStamped tf_map;
-        try
-        {
-          tf_map = tf_buffer.lookupTransform(
-              "map", source_frame,
-              time_utils::from_message(pose_in.header.stamp));
-        }
-        catch (const tf2::ExtrapolationException &)
-        {
-          // currently falls back to retrive newest transform available for availability,
-          // Do validation of time stamp in the future
-          tf_map = tf_buffer.lookupTransform("map", source_frame, tf2::TimePointZero);
-        }
+  // transform pose into map frame
+  geometry_msgs::msg::TransformStamped tf_map;
+  try
+  {
+    tf_map = tf_buffer.lookupTransform(
+        "map", source_frame,
+        time_utils::from_message(pose_in.header.stamp));
+  }
+  catch (const tf2::ExtrapolationException &)
+  {
+    // currently falls back to retrive newest transform available for availability,
+    // Do validation of time stamp in the future
+    tf_map = tf_buffer.lookupTransform("map", source_frame, tf2::TimePointZero);
+  }
 
-        // apply transform
-        tf2::doTransform(pose_in, pose_out, tf_map);
-        return true;
-      }
+  // apply transform
+  tf2::doTransform(pose_in, pose_out, tf_map);
+  return true;
+}
 
 RCLCPP_COMPONENTS_REGISTER_NODE(navigator::path_planner::PathPlannerNode)
