@@ -12,14 +12,16 @@
 #include "voltron_msgs/msg/trajectory_point.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "visualization_msgs/msg/marker.hpp"
+#include <rclcpp_components/register_node_macro.hpp>
 
 #include "motion_planner_visuals/MotionPlannerVisualsNode.hpp"
 
 using namespace navigator::MotionPlannerVisuals;
 
-MotionPlannerVisualsNode::MotionPlannerVisualsNode() : Node("MotionPlannerVisuals") {
-    //todo update names
-    this->visuals_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("/MotionPlannerVisuals/trajectory", 8);
+MotionPlannerVisualsNode::MotionPlannerVisualsNode(const rclcpp::NodeOptions &node_options) : 
+    Node("motion_planner_visuals_node", node_options)
+{
+    this->visuals_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("motion_planner_visuals", 8);
     this->trajectory_subscription = this->create_subscription<voltron_msgs::msg::Trajectory>("outgoing_trajectories", 8, bind(&MotionPlannerVisualsNode::send_message, this, std::placeholders::_1));
 }
 
@@ -35,7 +37,7 @@ void MotionPlannerVisualsNode::send_message(const voltron_msgs::msg::Trajectory:
         marker.action = visualization_msgs::msg::Marker::ADD;
         marker.lifetime = rclcpp::Duration(250ms);
         marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
-        marker.id = i;
+        marker.id = static_cast<int>(i);
 
         marker.scale.x = 0.2;
         marker.color.r = 0.0;
@@ -52,3 +54,5 @@ void MotionPlannerVisualsNode::send_message(const voltron_msgs::msg::Trajectory:
     
     this->visuals_publisher->publish(markers);
 }
+
+RCLCPP_COMPONENTS_REGISTER_NODE(navigator::MotionPlannerVisuals::MotionPlannerVisualsNode)

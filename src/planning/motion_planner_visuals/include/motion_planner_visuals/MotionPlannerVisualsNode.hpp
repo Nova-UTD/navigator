@@ -24,7 +24,7 @@ namespace MotionPlannerVisuals {
 
 class MotionPlannerVisualsNode : public rclcpp::Node {
 public:
-    MotionPlannerVisualsNode();
+    MotionPlannerVisualsNode(const rclcpp::NodeOptions &node_options);
 
 private:
     void send_message(const voltron_msgs::msg::Trajectory::SharedPtr msg);

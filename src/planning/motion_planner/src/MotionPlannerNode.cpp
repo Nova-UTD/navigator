@@ -9,7 +9,7 @@
 
 #include <functional>
 #include <string>
-
+#include <math.h>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2/buffer_core.h>
@@ -78,9 +78,9 @@ void MotionPlannerNode::update_path(voltron_msgs::msg::CostedPaths::SharedPtr pt
 
 void MotionPlannerNode::update_pose(const geometry_msgs::msg::PoseStamped& pose_in) {
     pose.x = pose_in.pose.position.x;
-    pose.y = pose_in.pose.position.z;
-    //heading gets set in current_pose_cb so that we don't have to do extra quaternion math
-    //may have to test if this is ok because of the transform
+    pose.y = pose_in.pose.position.y;
+    pose.heading = asin(pose_in.pose.orientation.z);
+    //velocity updated in current_pose_cb
 }
 
 /**
@@ -102,7 +102,9 @@ void MotionPlannerNode::current_pose_cb(const VehicleKinematicState::SharedPtr s
       motion::motion_common::to_quat<geometry_msgs::msg::Quaternion>(
           state_msg->state.heading);
   current_pose.header = state_msg->header;
-  pose.heading = state_msg->state.heading;
+  //update velocity
+  pose.longitudinal_v = state_msg->state.longitudinal_velocity_mps;
+  pose.lateral_v = state_msg->state.lateral_velocity_mps;
 
   // transform to "map" frame if needed
   if (current_pose.header.frame_id != "map")

@@ -22,14 +22,22 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-# Build a library from our source files. This is just a convenience
-# mechanism to prevent having to explicitly list all files for every
-# executable.
-ament_auto_add_library(motion_planner_visuals_lib STATIC
+# Build a library from our source files
+set(MOTION_PLANNER_VISUALS_LIB motion_planner_visuals)
+ament_auto_add_library(${MOTION_PLANNER_VISUALS_LIB} SHARED
   include/motion_planner_visuals/MotionPlannerVisualsNode.hpp
   src/MotionPlannerVisualsNode.cpp
 )
-target_include_directories(motion_planner_visuals_lib PUBLIC include)
+autoware_set_compile_options(${MOTION_PLANNER_VISUALS_LIB})
+
+rclcpp_components_register_node(${MOTION_PLANNER_VISUALS_LIB}
+  PLUGIN "navigator::MotionPlannerVisuals::MotionPlannerVisualsNode"
+  EXECUTABLE motion_planner_visuals_exe
+)
+
+target_include_directories(${MOTION_PLANNER_VISUALS_LIB} PUBLIC include)
 
 # ament package generation and installing
-ament_auto_package()
+ament_auto_package(
+  INSTALL_TO_SHARE
+)
