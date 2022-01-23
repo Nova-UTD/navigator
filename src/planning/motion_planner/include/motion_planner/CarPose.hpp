@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include "autoware_auto_msgs/msg/detail/complex32__struct.hpp"
+
 //temporary class for input from behavior planner
 namespace navigator
 {
@@ -19,10 +21,14 @@ namespace navigator
 		public:
 			double x;
 			double y;
-            double vx;
-            double vy;
-			CarPose(double x, double y, double vx, double vy) : x(x), y(y), vx(vx), vy(vy) {}
-			CarPose() : x(0), y(0), vx(0), vy(0) {}
+			autoware_auto_msgs::msg::Complex32 heading;
+            double longitudinal_v;
+            double lateral_v;
+			CarPose(double x, double y, autoware_auto_msgs::msg::Complex32 heading, double longitudinal_v, double lateral_v) : x(x), y(y), heading(heading), longitudinal_v(longitudinal_v), lateral_v(lateral_v) {}
+			CarPose() : x(0), y(0), longitudinal_v(0), lateral_v(0) {
+				heading.real = 0;
+				heading.imag = 0;
+			}
 		};
 	}
 }

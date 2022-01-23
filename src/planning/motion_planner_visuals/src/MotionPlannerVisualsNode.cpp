@@ -30,9 +30,11 @@ void MotionPlannerVisualsNode::send_message(const voltron_msgs::msg::Trajectory:
         auto point = msg->points.at(i);
         auto marker = visualization_msgs::msg::Marker();
         marker.header.stamp = this->now();
+        marker.header.frame_id = "map";
+        marker.ns = "motion_planner_visuals";
         marker.action = visualization_msgs::msg::Marker::ADD;
         marker.lifetime = rclcpp::Duration(250ms);
-        marker.type = visualization_msgs::msg::Marker::LINE_LIST;
+        marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
         marker.id = i;
 
         marker.scale.x = 0.2;

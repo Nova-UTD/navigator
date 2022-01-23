@@ -15,8 +15,10 @@
 #include <motion_planner/PathPoint.hpp>
 #include <motion_planner/IdealPoint.hpp>
 #include <motion_planner/CarPose.hpp>
-#include <autoware_auto_msgs/msg/trajectory.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <autoware_auto_msgs/msg/had_map_route.hpp>
+#include <autoware_auto_msgs/msg/trajectory_point.hpp>
+#include <voltron_msgs/msg/costed_path.hpp>
 #include <common/types.hpp>
 
 #include <lanelet2_core/LaneletMap.h>
@@ -24,11 +26,6 @@
 #include <iostream>
 #include <memory>
 #include <vector>
-
-using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
-using autoware_auto_msgs::msg::HADMapRoute;
-using autoware_auto_msgs::msg::Trajectory;
-
 
 namespace navigator
 {
@@ -39,9 +36,9 @@ namespace navigator
         {
         public:
             SegmentedPath get_center_line_segments(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points);
-            std::vector<autoware_auto_msgs::msg::TrajectoryPoint> get_center_line_points(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution);
-            std::shared_ptr<const std::vector<PathPoint>> get_trajectory(const std::vector<IdealPoint> &ideal_path, const CarPose pose);
-            double cost_path(const SegmentedPath &path, const std::vector<IdealPoint> &ideal_path, const CarPose pose) const;
+            std::vector<autoware_auto_msgs::msg::TrajectoryPoint> get_center_line_points(const autoware_auto_msgs::msg::HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution);
+            std::shared_ptr<const std::vector<PathPoint>> get_trajectory(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose);
+            double cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const;
         private:
             //currently, these numbers are chosen as a guess. they will need to be determined later for safety.
             //(all units are in meters, seconds, radians if not mentioned)
