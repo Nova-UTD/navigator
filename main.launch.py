@@ -206,10 +206,10 @@ def generate_launch_description():
     )
     
     path_planner = Node(
-        package='path_planner_new',
+        package='path_planner',
         name='path_planner_node',
         namespace='planning',
-        executable='path_planner_new_exe',
+        executable='path_planner_exe',
         output='screen',
         remappings=[
             ('HAD_Map_Client', '/had_maps/HAD_Map_Service'),

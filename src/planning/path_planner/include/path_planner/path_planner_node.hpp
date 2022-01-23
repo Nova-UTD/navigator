@@ -1,3 +1,12 @@
+/*
+ * Package:   path_planner
+ * Filename:  path_planner_node.hpp
+ * Author:    Egan Johnson
+ * Email:     egan.johnson@utdallas.edu
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
+
 #ifndef PATH_PLANNER__PATH_PLANNER_NODE_HPP_
 #define PATH_PLANNER__PATH_PLANNER_NODE_HPP_
 

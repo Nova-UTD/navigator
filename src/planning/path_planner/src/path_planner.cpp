@@ -1,12 +1,21 @@
+/*
+ * Package:   path_planner
+ * Filename:  path_panner.cpp
+ * Author:    Egan Johnson
+ * Email:     egan.johnson@utdallas.edu
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
+
 
 /* Todo list for this file (roughly sorted most important first)
  *  - Implement safety cost (obstacles etc)
  *  - better guess logic for current lanelet (use predicted path)
- *  - Implementation for short/choppy lanelets
+ *  - Check implementation for short/choppy lanelets
  *  - Better horizon (see .hpp)
  *  - Special non-cruising paths like pull over
  *  - Account for horizontal lane change distance in lanelet sequence generation
- *  - Move visualization to a different nodes
+ *  - Move visualization to a different node (PathPlannerNode)
  * 
  *  - Documentation
  *  - Copied a lot of code from Lanelet2GlobalPlanner and I think there's a better
@@ -35,41 +44,50 @@ using voltron_msgs::msg::CostedPath;
 using voltron_msgs::msg::RouteCost;
 using voltron_msgs::msg::RouteCosts;
 
+
 PathPlanner::PathPlanner()
 {
     // Todo: what needs to be initialized?
 }
 
+////////////////////////////////////// Main logic /////////////////////////////////////
+
+/**
+ * @brief Generates all paths representing an option for vehicle motion.
+ * 
+ * Paths should represent the ideal case for the set of paths they represent:
+ * for instance, when following a given lane, there are many space paths the
+ * vehicle could travel in but the ideal representative path for this set
+ * would follow the centerline.
+ * 
+ * @param current_pose 
+ * @param route_costs 
+ * @param results - paths are written back to this vector
+ */
 void PathPlanner::get_paths(
     const geometry_msgs::msg::Pose &current_pose,
     const std::vector<RouteCost> &route_costs,
     std::vector<CostedPath> &results)
 {
-    // Update current state using setters
-    log("Marker get1");
+    // Update current state
     set_routing_costs(route_costs);
-    log("Marker get2 hello");
     set_pose(current_pose);
-    log("Marker get3");
 
     // Grab starting location and use it to generate all lanelet-level paths
     auto current_lanelet = get_current_lanelet();
-    log("Marker get4");
-
     double horizon = get_horizon();
-    log("Marker get5");
-    auto pos = current_pose.position;
-    log("Marker get5b");
 
+    // Generate lanelet-level path options
     std::vector<LaneletSequence> lanelet_sequences;
-    get_lanelet_sequences(horizon, pos, current_lanelet, lanelet_sequences);
-    log("Marker get6");
+    get_lanelet_sequences(horizon, current_pose.position, current_lanelet, lanelet_sequences);
 
+    // Convert lanelet-level paths to space paths
     for (auto sequence : lanelet_sequences)
     {
         results.push_back(get_path(sequence));
     }
-    log("Marker get7");
+
+    // TODO: consider adding special curves like pull over
 }
 
 /**
@@ -105,127 +123,23 @@ CostedPath PathPlanner::get_path(LaneletSequence lanelets)
     return path;
 }
 
-void PathPlanner::set_map(lanelet::LaneletMapPtr map)
-{
-    this->map = map;
-
-    // generate routing graph
-    routing_graph.release();
-    lanelet::traffic_rules::TrafficRulesPtr trafficRules =
-        lanelet::traffic_rules::TrafficRulesFactory::create(
-            lanelet::Locations::Germany, // TODO: change locations
-            lanelet::Participants::Vehicle);
-    log("Routing graph created");
-    routing_graph = lanelet::routing::RoutingGraph::build(*map, *trafficRules);
-}
-
-void PathPlanner::set_routing_costs(const std::vector<voltron_msgs::msg::RouteCost> &costs)
-{
-    // wipe previous route costs and update with new values
-    route_cost_map.clear();
-
-    for (const RouteCost cost : costs)
-    {
-        route_cost_map[lanelet::Id(cost.lane_id)] = cost.cost;
-    }
-}
-
-// helper for set_pose
-enum LaneletPriority : int
-{
-    CURRENT = -1,
-    EXPECTED = -2,
-    CONTAINING = -3,
-    NEARBY = -4,
-
-    // placeholder for no priority yet
-    NOT_SET = -100
-};
-
-/**
- * @brief Updates planner to current position
- *
- * Determines lanelet from position and orientation. Priority list:
- * 1. (Highest Priority) If we have not exited the current lanelet, keep it
- * 2. Containing lanelets we expected to be in by following the selected path
- * 3. Containing lanelets that best match position and orientation
- * 4. Nearby lanelets that best match position and orientation
- */
-void PathPlanner::set_pose(geometry_msgs::msg::Pose pose)
-{
-    log("Marker pose1");
-    const lanelet::Point2d lanelet_position(lanelet::utils::getId(), pose.position.x, pose.position.y, 0.0);
-    if (lanelet::geometry::inside(current_lanelet, lanelet_position))
-    {
-            log("Marker pose exit");
-
-        // retain current lanelet
-        return;
-    }
-    log("Marker pose2");
-    // Todo: Made up 5 on the spot. Find a better number like max conflicts in map
-    lanelet::Lanelets lanelets = map->laneletLayer.nearest(lanelet_position, 5);
-    log("Marker pose3");
-
-    // Linear search for highest priority and best pose match
-    // Order by higher priority and then by higher pose match
-    lanelet::Lanelet best_match_lanelet;
-    LaneletPriority priority = LaneletPriority::NOT_SET;
-    double pose_match = std::numeric_limits<double>::min();
-    log("Marker pose4");
-
-    for (auto lanelet : lanelets)
-    {
-        log(std::to_string(lanelet.id()));
-        LaneletPriority curr_priority = LaneletPriority::NOT_SET;
-        double curr_pose_match = -std::numeric_limits<double>::max();
-
-        if (lanelet::geometry::inside(lanelet, lanelet_position))
-        {
-            log("Containing");
-            // TODO: check predicted
-            curr_priority = LaneletPriority::CONTAINING;
-        }
-        else
-        {
-            log("Nearby");
-            curr_priority = LaneletPriority::NEARBY;
-        }
-
-        // Calculate pose metric.
-        // TODO: incorperate orientation. Distance only for now.
-        curr_pose_match = -lanelet::geometry::distanceToCenterline2d(lanelet, lanelet_position);
-
-        log("Comparing current prio " + std::to_string(curr_priority) + " and match " + std::to_string(curr_pose_match) + "to " + std::to_string(priority) + " , " + std::to_string(pose_match));
-        if ((curr_priority > priority) || ((curr_priority == priority) && (curr_pose_match > pose_match)))
-        {
-            log("Setting");
-            // have new best lanelet
-            best_match_lanelet = lanelet;
-            priority = curr_priority;
-            pose_match = curr_pose_match;
-        }
-    }
-    log("New current lanelet with id");
-    log(std::to_string(best_match_lanelet.id()));
-    // Update current with new best guess
-    current_lanelet = best_match_lanelet;
-}
+////////////////////////////////////// Lanelet-level generation /////////////////////////////////////
 
 void PathPlanner::get_lanelet_sequences(double distance, const geometry_msgs::msg::Point starting_point,
                                         lanelet::ConstLanelet starting_lanelet,
                                         std::vector<LaneletSequence> &results)
 {
-    // Todo: calculate remaining distance based on position in current lanelet
-    log("Marker seq1");
+
+    // Recalculate remaining distance based on position in current lanelet
+    //lanelet::BasicPoint2d position = ros_point_to_lanelet_point(starting_point);
+    ros_point_to_lanelet_point(starting_point);
+
+    // determine remaining length of lanelet 
+    // _get_lanelet_sequences will subtract the length of starting lanelet, but
+    // we have already accounted for it so add it back
+
     _get_lanelet_sequences(distance, LaneletSequence(), starting_lanelet, results);
-    log("Number of sequences:");
-    log(std::to_string(results.size()));
-    // useless code to get it to compile
-    if (starting_point.z > 0)
-    {
-        log("z doesn't matter");
-    }
+
 }
 
 /**
@@ -249,60 +163,168 @@ void PathPlanner::get_lanelet_sequences(double distance, const geometry_msgs::ms
 void PathPlanner::_get_lanelet_sequences(
     double remaining_distance, LaneletSequence sequence, lanelet::ConstLanelet current, std::vector<LaneletSequence> &results)
 {
-    log("Marker _seq1");
     // add current lanelet to the sequence
     sequence.push_back(current.id());
     remaining_distance -= lanelet::geometry::length2d(current);
 
-    log("Marker _seq2");
-
     if (remaining_distance <= 0)
     {
-        // out of distance and this sequence is complete
-        log("Marker _seq3 cond1");
-
+        // Don't need to  and this sequence is complete
         results.push_back(sequence);
+        return;
     }
-    else
+
+    // still need to cover some distance, look for more lanelets
+
+    // Must assure that we don't return to the previous lane
+    // Use current id as a placeholder until we're sure sequence has a previous
+    lanelet::Id previous_id = current_lanelet.id();
+    if (sequence.size() > 1)
     {
-        log("Marker _seq3 cond1");
-
-        // still need to cover some distance, look for more lanelets
-
-        // Must assure that we don't return to the previous lane
-        // TODO: wanted to make sure didn't exceed indices. Make cleaner
-        lanelet::Id previous_id = current_lanelet.id();
-        if (sequence.size() > 1)
-        {
-            previous_id = *(sequence.end() - 2);
-        }
-
-        log("Marker _seq4");
-
-        // Successors and adjacents both included in following
-        auto relations = routing_graph->following(current, true);
-        log("Marker _seq5");
-        log(std::to_string(relations.size()));
-
-        for (lanelet::ConstLanelet next : relations)
-        {
-            log("Successor");
-            if (next.id() != previous_id)
-            {
-                log("branching sequence");
-                _get_lanelet_sequences(remaining_distance, sequence, next, results);
-            }
-        }
-        log("Marker _seq6");
+        // previous is located two from the end since we added current
+        previous_id = *(sequence.end() - 2);
     }
-    log("Marker _seq7");
+
+    // Successors and adjacents both included in following(~, true)
+    auto relations = routing_graph->following(current, true);
+
+    for (lanelet::ConstLanelet next : relations)
+    {
+        if (next.id() != previous_id)
+        {
+            // TODO: don't remove full distance for adjacent paths
+            _get_lanelet_sequences(remaining_distance, sequence, next, results);
+        }
+    }
 }
+
+////////////////////////////////////// State setters /////////////////////////////////////
+
+/**
+ * @brief Sets up map-related resources for this class
+ * 
+ * @param map 
+ */
+void PathPlanner::set_map(lanelet::LaneletMapPtr map)
+{
+    this->map = map;
+
+    // generate routing graph
+    routing_graph.release();
+    lanelet::traffic_rules::TrafficRulesPtr trafficRules =
+        lanelet::traffic_rules::TrafficRulesFactory::create(
+            lanelet::Locations::Germany, // TODO: change locations
+            lanelet::Participants::Vehicle);
+    routing_graph = lanelet::routing::RoutingGraph::build(*map, *trafficRules);
+}
+
+/**
+ * @brief Updates routing costs to new values. Erases old costs
+ * 
+ * @param costs 
+ */
+void PathPlanner::set_routing_costs(const std::vector<voltron_msgs::msg::RouteCost> &costs)
+{
+    // wipe previous route costs and update with new values
+    route_cost_map.clear();
+
+    for (const RouteCost cost : costs)
+    {
+        route_cost_map[lanelet::Id(cost.lane_id)] = cost.cost;
+    }
+}
+
+// helper for set_pose
+enum LaneletPriority : int
+{
+    // Numbers are negative so that CURRENT > EXPECTED > CONTAINING > NEARBY
+    // but more levels can be added below
+    CURRENT = -1,
+    EXPECTED = -2,
+    CONTAINING = -3,
+    NEARBY = -4,
+
+    // placeholder for no priority yet
+    NOT_SET = -100
+};
+
+/**
+ * @brief Updates planner to current position
+ *
+ * Determines lanelet from position and orientation. Priority list:
+ * 1. (Highest Priority) If we have not exited the current lanelet, keep it
+ * 2. Containing lanelets we expected to be in by following the selected path
+ * 3. Containing lanelets that best match position and orientation
+ * 4. Nearby lanelets that best match position and orientation
+ */
+void PathPlanner::set_pose(geometry_msgs::msg::Pose pose)
+{
+
+    const lanelet::BasicPoint2d lanelet_position = ros_point_to_lanelet_point(pose.position);
+   
+    // Check if current lanelet still applies
+    if (lanelet::geometry::inside(current_lanelet, lanelet_position))
+    {
+        // retain current lanelet
+        return;
+    }
+
+    // Fetch nearby lanelets
+    // Todo: Made up 5 on the spot. Find a better number like max conflicts in map
+    lanelet::Lanelets lanelets = map->laneletLayer.nearest(lanelet_position, 5);
+
+    // Linear search for best lanelet
+    // Order by higher priority and then by higher pose match
+    lanelet::Lanelet best_match_lanelet;
+    LaneletPriority priority = LaneletPriority::NOT_SET;
+    double pose_match = std::numeric_limits<double>::min();
+
+    for (auto lanelet : lanelets)
+    {
+        LaneletPriority curr_priority = LaneletPriority::NOT_SET;
+        double curr_pose_match = -std::numeric_limits<double>::max();
+
+        if (lanelet::geometry::inside(lanelet, lanelet_position))
+        {
+            // TODO: check predicted
+            curr_priority = LaneletPriority::CONTAINING;
+        }
+        else
+        {
+            curr_priority = LaneletPriority::NEARBY;
+        }
+
+        // Calculate pose metric.
+        // TODO: incorperate orientation. Distance only for now.
+        curr_pose_match = -lanelet::geometry::distanceToCenterline2d(lanelet, lanelet_position);
+
+        // Higher priority automatically wins. Equal priority orders by pose match
+        if ((curr_priority > priority) || ((curr_priority == priority) && (curr_pose_match > pose_match)))
+        {
+            // have new best lanelet
+            best_match_lanelet = lanelet;
+            priority = curr_priority;
+            pose_match = curr_pose_match;
+        }
+    }
+
+    // Update current with new best guess
+    current_lanelet = best_match_lanelet;
+}
+
+////////////////////////////////////////// Helper Methods /////////////////////////////////////////
 
 lanelet::Lanelet PathPlanner::get_current_lanelet()
 {
     return current_lanelet;
 }
 
+/**
+ * @brief Returns routing cost of path, or max double if none is found
+ * 
+ * @param id 
+ * @return double 
+ */
 double PathPlanner::get_routing_cost(lanelet::Id id)
 {
     if (route_cost_map.find(id) != route_cost_map.end())
@@ -313,4 +335,35 @@ double PathPlanner::get_routing_cost(lanelet::Id id)
     {
         return std::numeric_limits<double>::max();
     }
+}
+
+/**
+ * @brief Converts a point message to a lanelet-compatable point2d
+ * 
+ * @param point 
+ * @return lanelet::BasicPoint2d 
+ */
+lanelet::BasicPoint2d PathPlanner::ros_point_to_lanelet_point(geometry_msgs::msg::Point point){
+    return lanelet::BasicPoint2d(point.x, point.y);
+}
+
+/**
+ * @brief Checks if the two lanelets are immediately related via a left or right relation
+ * 
+ * @param l1 
+ * @param l2 
+ * @return true if l1 and l2 are adjacent
+ * @return false if l1 or l2 are non-adjacent
+ */
+bool PathPlanner::is_adjacent(const lanelet::ConstLanelet l1, const lanelet::ConstLanelet l2)
+{
+    auto relation = routing_graph->routingRelation(l1, l2);
+
+    if (!relation)
+    {
+        // lanelets are not related and therefore not adjacent
+        return false;
+    }
+
+    return (relation.get() == lanelet::routing::RelationType::AdjacentLeft || relation.get() == lanelet::routing::RelationType::AdjacentRight);
 }

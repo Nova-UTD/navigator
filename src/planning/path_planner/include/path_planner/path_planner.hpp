@@ -1,3 +1,12 @@
+/*
+ * Package:   path_planner
+ * Filename:  path_planner.hpp
+ * Author:    Egan Johnson
+ * Email:     egan.johnson@utdallas.edu
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
+
 #ifndef PATH_PLANNER__PATH_PLANNER_HPP_
 #define PATH_PLANNER__PATH_PLANNER_HPP_
 
@@ -36,23 +45,6 @@ namespace navigator
             // From a lanelet sequence get a single space-path
             voltron_msgs::msg::CostedPath get_path(LaneletSequence lanelets);
 
-            void set_map(lanelet::LaneletMapPtr map);
-
-            // update planner state to new pose. Includes guessing current lanelet
-            void set_pose(geometry_msgs::msg::Pose pose);
-
-            void set_routing_costs(const std::vector<voltron_msgs::msg::RouteCost> &costs);
-            double get_routing_cost(lanelet::Id lanelet);
-
-            /**
-             * @brief Get the forecast horizon in meters
-             *
-             * TODO: make this better or at least configurable
-             *
-             * @return distance in meters
-             */
-            double get_horizon() { return 100; }
-
             // Generate a sequence of lanelets where the last one is guarenteed to contain a point
             // "distance" meters away from the starting point
             void get_lanelet_sequences(double distance,
@@ -64,12 +56,40 @@ namespace navigator
                                         LaneletSequence sequence, lanelet::ConstLanelet current,
                                         std::vector<LaneletSequence> &results);
 
+
+            // Setters and methods to update planner state
+            
+            // sets map and create routing graph
+            void set_map(lanelet::LaneletMapPtr map);
+
+            // update planner state to new pose. Includes guessing current lanelet
+            void set_pose(geometry_msgs::msg::Pose pose);
+
+            void set_routing_costs(const std::vector<voltron_msgs::msg::RouteCost> &costs);
+
+            /**
+             * @brief Get the forecast horizon in meters
+             *
+             * TODO: make this better or at least configurable
+             *
+             * @return distance in meters
+             */
+            double get_horizon() { return 100; }
+
             // Getter for current lanelet
             lanelet::Lanelet get_current_lanelet();
+                        
+            double get_routing_cost(lanelet::Id lanelet);
 
-            rclcpp::Logger* logger = nullptr;
-            void log(std::string msg){RCLCPP_WARN((*logger), msg);}
-            void set_logger(rclcpp::Logger l){logger = &l; log("Logging working");}
+            // Utilities
+
+            // Converts message point to lanelet point
+            lanelet::BasicPoint2d ros_point_to_lanelet_point(geometry_msgs::msg::Point point);
+
+            // Checks adjacencey (immediate left/immediate right) between the two lanelets
+            bool is_adjacent(const lanelet::ConstLanelet l1, const lanelet::ConstLanelet l2);
+
+
 
         private:
             lanelet::LaneletMapPtr map;
