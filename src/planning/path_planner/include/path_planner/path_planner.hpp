@@ -43,7 +43,7 @@ namespace navigator
                 std::vector<voltron_msgs::msg::CostedPath> &results);
 
             // From a lanelet sequence get a single space-path
-            voltron_msgs::msg::CostedPath get_path(LaneletSequence lanelets);
+            voltron_msgs::msg::CostedPath get_path(const LaneletSequence &lanelets, const geometry_msgs::msg::Pose &current_pose);
 
             // Generate a sequence of lanelets where the last one is guarenteed to contain a point
             // "distance" meters away from the starting point
@@ -83,13 +83,17 @@ namespace navigator
 
             // Utilities
 
-            // Converts message point to lanelet point
-            lanelet::BasicPoint2d ros_point_to_lanelet_point(geometry_msgs::msg::Point point);
-
             // Checks adjacencey (immediate left/immediate right) between the two lanelets
             bool is_adjacent(const lanelet::ConstLanelet l1, const lanelet::ConstLanelet l2);
 
+            // Converts message point to lanelet point
+            static lanelet::BasicPoint2d ros_point_to_lanelet_point(geometry_msgs::msg::Point point);
+            static geometry_msgs::msg::Point lanelet_point_to_ros_point(lanelet::BasicPoint2d  point);
 
+
+            // Splits a linestring at a point. The point does not need to be on the linestring.
+            static void split_linestring(const lanelet::ConstLineString2d original, lanelet::BasicPoint2d split_point,
+                                         lanelet::BasicLineString2d &first, lanelet::BasicLineString2d &second);
 
         private:
             lanelet::LaneletMapPtr map;

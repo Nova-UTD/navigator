@@ -7,7 +7,6 @@
  * License:   MIT License
  */
 
-
 /* Todo list for this file (roughly sorted most important first)
  *  - Implement safety cost (obstacles etc)
  *  - better guess logic for current lanelet (use predicted path)
@@ -16,7 +15,7 @@
  *  - Special non-cruising paths like pull over
  *  - Account for horizontal lane change distance in lanelet sequence generation
  *  - Move visualization to a different node (PathPlannerNode)
- * 
+ *
  *  - Documentation
  *  - Copied a lot of code from Lanelet2GlobalPlanner and I think there's a better
  *    way to reuse it. Applies to PathPlannerNode as well.
@@ -36,6 +35,8 @@
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_routing/RoutingGraphContainer.h>
 
+#include <boost/geometry/geometries/segment.hpp>
+
 #include <string.h>
 
 using namespace navigator::path_planner;
@@ -43,7 +44,6 @@ using namespace navigator::path_planner;
 using voltron_msgs::msg::CostedPath;
 using voltron_msgs::msg::RouteCost;
 using voltron_msgs::msg::RouteCosts;
-
 
 PathPlanner::PathPlanner()
 {
@@ -54,14 +54,14 @@ PathPlanner::PathPlanner()
 
 /**
  * @brief Generates all paths representing an option for vehicle motion.
- * 
+ *
  * Paths should represent the ideal case for the set of paths they represent:
  * for instance, when following a given lane, there are many space paths the
  * vehicle could travel in but the ideal representative path for this set
  * would follow the centerline.
- * 
- * @param current_pose 
- * @param route_costs 
+ *
+ * @param current_pose
+ * @param route_costs
  * @param results - paths are written back to this vector
  */
 void PathPlanner::get_paths(
@@ -84,7 +84,7 @@ void PathPlanner::get_paths(
     // Convert lanelet-level paths to space paths
     for (auto sequence : lanelet_sequences)
     {
-        results.push_back(get_path(sequence));
+        results.push_back(get_path(sequence, current_pose));
     }
 
     // TODO: consider adding special curves like pull over
@@ -96,24 +96,42 @@ void PathPlanner::get_paths(
  * @param lanelets
  * @return CostedPath
  */
-CostedPath PathPlanner::get_path(LaneletSequence lanelets)
+CostedPath PathPlanner::get_path(const LaneletSequence &lanelets, const geometry_msgs::msg::Pose& pose)
 {
     CostedPath path;
-    for (lanelet::Id lanelet_id : lanelets)
+
+    if (lanelets.size() == 0)
+    {
+        return path;
+    }
+
+    auto lanelet_id_it = lanelets.begin();
+    
+    // only add remaining part of the lane to path
+    lanelet::BasicPoint2d position = PathPlanner::ros_point_to_lanelet_point(pose.position);
+    path.points.push_back(lanelet_point_to_ros_point(position));
+    lanelet::Lanelet lanelet = map->laneletLayer.get(*lanelet_id_it);
+    lanelet::BasicLineString2d dont_need_to_travel;
+    lanelet::BasicLineString2d need_to_travel;
+    split_linestring(lanelet.centerline2d(), position, dont_need_to_travel, need_to_travel);
+
+    for(auto seg_point: need_to_travel){
+        path.points.push_back(lanelet_point_to_ros_point(seg_point));
+    }
+    lanelet_id_it++;
+
+    for (; lanelet_id_it != lanelets.end(); lanelet_id_it++)
     {
         // Todo: Do I need to check if it got lanelet successfully?
-        lanelet::Lanelet lanelet = map->laneletLayer.get(lanelet_id);
 
         // Simple concatenate the lanelet centerline to the path.
         // This will need to be fixed for lane changes
+        lanelet = map->laneletLayer.get(*lanelet_id_it);
         auto path_segment = lanelet.centerline2d();
         for (auto seg_point : path_segment)
         {
             // Todo: conversion safety from one coordinate system to another?
-            geometry_msgs::msg::Point path_point;
-            path_point.set__x(seg_point.x());
-            path_point.set__y(seg_point.y());
-            path.points.push_back(path_point);
+            path.points.push_back(lanelet_point_to_ros_point(seg_point));
         }
     }
 
@@ -131,15 +149,20 @@ void PathPlanner::get_lanelet_sequences(double distance, const geometry_msgs::ms
 {
 
     // Recalculate remaining distance based on position in current lanelet
-    //lanelet::BasicPoint2d position = ros_point_to_lanelet_point(starting_point);
-    ros_point_to_lanelet_point(starting_point);
+    lanelet::BasicPoint2d position = PathPlanner::ros_point_to_lanelet_point(starting_point);
+    auto centerline = starting_lanelet.centerline2d();
+    lanelet::BasicLineString2d first_half;
+    lanelet::BasicLineString2d second_half;
+    PathPlanner::split_linestring(centerline, position, first_half, second_half);
+    // We will be substracting whole length of lanelet, resulting in a net decrease only
+    // of the distance we actually travel
+    distance += static_cast<double>(lanelet::geometry::length(first_half));
 
-    // determine remaining length of lanelet 
+    // determine remaining length of lanelet
     // _get_lanelet_sequences will subtract the length of starting lanelet, but
     // we have already accounted for it so add it back
 
     _get_lanelet_sequences(distance, LaneletSequence(), starting_lanelet, results);
-
 }
 
 /**
@@ -163,22 +186,27 @@ void PathPlanner::get_lanelet_sequences(double distance, const geometry_msgs::ms
 void PathPlanner::_get_lanelet_sequences(
     double remaining_distance, LaneletSequence sequence, lanelet::ConstLanelet current, std::vector<LaneletSequence> &results)
 {
-    // add current lanelet to the sequence
-    sequence.push_back(current.id());
-    remaining_distance -= lanelet::geometry::length2d(current);
-
     if (remaining_distance <= 0)
     {
-        // Don't need to  and this sequence is complete
+        // Have no more distance to travel and this sequence is complete
         results.push_back(sequence);
         return;
     }
+    // Checking distance at the beginning of the function rather than after adding the
+    // current lanelet results in more unecessary loops of checking next lanelets, but
+    // lets us account for adjacencies in lanes that we could reach but not fully follow
+
+    // add current lanelet to the sequence
+    sequence.push_back(current.id());
+    double current_length = lanelet::geometry::length2d(current);
+    remaining_distance -= current_length;
 
     // still need to cover some distance, look for more lanelets
 
     // Must assure that we don't return to the previous lane
     // Use current id as a placeholder until we're sure sequence has a previous
     lanelet::Id previous_id = current_lanelet.id();
+    lanelet::ConstLanelet previous_lanelet = map->laneletLayer.get(previous_id);
     if (sequence.size() > 1)
     {
         // previous is located two from the end since we added current
@@ -192,7 +220,13 @@ void PathPlanner::_get_lanelet_sequences(
     {
         if (next.id() != previous_id)
         {
-            // TODO: don't remove full distance for adjacent paths
+            double distance = remaining_distance;
+            if (is_adjacent(previous_lanelet, next))
+            {
+                // If we are moving to an adjacent lanelet, then we are not
+                // using the full length of either lane. Adjust distance remaining.
+                distance += current_length;
+            }
             _get_lanelet_sequences(remaining_distance, sequence, next, results);
         }
     }
@@ -202,8 +236,8 @@ void PathPlanner::_get_lanelet_sequences(
 
 /**
  * @brief Sets up map-related resources for this class
- * 
- * @param map 
+ *
+ * @param map
  */
 void PathPlanner::set_map(lanelet::LaneletMapPtr map)
 {
@@ -220,8 +254,8 @@ void PathPlanner::set_map(lanelet::LaneletMapPtr map)
 
 /**
  * @brief Updates routing costs to new values. Erases old costs
- * 
- * @param costs 
+ *
+ * @param costs
  */
 void PathPlanner::set_routing_costs(const std::vector<voltron_msgs::msg::RouteCost> &costs)
 {
@@ -260,8 +294,8 @@ enum LaneletPriority : int
 void PathPlanner::set_pose(geometry_msgs::msg::Pose pose)
 {
 
-    const lanelet::BasicPoint2d lanelet_position = ros_point_to_lanelet_point(pose.position);
-   
+    const lanelet::BasicPoint2d lanelet_position = PathPlanner::ros_point_to_lanelet_point(pose.position);
+
     // Check if current lanelet still applies
     if (lanelet::geometry::inside(current_lanelet, lanelet_position))
     {
@@ -321,9 +355,9 @@ lanelet::Lanelet PathPlanner::get_current_lanelet()
 
 /**
  * @brief Returns routing cost of path, or max double if none is found
- * 
- * @param id 
- * @return double 
+ *
+ * @param id
+ * @return double
  */
 double PathPlanner::get_routing_cost(lanelet::Id id)
 {
@@ -339,19 +373,28 @@ double PathPlanner::get_routing_cost(lanelet::Id id)
 
 /**
  * @brief Converts a point message to a lanelet-compatable point2d
- * 
- * @param point 
- * @return lanelet::BasicPoint2d 
+ *
+ * @param point
+ * @return lanelet::BasicPoint2d
  */
-lanelet::BasicPoint2d PathPlanner::ros_point_to_lanelet_point(geometry_msgs::msg::Point point){
+lanelet::BasicPoint2d PathPlanner::ros_point_to_lanelet_point(geometry_msgs::msg::Point point)
+{
     return lanelet::BasicPoint2d(point.x, point.y);
+}
+
+geometry_msgs::msg::Point PathPlanner::lanelet_point_to_ros_point(lanelet::BasicPoint2d point)
+{
+    geometry_msgs::msg::Point ros_point;
+    ros_point.set__x(point.x());
+    ros_point.set__y(point.y());
+    return ros_point;
 }
 
 /**
  * @brief Checks if the two lanelets are immediately related via a left or right relation
- * 
- * @param l1 
- * @param l2 
+ *
+ * @param l1
+ * @param l2
  * @return true if l1 and l2 are adjacent
  * @return false if l1 or l2 are non-adjacent
  */
@@ -366,4 +409,95 @@ bool PathPlanner::is_adjacent(const lanelet::ConstLanelet l1, const lanelet::Con
     }
 
     return (relation.get() == lanelet::routing::RelationType::AdjacentLeft || relation.get() == lanelet::routing::RelationType::AdjacentRight);
+}
+
+/**
+ * @brief Returns if two points are equal.
+ *
+ * Not particularily robust. Using a tolerance that works
+ * for the scope of the path planner, i.e. point measurements
+ * are in meters and we don't care about accuracy past ~1cm
+ *
+ * @param p1
+ * @param p2
+ * @return true
+ * @return false
+ */
+bool point_tolerant_equals(const lanelet::BasicPoint2d &p1, const lanelet::BasicPoint2d &p2)
+{
+    return (abs(p1.x() - p2.x()) < 0.001) && (abs(p1.y() - p2.y()) < 0.001);
+}
+
+/**
+ * @brief Splits a non-empty linestring at the location of a point projected onto the linestring.
+ *
+ * @param original - Linestring to split
+ * @param split_point - Split location
+ * @param first_half - Linestring before split
+ * @param second_half - Linestring after split
+ */
+void PathPlanner::split_linestring(const lanelet::ConstLineString2d original, lanelet::BasicPoint2d split_point, lanelet::BasicLineString2d &first, lanelet::BasicLineString2d &second)
+{
+    // project the point into the linestring
+    lanelet::BasicPoint2d point = lanelet::geometry::project(original, split_point);
+
+    // Strategy: iterate through linestring until the projected point lies on a segment. Split at that segment.
+
+    // Iterator to first vertice of line segment
+    auto it_seg_p1 = original.begin();
+
+    if (point_tolerant_equals((*it_seg_p1).basicPoint2d(), point))
+    {
+        // projected onto start, so split puts whole linestring into second_half
+        second = original.basicLineString();
+        return;
+    }
+
+    // Iterator to second vertice of line segment
+    auto it_seg_p2 = it_seg_p1 + 1;
+
+    // Continue until we run out of linestring, the point lies on a vertice, or the point lies between a vertice
+    while (it_seg_p2 != original.end())
+    {
+        // Check vertice equivalence
+        if (point_tolerant_equals((*it_seg_p1).basicPoint2d(), point))
+        {
+            // Split at seg_p2
+            first.push_back(it_seg_p1->basicPoint2d());
+            first.push_back(it_seg_p2->basicPoint2d());
+
+            // add rest of linestring to second half
+            while (it_seg_p2 != original.end())
+            {
+                second.push_back(it_seg_p2->basicPoint2d());
+                it_seg_p2++;
+            }
+            return;
+        }
+
+        // Check if between vertices, again using very high tolerance
+        boost::geometry::model::segment<lanelet::BasicPoint2d> segment(*it_seg_p1, *it_seg_p2);
+        if (boost::geometry::distance(segment, point) < 0.001)
+        {
+            // Break at point itself.
+            first.push_back(it_seg_p1->basicPoint2d());
+            first.push_back(point);
+
+            second.push_back(point);
+            while (it_seg_p2 != original.end())
+            {
+                second.push_back(it_seg_p2->basicPoint2d());
+                it_seg_p2++;
+            }
+            return;
+        }
+
+        // Move to next segment
+        first.push_back(it_seg_p1->basicPoint2d());
+
+        it_seg_p2++;
+        it_seg_p1++;
+    }
+
+    // If no break was found, first will contain the original line string
 }
