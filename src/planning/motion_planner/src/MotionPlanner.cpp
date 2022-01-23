@@ -73,7 +73,11 @@ autoware_auto_msgs::msg::TrajectoryPoint convertToTrajectoryPoint(const lanelet:
     trajectory_point.longitudinal_velocity_mps = 0;
     return trajectory_point;
 }
+<<<<<<< HEAD:src/planning/motion_planner/src/MotionPlanner.cpp
 
+=======
+//resolution should be < 0.1 to get good approximation
+>>>>>>> origin/feature_path_planner_new:src/planning/path_planner/src/path_planner.cpp
 std::vector<autoware_auto_msgs::msg::TrajectoryPoint> MotionPlanner::get_center_line_points(const HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution)
 {
     using lanelet::utils::to2D;

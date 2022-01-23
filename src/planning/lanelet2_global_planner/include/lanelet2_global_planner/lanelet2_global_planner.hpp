@@ -1,21 +1,33 @@
-// Copyright 2021 the Autoware Foundation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Co-developed by Tier IV, Inc. and Apex.AI, Inc.
+/*
+ * Package:   lanelet2_global_planner
+ * Filename:  lanelet2_global_planner.hpp
+ * Author:    Egan Johnson
+ * Email:     egan.johnson@utdallas.edu
+ * Copyright: 2021, Nova UTD
+ * License:   MIT License
+ */
 
-#ifndef  LANELET2_GLOBAL_PLANNER__LANELET2_GLOBAL_PLANNER_HPP_
-#define  LANELET2_GLOBAL_PLANNER__LANELET2_GLOBAL_PLANNER_HPP_
+// This file lays out the logic half of the route planner, implemented
+// in lanelet2_global_planner.cpp. It is intended for use when the destination
+// is change infrequently but the current position/origin changes often.
+// It provides routing costs paired with lanelet IDs. Routing costs are 
+// relative to the routing cost of the current position:
+//  - a cost of 0 means moving to that lanelet from current does not
+//    move closer to or farther from the goal
+//  - a positive cost means that moving to that lanelet from current
+//    moves further from the goal
+//  - a negative cost means moving to that lanelet from current moves
+//    closer to the goal
+
+
+// The following aspects of this file and the implementation need improvement:
+//  - Configurability: Pull values like horizon from a param file
+//  - Cost flexibility: add in the custom cost function. WARNING: THIS MAY
+//    CAUSE TESTS TO FAIL: SEE THE TODO COMMENT IN TEST FILE
+
+
+#ifndef LANELET2_GLOBAL_PLANNER__LANELET2_GLOBAL_PLANNER_HPP_
+#define LANELET2_GLOBAL_PLANNER__LANELET2_GLOBAL_PLANNER_HPP_
 
 // lanelet2
 #include <lanelet2_core/primitives/Lanelet.h>
@@ -39,91 +51,121 @@
 #include <unordered_map>
 #include <regex>
 
-using autoware::common::types::float64_t;
 using autoware::common::types::bool8_t;
+using autoware::common::types::float64_t;
 
 namespace autoware
 {
-namespace planning
-{
-namespace lanelet2_global_planner
-{
+  namespace planning
+  {
+    namespace lanelet2_global_planner
+    {
 
-using autoware_auto_msgs::msg::TrajectoryPoint;
+      using autoware_auto_msgs::msg::TrajectoryPoint;
+      
+      using LaneRouteCost = std::pair<lanelet::Id, float64_t>;
+      using LaneRouteCosts = std::vector<LaneRouteCost>;
 
-class LANELET2_GLOBAL_PLANNER_PUBLIC Lanelet2GlobalPlanner
-{
-public:
-  Lanelet2GlobalPlanner() = default;
+      class LANELET2_GLOBAL_PLANNER_PUBLIC Lanelet2GlobalPlanner
+      {
+      public:
+        Lanelet2GlobalPlanner();
 
-  void load_osm_map(const std::string & file, float64_t lat, float64_t lon, float64_t alt);
-  void parse_lanelet_element();
-  bool8_t plan_route(
-    TrajectoryPoint & start, TrajectoryPoint & end,
-    std::vector<lanelet::Id> & route) const;
+         /**
+         * Fetches lanelets near current location and labels them with routing cost.
+         * 
+         * If the location is not inside a lanelet the closest is used.
+         * 
+         * Writes <Id, cost> pairs to a new vector passed back to provided address
+         */
+        void fetch_routing_costs(TrajectoryPoint &location, LaneRouteCosts &costs) const;
 
-  /**
-   * \brief Refine an arbitrary pose within a parking spot to one of two possible outcomes.
-   *
-   * For any `TrajectoryPoint` within a parking spot with `parking_id`, return a `TrajectoryPoint`
-   * that is in the center of the parking spot with heading pointing along the center line (the long
-   * side) of the parking spot in the direction of positive dot product with the input heading; i.e.
-   * if `input_point.heading` points to the exit of the parking spot, so does the output heading.
+        /**
+         * Changes goal destination of the routing planner.
+         * 
+         * Updates internal costs for the whole map: should be called infrequently. 
+         */
+        void set_destination(TrajectoryPoint &goal);
 
-   * - The parking spot is assumed to be a perfect rectangle whose boundary polygon has 5 points of which the first and last coincide.
-   * - The heading is undefined for a square parking spot
-   *
-   * In the illustration, the dots represent the center line, the caret is the heading, the `x` are
-   * the corners, and `o` is the center of the parking spot.
-   *
-   * @code
-   *   x    ^     x
-   *        .
-   *        .
-   *        .
-   *        .
-   *        o
-   *        .
-   *        .
-   *        .
-   *        .
-   *   x    .     x
-   * @endcode
-   *
-   * \param parking_id Only the outer boundary polygon of the parking spot with this ID is considered.
-   * \param input_point Only the heading of the input point is considered.
-   * \return If successful, return a trajectory point at the center of the spot pointing along the center line. In case the id doesn't exist in the map, or  boundary polygon doesn't have 5 points, return the unmodified `input_point`.
-   */
-  TrajectoryPoint refine_pose_by_parking_spot(
-    const lanelet::Id & parking_id,
-    const TrajectoryPoint & input_point) const;
+        /**
+         * Finds a number lanelets that contain the location.
+         *
+         * If any lanelets are found that contain the point, they are added
+         * and a true value is returned.
+         *
+         * If no lanelets are found that contain the point, the next closest
+         * is found but a false value is returned.
+         *
+         * @param location
+         * @param depth - find up to this number of lanelets
+         * @param result_wb - lanelets found are appended here
+         * @return true if lanelets were found containing the point
+         */
+        bool find_lanelets(TrajectoryPoint location, uint depth, std::vector<lanelet::Lanelet> &result_wb) const;
 
-  bool8_t point_in_parking_spot(
-    const lanelet::Point3d & point, const lanelet::Id & parking_id) const;
-  std::string get_primitive_type(const lanelet::Id & prim_id);
-  lanelet::Id find_nearparking_from_point(const lanelet::Point3d & point) const;
-  lanelet::Id find_nearroute_from_parking(const lanelet::Id & park_id) const;
-  lanelet::Id find_parkingaccess_from_parking(const lanelet::Id & park_id) const;
-  std::vector<lanelet::Id> find_lane_from_parkingaccess(const lanelet::Id & parkaccess_id) const;
-  lanelet::Id find_lane_id(const lanelet::Id & cad_id) const;
-  std::vector<lanelet::Id> get_lane_route(
-    const std::vector<lanelet::Id> & from_id,
-    const std::vector<lanelet::Id> & to) const;
-  bool8_t compute_parking_center(lanelet::Id & parking_id, lanelet::Point3d & parking_center) const;
-  float64_t p2p_euclidean(const lanelet::Point3d & p1, const lanelet::Point3d & p2) const;
-  std::vector<lanelet::Id> lanelet_chr2num(const std::string & str) const;
-  std::vector<lanelet::Id> lanelet_str2num(const std::string & str) const;
-  std::shared_ptr<lanelet::LaneletMap> osm_map;
+        /**
+         * Gets the routing cost associated with a lanelet IF the destination
+         * can be reached from that lanelet.
+         * 
+         * @param id 
+         * @param cost_writeback - return by reference cost value. Only modified if cost exists.
+         * @return true if the destination can be reached from the lanelet and the cost exists
+         * @return false if the destination cannot be reached
+         */
+        bool get_cost(lanelet::Id id, double &cost_writeback) const;
 
-private:
-  std::vector<lanelet::Id> parking_id_list;
-  std::unordered_map<lanelet::Id, std::vector<lanelet::Id>> parking_lane_map;
-  std::unordered_map<lanelet::Id, std::vector<lanelet::Id>> parking2access_map;
-  std::unordered_map<lanelet::Id, std::vector<lanelet::Id>> access2lane_map;
-  std::unordered_map<lanelet::Id, lanelet::Id> near_road_map;
-};
-}  // namespace lanelet2_global_planner
-}  // namespace planning
-}  // namespace autoware
+        /**
+         * Get the horizon that lanelets need to be returned for, in meters.
+         * 
+         * @return meters
+         */
+        double get_current_horizon() const{
+          return 100; //TODO: pull this from a param file
+        }
 
-#endif  // LANELET2_GLOBAL_PLANNER__LANELET2_GLOBAL_PLANNER_HPP_
+        void load_osm_map(const std::string &file, float64_t lat, float64_t lon, float64_t alt);
+
+        /**
+         * Extracts lanelets from the OSM map and if they are the right type adds them to the road map
+         */
+        void parse_lanelet_element();
+
+        /**
+         * @return type of lanelet if one with matching id has already been parsed;
+         *  type is currently one of "lane" or "unknown"
+         */
+        std::string get_primitive_type(const lanelet::Id &prim_id);
+
+        /**
+         * Translates a cad ID to a lane ID, or returns -1 if lane id not found among parsed elements.
+         */
+        lanelet::Id find_lane_id(const lanelet::Id &cad_id) const;
+
+        /**
+         * Euclidean distance between points 1 and 2
+         */
+        float64_t p2p_euclidean(const lanelet::Point3d &p1, const lanelet::Point3d &p2) const;
+
+        /**
+         * Parsing strings to lanelet ids
+         */
+        std::vector<lanelet::Id> lanelet_chr2num(const std::string &str) const;
+
+        /**
+         * Parsing strings to lanelet ids
+         */
+        std::vector<lanelet::Id> lanelet_str2num(const std::string &str) const;
+
+        std::shared_ptr<lanelet::LaneletMap> osm_map;
+
+        lanelet::routing::RoutingGraphUPtr routing_graph;
+
+      private:
+        std::unordered_map<lanelet::Id, lanelet::Id> road_map;
+        std::unordered_map<lanelet::Id, double> cost_map;
+      };
+    } // namespace lanelet2_global_planner
+  }   // namespace planning
+} // namespace autoware
+
+#endif // LANELET2_GLOBAL_PLANNER__LANELET2_GLOBAL_PLANNER_HPP_
