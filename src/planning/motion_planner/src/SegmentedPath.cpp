@@ -80,7 +80,7 @@ double SegmentedPath::sum(std::function<double(PathPoint)> func) const
 PathPoint SegmentedPath::sample(double arclength) const
 {
 	//first check if arclength is outside the curve's bounds
-	if (arclength < 0 || arclength > spacing * points->size()) {
+	if (arclength < 0 || arclength > spacing * static_cast<double>(points->size())) {
 		throw std::domain_error("Arc legnth (" + std::to_string(arclength) + ") is out of range of the curve.");
 	}
 	double segment = floor(arclength / spacing);

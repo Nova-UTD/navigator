@@ -219,6 +219,27 @@ def generate_launch_description():
         ]
     )
 
+    motion_planner = Node(
+        package='motion_planner',
+        name='motion_planner_node',
+        namespace='planning',
+        executable='motion_planner_exe',
+        output='screen',
+        remappings=[
+            ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
+        ]
+    )
+    motion_planner_visuals = Node(
+        package='motion_planner_visuals',
+        name='motion_planner_visuals_node',
+        namespace='planning',
+        executable='motion_planner_visuals_exe',
+        output='screen',
+        remappings = [
+            ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
+        ]
+    )
+
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -273,5 +294,7 @@ def generate_launch_description():
         route_planner,
         path_planner,
         lane_planner,
+        motion_planner,
+        motion_planner_visuals,
         # parking_planner,
     ])

@@ -25,7 +25,7 @@ ament_auto_find_build_dependencies()
 # Build a library from our source files. This is just a convenience
 # mechanism to prevent having to explicitly list all files for every
 # executable.
-ament_auto_add_library(motion_planner_lib STATIC
+ament_auto_add_library(motion_planner_lib SHARED
   include/motion_planner/LanePoints.hpp
   include/motion_planner/PathPoint.hpp
   include/motion_planner/SegmentedPath.hpp
@@ -38,6 +38,13 @@ ament_auto_add_library(motion_planner_lib STATIC
   src/MotionPlannerNode.cpp
 )
 target_include_directories(motion_planner_lib PUBLIC include)
+#commenting out to disable unused variable errors for the moment
+#autoware_set_compile_options(motion_planner_lib)
+
+rclcpp_components_register_node(motion_planner_lib
+  PLUGIN "navigator::MotionPlanner::MotionPlannerNode"
+  EXECUTABLE motion_planner_exe
+)
 
 
 if(BUILD_TESTING)
@@ -57,4 +64,6 @@ if(BUILD_TESTING)
 endif()
 
 # ament package generation and installing
-ament_auto_package()
+ament_auto_package(
+  INSTALL_TO_SHARE
+)

@@ -19,10 +19,11 @@ namespace navigator
 		public:
 			double x;
 			double y;
-            double vx;
-            double vy;
-			CarPose(double x, double y, double vx, double vy) : x(x), y(y), vx(vx), vy(vy) {}
-			CarPose() : x(0), y(0), vx(0), vy(0) {}
+			double heading;
+            double longitudinal_v;
+            double lateral_v;
+			CarPose(double x, double y, double heading, double longitudinal_v, double lateral_v) : x(x), y(y), heading(heading), longitudinal_v(longitudinal_v), lateral_v(lateral_v) {}
+			CarPose() : x(0), y(0), heading(0), longitudinal_v(0), lateral_v(0) {}
 		};
 	}
 }

@@ -30,8 +30,6 @@ using autoware_auto_msgs::msg::Trajectory;
 
 using namespace navigator::MotionPlanner;
 
-
-
 size_t get_closest_lanelet(const lanelet::ConstLanelets &lanelets, const autoware_auto_msgs::msg::TrajectoryPoint &point)
 {
     float64_t closest_distance = std::numeric_limits<float64_t>::max();
@@ -161,20 +159,22 @@ std::vector<autoware_auto_msgs::msg::TrajectoryPoint> MotionPlanner::get_center_
     return line_points;
 }
 
-std::shared_ptr<const std::vector<PathPoint>> MotionPlanner::get_trajectory(const std::vector<IdealPoint> &ideal_path, const CarPose pose) {
+std::shared_ptr<const std::vector<PathPoint>> MotionPlanner::get_trajectory(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) {
     //generates a bunch of different paths for the car, assigns them costs, and picks the lowest cost path
     //if memory becomes an issue, could generate and cost the paths on demand, and recreate the lowest cost one.
     using namespace std;
 
-    const double car_angle = atan2(pose.vy, pose.vx);
-    const double car_speed = sqrt(pose.vx*pose.vx+pose.vy*pose.vy);
-    const double car_vx_norm = pose.vx/car_speed;
-    const double car_vy_norm = pose.vy/car_speed;
+    const double car_angle = pose.heading;
+    const double car_speed = sqrt(pose.longitudinal_v*pose.longitudinal_v+pose.lateral_v*pose.lateral_v);
+    //no idea if this works like this. will have to test. cannot find documentation
+    const double car_vx_norm = cos(car_angle);
+    const double car_vy_norm = sin(car_angle);
     const double max_steer_speed_time = max_steering_speed/car_speed; //convert from rad/m to rad/s
 
     shared_ptr<vector<PathPoint>> linear_points = make_shared<vector<PathPoint>>();
     for (size_t i = 0; i < points; i++) {
-        linear_points->push_back(PathPoint(pose.x + car_vx_norm*i/spacing, pose.y+car_vy_norm*i/spacing));
+        double index = static_cast<double>(i);
+        linear_points->push_back(PathPoint(pose.x + car_vx_norm*index/spacing, pose.y+car_vy_norm*index/spacing));
     }
     
     auto base_path = SegmentedPath(linear_points);
@@ -191,7 +191,7 @@ std::shared_ptr<const std::vector<PathPoint>> MotionPlanner::get_trajectory(cons
 
     //find min cost path
     double min_cost = -1;
-    size_t min_index = -1;
+    size_t min_index = 0;
     for (size_t i = 0; i < candidates.size(); i++) {
         double cost = cost_path(candidates[i], ideal_path, pose);
         if (cost < min_cost || cost == -1) {
@@ -203,10 +203,10 @@ std::shared_ptr<const std::vector<PathPoint>> MotionPlanner::get_trajectory(cons
     return candidates[min_index].points;
 }
 
-double MotionPlanner::cost_path(const SegmentedPath &path, const std::vector<IdealPoint> &ideal_path, const CarPose pose) const {
+double MotionPlanner::cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const {
     //temporary cost function, very basic attempt at following the ideal path.
     double dist = 0;
-    for (const auto ideal : ideal_path) {
+    for (const auto ideal : ideal_path.points) {
         dist += path.distance(PathPoint(ideal.x,ideal.y));
     }
     return dist;
