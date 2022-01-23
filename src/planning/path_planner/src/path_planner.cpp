@@ -14,7 +14,7 @@
  *  - Copyright info
  *
  */
-#include <path_planner_new/path_planner.hpp>
+#include <path_planner/path_planner.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
 #include <voltron_msgs/msg/route_costs.hpp>

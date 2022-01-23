@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.5)
-project(path_planner_new)
+project(path_planner)
 
 # find dependencies
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
 # build
-set(PATH_PLANNER_LIB path_planner_new)
+set(PATH_PLANNER_LIB path_planner)
 ament_auto_add_library(${PATH_PLANNER_LIB} SHARED
-  include/path_planner_new/path_planner.hpp
-  include/path_planner_new/path_planner_node.hpp
+  include/path_planner/path_planner.hpp
+  include/path_planner/path_planner_node.hpp
   src/path_planner.cpp
   src/path_planner_node.cpp
 )
