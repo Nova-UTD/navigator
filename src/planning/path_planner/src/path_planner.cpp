@@ -230,6 +230,11 @@ void PathPlanner::_get_lanelet_sequences(
             _get_lanelet_sequences(remaining_distance, sequence, next, results);
         }
     }
+
+    // If the path had no relations, add it now to avoid loosing it
+    if(relations.size() == 0){
+        results.push_back(sequence);
+    }
 }
 
 ////////////////////////////////////// State setters /////////////////////////////////////
