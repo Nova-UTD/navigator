@@ -53,7 +53,7 @@ int i2c_action(int device, char rw, uint8_t command, int size, union i2c_smbus_d
 }
 
 int I2CInterface::device_write(uint8_t value) {
-	return i2c_action(this->i2c_device_handle, I2C_SMBUS_WRITE, value, I2C_SMBUS_BYTE_DATA, nullptr);
+	return i2c_action(this->i2c_device_handle, I2C_SMBUS_WRITE, value, I2C_SMBUS_BYTE, nullptr);
 }
 
 int I2CInterface::device_read(uint8_t register_, uint8_t *value) {
