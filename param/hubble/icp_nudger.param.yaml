@@ -1,0 +1,6 @@
+# param/icp_nudger.param.yaml
+---
+/**:
+  ros__parameters:
+    nudge_period: 1.0
+    publish_tf: true

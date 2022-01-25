@@ -20,7 +20,7 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-ament_auto_add_library(safety_manager_lib OBJECT
+ament_auto_add_library(safety_manager_lib STATIC
   src/SafetyManagerNode.cpp)
 target_include_directories(safety_manager_lib PUBLIC include)
 

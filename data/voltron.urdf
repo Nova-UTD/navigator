@@ -16,7 +16,7 @@
   <link name="base_link">
     <visual>
       <geometry>
-        <mesh filename="package://lexus_rx_450h_description/meshes/LexusRX.obj" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://home/main/voltron/assets/hailbopp.obj" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="maroon"/>
       <origin xyz="0.83 0 0.28" rpy="0 0 1.570796"/>

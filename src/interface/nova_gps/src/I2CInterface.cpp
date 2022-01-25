@@ -158,7 +158,7 @@ uint16_t I2CInterface::read_word(const uint8_t register_) {
 }
 
 std::unique_ptr<std::vector<char>> I2CInterface::read_block(const uint8_t register_, const int count) {
-    std::unique_ptr<std::vector<char>> buffer = std::unique_ptr<std::vector<char>>();
+    std::unique_ptr<std::vector<char>> buffer = std::make_unique<std::vector<char>>();
     buffer->reserve(count);
     internal_read_block(this->i2c_device_handle, *buffer, count, register_);
     return buffer;
