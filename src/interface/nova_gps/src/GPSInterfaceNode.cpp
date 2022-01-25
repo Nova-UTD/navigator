@@ -27,12 +27,6 @@ GPSInterfaceNode::GPSInterfaceNode(const std::string & interface_name) // The in
   this->gps_interface = std::make_unique<Nova::GPS::ConcreteGPSInterface>(interface_name);
   this->pose_timer = this->create_wall_timer
     (receive_frequency, bind(& GPSInterfaceNode::send_pose, this));
-  // this->publisher = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>
-  //   ("gps/pose", 64);
-  // this->heading_publisher = this->create_publisher<std_msgs::msg::Float64>
-  //   ("gps/heading", 64);
-  // this->velocity_publisher = this->create_publisher<std_msgs::msg::Float64>
-  //   ("gps/velocity", 64);
   this->odometry_publisher = this->create_publisher<nav_msgs::msg::Odometry>("/gps/odometry", 10);
 }
 
@@ -72,7 +66,6 @@ inline void tokenize(Nova::GPS::NMEAMessage msg, std::vector<std::string> & vec)
 void GPSInterfaceNode::send_pose() {
   // Check interface for new messages
   this->gps_interface->gather_messages();
-
   bool found_gga = false;
   bool found_vtg = false;
   NMEAMessage gga;

@@ -1,35 +1,26 @@
-# All rights reserved.
+# Package:   voltron_msgs
+# Filename:  CMakeLists.txt
+# Author:    Joshua Williams
+# Email:     joshmackwilliams@protonmail.com
+# Copyright: 2021, Nova UTD
+# License:   MIT License
+
 cmake_minimum_required(VERSION 3.5)
+get_filename_component(directory_name ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+project(${directory_name})
 
-### Export headers
-project(voltron_msgs)
+find_package(ament_cmake_auto REQUIRED) # The greatest package in history
+ament_auto_find_build_dependencies() # Find dependencies listed in package.xml
 
-# Generate messages
-find_package(ament_cmake_auto REQUIRED)
-ament_auto_find_build_dependencies()
-
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Gear.msg"
-  "msg/CanFrame.msg"
-  "msg/Obstacle3D.msg"
-  "msg/Obstacle3DArray.msg"
-  "msg/BoundingBox3D.msg"
-  "msg/RouteCost.msg"
-  "msg/RouteCosts.msg"
-  "srv/SafetyEvent.srv"
-  "srv/SafetyCommand.srv"
+# Find message files
+file(GLOB_RECURSE msg_filenames RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "msg/*.msg") # Find all message files
+file(GLOB_RECURSE srv_filenames RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "srv/*.srv") # Find all srv files
+rosidl_generate_interfaces(
+  ${PROJECT_NAME}
+  ${msg_filenames}
+  ${srv_filenames}
   DEPENDENCIES
-    "builtin_interfaces"
-    "geometry_msgs"
-    "sensor_msgs"
-    "shape_msgs"
-    "std_msgs"
-  ADD_LINTER_TESTS
+  ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS}
 )
-
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  ament_lint_auto_find_test_dependencies()
-endif()
 
 ament_auto_package()
