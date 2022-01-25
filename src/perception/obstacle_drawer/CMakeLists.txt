@@ -1,56 +1,18 @@
+# Filename:  CMakeLists.txt
+# Author:    Joshua Williams
+# Email:     joshmackwilliams@protonmail.com
+# Copyright: 2021, Nova UTD
+# License:   MIT License
+
+# No package name is specified above since this is our standard
+# CMakeLists.txt file and will be the same across multiple
+# projects. To use it, just add nova_auto_package as a
+# buildtool_depend in package.xml and copy this file into the root of
+# your package.
+
 cmake_minimum_required(VERSION 3.5)
-project(obstacle_drawer)
+get_filename_component(directory_name ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+project(${directory_name})
 
-# Default to C99
-if(NOT CMAKE_C_STANDARD)
-  set(CMAKE_C_STANDARD 99)
-endif()
-
-# Default to C++14
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
-endif()
-
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
-
-# find dependencies
-find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
-
-find_package(rclcpp REQUIRED)
-find_package(voltron_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(visualization_msgs REQUIRED)
-find_package(obstacle_classes REQUIRED)
-
-add_executable(obstacle_drawer_exe src/obstacle_drawer.cpp)
-ament_target_dependencies(obstacle_drawer_exe 
-  rclcpp 
-  voltron_msgs 
-  visualization_msgs 
-  geometry_msgs
-  obstacle_classes
-)
-
-install(TARGETS
-  obstacle_drawer_exe
-  DESTINATION lib/${PROJECT_NAME})
-
-
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # uncomment the line when a copyright and license is not present in all source files
-  set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # uncomment the line when this package is not in a git repo
-  set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-
-endif()
-
-ament_package()
+find_package(nova_auto_package REQUIRED)
+nova_auto_package()

@@ -263,7 +263,7 @@ def generate_launch_description():
     obstacle_drawer = Node(
         package='obstacle_drawer',
         name='obstacle_drawer_node',
-        executable='obstacle_drawer_exe'
+        executable='obstacle_drawer'
     )
     
     # VIZ

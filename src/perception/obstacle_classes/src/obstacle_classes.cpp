@@ -7,7 +7,7 @@
  * License:   MIT License
  */
 
-#include "../include/obstacle_classes/obstacle_classes.hpp"
+#include "obstacle_classes/obstacle_classes.hpp"
 #include <string>
 
 namespace navigator {
