@@ -93,10 +93,10 @@ def generate_launch_description():
         ]
     )
 
-    hubble = Node(
-        package='hubble',
-        executable='hubble-exe',
-        parameters=[(path.join(param_dir,"localization","hubble.param.yaml"))]
+    atlas = Node(
+        package='atlas',
+        executable='atlas-exe',
+        parameters=[(path.join(param_dir,"localization","atlas.param.yaml"))]
     )
 
     # MAPPING
@@ -265,7 +265,7 @@ def generate_launch_description():
         # lanelet_server,
         # lanelet_visualizer,
         # pcd_publisher,
-        hubble,
+        atlas,
 
         # MISC
         # odom_bl_publisher,

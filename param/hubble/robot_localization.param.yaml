@@ -3,7 +3,7 @@
 /**:
   ros__parameters:
 
-    # Future iterations of Hubble will include data from speedometer,
+    # Future iterations of atlas will include data from speedometer,
     # IMUs, and Lidar odometry (NDT).
 
     frequency: 100.0 # Estimate update frequency, Hz, double
