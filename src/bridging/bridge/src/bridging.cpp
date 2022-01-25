@@ -15,10 +15,11 @@
 #include <vector>
 
 #include "bridge/HTTPRequest.hpp"
+#include "bridge/bridging.hpp"
 
 using namespace std::chrono;
 
-std::string construct(std::vector< std::array<std::string, 2> > list) {
+std::string navigator::bridge::construct(std::vector< std::array<std::string, 2> > list) {
     std::string res;
     for (std::array<std::string, 2> i : list) {
         res = res + i[0] + "=" + i[1] + "&";
@@ -26,7 +27,7 @@ std::string construct(std::vector< std::array<std::string, 2> > list) {
     return res;
 }
 
-void bridging::log(std::string message)  {
+void navigator::bridge::log(std::string message)  {
     try {
         http::Request request{"http://localhost:3000/"};
 
@@ -52,6 +53,4 @@ void bridging::log(std::string message)  {
     catch (const std::exception& e) {
         std::cerr << "Request failed, error: " << e.what() << '\n';
     }
-
-    return 0;
 }
