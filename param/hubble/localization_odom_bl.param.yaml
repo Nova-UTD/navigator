@@ -1,0 +1,33 @@
+# param/robot_localization.param.yaml
+---
+/**:
+  ros__parameters:
+    # ZED IMU
+    # GPS Pose GGA
+    # GPS Twist VTG
+    # GEM speedometer
+    # EPAS steering angle
+    # [X,Y,Z,roll,pitch,yaw,X˙,Y˙,Z˙,roll˙,pitch˙,yaw˙,X¨,Y¨,Z¨]
+
+    # Only reports orientation, linear accel in SVO
+    frequency: 100.0 # Estimate update frequency, Hz, double
+    two_d_mode: true # Assume z=0
+    # permit_corrected_publication: true # Allow correction from GPS estimate
+    world_frame: odom
+    # odom_frame: odom_zed
+
+    # imu0: "/imu0" # ZED 2i IMU, only use linear accel
+    # imu0_config: [false, false, false, false, false, false,
+    #                  false, false, false, false, false, false,
+    #                  true, true, true]
+    # imu0_relative: true
+    odom0: "/odom0" # ZED odom
+    odom0_config: [true, true, true, true, true, true,
+                   false, false, false, false, false, false,
+                   false, false, false]
+    odom0_differential: true
+    odom1: "/odom1" # GPS odom
+    odom0_config: [true, true, true, false, false, true,
+                   true, true, true, false, false, false,
+                   false, false, false]
+    odom1_differential: false

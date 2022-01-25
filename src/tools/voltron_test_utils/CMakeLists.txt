@@ -25,8 +25,10 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 
-  ament_add_gtest(tests test/test_test_publisher_subscriber.cpp)
-  ament_target_dependencies(tests rclcpp std_msgs)
+  ament_add_gtest(tests
+    test/test_test_publisher_subscriber.cpp
+    test/test_test_client_server.cpp)
+  ament_target_dependencies(tests rclcpp std_msgs std_srvs)
   target_include_directories(tests PRIVATE include)
   target_link_libraries(tests gtest_main)
 endif()
