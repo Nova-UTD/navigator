@@ -8,6 +8,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 
+using namespace std::chrono_literals;
+
 MinimalPublisher::MinimalPublisher ()
 : Node("minimal_publisher"), count_(0)
 {  

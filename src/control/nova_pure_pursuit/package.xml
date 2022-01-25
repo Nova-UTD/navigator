@@ -8,6 +8,8 @@
   <license>MIT License</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>nova_auto_package</buildtool_depend>
+
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
