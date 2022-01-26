@@ -28,49 +28,7 @@ GPSInterfaceNode::GPSInterfaceNode(const std::string & interface_name) // The in
   this->gps_interface = std::make_unique<Nova::GPS::SerialGPSInterface>(interface_name);
   this->pose_timer = this->create_wall_timer
     (receive_frequency, bind(& GPSInterfaceNode::send_pose, this));
-<<<<<<< HEAD
   this->odometry_publisher = this->create_publisher<nav_msgs::msg::Odometry>("/gps/odometry", 10);
-=======
-  this->publisher = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>
-    ("gps/pose", 64);
-  this->heading_publisher = this->create_publisher<std_msgs::msg::Float64>
-    ("gps/heading", 64);
-  this->velocity_publisher = this->create_publisher<std_msgs::msg::Float64>
-    ("gps/velocity", 64);
-  /*
-  struct message {uint8_t c; uint8_t i;};
-  message msgs[] = {{0xF0, 0x0A},
-                    {0xF0, 0x44},
-                    {0xF0, 0x09},
-                    {0xF0, 0x01},
-                    {0xF0, 0x43},
-                    {0xF0, 0x42},
-                    {0xF0, 0xDD},
-                    {0xF0, 0x40},
-                    {0xF0, 0x06},
-                    {0xF0, 0x02},
-                    {0xF0, 0x07},
-                    {0xF0, 0x03},
-                    {0xF0, 0x04},
-                    {0xF0, 0x0E},
-                    {0xF0, 0x41},
-                    {0xF0, 0x0F},
-                    {0xF0, 0x05},
-                    {0xF0, 0x08},
-                    {0xF1, 0x41},
-                    {0xF1, 0x00},
-                    {0xF1, 0x40},
-                    {0xF1, 0x03},
-                    {0xF1, 0x04},
-                    {0x0, 0x0}
-  };
-  for(int i = 0; msgs[i].c != 0x0; i++) {
-    this->gps_interface->enqueue_outgoing_message(Nova::UBX::set_message_rate(msgs[i].c, msgs[i].i, 0));
-  }
-  this->gps_interface->enqueue_outgoing_message(Nova::UBX::set_message_rate(0x28, 0x00, 1));
-  this->gps_interface->send_messages();
-  */
->>>>>>> Hastily convert to using serial
 }
 
 GPSInterfaceNode::~GPSInterfaceNode() {
@@ -188,12 +146,6 @@ void GPSInterfaceNode::send_pose() {
     gps_position.z = z;
     // message.pose.pose.position = point;
     // utterly useless, but let's control what we send
-    message.pose.covariance = {1, 0, 0, 0, 0, 0,
-                               0, 1, 0, 0, 0, 0,
-                               0, 0, 1, 0, 0, 0,
-                               0, 0, 0, 1, 0, 0,
-                               0, 0, 0, 0, 1, 0,
-                               0, 0, 0, 0, 0, 1};
 
     double heading_deg = hnrpvt.headVeh / (double)1e5;
     double heading_rad = heading_deg * M_PI / 180.0;
