@@ -116,16 +116,11 @@ void PathPlannerNode::publish_paths(std::vector<CostedPath> paths)
   path_pub_ptr->publish(path_msg);
 }
 
+// Tracking how many paths have been published lets us remove paths as well
+int n_paths_published_viz = 0;
+
 /**
  * @brief Forms and publishes a MarkerArray for paths
- *
- * Currently bugged. Paths are overwritten each time a new message
- * is published, but if a previously published message had more paths
- * than the currently publishing message, only a number of paths matching
- * the current number will be updated. (If the previous message had N1 paths
- * and the current message has N2 paths, there will be an extra N1-N2 paths displayed)
- *
- * This is purely visual and does not effect the actual paths being published.
  *
  * @param paths
  */
@@ -162,6 +157,29 @@ void PathPlannerNode::publish_paths_viz(std::vector<CostedPath> paths)
     // Add path to array
     marker_array.markers.push_back(marker);
   }
+
+  // delete extra paths from previous publishes
+  int n_paths = marker_id;
+  while(n_paths_published_viz > n_paths){
+     visualization_msgs::msg::Marker marker;
+
+    // Set header and identifiers
+    marker.header.frame_id = "map";
+    marker.header.stamp = this->now();
+    marker.ns = "path_planner_viz";
+    marker.id = marker_id;
+    marker_id++;
+
+    // Set to removing path
+    marker.action = visualization_msgs::msg::Marker::DELETE;
+    marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+
+    marker_array.markers.push_back(marker);
+
+    // decrement counter
+    n_paths_published_viz--;
+  }
+  n_paths_published_viz = n_paths;
 
   viz_pub_ptr->publish(marker_array);
 }
