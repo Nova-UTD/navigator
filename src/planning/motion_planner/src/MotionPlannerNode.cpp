@@ -7,9 +7,12 @@
  * License:   MIT License
  */
 
+//NOTE: LOOK IN HEADER FILE FOR COMMENTS ON FUNCTION DEFINITIONS
+
 #include <functional>
 #include <string>
 #include <math.h>
+#include <sstream>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2/buffer_core.h>
@@ -37,33 +40,57 @@ MotionPlannerNode::MotionPlannerNode(const rclcpp::NodeOptions &node_options) :
     tf_listener(tf_buffer, std::shared_ptr<rclcpp::Node>(this, [](auto) {}), false)
 {
     RCLCPP_WARN(this->get_logger(), "motion planner constructor");
-    //todo update names
-    trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectory>("outgoing_trajectories", 8);
+    trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectories>("outgoing_trajectories", 8);
     path_subscription = this->create_subscription<voltron_msgs::msg::CostedPaths>("paths", 8, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
-    current_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/lgsvl/gnss_odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
+    odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/lgsvl/gnss_odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
+    current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
     control_timer = this->create_wall_timer(message_frequency, bind(&MotionPlannerNode::send_message, this));
     planner = std::make_shared<MotionPlanner>();
 }
 
 void MotionPlannerNode::send_message() {
-    auto trajectory_message = voltron_msgs::msg::Trajectory();
-    auto trajectory = planner->get_trajectory(ideal_path, pose);
-    //maybe change trajectory vector over to the message type to avoid this
-    for (size_t i = 0; i < trajectory->size(); i++) {
+    auto trajectories = voltron_msgs::msg::Trajectories();
+    //get candidate costed trajectories from the motion planner class
+    auto candidates = planner->get_trajectory(ideal_path, pose);
+
+    //find min cost path
+    double min_cost = candidates->at(0).cost;
+    size_t min_index = 0;
+    for (size_t i = 0; i < candidates->size(); i++) {
+        double cost = candidates->at(i).cost;
+        if (cost < min_cost) {
+            min_cost = cost;
+            min_index = i;
+        }
+    }
+
+    //build message with trajectories
+    //currently sending all for visualization purposes
+    //should refactor this to only send one, and do the visualization in this node
+    for (size_t t = 0; t < candidates->size(); t++) {
+      auto trajectory_message = voltron_msgs::msg::Trajectory();
+      auto trajectory = candidates->at(t);
+      for (size_t i = 0; i < trajectory.points->size(); i++) {
         auto point = voltron_msgs::msg::TrajectoryPoint();
-        point.x = trajectory->at(i).x;
-        point.y = trajectory->at(i).y;
+        point.x = trajectory.points->at(i).x;
+        point.y = trajectory.points->at(i).y;
         point.vx = 0;
         point.vy = 0;
         trajectory_message.points.push_back(point);
+      }
+      trajectory_message.id = t;
+      trajectory_message.selected = (t == min_index) ? 1 : 0;
+      trajectories.trajectories.push_back(trajectory_message);
     }
-    trajectory_publisher->publish(trajectory_message);
-    //RCLCPP_WARN(this->get_logger(), "published trajectory");
+    trajectory_publisher->publish(trajectories);
 }
 
 void MotionPlannerNode::update_path(voltron_msgs::msg::CostedPaths::SharedPtr ptr) {
-    //RCLCPP_WARN(this->get_logger(), "Got path");
-    //select minimum cost path
+    if (ptr->paths.size() == 0) {
+      return; //if there is no path, continue using the old one
+      //should probably raise an alert, but idk if that's this node's responsibility
+    }
+    //select min cost path
     size_t min_index = 0;
     double min_cost = ptr->paths[min_index].safety_cost+ptr->paths[min_index].routing_cost;
     for (size_t i = 1; i < ptr->paths.size(); i++) {
@@ -76,11 +103,9 @@ void MotionPlannerNode::update_path(voltron_msgs::msg::CostedPaths::SharedPtr pt
     ideal_path = ptr->paths[min_index];
 }
 
-void MotionPlannerNode::update_pose(const geometry_msgs::msg::PoseStamped& pose_in) {
-    pose.x = pose_in.pose.position.x;
-    pose.y = pose_in.pose.position.y;
-    
-    //velocity, heading updated in current_pose_cb
+void MotionPlannerNode::odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg) {
+  pose.heading = 2*asin(msg->pose.pose.orientation.z);
+  current_pose.pose.orientation = msg->pose.pose.orientation;
 }
 
 /**
@@ -91,18 +116,18 @@ void MotionPlannerNode::update_pose(const geometry_msgs::msg::PoseStamped& pose_
  * 
  * @param state 
  */
-void MotionPlannerNode::current_pose_cb(const nav_msgs::msg::Odometry::SharedPtr state_msg)
+void MotionPlannerNode::current_pose_cb(const VehicleKinematicState::SharedPtr state_msg)
 {
+  // TODO: validate header
+
   // convert msg to geometry_msgs::msg::Pose
-  current_pose.pose.position.x = state_msg->pose.pose.position.x;
-  current_pose.pose.position.y = state_msg->pose.pose.position.y;
+  current_pose.pose.position.x = state_msg->state.x;
+  current_pose.pose.position.y = state_msg->state.y;
   current_pose.pose.position.z = 0.0;
-  current_pose.pose.orientation = state_msg->pose.pose.orientation;
+  current_pose.pose.orientation =
+      motion::motion_common::to_quat<geometry_msgs::msg::Quaternion>(
+          state_msg->state.heading);
   current_pose.header = state_msg->header;
-  //update velocity
-  pose.xv = state_msg->twist.twist.linear.x;//.state.longitudinal_velocity_mps;
-  pose.yv = state_msg->twist.twist.linear.y;//state_msg->state.lateral_velocity_mps;
-  pose.heading = state_msg->twist.twist.angular.z;
 
   // transform to "map" frame if needed
   if (current_pose.header.frame_id != "map")
@@ -126,8 +151,8 @@ void MotionPlannerNode::current_pose_cb(const nav_msgs::msg::Odometry::SharedPtr
     // No transform required
     //current_pose_init = true;
   }
-    update_pose(current_pose);
-
+  pose.x = current_pose.pose.position.x;
+  pose.y = current_pose.pose.position.y;
 }
 
 /**
@@ -142,6 +167,7 @@ bool MotionPlannerNode::transform_pose_to_map(
           const geometry_msgs::msg::PoseStamped &pose_in,
           geometry_msgs::msg::PoseStamped &pose_out)
       {
+        RCLCPP_WARN(this->get_logger(), "transform pose to map");
         std::string source_frame = pose_in.header.frame_id;
         // lookup transform validity
         if (!tf_buffer.canTransform("map", source_frame, tf2::TimePointZero))

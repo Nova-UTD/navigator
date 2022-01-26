@@ -159,7 +159,7 @@ std::vector<autoware_auto_msgs::msg::TrajectoryPoint> MotionPlanner::get_center_
     return line_points;
 }
 
-std::shared_ptr<const std::vector<PathPoint>> MotionPlanner::get_trajectory(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) {
+std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) {
     //generates a bunch of different paths for the car, assigns them costs, and picks the lowest cost path
     //if memory becomes an issue, could generate and cost the paths on demand, and recreate the lowest cost one.
     using namespace std;
@@ -167,9 +167,12 @@ std::shared_ptr<const std::vector<PathPoint>> MotionPlanner::get_trajectory(cons
     const double car_angle = pose.heading;
     const double car_speed = sqrt(pose.xv*pose.xv+pose.yv*pose.yv);
     //no idea if this works like this. will have to test. cannot find documentation
-    const double car_vx_norm = pose.xv/car_speed;
-    const double car_vy_norm = pose.yv/car_speed;
-    const double max_steer_speed_time = max_steering_speed/car_speed; //convert from rad/m to rad/s
+    const double car_vx_norm = cos(car_angle);
+    const double car_vy_norm = sin(car_angle);
+    double max_steer_speed_time = 1;
+    if (car_speed != 0) {
+        max_steer_speed_time = max_steering_speed/car_speed; //convert from rad/m to rad/s
+    }
 
     shared_ptr<vector<PathPoint>> linear_points = make_shared<vector<PathPoint>>();
     for (size_t i = 0; i < points; i++) {
@@ -177,40 +180,88 @@ std::shared_ptr<const std::vector<PathPoint>> MotionPlanner::get_trajectory(cons
         linear_points->push_back(PathPoint(pose.x + car_vx_norm*index*spacing, pose.y+car_vy_norm*index*spacing));
     }
     
-    auto base_path = SegmentedPath(linear_points);
-    vector<SegmentedPath> candidates;
+    auto candidates = std::make_shared<vector<SegmentedPath>>();
+    auto base = SegmentedPath(linear_points);
+    auto bounds = get_path_bounds(ideal_path, pose);
+    base.cost = cost_path(base, ideal_path, pose, bounds.first, bounds.second);
+    candidates->push_back(base);
 
-    //for now, keep start angle the same and vary the end angle and turn speed.
-    //this should change to be more flexible later
-    for (size_t i = 0; i < paths; i++) {
-        double end_angle = -max_steering_angle+(i/4)*max_steering_angle;
-        double turn_speed = -max_steering_speed+(i%4)*max_steering_speed;
-        auto branch_points = base_path.create_branch(car_angle,end_angle,turn_speed,points);
-        candidates.push_back(SegmentedPath(branch_points));
-    }
-
-    //find min cost path
-    double min_cost = -1;
-    size_t min_index = 0;
-    for (size_t i = 0; i < candidates.size(); i++) {
-        double cost = cost_path(candidates[i], ideal_path, pose);
-        if (cost < min_cost || cost == -1) {
-            min_cost = cost;
-            min_index = i;
+    for (size_t s = 0; s < steering_speeds; s++) {
+        double turn_speed = -max_steering_speed+max_steering_speed*2*(static_cast<double>(s)/static_cast<double>(steering_speeds));
+        for (size_t a = 0; a < steering_angles; a++) {
+            double angle_change = -max_steering_angle+max_steering_angle*2*(static_cast<double>(s)/static_cast<double>(steering_angles));
+            auto branch_points = candidates->at(0).create_branch(car_angle,angle_change,turn_speed,points);
+            auto path = SegmentedPath(branch_points);
+            auto bounds = get_path_bounds(ideal_path, pose);
+            path.cost = cost_path(path, ideal_path, pose, bounds.first, bounds.second);
+            candidates->push_back(path);
         }
     }
-
-    return candidates[min_index].points;
+    return candidates;
 }
 
-double MotionPlanner::cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const {
-    //temporary cost function, very basic attempt at following the ideal path.
+double MotionPlanner::cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose, size_t start, size_t end) const {
     double dist = 0;
+    for (size_t i = start; i < end; i++) {
+        dist += path.distance(PathPoint(ideal_path.points[i].x,ideal_path.points[i].y));
+    }
+    return dist;
+    //temporary cost function, very basic attempt at following the ideal path.
+    //should add horizon for path following and heavily weight the last point
+    /*double dist = 0;
+    double count = 1;
     for (const auto ideal : ideal_path.points) {
-        dist += path.distance(PathPoint(ideal.x,ideal.y));
+        dist += 1/count*path.distance(PathPoint(ideal.x,ideal.y));
+        count++;
     }
     return dist;
     /*path.sum([&](PathPoint p) {
         can do comfortability cost function like this
     });*/
+}
+
+std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const {
+    //find closest point to car on ideal path
+    size_t closest = 0;
+    bool found = false;
+    double min_dist = INFINITY;
+    for (size_t i = 0; i < ideal_path.points.size(); i++) {
+        const auto ideal = ideal_path.points[i];
+        double d = (pose.x-ideal.x)*(pose.x-ideal.x)+(pose.y-ideal.y)*(pose.x-ideal.y);
+        if (d < min_dist) {
+            closest = i;
+            min_dist = d;
+            found = true;
+        }
+    }
+
+    if (!found) {
+        return std::make_pair<size_t,size_t>(0,0); //no closest point found??
+    }
+
+    //find direction of car relative to ideal path (should we iterate forward or backward for distance horizon?)
+    int direction = 1;
+    if (closest == ideal_path.points.size()-1) direction = -1;
+    if (ideal_path.points.size() > 1) {
+        //if dot product of the direction the path is going and the car heading is non-negative,
+        //we iterate forward (the car is going in the same direction as the path)
+        PathPoint dir_vec = PathPoint(ideal_path.points[closest+1].x-ideal_path.points[closest].x,ideal_path.points[closest+1].y-ideal_path.points[closest].y);
+        PathPoint heading_vec = PathPoint(cos(pose.heading), sin(pose.heading));
+        double dot = dir_vec.x*heading_vec.x+dir_vec.y*heading_vec.y;
+        direction = (dot >= 0) ? 1 : -1;
+    }
+
+    //find horizon. iterate along the ideal path until the arclength is more than the horizon
+    // or we hit either end of the path lol
+    double acc_dist_sqr = 0;
+    size_t end = closest+direction;
+    auto prev = ideal_path.points[closest];
+    while (acc_dist_sqr < horizon*horizon && end < ideal_path.points.size()) {
+        auto curr = ideal_path.points[end];
+        acc_dist_sqr = (curr.x-prev.x)*(curr.x-prev.x)+(curr.y-prev.y)*(curr.y-prev.y);
+        if (end == 0 && direction == -1) break; //avoid underflow (at bound anyway)
+        end += direction;
+    }
+
+    return std::make_pair(closest,end);
 }

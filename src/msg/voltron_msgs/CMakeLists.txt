@@ -13,6 +13,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/CanFrame.msg"
   "msg/TrajectoryPoint.msg"
   "msg/Trajectory.msg"
+  "msg/Trajectories.msg"
   "msg/RouteCost.msg"
   "msg/RouteCosts.msg"
   "msg/CostedPath.msg"

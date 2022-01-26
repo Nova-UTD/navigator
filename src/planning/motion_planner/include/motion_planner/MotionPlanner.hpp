@@ -26,6 +26,7 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <utility>
 
 namespace navigator
 {
@@ -35,21 +36,31 @@ namespace navigator
         class MotionPlanner
         {
         public:
+            //currently unused. this converts a vector of trajectory points to a segmented path.
+            //will decide whether or not this needs to be deleted when I implement cost function on lane boundaries
             SegmentedPath get_center_line_segments(const std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &line_points);
+            //currently unused. converts the center line of a route into a vector of trajectory points.
+            //will decide whether or not this needs to be deleted when I implement cost function on lane boundaries
             std::vector<autoware_auto_msgs::msg::TrajectoryPoint> get_center_line_points(const autoware_auto_msgs::msg::HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution);
-            std::shared_ptr<const std::vector<PathPoint>> get_trajectory(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose);
-            double cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const;
+            //generates and costs a vector of candidate immedate trajectories the car could follow
+            std::shared_ptr<std::vector<SegmentedPath>> get_trajectory(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose);
+            //
+            double cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose, size_t start, size_t end) const;
         private:
+            //gets iteration bounds on the chosen input path based on car position and the horizon size
+            std::pair<size_t,size_t> get_path_bounds(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const;
             //currently, these numbers are chosen as a guess. they will need to be determined later for safety.
             //(all units are in meters, seconds, radians if not mentioned)
-            const size_t paths = 12; //number of paths to consider at a time
             const size_t points = 100; //number of points on path
-            const double spacing = 0.1; //meters between points on path
-            const double max_steering_angle = 0.5; //max angle the car can turn in radians
+            const size_t steering_speeds = 16; //number of different steering speeds to consider
+            const size_t steering_angles = 2; //number of different steering angles to consider
+            const double spacing = 0.25; //meters between points on path
+            const double max_steering_angle = 1; //max angle the car can turn in radians
             const double max_steering_speed = 0.1; //max speed we can change the car's direction in radians/sec (ignoring speed)
             const double max_lateral_accel = 10; //max acceleration of the car on turns (used to prevent skidding/flipping)
             const double car_size_x = 1.5; //width of the car
             const double car_size_y = 3; //length of the car
+            const double horizon = points*spacing; //max distance to consider anything for cost 
         };
     }
 }

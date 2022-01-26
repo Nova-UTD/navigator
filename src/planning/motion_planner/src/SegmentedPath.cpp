@@ -50,20 +50,21 @@ bool SegmentedPath::valid_points(double spacing, const vector<PathPoint>& points
 std::shared_ptr<std::vector<PathPoint>> SegmentedPath::create_branch(double start_angle, double max_change, double steer_speed, size_t size) const
 {
 	double current_angle = start_angle;
+	const double min_angle = (max_change > 0) ? start_angle-max_change : start_angle+max_change;
+	const double max_angle = (max_change > 0) ? start_angle+max_change : start_angle-max_change;
 	PathPoint current = points->front();
 	std::shared_ptr<vector<PathPoint>> result = std::make_shared<vector<PathPoint>>();
 	for (size_t i = 0; i < size; i++) {
 		double dx = cos(current_angle) * spacing;
 		double dy = sin(current_angle) * spacing;
 		PathPoint p(current.x + dx, current.y + dy);
-		result->push_back(p);
+		result->push_back(PathPoint(current.x + dx, current.y + dy));
 		
 		current = p;
 		current_angle += steer_speed * spacing;
-		//if the current angle is past the the end angle, bound it to the end angle (could be in either direction)
-		if (abs(current_angle-start_angle)>max_change) {
-			current_angle = start_angle+max_change;
-		}
+		//bound by max_change
+		if (current_angle < min_angle) current_angle = min_angle;
+		if (current_angle > max_angle) current_angle = max_angle;
 	}
 	return result;
 }
@@ -135,4 +136,18 @@ double SegmentedPath::distance(PathPoint p) const
 	}
 
 	return min;
+}
+
+size_t SegmentedPath::closest_point(PathPoint p) const {
+	double min_dist = INFINITY;
+	size_t min_index = -1;
+	for (size_t i = 0; i < points->size(); i++) {
+		double d = (p.x - points->at(i).x) * (p.x - points->at(i).x) 
+			+ (p.y - points->at(i).y) * (p.y - points->at(i).y);
+		if (d < min_dist) {
+			min_index = i;
+			min_dist = d;
+		}
+	}
+	return min_index;
 }
