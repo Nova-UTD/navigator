@@ -215,6 +215,7 @@ void PathPlanner::_get_lanelet_sequences(
 
     // Successors and adjacents both included in following(~, true)
     auto relations = routing_graph->following(current, true);
+    bool recursed = false;
 
     for (lanelet::ConstLanelet next : relations)
     {
@@ -227,8 +228,14 @@ void PathPlanner::_get_lanelet_sequences(
                 // using the full length of either lane. Adjust distance remaining.
                 distance += current_length;
             }
-            _get_lanelet_sequences(remaining_distance, sequence, next, results);
+            _get_lanelet_sequences(distance, sequence, next, results);
+            recursed = true;
         }
+    }
+
+    // If the path had no relations, add it now to avoid loosing it
+    if(!recursed){
+        results.push_back(sequence);
     }
 }
 
