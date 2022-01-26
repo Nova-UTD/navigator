@@ -12,7 +12,7 @@
 #include <iostream>
 #include <string>
 #include "nova_gps/GPSInterface.hpp"
-#include "nova_gps/I2CGPSInterface.hpp"
+#include "nova_gps/SerialGPSInterface.hpp"
 #include "nova_gps/GPSInterfaceNode.hpp"
 #include "nova_gps/UBX.hpp"
 
@@ -25,7 +25,7 @@ const auto receive_frequency = 50ms;
 GPSInterfaceNode::GPSInterfaceNode(const std::string & interface_name) // The interface name should also definitely be a ROS param, like above. WSH.
   : Node("gps_interface_node") {
 
-  this->gps_interface = std::make_unique<Nova::GPS::I2CGPSInterface>(interface_name);
+  this->gps_interface = std::make_unique<Nova::GPS::SerialGPSInterface>(interface_name);
   this->pose_timer = this->create_wall_timer
     (receive_frequency, bind(& GPSInterfaceNode::send_pose, this));
 <<<<<<< HEAD
