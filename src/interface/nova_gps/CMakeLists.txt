@@ -28,7 +28,8 @@ ament_export_dependencies(rosidl_default_runtime)
 ament_auto_add_library(i2c_lib STATIC
   src/I2CInterface.cpp
   src/Buffer.cpp
-  src/ConcreteGPSInterface.cpp
+  src/I2CGPSInterface.cpp
+  src/SerialGPSInterface.cpp
   src/GPSInterfaceNode.cpp
   src/UBX.cpp)
 target_include_directories(i2c_lib PUBLIC include)

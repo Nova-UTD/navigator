@@ -12,7 +12,7 @@
 #include <iostream>
 #include <string>
 #include "nova_gps/GPSInterface.hpp"
-#include "nova_gps/ConcreteGPSInterface.hpp"
+#include "nova_gps/I2CGPSInterface.hpp"
 #include "nova_gps/GPSInterfaceNode.hpp"
 #include "nova_gps/UBX.hpp"
 
@@ -25,10 +25,52 @@ const auto receive_frequency = 50ms;
 GPSInterfaceNode::GPSInterfaceNode(const std::string & interface_name) // The interface name should also definitely be a ROS param, like above. WSH.
   : Node("gps_interface_node") {
 
-  this->gps_interface = std::make_unique<Nova::GPS::ConcreteGPSInterface>(interface_name);
+  this->gps_interface = std::make_unique<Nova::GPS::I2CGPSInterface>(interface_name);
   this->pose_timer = this->create_wall_timer
     (receive_frequency, bind(& GPSInterfaceNode::send_pose, this));
+<<<<<<< HEAD
   this->odometry_publisher = this->create_publisher<nav_msgs::msg::Odometry>("/gps/odometry", 10);
+=======
+  this->publisher = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>
+    ("gps/pose", 64);
+  this->heading_publisher = this->create_publisher<std_msgs::msg::Float64>
+    ("gps/heading", 64);
+  this->velocity_publisher = this->create_publisher<std_msgs::msg::Float64>
+    ("gps/velocity", 64);
+  /*
+  struct message {uint8_t c; uint8_t i;};
+  message msgs[] = {{0xF0, 0x0A},
+                    {0xF0, 0x44},
+                    {0xF0, 0x09},
+                    {0xF0, 0x01},
+                    {0xF0, 0x43},
+                    {0xF0, 0x42},
+                    {0xF0, 0xDD},
+                    {0xF0, 0x40},
+                    {0xF0, 0x06},
+                    {0xF0, 0x02},
+                    {0xF0, 0x07},
+                    {0xF0, 0x03},
+                    {0xF0, 0x04},
+                    {0xF0, 0x0E},
+                    {0xF0, 0x41},
+                    {0xF0, 0x0F},
+                    {0xF0, 0x05},
+                    {0xF0, 0x08},
+                    {0xF1, 0x41},
+                    {0xF1, 0x00},
+                    {0xF1, 0x40},
+                    {0xF1, 0x03},
+                    {0xF1, 0x04},
+                    {0x0, 0x0}
+  };
+  for(int i = 0; msgs[i].c != 0x0; i++) {
+    this->gps_interface->enqueue_outgoing_message(Nova::UBX::set_message_rate(msgs[i].c, msgs[i].i, 0));
+  }
+  this->gps_interface->enqueue_outgoing_message(Nova::UBX::set_message_rate(0x28, 0x00, 1));
+  this->gps_interface->send_messages();
+  */
+>>>>>>> Hastily convert to using serial
 }
 
 GPSInterfaceNode::~GPSInterfaceNode() {

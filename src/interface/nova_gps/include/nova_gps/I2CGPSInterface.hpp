@@ -7,12 +7,12 @@
 
 namespace Nova {
   namespace GPS {
-    class ConcreteGPSInterface : public GPSInterface {
+    class I2CGPSInterface : public GPSInterface {
       public:
-        ConcreteGPSInterface(); // create without getting a handle
-        ConcreteGPSInterface(const std::string & interface_name); // create and open
+        I2CGPSInterface(); // create without getting a handle
+        I2CGPSInterface(const std::string & interface_name); // create and open
 
-        virtual ~ConcreteGPSInterface();
+        virtual ~I2CGPSInterface();
 
         virtual void open(const std::string & interface_name) override;
         virtual void close() override;

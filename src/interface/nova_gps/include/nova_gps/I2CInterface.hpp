@@ -35,6 +35,7 @@ namespace Nova {
     private:
       virtual int device_read(uint8_t register_, uint8_t *value);
       virtual int device_write(uint8_t value);
+      /*virtual int device_write_block(uint8_t* value);*/
       int i2c_device_handle;
       uint8_t device_address;
     };

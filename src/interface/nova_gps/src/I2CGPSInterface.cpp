@@ -7,7 +7,7 @@
  * License:   MIT License
  */
 
-#include "nova_gps/ConcreteGPSInterface.hpp"
+#include "nova_gps/I2CGPSInterface.hpp"
 #include "nova_gps/types.hpp"
 #include "string.h"
 #define GPS_I2C_ADDRESS 0x42
@@ -18,45 +18,45 @@
 
 using namespace Nova::GPS;
 
-ConcreteGPSInterface::ConcreteGPSInterface() {
+I2CGPSInterface::I2CGPSInterface() {
   this->i2c_interface = nullptr;
 }
 
-ConcreteGPSInterface::ConcreteGPSInterface(const std::string & interface_name) {
+I2CGPSInterface::I2CGPSInterface(const std::string & interface_name) {
   this->open(interface_name);
 }
 
-ConcreteGPSInterface::~ConcreteGPSInterface() {
+I2CGPSInterface::~I2CGPSInterface() {
   this->close();
 }
 
-void ConcreteGPSInterface::close() {
+void I2CGPSInterface::close() {
   if(this->i2c_interface) {
     this->i2c_interface->close();
   }
 }
 
-void ConcreteGPSInterface::open(const std::string & interface_name) {
+void I2CGPSInterface::open(const std::string & interface_name) {
   // if we already have an interface, close it
   this->close();
   this->i2c_interface = std::make_unique<Nova::I2C::I2CInterface>(Nova::I2C::I2CInterface(GPS_I2C_ADDRESS, interface_name));
 }
 
-bool ConcreteGPSInterface::has_message() {
+bool I2CGPSInterface::has_message() {
   return this->nmea_message_buffer.size() > 0;
 }
 
-std::unique_ptr<Nova::UBX::UBXMessage> ConcreteGPSInterface::get_message() {
+std::unique_ptr<Nova::UBX::UBXMessage> I2CGPSInterface::get_message() {
   auto ptr = std::move(this->nmea_message_buffer.back());
   this->nmea_message_buffer.pop_back();
   return ptr;
 }
 
-void ConcreteGPSInterface::enqueue_outgoing_message(std::unique_ptr<Nova::UBX::UBXMessage> message) {
+void I2CGPSInterface::enqueue_outgoing_message(std::unique_ptr<Nova::UBX::UBXMessage> message) {
   this->send_queue.push_back(std::move(message));
 }
 
-bool ConcreteGPSInterface::send_messages() {
+bool I2CGPSInterface::send_messages() {
   if(!this->i2c_interface) {
     throw std::runtime_error("No I2C interface opened before write");
   }
@@ -76,7 +76,7 @@ bool ConcreteGPSInterface::send_messages() {
   return true;
 }
 
-bool ConcreteGPSInterface::gather_messages() {
+bool I2CGPSInterface::gather_messages() {
   if(!this->i2c_interface) {
     throw std::runtime_error("No I2C interface opened before read");
   }
