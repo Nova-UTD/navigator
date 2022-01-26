@@ -16,6 +16,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "voltron_msgs/msg/trajectory.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
+#include "voltron_msgs/msg/trajectories.hpp"
 
 using namespace std::chrono_literals;
 
@@ -27,9 +28,9 @@ public:
     MotionPlannerVisualsNode(const rclcpp::NodeOptions &node_options);
 
 private:
-    void send_message(const voltron_msgs::msg::Trajectory::SharedPtr msg);
+    void send_message(const voltron_msgs::msg::Trajectories::SharedPtr msg);
 
-    rclcpp::Subscription<voltron_msgs::msg::Trajectory>::SharedPtr trajectory_subscription;
+    rclcpp::Subscription<voltron_msgs::msg::Trajectories>::SharedPtr trajectory_subscription;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr visuals_publisher;
 };
 }

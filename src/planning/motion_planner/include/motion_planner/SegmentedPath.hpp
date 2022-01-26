@@ -26,8 +26,8 @@ public:
 	//sets spacing to be distance between first 2 points (0 if there are < 2 points)
 	SegmentedPath(const std::shared_ptr<const std::vector<PathPoint>> points) 
 		: spacing(points->size() < 2 ? 0 : points->at(0).distance(points->at(1)))
-		, points(points) {}
-	SegmentedPath(const std::shared_ptr<const std::vector<PathPoint>> points, double spacing) : spacing(spacing), points(points) {}
+		, points(points), cost(INFINITY) {}
+	SegmentedPath(const std::shared_ptr<const std::vector<PathPoint>> points, double spacing) : spacing(spacing), points(points), cost (INFINITY) {}
 	//checks if points are spaced uniformly by spacing units apart.
 	//allows slight tolerance for floating point weirdness (0.00000001 on the square distance between each point)
 	//no argument method uses this path's points and spacing
@@ -47,8 +47,11 @@ public:
 	//Returns the distance to the closest point on the path (including on the segments between input points)
 	//(if path is empty, returns -1)
 	double distance(PathPoint p) const;
+	//returns the index of the closest point in points to p 
+	size_t closest_point(PathPoint p) const;
 	const double spacing;
 	const std::shared_ptr<const std::vector<PathPoint>> points;
+	double cost;
 };
 }
 }
