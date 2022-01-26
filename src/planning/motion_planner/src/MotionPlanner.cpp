@@ -201,23 +201,19 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
 }
 
 double MotionPlanner::cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose, size_t start, size_t end) const {
-    double dist = 0;
-    for (size_t i = start; i < end; i++) {
-        dist += path.distance(PathPoint(ideal_path.points[i].x,ideal_path.points[i].y));
+    double dist = INFINITY;
+    if (start <= end) {
+        dist = 0;
+        for (size_t i = start; i < end; i++) {
+            dist += path.distance(PathPoint(ideal_path.points[i].x,ideal_path.points[i].y));
+        }
+    } else {
+        dist = 0;
+        for (size_t i = start; i > end; i--) {
+            dist += path.distance(PathPoint(ideal_path.points[i].x,ideal_path.points[i].y));
+        }
     }
     return dist;
-    //temporary cost function, very basic attempt at following the ideal path.
-    //should add horizon for path following and heavily weight the last point
-    /*double dist = 0;
-    double count = 1;
-    for (const auto ideal : ideal_path.points) {
-        dist += 1/count*path.distance(PathPoint(ideal.x,ideal.y));
-        count++;
-    }
-    return dist;
-    /*path.sum([&](PathPoint p) {
-        can do comfortability cost function like this
-    });*/
 }
 
 std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const {
