@@ -153,21 +153,10 @@ def generate_launch_description():
     )
 
     # PERCEPTION
-    lidar_front = Node(
-        package='velodyne_nodes',
-        namespace="lidar_front",
-        executable='velodyne_cloud_node_exe',
-        parameters=[(path.join(param_dir,"perception","lidar_front.param.yaml"))],
-        remappings=[("topic", "points_raw")],
-        arguments=["--model", "vlp16"])
-
-    lidar_rear = Node(
-        package='velodyne_nodes',
-        namespace="lidar_rear",
-        executable='velodyne_cloud_node_exe',
-        parameters=[(path.join(param_dir,"perception","lidar_rear.param.yaml"))],
-        remappings=[("topic", "points_raw")],
-        arguments=["--model", "vlp16"])
+    lidar_driver_front = Node(
+        package="velodyne_driver",
+        executable="velodyne_driver_node"
+    )
     
     lidar_front_filter = Node(
         package="point_cloud_filter_transform_nodes",
@@ -289,6 +278,7 @@ def generate_launch_description():
         # visuals,
 
         # PERCEPTION
+        lidar_driver_front,
         # lidar_front,
         # lidar_rear,
         # lidar_front_filter,
