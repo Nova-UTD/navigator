@@ -150,9 +150,10 @@ void PathPlannerNode::publish_paths_viz(std::vector<CostedPath> paths)
     // Set visual display. Not sure if this is needed
     marker.scale.x = 1;
     marker.color.a = 1.0;
-    marker.color.r = 0.0;
-    marker.color.g = 1.0;
-    marker.color.b = 0.0;
+    marker.color.r = static_cast<float>(1.0/(1+exp(-path.safety_cost/5.0)));
+    marker.color.g = static_cast<float>(1.0/(1+exp(path.routing_cost/2.0)));
+    marker.color.g *= marker.color.g; // make better paths more visible
+    marker.color.b = 0;
 
     // Add path to array
     marker_array.markers.push_back(marker);
