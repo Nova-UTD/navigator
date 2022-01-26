@@ -46,8 +46,8 @@ void SerialGPSInterface::open(const std::string & interface_name) {
   }
   struct termios tty;
   tcgetattr(this->serial_device_handle, &tty);
-  cfsetospeed(&tty, B9600);
-  cfsetispeed(&tty, B9600);
+  cfsetospeed(&tty, B115200);
+  cfsetispeed(&tty, B115200);
   tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;
   tty.c_cc[VMIN] = 1;
   tty.c_cc[VTIME] = 1;

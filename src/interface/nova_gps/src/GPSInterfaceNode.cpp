@@ -95,7 +95,7 @@ void GPSInterfaceNode::send_pose() {
   std::unique_ptr<Nova::UBX::UBXMessage> raw_msg;
 
   this->gps_interface->gather_messages();
-
+ 
   while(this->gps_interface->has_message()) {
       auto msg = this->gps_interface->get_message();
       if(msg->mclass == 0x05) {
@@ -107,6 +107,7 @@ void GPSInterfaceNode::send_pose() {
       } else
       if(msg->id == 0x00 && msg->mclass == 0x28) {
         raw_msg = std::move(msg);
+        found = true;
       }
   }
   if(found) {
@@ -193,5 +194,7 @@ void GPSInterfaceNode::send_pose() {
     RCLCPP_INFO(get_logger(), "Publishing GPS message.");
     this->odometry_publisher->publish(odom_msg);
     this->diagnostic_publisher->publish(diag_msg);
+  } else {
+    RCLCPP_INFO(get_logger(), "Didn't get a message to publish.");
   }
 }

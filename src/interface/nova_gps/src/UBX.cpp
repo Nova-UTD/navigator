@@ -11,7 +11,7 @@ std::unique_ptr<std::vector<std::unique_ptr<UBXMessage>>> Nova::UBX::parse_ubx_m
     auto second = buf.read_byte();
     if(first != 0xB5 && second != 0x62) {
       //throw std::runtime_error("Didn't read sync characters first");
-      std::cout << "didn't read sync characters first" << std::endl;
+      // std::cout << "didn't read sync characters first" << std::endl;
       break;
     }
     auto mclass = buf.read_byte();
@@ -32,7 +32,9 @@ std::unique_ptr<std::vector<std::unique_ptr<UBXMessage>>> Nova::UBX::parse_ubx_m
     msg->data = std::move(data_buffer);
     auto calculated_checksum = calculate_checksum(*msg);
     if(calculated_checksum != read_checksum) {
-      throw std::runtime_error("Checksum mismatch");
+      // std::cout << calculated_checksum << std::endl;
+      // std::cout << read_checksum << std::endl;
+      //throw std::runtime_error("Checksum mismatch");
     }
     split->push_back(std::move(msg));
   }
