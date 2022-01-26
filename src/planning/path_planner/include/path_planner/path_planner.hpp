@@ -84,6 +84,7 @@ namespace navigator
             // Utilities
 
             // Checks adjacencey (immediate left/immediate right) between the two lanelets
+            bool is_adjacent(const lanelet::Id li1, const lanelet::Id li2);
             bool is_adjacent(const lanelet::ConstLanelet l1, const lanelet::ConstLanelet l2);
 
             // Converts message point to lanelet point

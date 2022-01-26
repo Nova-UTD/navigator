@@ -96,46 +96,59 @@ void PathPlanner::get_paths(
  * @param lanelets
  * @return CostedPath
  */
-CostedPath PathPlanner::get_path(const LaneletSequence &lanelets, const geometry_msgs::msg::Pose& pose)
+CostedPath PathPlanner::get_path(const LaneletSequence &lanelet_sequence, const geometry_msgs::msg::Pose& pose)
 {
     CostedPath path;
 
-    if (lanelets.size() == 0)
+    if (lanelet_sequence.size() == 0)
     {
         return path;
     }
 
-    auto lanelet_id_it = lanelets.begin();
-    
-    // only add remaining part of the lane to path
-    lanelet::BasicPoint2d position = PathPlanner::ros_point_to_lanelet_point(pose.position);
-    path.points.push_back(lanelet_point_to_ros_point(position));
-    lanelet::Lanelet lanelet = map->laneletLayer.get(*lanelet_id_it);
-    lanelet::BasicLineString2d dont_need_to_travel;
-    lanelet::BasicLineString2d need_to_travel;
-    split_linestring(lanelet.centerline2d(), position, dont_need_to_travel, need_to_travel);
+    // Somewhat naive lane change handling: drop all the but last lanelet 
+    // in a string of adjacent lanelets
 
-    for(auto seg_point: need_to_travel){
-        path.points.push_back(lanelet_point_to_ros_point(seg_point));
-    }
-    lanelet_id_it++;
+    // Lanelets to visit, after removing pre-lane-change lanelets
+    LaneletSequence lanelets;
 
-    for (; lanelet_id_it != lanelets.end(); lanelet_id_it++)
+    // loop through and add all the lanelets we want to lanelets.
+    // worse in space but better in time than deleting from lanelet_sequence
+    for (auto id_it = lanelet_sequence.begin(); id_it != lanelet_sequence.end(); id_it++)
     {
-        // Todo: Do I need to check if it got lanelet successfully?
-
-        // Simple concatenate the lanelet centerline to the path.
-        // This will need to be fixed for lane changes
-        lanelet = map->laneletLayer.get(*lanelet_id_it);
-        auto path_segment = lanelet.centerline2d();
-        for (auto seg_point : path_segment)
+        if ((id_it + 1) == lanelet_sequence.end() || !is_adjacent(*(id_it), *(id_it + 1)))
         {
-            // Todo: conversion safety from one coordinate system to another?
-            path.points.push_back(lanelet_point_to_ros_point(seg_point));
+            // either the end of or not part of a string of adjacent lanelets,
+            // add to post-filter sequence
+            lanelets.push_back((*id_it));
+        }
+    }
+
+    // start at current position
+    path.points.push_back(pose.position);
+
+    for (auto lanelet_id_it = lanelets.begin(); lanelet_id_it != lanelets.end(); lanelet_id_it++)
+    {
+        lanelet::Lanelet lanelet = map->laneletLayer.get(*lanelet_id_it);
+
+        // Connect to the path
+        // Split based on the last path point and only take the part of
+        // the lanelet centerline to that needs to be traveled
+        // lanelet-compatible point for current position
+        lanelet::BasicPoint2d l_point = PathPlanner::ros_point_to_lanelet_point(pose.position);
+
+        // Splitting by current position means we can travel only the half we need to
+        lanelet::BasicLineString2d dont_need_to_travel;
+        lanelet::BasicLineString2d need_to_travel;
+        split_linestring(lanelet.centerline2d(), l_point, dont_need_to_travel, need_to_travel);
+
+        for (auto seg_point : need_to_travel)
+        {
+            path.points.push_back(PathPlanner::lanelet_point_to_ros_point(seg_point));
         }
     }
 
     // Set route cost of path to route cost of last lanelet
+    // TODO: what about paths that include but go past the destination?
     path.routing_cost = get_routing_cost(*(lanelets.end() - 1));
 
     return path;
@@ -154,13 +167,10 @@ void PathPlanner::get_lanelet_sequences(double distance, const geometry_msgs::ms
     lanelet::BasicLineString2d first_half;
     lanelet::BasicLineString2d second_half;
     PathPlanner::split_linestring(centerline, position, first_half, second_half);
+    
     // We will be substracting whole length of lanelet, resulting in a net decrease only
     // of the distance we actually travel
     distance += static_cast<double>(lanelet::geometry::length(first_half));
-
-    // determine remaining length of lanelet
-    // _get_lanelet_sequences will subtract the length of starting lanelet, but
-    // we have already accounted for it so add it back
 
     _get_lanelet_sequences(distance, LaneletSequence(), starting_lanelet, results);
 }
@@ -189,7 +199,6 @@ void PathPlanner::_get_lanelet_sequences(
     if (remaining_distance <= 0)
     {
         // Have no more distance to travel and this sequence is complete
-        results.push_back(sequence);
         return;
     }
     // Checking distance at the beginning of the function rather than after adding the
@@ -198,6 +207,12 @@ void PathPlanner::_get_lanelet_sequences(
 
     // add current lanelet to the sequence
     sequence.push_back(current.id());
+
+    // TODO: this is a temporary measure to patch issues like edge-of-map or
+    // proceeding past the destination, but the full implications of paths that 
+    // stop partway through have not been considered yet.         
+    results.push_back(sequence);
+
     double current_length = lanelet::geometry::length2d(current);
     remaining_distance -= current_length;
 
@@ -215,7 +230,6 @@ void PathPlanner::_get_lanelet_sequences(
 
     // Successors and adjacents both included in following(~, true)
     auto relations = routing_graph->following(current, true);
-    bool recursed = false;
 
     for (lanelet::ConstLanelet next : relations)
     {
@@ -229,13 +243,7 @@ void PathPlanner::_get_lanelet_sequences(
                 distance += current_length;
             }
             _get_lanelet_sequences(distance, sequence, next, results);
-            recursed = true;
         }
-    }
-
-    // If the path had no relations, add it now to avoid loosing it
-    if(!recursed){
-        results.push_back(sequence);
     }
 }
 
@@ -398,7 +406,7 @@ geometry_msgs::msg::Point PathPlanner::lanelet_point_to_ros_point(lanelet::Basic
 }
 
 /**
- * @brief Checks if the two lanelets are immediately related via a left or right relation
+ * @brief Checks if the two lanelets are related via a left or right relation
  *
  * @param l1
  * @param l2
@@ -415,7 +423,23 @@ bool PathPlanner::is_adjacent(const lanelet::ConstLanelet l1, const lanelet::Con
         return false;
     }
 
-    return (relation.get() == lanelet::routing::RelationType::AdjacentLeft || relation.get() == lanelet::routing::RelationType::AdjacentRight);
+    lanelet::routing::RelationType r = relation.get();
+    return (r == lanelet::routing::RelationType::AdjacentLeft 
+            || r == lanelet::routing::RelationType::AdjacentRight
+            || r == lanelet::routing::RelationType::Left
+            || r == lanelet::routing::RelationType::Right);
+}
+
+/**
+ * @brief Checks if the two lanelets are immediately related via a left or right relation
+ *
+ * @param l1
+ * @param l2
+ * @return true if l1 and l2 are adjacent
+ * @return false if l1 or l2 are non-adjacent
+ */
+bool PathPlanner::is_adjacent(const lanelet::Id li1, const lanelet::Id li2){
+    return is_adjacent(map->laneletLayer.get(li1), map->laneletLayer.get(li2));
 }
 
 /**
