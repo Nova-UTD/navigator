@@ -29,6 +29,7 @@ GPSInterfaceNode::GPSInterfaceNode(const std::string & interface_name) // The in
   this->pose_timer = this->create_wall_timer
     (receive_frequency, bind(& GPSInterfaceNode::send_pose, this));
   this->odometry_publisher = this->create_publisher<nav_msgs::msg::Odometry>("/gps/odometry", 10);
+  this->diagnostic_publisher = this->create_publisher<nova_gps::msg::GPSDiagnostic>("/gps/diagnostic", 10);
 }
 
 GPSInterfaceNode::~GPSInterfaceNode() {
@@ -163,6 +164,18 @@ void GPSInterfaceNode::send_pose() {
     // this->velocity_publisher->publish(vel);
     
     nav_msgs::msg::Odometry odom_msg;
+    nova_gps::msg::GPSDiagnostic diag_msg;
+
+    diag_msg.nano = hnrpvt.nano;
+    diag_msg.valid_date = !!(hnrpvt.valid & 1);
+    diag_msg.valid_time = !!(hnrpvt.valid & 2);
+    diag_msg.fully_resolved = !!(hnrpvt.valid & 4);
+    diag_msg.gps_fix = hnrpvt.gpsFix;
+    diag_msg.gps_fix_ok = !!(hnrpvt.flags & 1);
+    diag_msg.diff_soln = !!(hnrpvt.flags & 2);
+    diag_msg.wknset = !!(hnrpvt.flags & 4);
+    diag_msg.towset = !!(hnrpvt.flags & 8);
+    diag_msg.head_veh_valid = !!(hnrpvt.flags & 16);
     odom_msg.header.frame_id = "/earth";
     odom_msg.header.stamp = rclcpp::Clock().now();
 
@@ -179,5 +192,6 @@ void GPSInterfaceNode::send_pose() {
     odom_msg.twist.twist.linear.z = 0; // Assume that the car is traveling on a level plane.
     RCLCPP_INFO(get_logger(), "Publishing GPS message.");
     this->odometry_publisher->publish(odom_msg);
+    this->diagnostic_publisher->publish(diag_msg);
   }
 }

@@ -21,7 +21,7 @@ find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
 # Build message headers
-#rosidl_generate_interfaces(${PROJECT_NAME} "msg/CanFrame.msg")
+rosidl_generate_interfaces(${PROJECT_NAME} "msg/GPSDiagnostic.msg")
 ament_export_dependencies(rosidl_default_runtime)
 
 #rosidl_target_interfaces(i2c_lib ${PROJECT_NAME} "rosidl_typesupport_cpp")
@@ -33,6 +33,7 @@ ament_auto_add_library(i2c_lib STATIC
   src/GPSInterfaceNode.cpp
   src/UBX.cpp)
 target_include_directories(i2c_lib PUBLIC include)
+rosidl_target_interfaces(i2c_lib ${PROJECT_NAME} "rosidl_typesupport_cpp")
 add_executable(interface src/interface.cpp)
 target_include_directories(interface PUBLIC include)
 ament_target_dependencies(interface rclcpp geometry_msgs)
