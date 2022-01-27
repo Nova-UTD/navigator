@@ -15,6 +15,7 @@
   
   <buildtool_depend>nova_auto_package</buildtool_depend>
 
+  <depend>Ceres</depend>
   <depend>eigen_conversions</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
