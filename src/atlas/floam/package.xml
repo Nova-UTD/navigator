@@ -15,19 +15,19 @@
   
   <buildtool_depend>nova_auto_package</buildtool_depend>
 
+  <depend>eigen_conversions</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
-  <depend>sensor_msgs</depend>
-  <depend>roscpp</depend>
-  <depend>rospy</depend>
-  <depend>std_msgs</depend>
-  <depend>rosbag</depend>
-  <depend>tf</depend>
-  <depend>Eigen3</depend>
-  <depend>eigen_conversions</depend>
-
+  <depend>PCL</depend>
   <depend>pcl_conversions</depend>
-
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_eigen</depend>
+  <depend>tf2_ros</depend>
+   <depend>tf2_sensor_msgs</depend>
+  
   <export>
   </export>
 </package>

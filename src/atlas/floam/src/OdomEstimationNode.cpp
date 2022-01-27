@@ -6,20 +6,16 @@
 
 using namespace Nova::Atlas;
 
-class OdomEstimationNode : public rclcpp::Node {
+OdomEstimationNode::OdomEstimationNode() : Node("odom_estimation_node") {
+    edge_pcd_sub_ = this->create_subscription<PointCloud2>("/laser_cloud_edge", 100, [this](PointCloud2::SharedPtr msg) {velodyneEdgeHandler(msg);});
+    surf_pcd_sub_ = this->create_subscription<PointCloud2>("/laser_cloud_srf", 100, [this](PointCloud2::SharedPtr msg) {velodyneSurfHandler(msg);});
+    laser_odom_pub_ = this->create_publisher<Odometry>("/odom", 100);
+    setLidarParams();
+    
+    this->create_wall_timer(2ms, [this]() {estimateOdometry();});
+}
 
-public:
-    OdomEstimationNode() : Node("odom_estimation_node") {
-        edge_pcd_sub_ = this->create_subscription<PointCloud2>("/laser_cloud_edge", 100, [this](PointCloud2::SharedPtr msg) {velodyneEdgeHandler(msg);});
-        surf_pcd_sub_ = this->create_subscription<PointCloud2>("/laser_cloud_srf", 100, [this](PointCloud2::SharedPtr msg) {velodyneSurfHandler(msg);});
-        laser_odom_pub_ = this->create_publisher<Odometry>("/odom", 100);
-        setLidarParams();
-        
-        this->create_wall_timer(2ms, std::bind(&OdomEstimationNode::estimateOdometry));
-    }
-
-private:
-    void setLidarParams() {
+void OdomEstimationNode::setLidarParams() {
         this->declare_parameter<double>("scan_period", 0.1);
         this->declare_parameter<double>("vertical_angle", 2.0);
         this->declare_parameter<double>("max_dis", 90.0);
@@ -38,7 +34,7 @@ private:
         odom_estimator_.init(lidar_param_, map_res);
     }
 
-    void estimateOdometry(){
+    void OdomEstimationNode:: estimateOdometry(){
         if(!pointCloudEdgeBuf.empty() && !pointCloudSurfBuf.empty()){
 
             //read data
@@ -80,7 +76,7 @@ private:
                 odom_estimator_.updatePointsToMap(pointcloud_edge_in, pointcloud_surf_in);
                 end = std::chrono::system_clock::now();
                 std::chrono::duration<float> elapsed_seconds = end - start;
-                total_frame++;
+                // total_frame++;
                 float time_temp = elapsed_seconds.count() * 1000;
                 total_time+=time_temp;
                 RCLCPP_INFO(this->get_logger(), "average odom estimation time %f ms \n \n", total_time/total_frame);
@@ -116,21 +112,19 @@ private:
         }
     }
 
-    void velodyneSurfHandler(const PointCloud2::SharedPtr &laserCloudMsg)
+    void OdomEstimationNode::velodyneSurfHandler(const PointCloud2::SharedPtr &laserCloudMsg)
     {
         mutex_lock_.lock();
         pointCloudSurfBuf.push(laserCloudMsg);
         mutex_lock_.unlock();
     }
-    void velodyneEdgeHandler(const PointCloud2::SharedPtr &laserCloudMsg)
+    void OdomEstimationNode::velodyneEdgeHandler(const PointCloud2::SharedPtr &laserCloudMsg)
     {
         mutex_lock_.lock();
         pointCloudEdgeBuf.push(laserCloudMsg);
         mutex_lock_.unlock();
     }
 
-
-};
 
 
 

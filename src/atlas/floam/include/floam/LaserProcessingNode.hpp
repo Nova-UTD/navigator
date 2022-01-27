@@ -31,8 +31,8 @@
 #include <pcl/point_types.h>
 
 //local lib
-#include "lidar.h"
-#include "laserProcessingClass.h"
+#include <floam/lidar.h>
+#include <floam/laserProcessingClass.h>
 
 using sensor_msgs::msg::PointCloud2;
 using namespace std::chrono_literals;

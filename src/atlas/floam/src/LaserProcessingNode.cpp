@@ -29,7 +29,7 @@ LaserProcessingNode::LaserProcessingNode() : Node("laser_processing_node") {
 
         laser_processor_.init(lidar_param_);
 
-        this->create_wall_timer(2ms, std::bind(&LaserProcessingNode::processCloud));
+        this->create_wall_timer(2ms, [this]() {processCloud();});
     }
 
 void LaserProcessingNode::processCloud(){
@@ -99,4 +99,15 @@ void LaserProcessingNode::processCloud(){
         pcd_queue_.push(laserCloudMsg);
         mutex_lock_.unlock();
     }
+
+int main(int argc, char **argv)
+{
+    rclcpp::init(argc, argv);
+
+    rclcpp::spin(std::make_shared<LaserProcessingNode>());
+
+    rclcpp::shutdown();
+
+    return 0;
+}
 

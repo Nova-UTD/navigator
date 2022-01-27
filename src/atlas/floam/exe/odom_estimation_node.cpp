@@ -1,5 +1,7 @@
 #include "floam/OdomEstimationNode.hpp"
 
+using namespace Nova::Atlas;
+
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
