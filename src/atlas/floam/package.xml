@@ -13,7 +13,7 @@
   <url>https://wanghan.pro</url>
   <author email="wh200720041@gmail.com">Han Wang</author>
   
-  <buildtool_depend>nova_auto_package</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>Ceres</depend>
   <depend>eigen_conversions</depend>
@@ -30,5 +30,6 @@
    <depend>tf2_sensor_msgs</depend>
   
   <export>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>

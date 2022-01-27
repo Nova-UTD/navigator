@@ -97,4 +97,9 @@ ${PCL_LIBRARIES}
 ${CERES_LIBRARIES}
 )
 
+install(TARGETS laser_processing_node
+  DESTINATION lib/${PROJECT_NAME})
+  install(TARGETS odom_estimation_node
+  DESTINATION lib/${PROJECT_NAME})
+
 ament_package()

@@ -8,7 +8,7 @@ using namespace Nova::Atlas;
 
 OdomEstimationNode::OdomEstimationNode() : Node("odom_estimation_node") {
     edge_pcd_sub_ = this->create_subscription<PointCloud2>("/laser_cloud_edge", 100, [this](PointCloud2::SharedPtr msg) {velodyneEdgeHandler(msg);});
-    surf_pcd_sub_ = this->create_subscription<PointCloud2>("/laser_cloud_srf", 100, [this](PointCloud2::SharedPtr msg) {velodyneSurfHandler(msg);});
+    surf_pcd_sub_ = this->create_subscription<PointCloud2>("/laser_cloud_surf", 100, [this](PointCloud2::SharedPtr msg) {velodyneSurfHandler(msg);});
     laser_odom_pub_ = this->create_publisher<Odometry>("/odom", 100);
     setLidarParams();
     

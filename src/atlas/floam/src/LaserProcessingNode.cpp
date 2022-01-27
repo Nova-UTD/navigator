@@ -34,7 +34,7 @@ LaserProcessingNode::LaserProcessingNode() : Node("laser_processing_node") {
 
 void LaserProcessingNode::processCloud(){
         if(!pcd_queue_.empty()){
-            
+            RCLCPP_INFO(this->get_logger(), "Processing cloud.");
             // Pop latest PointCloud2 from queue and convert to PCL cloud
             mutex_lock_.lock();
             pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZI>());
@@ -51,6 +51,7 @@ void LaserProcessingNode::processCloud(){
             // start = std::chrono::system_clock::now();
 
             // MAGIC HERE v
+            RCLCPP_INFO(this->get_logger(), "Extracting features...");
             laser_processor_.featureExtraction(pointcloud_in,pointcloud_edge,pointcloud_surf);
             // end = std::chrono::system_clock::now();
             // std::chrono::duration<float> elapsed_seconds = end - start;

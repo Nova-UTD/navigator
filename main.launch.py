@@ -75,28 +75,22 @@ def generate_launch_description():
     )
 
     # LOCALIZATION
-    ndt = Node(
-        package='ndt_nodes',
-        executable='p2d_ndt_localizer_exe',
-        namespace='localization',
-        name='p2d_ndt_localizer_node',
-        parameters=[(path.join(param_dir,"localization","ndt_localizer.param.yaml"))],
+
+    floam_laser_processor = Node(
+        package='floam',
+        executable='laser_processing_node',
+        name='floam_laser_processor',
         remappings=[
-            ("points_in", "/lidars/points_fused_downsampled"),
-            ("observation_republish", "/lidars/points_fused_viz"),
+            ('/velodyne_points','/lidar_front/points_raw')
         ]
     )
-    icp_nudger = Node(
-        package='icp_nudger',
-        executable='icp_nudger',
-        parameters=[(path.join(param_dir,"atlas","icp_nudger.param.yaml"))],
-        remappings=[
-            ("/gps", "/gps/odom"),
-            ("/lidar", "/lidar_front/points_raw"),
-            ("/map", "/map/pcd")
-        ],
-        output='screen'
+    floam_odom_estimator = Node(
+        package='floam',
+        executable='odom_estimation_node',
+        name='floam_odom_estimator',
+        
     )
+    
     robot_localization = Node(
         package='robot_localization',
         executable='ukf_node',
@@ -263,14 +257,16 @@ def generate_launch_description():
 
         # LOCALIZATION
         # ndt,
+        floam_laser_processor,
+        floam_odom_estimator,
         robot_localization,
         # icp_nudger,
         # deviation_reporter,
 
         # MAPPING
         # lanelet_server,
-        lanelet_visualizer,
-        pcd_loader,
+        # lanelet_visualizer,
+        # pcd_loader,
 
         # MISC
         odom_bl_link,
@@ -278,7 +274,7 @@ def generate_launch_description():
         # visuals,
 
         # PERCEPTION
-        lidar_driver_front,
+        # lidar_driver_front,
         # lidar_front,
         # lidar_rear,
         # lidar_front_filter,
