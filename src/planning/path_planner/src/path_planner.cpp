@@ -134,7 +134,7 @@ CostedPath PathPlanner::get_path(const LaneletSequence &lanelet_sequence, const 
         // Split based on the last path point and only take the part of
         // the lanelet centerline to that needs to be traveled
         // lanelet-compatible point for current position
-        lanelet::BasicPoint2d l_point = PathPlanner::ros_point_to_lanelet_point(pose.position);
+        lanelet::BasicPoint2d l_point = PathPlanner::ros_point_to_lanelet_point(path.points.back());
 
         // Splitting by current position means we can travel only the half we need to
         lanelet::BasicLineString2d dont_need_to_travel;
