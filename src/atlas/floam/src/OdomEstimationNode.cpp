@@ -11,8 +11,7 @@ OdomEstimationNode::OdomEstimationNode() : Node("odom_estimation_node") {
     surf_pcd_sub_ = this->create_subscription<PointCloud2>("/laser_cloud_surf", 100, [this](PointCloud2::SharedPtr msg) {velodyneSurfHandler(msg);});
     laser_odom_pub_ = this->create_publisher<Odometry>("/odom", 100);
     setLidarParams();
-    
-    this->create_wall_timer(2ms, [this]() {estimateOdometry();});
+    timer_ = this->create_wall_timer( 2ms, std::bind(&OdomEstimationNode::estimateOdometry, this));
 }
 
 void OdomEstimationNode::setLidarParams() {
@@ -89,8 +88,20 @@ void OdomEstimationNode::setLidarParams() {
             Eigen::Vector3d t_current = odom_estimator_.odom.translation();
 
             // We don't want to publish a TF here. WSH.
-            // static tf::TransformBroadcaster br;
-            // tf::Transform transform;
+            tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+            geometry_msgs::msg::TransformStamped t;
+            t.transform.translation.x = t_current.x();
+            t.transform.translation.y = t_current.y();
+            t.transform.translation.z = t_current.z();
+            t.transform.rotation.w = q_current.w();
+            t.transform.rotation.x = q_current.x();
+            t.transform.rotation.y = q_current.y();
+            t.transform.rotation.z = q_current.z();
+            t.header.frame_id = "map";
+            t.header.stamp = this->get_clock()->now();
+            t.child_frame_id = "base_link";
+            tf_broadcaster_->sendTransform(t);
+            
             // transform.setOrigin( tf::Vector3(t_current.x(), t_current.y(), t_current.z()) );
             // tf::Quaternion q(q_current.x(),q_current.y(),q_current.z(),q_current.w());
             // transform.setRotation(q);

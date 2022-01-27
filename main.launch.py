@@ -259,7 +259,7 @@ def generate_launch_description():
         # ndt,
         floam_laser_processor,
         floam_odom_estimator,
-        robot_localization,
+        # robot_localization,
         # icp_nudger,
         # deviation_reporter,
 

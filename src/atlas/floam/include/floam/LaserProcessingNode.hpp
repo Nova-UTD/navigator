@@ -57,6 +57,7 @@ namespace Atlas {
         rclcpp::Publisher<PointCloud2>::SharedPtr surf_pcd_pub_;
         rclcpp::Publisher<PointCloud2>::SharedPtr filtered_pcd_pub_;
         rclcpp::Subscription<PointCloud2>::SharedPtr lidar_sub_;
+        rclcpp::TimerBase::SharedPtr timer_;
     };
 
 } // Speedometer

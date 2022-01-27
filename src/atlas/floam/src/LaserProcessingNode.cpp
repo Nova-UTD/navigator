@@ -8,6 +8,8 @@ using namespace Nova::Atlas;
 
 LaserProcessingNode::LaserProcessingNode() : Node("laser_processing_node") {
 
+        RCLCPP_INFO(this->get_logger(), "Running!");
+
         lidar_sub_ = this->create_subscription<PointCloud2>("/velodyne_points", 10, [this](PointCloud2::SharedPtr msg) {velodyneHandler(msg);});
         filtered_pcd_pub_ = this->create_publisher<PointCloud2>("/velodyne_points_filtered", 100);
         edge_pcd_pub_ = this->create_publisher<PointCloud2>("/laser_cloud_edge", 100);
@@ -27,14 +29,19 @@ LaserProcessingNode::LaserProcessingNode() : Node("laser_processing_node") {
         lidar_param_.setMaxDistance(this->get_parameter("max_dis").as_double());
         lidar_param_.setMinDistance(this->get_parameter("min_dis").as_double());
 
+        RCLCPP_INFO(this->get_logger(), "Initing with params...!");
         laser_processor_.init(lidar_param_);
 
-        this->create_wall_timer(2ms, [this]() {processCloud();});
+        RCLCPP_INFO(this->get_logger(), "Creating wall timer");
+        timer_ = this->create_wall_timer( 2ms, std::bind(&LaserProcessingNode::processCloud, this));
+        // auto timer = this->create_wall_timer(2s, [this]() {
+        //     RCLCPP_INFO(this->get_logger(), "Running!");
+        //     processCloud();
+        // });
     }
 
 void LaserProcessingNode::processCloud(){
         if(!pcd_queue_.empty()){
-            RCLCPP_INFO(this->get_logger(), "Processing cloud.");
             // Pop latest PointCloud2 from queue and convert to PCL cloud
             mutex_lock_.lock();
             pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZI>());
@@ -51,7 +58,6 @@ void LaserProcessingNode::processCloud(){
             // start = std::chrono::system_clock::now();
 
             // MAGIC HERE v
-            RCLCPP_INFO(this->get_logger(), "Extracting features...");
             laser_processor_.featureExtraction(pointcloud_in,pointcloud_edge,pointcloud_surf);
             // end = std::chrono::system_clock::now();
             // std::chrono::duration<float> elapsed_seconds = end - start;
@@ -85,7 +91,7 @@ void LaserProcessingNode::processCloud(){
             surf_pcd_pub_->publish(surfPointsMsg);
 
         } else {
-            RCLCPP_WARN(this->get_logger(), "PCD buffer empty. Is Lidar data being published?");
+            // RCLCPP_WARN(this->get_logger(), "PCD buffer empty. Is Lidar data being published?");
         }
     }
 
