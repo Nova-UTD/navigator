@@ -17,7 +17,7 @@ project(floam)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-add_executable(laser_processing_node src/LaserProcessingNode.cpp)
+add_executable(laser_processing_node src/LaserProcessingNode.cpp src/lidar.cpp src/laserProcessingClass.cpp)
 
 
 # target_sources(laser_processing_node PUBLIC 
