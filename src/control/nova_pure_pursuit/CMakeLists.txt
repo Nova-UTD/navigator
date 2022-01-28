@@ -1,18 +1,45 @@
-# Filename:  CMakeLists.txt
-# Author:    Joshua Williams
-# Email:     joshmackwilliams@protonmail.com
-# Copyright: 2021, Nova UTD
-# License:   MIT License
-
-# No package name is specified above since this is our standard
-# CMakeLists.txt file and will be the same across multiple
-# projects. To use it, just add nova_auto_package as a
-# buildtool_depend in package.xml and copy this file into the root of
-# your package.
-
 cmake_minimum_required(VERSION 3.5)
-get_filename_component(directory_name ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-project(${directory_name})
+project(nova_pure_pursuit)
 
-find_package(nova_auto_package REQUIRED)
-nova_auto_package()
+# Default to C99
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
+
+# Default to C++14
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
+
+
+ament_auto_add_library(pp_lib STATIC
+  src/PurePursuit.cpp
+  src/PurePursuitNode.cpp)
+target_include_directories(pp_lib PUBLIC include)
+
+
+add_executable(LateralController src/LateralController.cpp)
+ament_target_dependencies(LateralController rclcpp)
+target_link_libraries(LateralController pp_lib)
+
+
+install(TARGETS LateralController DESTINATION lib/${PROJECT_NAME})
+
+
+install(TARGETS LateralController
+  DESTINATION lib/${PROJECT_NAME})
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_auto_package(INSTALL_TO_SHARE launch)
