@@ -257,13 +257,22 @@ def generate_launch_description():
     obstacle_republisher = Node(
         package='obstacle_repub',
         name='obstacle_republisher_node',
-        executable='obstacle_republisher_exe'
+        executable='obstacle_repub_exe',
+        remappings=[
+            ('svl_obstacle_array', '/ground_truth_3d/detections'),
+            ('zed_obstacle_array', '/zed_2i/obj_det/objects'),
+            ('nova_obstacle_array', '/obstacles/array')
+        ]
     )
 
     obstacle_drawer = Node(
         package='obstacle_drawer',
         name='obstacle_drawer_node',
-        executable='obstacle_drawer_exe'
+        executable='obstacle_drawer_exe',
+        remappings=[
+            ('obstacle_marker_array', '/obstacles/marker_array'),
+            ('nova_obstacle_array', '/obstacles/array')
+        ]
     )
     
     # VIZ

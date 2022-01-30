@@ -29,9 +29,9 @@ find_package(obstacle_classes REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
-
-add_executable(obstacle_republisher_exe src/obstacle_republisher.cpp)
-ament_target_dependencies(obstacle_republisher_exe 
+add_library(obstacle_repub_lib STATIC src/obstacle_repub_node.cpp)
+target_include_directories(obstacle_repub_lib PUBLIC include)
+ament_target_dependencies(obstacle_repub_lib 
   rclcpp 
   lgsvl_msgs 
   zed_interfaces 
@@ -41,25 +41,20 @@ ament_target_dependencies(obstacle_republisher_exe
   tf2_geometry_msgs
 )
 
+add_executable(obstacle_repub_exe src/obstacle_repub.cpp)
+target_link_libraries(obstacle_repub_exe obstacle_repub_lib)
 
 install(TARGETS
-  obstacle_republisher_exe
+  obstacle_repub_exe
   DESTINATION lib/${PROJECT_NAME}
 )
   
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # uncomment the line when a copyright and license is not present in all source files
-  set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # uncomment the line when this package is not in a git repo
-  set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
   ament_add_gtest(tests test/obstacle_repub_test.cpp)
-  ament_target_dependencies(tests zed_interfaces voltron_msgs)
-  target_link_libraries(tests gtest_main)
+  ament_target_dependencies(tests voltron_test_utils)
+  target_link_libraries(tests gtest_main obstacle_repub_lib)
   
 endif()
 

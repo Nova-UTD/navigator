@@ -10,7 +10,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>lgsvl_msgs</depend>
+  <depend>lgsvl_msgs</depend> 
   <depend>zed_interfaces</depend>
   <depend>voltron_msgs</depend>
   <depend>obstacle_classes</depend>
@@ -19,7 +19,11 @@
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_cmake_gtest</test_depend>
-
+  <test_depend>rclcpp</test_depend>
+  <test_depend>zed_interfaces</test_depend>
+  <test_depend>voltron_msgs</test_depend>
+  <test_depend>obstacle_classes</test_depend>
+  <test_depend>voltron_test_utils</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
