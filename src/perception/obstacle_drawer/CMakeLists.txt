@@ -1,3 +1,9 @@
+# Filename:  CMakeLists.txt
+# Author:    Ragib "Rae" Arnab
+# Email:     ria190000@utdallas.edu
+# Copyright: 2021, Nova UTD
+# License:   MIT License
+
 cmake_minimum_required(VERSION 3.5)
 project(obstacle_drawer)
 

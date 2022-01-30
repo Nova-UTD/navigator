@@ -4,7 +4,7 @@
   <name>obstacle_drawer</name>
   <version>0.0.0</version>
   <description>Draws obstacles in RViz with markers.</description>
-  <maintainer email="ria190000@utdallas.edu">rae0924</maintainer>
+    <maintainer email="ria190000@utdallas.edu">rae0924</maintainer>
   <license>MIT License</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -12,9 +12,6 @@
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>voltron_test_utils</test_depend>
-  <test_depend>rclcpp</test_depend>
-  <test_depend>voltron_msgs</test_depend>
-  <test_depend>obstacle_classes</test_depend>
 
   <depend>rclcpp</depend>
   <depend>voltron_msgs</depend>
@@ -26,3 +23,5 @@
     <build_type>ament_cmake</build_type>
   </export>
 </package>
+
+

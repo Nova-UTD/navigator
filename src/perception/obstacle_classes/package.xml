@@ -3,9 +3,9 @@
 <package format="3">
   <name>obstacle_classes</name>
   <version>0.0.0</version>
-  <description>Defines obstacle classes used in navigator.</description>
-  <maintainer email="ria190000@utdallas.edu">rae0924</maintainer>
-  <license>MIT License</license>
+  <description>TODO: Package description</description>
+  <maintainer email="rarnab@todo.todo">rarnab</maintainer>
+  <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

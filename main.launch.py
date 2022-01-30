@@ -237,6 +237,7 @@ def generate_launch_description():
             ('vehicle_state_command', '/vehicle/state_command')
         ]
     )
+    
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
