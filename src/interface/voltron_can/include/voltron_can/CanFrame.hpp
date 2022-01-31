@@ -20,7 +20,7 @@ namespace Voltron {
   namespace Can {
     class CanFrame {
     public:
-      typedef uint16_t identifier_t;
+      typedef uint32_t identifier_t;
       typedef uint64_t data_t;
 
       // Construct from raw data
