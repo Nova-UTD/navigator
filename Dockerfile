@@ -46,7 +46,9 @@ RUN apt update && \
 # FILES HERE should be moved to "rosdep.sh" periodically.
 RUN apt update && \
     apt install -y ros-foxy-lgsvl-bridge \
-    ros-foxy-velodyne
+    ros-foxy-velodyne \
+    ros-foxy-angles \
+    libpcap-dev
 
 # install overlay dependencies
 
