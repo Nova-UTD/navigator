@@ -20,18 +20,18 @@ def generate_launch_description():
     map_name = "grandloop"
 
     # CONTROL
-    steering_controller = Node(
-        package='vt_steering_controller',
-        executable='controller_exe',
-        name='controller_exe',
-        namespace='control'
-    )
+#    steering_controller = Node(
+#        package='vt_steering_controller',
+#        executable='controller_exe',
+#        name='controller_exe',
+#        namespace='control'
+#    )
 
     # INTERFACE
-    vehicle_bridge = Node(
-        package='vt_vehicle_bridge',
-        executable='svl_bridge_exe',
-    )
+#    vehicle_bridge = Node(
+#        package='vt_vehicle_bridge',
+#        executable='svl_bridge_exe',
+#    )
 
     svl_bridge = Node(
         executable='lgsvl_bridge',
@@ -146,11 +146,11 @@ def generate_launch_description():
         arguments=[path.join(launch_dir, "data", "voltron.urdf")]
     )
     
-    visuals = Node(
-        package='vt_viz',
-        name='vt_viz_node',
-        executable='vt_viz_exe',
-    )
+#    visuals = Node(
+#        package='vt_viz',
+#        name='vt_viz_node',
+#        executable='vt_viz_exe',
+#    )
 
     # PERCEPTION
     lidar_front = Node(
@@ -245,14 +245,14 @@ def generate_launch_description():
         parameters=[(path.join(param_dir,"planning","lane_planner.param.yaml"))],
         remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
     )
-    parking_planner = Node(
-        package='parking_planner_nodes',
-        name='parking_planner_node',
-        namespace='planning',
-        executable='parking_planner_node_exe',
-        parameters=[(path.join(param_dir,"planning","parking_planner.param.yaml"))],
-        remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
-    )
+#    parking_planner = Node(
+#        package='parking_planner_nodes',
+#        name='parking_planner_node',
+#        namespace='planning',
+#        executable='parking_planner_node_exe',
+#        parameters=[(path.join(param_dir,"planning","parking_planner.param.yaml"))],
+#        remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
+#    )
 
     # VIZ
     lanelet_visualizer = Node(
