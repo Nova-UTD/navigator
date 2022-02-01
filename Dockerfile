@@ -42,7 +42,14 @@ RUN apt update && \
     add-apt-repository ppa:borglab/gtsam-release-4.0 && \
     apt install -y libgtsam-dev libgtsam-unstable-dev && \
     rosdep update && rosdep install -y -r --from-paths src --ignore-src
-RUN apt update && apt install ros-foxy-lgsvl-bridge
+
+# FILES HERE should be moved to "rosdep.sh" periodically.
+RUN apt update && \
+    apt install -y ros-foxy-lgsvl-bridge \
+    ros-foxy-velodyne \
+    ros-foxy-angles \
+    libpcap-dev
+
 # install overlay dependencies
 
 
