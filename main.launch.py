@@ -180,8 +180,7 @@ def generate_launch_description():
 
     curb_detector = Node(
         package='curb_detection',
-        executable='curb_detector',
-        namespace='lidar_front'
+        executable='curb_detector'
     )
     
     # PLANNING
