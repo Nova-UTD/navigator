@@ -18,12 +18,13 @@ class CurbDetector(Node):
 
     def listener_callback(self, msg: PointCloud2):
         npcloud = rnp.numpify(msg)
-        # ring_mask = npcloud[:][4] < 3
-        for row in npcloud:
-            if row['ring'] <= 4:
-                self.get_logger().info('I heard: "%s"' % row)
-        # npcloud = npcloud[mask]
-        # self.get_logger().info('I heard: "%s"' % npcloud)
+        x = npcloud['x']
+        y = npcloud['y']
+        z = npcloud['z']
+        i = npcloud['intensity']
+        r = npcloud['ring']
+        self.get_logger().info(str(x[:,:4]))
+        np.savetxt('foo.csv', x[:,:4])
 
 
 def main(args=None):
