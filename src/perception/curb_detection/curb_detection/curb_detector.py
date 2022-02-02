@@ -17,9 +17,13 @@ class CurbDetector(Node):
             10)
 
     def listener_callback(self, msg: PointCloud2):
-        data = rnp.numpify(msg)
-        data: np.ndarray
-        self.get_logger().info('I heard: "%s"' % data)
+        npcloud = rnp.numpify(msg)
+        # ring_mask = npcloud[:][4] < 3
+        for row in npcloud:
+            if row['ring'] <= 4:
+                self.get_logger().info('I heard: "%s"' % row)
+        # npcloud = npcloud[mask]
+        # self.get_logger().info('I heard: "%s"' % npcloud)
 
 
 def main(args=None):

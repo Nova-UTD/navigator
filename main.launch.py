@@ -177,6 +177,12 @@ def generate_launch_description():
         namespace='lidar_rear',
         parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_rear.param.yaml"))]
     )
+
+    curb_detector = Node(
+        package='curb_detection',
+        executable='curb_detector',
+        namespace='lidar_front'
+    )
     
     # PLANNING
     route_planner = Node(
@@ -259,10 +265,11 @@ def generate_launch_description():
         # visuals,
 
         # PERCEPTION
-        lidar_driver_front,
-        lidar_pointcloud_front,
-        lidar_driver_rear,
-        lidar_pointcloud_rear,
+        # lidar_driver_front,
+        # lidar_pointcloud_front,
+        # lidar_driver_rear,
+        # lidar_pointcloud_rear,
+        curb_detector,
 
         # PLANNING
         # route_planner,
