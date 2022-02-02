@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "nova_gps/types.hpp"
+#include <iostream>
 namespace Nova {
 namespace UBX {
 
@@ -62,6 +63,42 @@ struct HNRPVT {
   uint8_t __2;
   uint8_t __3;
   uint8_t __4;
+  // public:
+  friend std::ostream& operator <<(std::ostream& os, HNRPVT const& a) {
+    os <<
+      "{\n"<<
+      "\tiTOW     =  " << a.iTOW << "\n" <<
+      "\tyear     =  " << a.year << "\n" <<
+      "\tmonth    =  " << (int)a.month << "\n" <<
+      "\tday      =  " << (int)a.day << "\n" <<
+      "\thour     =  " << (int)a.hour << "\n" <<
+      "\tmin      =  " << (int)a.min << "\n" <<
+      "\tsec      =  " << (int)a.sec << "\n" <<
+      "\tvalid    =  " << (int)a.valid << "\n" <<
+      "\tnano     =  " << a.nano << "\n" <<
+      "\tgpsFix   =  " << (int)a.gpsFix << "\n" <<
+      "\tflags    =  " << (int)a.flags << "\n" <<
+      "\t_1       =  " << (int)a._1 << "\n" <<
+      "\t_2       =  " << (int)a._2 << "\n" <<
+      "\tlon      =  " << a.lon / (double)1e7 << "\n" <<
+      "\tlat      =  " << a.lat / (double)1e7 << "\n" <<
+      "\theight   =  " << a.height << "\n" <<
+      "\thMSL     =  " << a.hMSL << "\n" <<
+      "\tgSpeed   =  " << a.gSpeed << "\n" <<
+      "\tspeed    =  " << a.speed << "\n" <<
+      "\theadMot  =  " << a.headMot / (double)1e5 << "\n" <<
+      "\theadVeh  =  " << a.headVeh / (double)1e5 << "\n" <<
+      "\thAcc     =  " << a.hAcc << "\n" <<
+      "\tvAcc     =  " << a.vAcc << "\n" <<
+      "\tsAcc     =  " << a.sAcc << "\n" <<
+      "\theadAcc  =  " << a.headAcc / (double)1e5 << "\n" <<
+      "\t__1      =  " << a.__1 << "\n" <<
+      "\t__2      =  " << a.__2 << "\n" <<
+      "\t__3      =  " << a.__3 << "\n" <<
+      "\t__4      =  " << a.__4 << "\n" <<
+      "}";
+      return os;
+  }
 };
 struct CFGPRT_I2C {
   uint8_t portID;       // set to 0 for I2C
@@ -74,5 +111,8 @@ struct CFGPRT_I2C {
   uint16_t flags;       // 32.10.25.5 Fig 5
   uint8_t reserved3[2];
 };
+
+HNRPVT parse_hnrpvt(const std::unique_ptr<UBXMessage> msg);
+
 }
 }

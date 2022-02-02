@@ -41,19 +41,19 @@ uint32_t ByteBuffer::read_dword() {
 }
 
 int8_t ByteBuffer::read_signed_byte() {
-  return (int8_t)this->operator[](this->pointer++);
+  return static_cast<int8_t>(this->operator[](this->pointer++));
 }
 
 int16_t ByteBuffer::read_signed_short() {
-  int16_t low = read_signed_byte();
-  int16_t hi  = read_signed_byte();
-  return (hi << 8) | low;
+  uint16_t low = read_byte();
+  uint16_t hi  = read_byte();
+  return static_cast<int16_t>((hi << 8) | low);
 }
 
 int32_t ByteBuffer::read_signed_int() {
-  int32_t low = read_signed_short();
-  int32_t hi  = read_signed_short();
-  return (hi << 16) | low;
+  uint32_t low = read_word();
+  uint32_t hi  = read_word();
+  return static_cast<int32_t>((hi << 16) | low);
 }
 
 std::size_t ByteBuffer::seek(std::size_t offset, int whence) {

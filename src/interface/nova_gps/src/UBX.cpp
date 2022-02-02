@@ -32,8 +32,8 @@ std::unique_ptr<std::vector<std::unique_ptr<UBXMessage>>> Nova::UBX::parse_ubx_m
     msg->data = std::move(data_buffer);
     auto calculated_checksum = calculate_checksum(*msg);
     if(calculated_checksum != read_checksum) {
-      // std::cout << calculated_checksum << std::endl;
-      // std::cout << read_checksum << std::endl;
+      //std::cout << calculated_checksum << std::endl;
+      //std::cout << read_checksum << std::endl;
       //throw std::runtime_error("Checksum mismatch");
     }
     split->push_back(std::move(msg));
@@ -69,3 +69,41 @@ std::unique_ptr<Nova::UBX::UBXMessage> Nova::UBX::set_message_rate(uint8_t messa
   msg->checksum = calculate_checksum(*msg);
   return msg;
 }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+Nova::UBX::HNRPVT Nova::UBX::parse_hnrpvt(const std::unique_ptr<Nova::UBX::UBXMessage> msg) {
+  Nova::UBX::HNRPVT st = {
+    .iTOW = msg->data->read_dword(),
+    .year = msg->data->read_word(),
+    .month = msg->data->read_byte(),
+    .day = msg->data->read_byte(),
+    .hour = msg->data->read_byte(),
+    .min = msg->data->read_byte(),
+    .sec = msg->data->read_byte(),
+    .valid = msg->data->read_byte(),
+    .nano = msg->data->read_signed_int(),
+    .gpsFix = msg->data->read_byte(),
+    .flags = msg->data->read_byte(),
+    ._1 = msg->data->read_byte(),
+    ._2 = msg->data->read_byte(),
+    .lon = msg->data->read_signed_int(),
+    .lat = msg->data->read_signed_int(),
+    .height = msg->data->read_signed_int(),
+    .hMSL = msg->data->read_signed_int(),
+    .gSpeed = msg->data->read_signed_int(),
+    .speed = msg->data->read_signed_int(),
+    .headMot = msg->data->read_signed_int(),
+    .headVeh = msg->data->read_signed_int(),
+    .hAcc = msg->data->read_dword(),
+    .vAcc = msg->data->read_dword(),
+    .sAcc = msg->data->read_dword(),
+    .headAcc = msg->data->read_dword(),
+    .__1 = msg->data->read_byte(),
+    .__2 = msg->data->read_byte(),
+    .__3 = msg->data->read_byte(),
+    .__4 = msg->data->read_byte(),
+  };
+  return st;
+}
+#pragma GCC diagnostic pop

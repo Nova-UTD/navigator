@@ -53,43 +53,7 @@ double nmea_to_deg(std::string & nmea) {
   }
   return value;
 }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-Nova::UBX::HNRPVT parse_hnrpvt(const std::unique_ptr<Nova::UBX::UBXMessage> msg) {
-  Nova::UBX::HNRPVT st = {
-    .iTOW = msg->data->read_dword(),
-    .year = msg->data->read_word(),
-    .month = msg->data->read_byte(),
-    .day = msg->data->read_byte(),
-    .hour = msg->data->read_byte(),
-    .min = msg->data->read_byte(),
-    .sec = msg->data->read_byte(),
-    .valid = msg->data->read_byte(),
-    .nano = msg->data->read_signed_int(),
-    .gpsFix = msg->data->read_byte(),
-    .flags = msg->data->read_byte(),
-    ._1 = msg->data->read_byte(),
-    ._2 = msg->data->read_byte(),
-    .lon = msg->data->read_signed_int(),
-    .lat = msg->data->read_signed_int(),
-    .height = msg->data->read_signed_int(),
-    .hMSL = msg->data->read_signed_int(),
-    .gSpeed = msg->data->read_signed_int(),
-    .speed = msg->data->read_signed_int(),
-    .headMot = msg->data->read_signed_int(),
-    .headVeh = msg->data->read_signed_int(),
-    .hAcc = msg->data->read_dword(),
-    .vAcc = msg->data->read_dword(),
-    .sAcc = msg->data->read_dword(),
-    .headAcc = msg->data->read_dword(),
-    .__1 = msg->data->read_byte(),
-    .__2 = msg->data->read_byte(),
-    .__3 = msg->data->read_byte(),
-    .__4 = msg->data->read_byte(),
-  };
-  return st;
-}
-#pragma GCC diagnostic pop
+
 void GPSInterfaceNode::send_pose() {
   bool found = false;
   std::unique_ptr<Nova::UBX::UBXMessage> raw_msg;
@@ -178,6 +142,7 @@ void GPSInterfaceNode::send_pose() {
     diag_msg.towset = !!(hnrpvt.flags & 8);
     diag_msg.head_veh_valid = !!(hnrpvt.flags & 16);
     odom_msg.header.frame_id = "/earth";
+    odom_msg.child_frame_id = "/base_link";
     odom_msg.header.stamp = rclcpp::Clock().now();
 
     odom_msg.pose.pose.position = gps_position;
