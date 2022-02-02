@@ -37,7 +37,7 @@ FloatReporterNode::FloatReporterNode() : rclcpp::Node("float_reporter") {
 }
 
 FloatReporterNode::FloatReporterNode(float_reporter_params params)
-  : rclcpp::Node("steering_reporter") {
+  : rclcpp::Node("float_reporter") {
   this->params = params;
   this->init();
 }
