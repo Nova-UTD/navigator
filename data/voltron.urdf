@@ -86,7 +86,7 @@
   <joint name="lidar_front_joint" type="fixed">
     <parent link="base_link"/>
     <child link="lidar_front"/>
-    <origin xyz="3.4 -0.902 0.7876" rpy="0 0 -1.45"/>
+    <origin xyz="3.4 -0.902 0.7876" rpy="-0.015 -0.03 -1.45"/>
   </joint>
 
   <link name="lidar_rear">
@@ -113,7 +113,7 @@
   <joint name="lidar_rear_joint" type="fixed">
     <parent link="base_link"/>
     <child link="lidar_rear"/>
-    <origin xyz="-0.1 0.9 1.0" rpy="0 -0.0672 2.65"/>
+    <origin xyz="-0.1 0.9 1.1" rpy="+0.03 -0.0472 2.65"/>
   </joint>
 
   zed2_left_camera_optical_frame

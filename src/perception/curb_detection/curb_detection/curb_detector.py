@@ -57,19 +57,8 @@ class CurbDetector(Node):
 
     def front_lidar_cb(self, msg: PointCloud2):
         npcloud = rnp.numpify(msg)
-        lower_ring = 0
-        upper_ring = 3
-        x = np.transpose(npcloud['x'][:,lower_ring:upper_ring+1])
-        y = np.transpose(npcloud['y'][:,lower_ring:upper_ring+1])
-        z = np.transpose(npcloud['z'][:,lower_ring:upper_ring+1])
-        i = np.transpose(npcloud['intensity'][:,lower_ring:upper_ring+1])
-        pts = x
-        np.append(pts, y, axis=1)
-        np.append(pts, z, axis=1)
-        # np.append(pts, i, axis=1)
-        # r = npcloud['ring']
         # self.get_logger().info(str(npcloud.shape))
-        mask = npcloud[:]['ring']<=4
+        mask = npcloud[:]['ring']<=6
         npcloud = npcloud[mask]
         # self.get_logger().info(str(npcloud))
         np.savetxt('foo1.csv', npcloud, fmt='%4f %4f %4f %4f %2u')
@@ -96,12 +85,30 @@ class CurbDetector(Node):
         # self.get_logger().info(str(npcloud.shape))
         mask = npcloud[:]['ring']<=4
         npcloud = npcloud[mask]
+        # self.calibrate(np.transpose(np.array([npcloud['x'],npcloud['y'],npcloud['z'],npcloud['ring']])))
         # self.get_logger().info(str(npcloud))
         np.savetxt('foo1.csv', npcloud, fmt='%4f %4f %4f %4f %2u')
         filtered_msg: PointCloud2 = rnp.msgify(PointCloud2, npcloud)
         filtered_msg.header.frame_id = 'lidar_rear'
         filtered_msg.header.stamp = self.get_clock().now().to_msg()
         self.lower_ring_pub_rear.publish(filtered_msg)
+
+    # def calibrate(self, points):
+    #     # Find angle of point to LEFT or RIGHT (roll)
+    #         # Points along Y axis will have X value close to 0, ring=3
+    #     # Take abs value of all points' x values. Find min.
+        
+    #     ring_points = np.array([[]])
+    #     for point in points:
+    #         if point[3] == 4:
+    #             ring_points = np.append(ring_points, [point], axis=1)
+    #     abs_points = np.abs(ring_points)
+    #     res = np.argmin(abs_points[0])
+    #     self.get_logger().info("Min is: %s" % str(ring_points))
+
+    #     # Then find angle of point IN FRONT (pitch)
+    #         # Y value = 0, ring = 3
+
 
 
 def main(args=None):
