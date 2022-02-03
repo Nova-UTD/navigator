@@ -4,8 +4,12 @@ import ros2_numpy as rnp
 import numpy as np
 
 from tf2_ros import TransformException, TransformStamped
+import tf2_msgs
 from tf2_ros.buffer import Buffer
+import tf2_py
 from tf2_ros.transform_listener import TransformListener
+
+from scipy.spatial.transform import Rotation
 
 from sensor_msgs.msg import PointCloud2
 
@@ -61,7 +65,6 @@ class CurbDetector(Node):
         mask = npcloud[:]['ring']<=6
         npcloud = npcloud[mask]
         # self.get_logger().info(str(npcloud))
-        np.savetxt('foo1.csv', npcloud, fmt='%4f %4f %4f %4f %2u')
         filtered_msg: PointCloud2 = rnp.msgify(PointCloud2, npcloud)
         filtered_msg.header.frame_id = 'lidar_front'
         filtered_msg.header.stamp = self.get_clock().now().to_msg()
@@ -70,26 +73,45 @@ class CurbDetector(Node):
         self.transform_pts('lidar_front', 'base_link')
 
     def rear_lidar_cb(self, msg: PointCloud2):
+        self.process_lidar(msg, 'lidar_rear')
+        
+    def process_lidar(self, msg: PointCloud2, lidar_frame: str):
+        # Transform to base_link
+        if not self.tf_buffer.can_transform('base_link', lidar_frame, self.get_clock().now()):
+            return
+        t_zero = rclpy.time.Time(seconds=0, nanoseconds=0)
+        lidar_to_bl_tf: TransformStamped = self.tf_buffer.lookup_transform('base_link', lidar_frame, t_zero)
+        self.get_logger().info(str(lidar_to_bl_tf.transform.translation.x))
+
         npcloud = rnp.numpify(msg)
-        lower_ring = 0
-        upper_ring = 3
-        x = np.transpose(npcloud['x'][:,lower_ring:upper_ring+1])
-        y = np.transpose(npcloud['y'][:,lower_ring:upper_ring+1])
-        z = np.transpose(npcloud['z'][:,lower_ring:upper_ring+1])
-        i = np.transpose(npcloud['intensity'][:,lower_ring:upper_ring+1])
-        pts = x
-        np.append(pts, y, axis=1)
-        np.append(pts, z, axis=1)
-        # np.append(pts, i, axis=1)
-        # r = npcloud['ring']
         # self.get_logger().info(str(npcloud.shape))
+        # Choose only points in ring 4 and below
         mask = npcloud[:]['ring']<=4
         npcloud = npcloud[mask]
-        # self.calibrate(np.transpose(np.array([npcloud['x'],npcloud['y'],npcloud['z'],npcloud['ring']])))
-        # self.get_logger().info(str(npcloud))
-        np.savetxt('foo1.csv', npcloud, fmt='%4f %4f %4f %4f %2u')
+        translation = lidar_to_bl_tf.transform.translation
+        npcloud['x'] += translation.x
+        npcloud['y'] += translation.y
+        npcloud['z'] += translation.z
+
+        # Rotate each point
+        quat = [
+            lidar_to_bl_tf.transform.rotation.x,
+            lidar_to_bl_tf.transform.rotation.y,
+            lidar_to_bl_tf.transform.rotation.z,
+            lidar_to_bl_tf.transform.rotation.w
+        ]
+        r = Rotation.from_quat(quat)
+        xyz = np.transpose(np.array([npcloud['x'], npcloud['y'], npcloud['z']]))
+        
+        pts = r.apply(xyz)
+        self.get_logger().info(str(xyz[:,0]))
+        npcloud['x'] = pts[:,0]
+        npcloud['y'] = pts[:,1]
+        npcloud['z'] = pts[:,2]
+        
+        # Construct message from numpy array and publish
         filtered_msg: PointCloud2 = rnp.msgify(PointCloud2, npcloud)
-        filtered_msg.header.frame_id = 'lidar_rear'
+        filtered_msg.header.frame_id = 'base_link'
         filtered_msg.header.stamp = self.get_clock().now().to_msg()
         self.lower_ring_pub_rear.publish(filtered_msg)
 
