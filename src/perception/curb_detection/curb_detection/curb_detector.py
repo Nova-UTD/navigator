@@ -60,20 +60,11 @@ class CurbDetector(Node):
         self.get_logger().info(tf.header.frame_id)
 
     def front_lidar_cb(self, msg: PointCloud2):
-        npcloud = rnp.numpify(msg)
-        # self.get_logger().info(str(npcloud.shape))
-        mask = npcloud[:]['ring']<=6
-        npcloud = npcloud[mask]
-        # self.get_logger().info(str(npcloud))
-        filtered_msg: PointCloud2 = rnp.msgify(PointCloud2, npcloud)
-        filtered_msg.header.frame_id = 'lidar_front'
-        filtered_msg.header.stamp = self.get_clock().now().to_msg()
-        self.lower_ring_pub_front.publish(filtered_msg)
-
-        self.transform_pts('lidar_front', 'base_link')
+        self.lower_ring_pub_front.publish(self.process_lidar(msg, 'lidar_front'))
 
     def rear_lidar_cb(self, msg: PointCloud2):
-        self.process_lidar(msg, 'lidar_rear')
+        self.lower_ring_pub_rear.publish(self.process_lidar(msg, 'lidar_rear'))
+        
         
     def process_lidar(self, msg: PointCloud2, lidar_frame: str):
         # Transform to base_link
@@ -108,12 +99,18 @@ class CurbDetector(Node):
         npcloud['x'] = pts[:,0]
         npcloud['y'] = pts[:,1]
         npcloud['z'] = pts[:,2]
+
+        # At this point our data is now in the base_link frame.
+        # Let's remove all points with z > 0.5 (meter)
+        mask = npcloud[:]['z'] <= 0.5
+        npcloud = npcloud[mask]
         
         # Construct message from numpy array and publish
         filtered_msg: PointCloud2 = rnp.msgify(PointCloud2, npcloud)
         filtered_msg.header.frame_id = 'base_link'
         filtered_msg.header.stamp = self.get_clock().now().to_msg()
-        self.lower_ring_pub_rear.publish(filtered_msg)
+        return filtered_msg
+        
 
     # def calibrate(self, points):
     #     # Find angle of point to LEFT or RIGHT (roll)
