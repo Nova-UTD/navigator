@@ -48,17 +48,23 @@ FloatReporterNode::~FloatReporterNode() {}
 void FloatReporterNode::process_frame(const voltron_msgs::msg::CanFrame::SharedPtr incoming_frame) {
   if(incoming_frame->identifier != this->params.message_id) return; // Skip frames not meant for us
 
-  can_data_t data_field = incoming_frame->data << this->params.field_start_bit; // Isolate the field we're interested in
-  data_field = data_field >> (sizeof(can_data_t) - this->params.field_length_bits);
+  // Isolate the field we're interested in
+  can_data_t data_int = incoming_frame->data;
 
-  double data_scaled = (double) (data_field - this->params.input_min); // Scaled from 0 to 1
-  data_scaled = data_scaled / (this->params.input_max - this->params.input_min);
-
-  data_scaled = data_scaled + this->params.output_min; // Then rescale between output_min and output_max
-  data_scaled = data_scaled * (this->params.output_max - this->params.output_min);
+  data_int = data_int >> this->params.field_start_bit;
+  if(this->params.field_length_bits < 64) {
+    data_int = data_int & ((1 << this->params.field_length_bits) - 1);
+  }
+  
+  double data = (double) data_int; // Do the calculation with double precision to handle large numbers
+  data = data - this->params.input_min; // Scaled from 0 to 1
+  data = data / (this->params.input_max - this->params.input_min);
+  data = data * (this->params.output_max - this->params.output_min); // Then rescale between output_min and output_max
+  data = data + this->params.output_min; 
+  
 
   auto message = std_msgs::msg::Float32(); // Send the message
-  message.data = data_scaled;
+  message.data = (float) data;
   this->result_publisher->publish(message);
 }
 
