@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>voltron_can</name>
-  <version>1.0.0</version>
-  <description>A simple ROS wrapper for socketcan</description>
+  <name>can_translation</name>
+  <version>0.0.0</version>
+  <description>ROS nodes to translate data from a CAN bus</description>
   <maintainer email="joshmackwilliams@protonmail.com">Joshua Williams</maintainer>
   <license>MIT License</license>
 
@@ -13,7 +13,7 @@
   <depend>voltron_msgs</depend>
 
   <test_depend>voltron_test_utils</test_depend>
-  
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>
