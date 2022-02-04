@@ -39,6 +39,26 @@ void PurePursuit::set_lookahead_distance(float lookahead_distance) {this->lookah
 */
 
 
+
+double PurePursuit::calc_curvature() {
+    double denominator = pow(lookahead_x, 2) + pow(lookahead_y, 2);
+    double numerator = 2.0 * lookahead_x;
+    
+    if (denominator != 0) {
+        return numerator / denominator;
+    } else {
+        return numerator > 0 ? MIN_CURVATURE : -MIN_CURVATURE;
+    }
+}
+
+double PurePursuit::compute_steering_angle() {
+    double L = 0.1; // wheel-base
+    double steering_angle = atan(L * calc_curvature());
+    return steering_angle;
+}
+
+
+
 void PurePursuit::set_lookahead_point(float x, float y) {
     this->lookahead_x = x;
     this->lookahead_y = y;
@@ -49,21 +69,6 @@ void PurePursuit::set_closest_point(float x, float y) {
     this->closest_y = y;
 }
 
-// Output should be in radians
-float PurePursuit::compute_steering_angle() {
-
-    // https://www.coursera.org/lecture/intro-self-driving-cars/lesson-2-geometric-lateral-control-pure-pursuit-44N7x
-    // Coursera Lesson 2: Geometric Lateral Control - Pure Pursuit
-    // Geometry for the vehicle's origin being in the rear
-
-    float alpha = 1.0; // Direction angle of the rear wheel
-    float curvature = (2 * asin(alpha)) / lookahead_distance;
-
-    float L = 0.1; // Length of wheelbase? This may be a constant for class at initialization
-    float steering_angle = atan(L * curvature);
-
-    return steering_angle;
-}
 
 std::string PurePursuit::hello_world() {
     return "CRIS ROCKS ";

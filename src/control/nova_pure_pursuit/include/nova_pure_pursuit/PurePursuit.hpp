@@ -21,6 +21,8 @@
 namespace Nova {
 namespace PurePursuit {
 
+static constexpr double MIN_CURVATURE = 1.0 / 9e10;
+
 class PurePursuit {
 
 public:
@@ -28,6 +30,7 @@ public:
     ~PurePursuit();
 
     
+    double calc_curvature();
     void set_lookahead_point(float x, float y);
     void set_closest_point(float x, float y);
     float compute_steering_angle();
