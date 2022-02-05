@@ -13,14 +13,16 @@
 #include <stdint.h>
 #include <string>
 
-namespace navigator {
-    namespace obstacle_classes {
+namespace navigator
+{
+namespace obstacle_classes
+{
 
-        enum OBSTACLE_CLASS : uint8_t { VEHICLE, PEDESTRIAN };
+enum OBSTACLE_CLASS : uint8_t { VEHICLE, PEDESTRIAN };
 
-        std::string get_class_string(OBSTACLE_CLASS cls);
+std::string get_class_string(OBSTACLE_CLASS cls);
 
-    }
-}
+}   // namespace obstacle_classes
+}   // namespace navigator
 
-#endif
+#endif  // OBSTACLE_CLASSES_HPP
