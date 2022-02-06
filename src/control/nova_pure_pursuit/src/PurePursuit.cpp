@@ -39,8 +39,7 @@ void PurePursuit::set_lookahead_distance(float lookahead_distance) {this->lookah
 */
 
 
-
-double PurePursuit::calc_curvature() {
+double PurePursuit::compute_curvature() {
     double denominator = pow(lookahead_x, 2) + pow(lookahead_y, 2);
     double numerator = 2.0 * lookahead_x;
     
@@ -53,11 +52,12 @@ double PurePursuit::calc_curvature() {
 
 double PurePursuit::compute_steering_angle() {
     double L = 0.1; // wheel-base
-    double steering_angle = atan(L * calc_curvature());
+    double steering_angle = atan(L * compute_curvature());
     return steering_angle;
 }
 
-
+/** Might use in later versions */
+// double PurePursuit::compute_steering_effort() { return compute_steering_angle();}
 
 void PurePursuit::set_lookahead_point(float x, float y) {
     this->lookahead_x = x;

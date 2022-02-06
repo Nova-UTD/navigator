@@ -30,10 +30,10 @@ public:
     ~PurePursuit();
 
     
-    double calc_curvature();
+    double compute_curvature();
+    double compute_steering_angle();
     void set_lookahead_point(float x, float y);
     void set_closest_point(float x, float y);
-    float compute_steering_angle();
 
     //Test Node interface
     std::string hello_world();
