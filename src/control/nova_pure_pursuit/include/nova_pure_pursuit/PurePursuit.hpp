@@ -1,7 +1,7 @@
 /*
  * Package:   nova_pure_pursuit
  * Filename:  PurePursuit.hpp
- * Author:    Cristian Cruz
+ * Author:    Cristian Cruz, Nikhil Narvekar
  * Email:     Cristian.CruzLopez@utdallas.edu
  * Copyright: 2021, Nova UTD
  * License:   MIT License
@@ -17,41 +17,43 @@
 #include <memory>
 #include <string>
 #include "voltron_msgs/msg/trajectory.hpp"
+#include "voltron_msgs/msg/trajectory_point.hpp"
 
 
 namespace Nova {
 namespace PurePursuit {
 
 static constexpr double MIN_CURVATURE = 1.0 / 9e10;
+static constexpr double WHEEL_BASE = 0.1;
 
 class PurePursuit {
 
 public:
+
     PurePursuit(float lookahead_distance);
     ~PurePursuit();
 
-    double get_steering_angle(voltron_msgs::msg::Trajectory trajectory);
-    void compute_curvature();
-    void compute_steering_angle();
-    void set_lookahead_point(float x, float y);
-    void set_closest_point(float x, float y);
-
+    double get_steering_angle(voltron_msgs::msg::Trajectory cur_trajectory);
 
 private:
 
-    float closest_x;
-    float closest_y;
-    
+    // var
+    voltron_msgs::msg::Trajectory trajectory;
+    voltron_msgs::msg::TrajectoryPoint closest_point;
+    voltron_msgs::msg::TrajectoryPoint lookahead_point;
     float lookahead_distance;
-    float lookahead_x;
-    float lookahead_y;
-
     double curvature;
     double steering_angle;
 
+    // functions
+    void set_lookahead_point();
+    void compute_curvature();
+    void compute_steering_angle();
+    void set_lookahead_distance(float lookahead_distance);
+    double compute_steering_effort();
 
-}; // class PurePursuit
+};
 
 
-} // namespace PurePursuit
-} // namespace Nova
+}
+}

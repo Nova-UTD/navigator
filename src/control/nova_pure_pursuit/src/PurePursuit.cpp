@@ -18,34 +18,42 @@
 
 using namespace Nova::PurePursuit;
 
+
 PurePursuit::PurePursuit(float lookahead_distance) {
-
-    this->closest_x = 0.0;
-    this->closest_y = 0.0;
-
+    
+    this->trajectory = voltron_msgs::msg::Trajectory();
+    this->closest_point = voltron_msgs::msg::TrajectoryPoint();
+    this->lookahead_point = voltron_msgs::msg::TrajectoryPoint();
     this->lookahead_distance = lookahead_distance;
-    this->lookahead_x = 0.0;
-    this->lookahead_y = 0.0;
-
     this->curvature = 0.0;
     this->steering_angle = 0.0;
+
 }
 
 PurePursuit::~PurePursuit() {}
 
 
-/**************Adaptive Lateral Control************
-void PurePursuit::set_lookahead_distance(float lookahead_distance) {this->lookahead_distance = lookahead_distance;}
-*/
+double PurePursuit::get_steering_angle(voltron_msgs::msg::Trajectory cur_trajectory) {
+    
+    if(cur_trajectory.points.size() == 0) {
+        return this->steering_angle; // error occurred, return old angle
+    }
 
+    this->trajectory = cur_trajectory;
+    this->closest_point = this->trajectory.points[0];
+    set_lookahead_point();
+    compute_curvature();
+    compute_steering_angle();
+    return this->steering_angle;
+}
 
-double PurePursuit::get_steering_angle(voltron_msgs::msg::Trajectory trajectory) {
-    return 0;
+void PurePursuit::set_lookahead_point() {
+    lookahead_point = trajectory.points[1];
 }
 
 void PurePursuit::compute_curvature() {
-    double denominator = pow(lookahead_x, 2) + pow(lookahead_y, 2);
-    double numerator = 2.0 * lookahead_x;
+    double denominator = pow(lookahead_point.x, 2) + pow(lookahead_point.y, 2);
+    double numerator = 2.0 * lookahead_point.x;
     
     if (denominator != 0) {
         this->curvature = numerator / denominator;
@@ -55,20 +63,15 @@ void PurePursuit::compute_curvature() {
 }
 
 void PurePursuit::compute_steering_angle() {
-    double L = 0.1; // wheel-base
-    compute_curvature();
-    this->steering_angle = atan(L * this->curvature);
+    this->steering_angle = atan(WHEEL_BASE * this->curvature);
 }
 
-/** Might use in later versions */
-// double PurePursuit::compute_steering_effort() { return compute_steering_angle();}
-
-void PurePursuit::set_lookahead_point(float x, float y) {
-    this->lookahead_x = x;
-    this->lookahead_y = y;
+/** Adaptative lateral control -> might use later */
+void PurePursuit::set_lookahead_distance(float lookahead_distance) {
+    this->lookahead_distance = lookahead_distance;
 }
 
-void PurePursuit::set_closest_point(float x, float y) {
-    this->closest_x = x;
-    this->closest_y = y;
+/** Steering effort calc -> might use later */
+double PurePursuit::compute_steering_effort() { 
+    return 0.0;
 }

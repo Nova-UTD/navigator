@@ -1,7 +1,7 @@
 /*
  * Package:   nova_pure_pursuit
  * Filename:  PurePursuitNode.hpp
- * Author:    Cristian Cruz
+ * Author:    Cristian Cruz, Nikhil Narvekar
  * Email:     Cristian.CruzLopez@utdallas.edu
  * Copyright: 2021, Nova UTD
  * License:   MIT License
