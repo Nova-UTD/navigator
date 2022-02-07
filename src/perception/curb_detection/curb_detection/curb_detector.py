@@ -20,7 +20,7 @@ class CurbDetector(Node):
         super().__init__('curb_detector')
 
         self.TOP_RING = 5
-        self.DIST_TOLERANCE = 0.06 # meters-- 6 cm
+        self.DIST_TOLERANCE = 0.01 # meters-- 6 cm
         self.MAX_HEIGHT = 0.5 # meters
 
         self.lidar_sub = self.create_subscription(
@@ -51,27 +51,23 @@ class CurbDetector(Node):
         try:
             self.lidar_to_bl_tf = self.tf_buffer.lookup_transform(
                 'base_link',
-                source_frame,
+                lidar_frame,
                 rclpy.time.Time(seconds=0, nanoseconds=0)
             )
         except TransformException as ex:
             self.get_logger().info(
-                f'Could not transform {dest_frame} to {source_frame}: {ex}')
+                f'Could not transform {dest_frame} to {lidar_frame}: {ex}')
             return
 
     def filterPoints(self, pts, min_angle = math.pi/2, max_angle = -math.pi/2):
         # Remove nan values
         pts = pts[np.logical_not(np.isnan(pts['x']))]
 
-        # Rotate all points to base_link
-        # TODO: Remove or rework; rotations are computationally costly!
-        # for point in pts:
-        #     xyz = np.array([point['x'],point['y'],point['z']])
-        #     r = R.from_euler('xyz', [-0.015, -0.03, -1.45])
-        #     xyz = r.apply(xyz)
-        #     point['x'] = xyz[0]
-        #     point['y'] = xyz[1]
-        #     point['z'] = xyz[2]
+        translation = self.lidar_to_bl_tf.transform.translation
+        # pts['x'] += translation.x
+        # pts['y'] += translation.y
+        # pts['z'] += translation.z
+        # self.get_logger().info("{}".format(translation.z))
 
         # Crop to height, lower rings
         pts = pts[
@@ -97,13 +93,47 @@ class CurbDetector(Node):
             )
         ]
 
-        # Crop by angle
-        pts = pts[
-            np.logical_and(
-                np.arctan2(pts['y'],pts['x']) < max_angle,
-                np.arctan2(pts['y'],pts['x']) > min_angle
-            )
+        # Rotate all points to base_link
+        # TODO: Remove or rework; rotations are computationally costly!
+        quat = [
+            self.lidar_to_bl_tf.transform.rotation.x,
+            self.lidar_to_bl_tf.transform.rotation.y,
+            self.lidar_to_bl_tf.transform.rotation.z,
+            self.lidar_to_bl_tf.transform.rotation.w
         ]
+        r = R.from_quat(quat)
+        # xyz = np.transpose(np.array([npcloud['x'], npcloud['y'], npcloud['z']]))
+        
+        # pts = r.apply(xyz)
+
+        xyz = np.array([pts['x'],pts['y'],pts['z']])
+        
+        xyz = np.transpose(xyz)
+        xyz = r.apply(xyz)
+        xyz = np.transpose(xyz)
+        xyz[0] += translation.x
+        xyz[1] += translation.y
+        xyz[2] += translation.z
+        pts['x'] = xyz[0]
+        pts['y'] = xyz[1]
+        pts['z'] = xyz[2]
+        self.get_logger().info("{}".format(xyz))
+
+        # for point in pts:
+        #     xyz = np.array([point['x'],point['y'],point['z']])
+        #     r = R.from_euler('xyz', [-0.015, -0.03, -1.45])
+        #     xyz = r.apply(xyz)
+        #     point['x'] = xyz[0]
+        #     point['y'] = xyz[1]
+        #     point['z'] = xyz[2]
+
+        # Crop by angle
+        # pts = pts[
+        #     np.logical_and(
+        #         np.arctan2(pts['y'],pts['x']) < max_angle,
+        #         np.arctan2(pts['y'],pts['x']) > min_angle
+        #     )
+        # ]
 
         finalPointCount = pts.shape[0]
         # self.get_logger().info("{}".format(pts))
@@ -120,12 +150,12 @@ class CurbDetector(Node):
         # ring_pts = ring_pts[angles>0]
         # angles = angles[angles>0]
         left_pts = ring_pts[:zero_idx]
-        left_curb_pt = slide(left_pts[::-1])
+        left_curb_pt = self.slide(left_pts[::-1])
         # if pt is not None:
         #     plt.scatter(-pt['y'], pt['x'], s=20)
 
         right_pts = ring_pts[zero_idx:]
-        right_curb_pt = slide(right_pts[::1])
+        right_curb_pt = self.slide(right_pts[::1])
         # if pt is not None:
         #     plt.scatter(-pt['y'], pt['x'], s=20)
 
@@ -154,7 +184,7 @@ class CurbDetector(Node):
 
         # Initial distance is between first two points
         dist: float = self.dist_2d(ring_pts[0], ring_pts[1])
-        min_dist = 1.0
+        biggest_dist = 0.0
         # Initial state is no curb
         prev_point = ring_pts[0]
         
@@ -162,20 +192,21 @@ class CurbDetector(Node):
             dist = self.dist_2d(pt, prev_point)
             abs_angle = abs(math.atan2(pt['y'],pt['x']))
             if dist > self.DIST_TOLERANCE or abs_angle > max_angle or abs_angle < min_angle:
-                self.get_logger().info("Exiting with dist={}, angle={}".format(dist, abs_angle))
+                # self.get_logger().info("Dist={}, angle={}, {}".format(dist, abs_angle, pt))
                 return prev_point
-            if dist < min_dist:
-                dist = min_dist
+            if dist > biggest_dist:
+                dist = biggest_dist
             # print(dist)
             prev_point = pt
-        print("No curb found. Min dist: {}".format(min_dist))
+        print("No curb found. Max dist: {}, last: {}".format(biggest_dist, ring_pts[:-1]))
 
     def searchRingForCurbs(self, ring_pts):
         # Find index of point at theta=0
-        angles = np.arctan2(ring_pts['y'],ring_pts['x'])
+        angles = np.arctan2(ring_pts['y'],ring_pts['x']) + math.sin(self.lidar_to_bl_tf.transform.rotation.z)
+        # self.get_logger().info("Avg angle{}".format(np.mean(angles)))
         abs_angles = np.abs(angles)
         zero_idx = np.argmin(abs_angles)
-        self.get_logger().info("{} @ {}".format(ring_pts[zero_idx], zero_idx))
+        # self.get_logger().info("{} @ {}".format(ring_pts[zero_idx], zero_idx))
 
         # ring_pts = ring_pts[angles>0]
         # angles = angles[angles>0]
@@ -185,7 +216,7 @@ class CurbDetector(Node):
         #     plt.scatter(-pt['y'], pt['x'], s=20)
 
         right_pts = ring_pts[zero_idx:]
-        right_curb_pt = self.slide(right_pts[::1])
+        right_curb_pt = self.slide(right_pts[::-1])
         # if pt is not None:
         #     plt.scatter(-pt['y'], pt['x'], s=20)
 
@@ -205,7 +236,7 @@ class CurbDetector(Node):
         for ring in range(self.TOP_RING):
             ring_pts = pts[pts['ring']==ring]
             bounds = self.searchRingForCurbs(ring_pts)
-            for i in range(2):
+            for i in range(len(bounds)):
                 if bounds[i] is not None:
                     curb_bounds.append(bounds[i])
 
@@ -221,10 +252,11 @@ class CurbDetector(Node):
         if not self.tf_buffer.can_transform('base_link', 'lidar_front', self.get_clock().now()):
             return
         else: 
+            self.getLidarToBlTransform('lidar_front')
             pts = rnp.numpify(msg)
             pts = self.filterPoints(pts, min_angle=0.00, max_angle=3.14)
             # self.publishCloud(pts, msg.header.frame_id)
-            self.curb_candidates_pub.publish(self.formPointCloud2(pts, 'lidar_front'))
+            self.curb_candidates_pub.publish(self.formPointCloud2(pts, 'base_link'))
 
             curb_bounds = self.findAllCurbBounds(pts)
             np_bounds = np.array(curb_bounds, dtype=[
@@ -235,7 +267,7 @@ class CurbDetector(Node):
                 ('ring', np.uint8)
             ])
             res_msg: PointCloud2 = rnp.msgify(PointCloud2, np_bounds)
-            res_msg.header.frame_id = 'lidar_front'
+            res_msg.header.frame_id = 'base_link'
             res_msg.header.stamp = self.get_clock().now().to_msg()
             self.curb_pts_pub.publish(res_msg)
 
