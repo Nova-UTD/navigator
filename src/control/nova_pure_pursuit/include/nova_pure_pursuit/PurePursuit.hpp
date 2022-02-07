@@ -16,6 +16,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include "voltron_msgs/msg/trajectory.hpp"
 
 
 namespace Nova {
@@ -29,14 +30,12 @@ public:
     PurePursuit(float lookahead_distance);
     ~PurePursuit();
 
-    
-    double compute_curvature();
-    double compute_steering_angle();
+    double get_steering_angle(voltron_msgs::msg::Trajectory trajectory);
+    void compute_curvature();
+    void compute_steering_angle();
     void set_lookahead_point(float x, float y);
     void set_closest_point(float x, float y);
 
-    //Test Node interface
-    std::string hello_world();
 
 private:
 
@@ -47,9 +46,8 @@ private:
     float lookahead_x;
     float lookahead_y;
 
-    float curvature;
-    float steering_angle;
-    
+    double curvature;
+    double steering_angle;
 
 
 }; // class PurePursuit

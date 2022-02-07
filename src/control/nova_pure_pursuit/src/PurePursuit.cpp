@@ -1,7 +1,7 @@
 /*
  * Package:   nova_pure_pursuit
  * Filename:  PurePursuit.cpp
- * Author:    Cristian Cruz
+ * Authors:   Cristian Cruz, Nikhil Narvekar
  * Email:     Cristian.CruzLopez@utdallas.edu
  * Copyright: 2021, Nova UTD
  * License:   MIT License
@@ -39,21 +39,25 @@ void PurePursuit::set_lookahead_distance(float lookahead_distance) {this->lookah
 */
 
 
-double PurePursuit::compute_curvature() {
+double PurePursuit::get_steering_angle(voltron_msgs::msg::Trajectory trajectory) {
+    return 0;
+}
+
+void PurePursuit::compute_curvature() {
     double denominator = pow(lookahead_x, 2) + pow(lookahead_y, 2);
     double numerator = 2.0 * lookahead_x;
     
     if (denominator != 0) {
-        return numerator / denominator;
+        this->curvature = numerator / denominator;
     } else {
-        return numerator > 0 ? MIN_CURVATURE : -MIN_CURVATURE;
+        this->curvature = numerator > 0 ? MIN_CURVATURE : -MIN_CURVATURE;
     }
 }
 
-double PurePursuit::compute_steering_angle() {
+void PurePursuit::compute_steering_angle() {
     double L = 0.1; // wheel-base
-    double steering_angle = atan(L * compute_curvature());
-    return steering_angle;
+    compute_curvature();
+    this->steering_angle = atan(L * this->curvature);
 }
 
 /** Might use in later versions */
@@ -67,9 +71,4 @@ void PurePursuit::set_lookahead_point(float x, float y) {
 void PurePursuit::set_closest_point(float x, float y) {
     this->closest_x = x;
     this->closest_y = y;
-}
-
-
-std::string PurePursuit::hello_world() {
-    return "CRIS ROCKS ";
 }

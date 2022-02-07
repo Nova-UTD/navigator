@@ -7,6 +7,7 @@
  * License:   MIT License
  */
 
+#pragma once
 
 #include <chrono>
 #include <functional>
@@ -16,7 +17,9 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "std_msgs/msg/float32.hpp"
-//#include "autoware_auto_msgs/msg/vehicle_control_command.hpp"
+#include "voltron_msgs/msg/trajectories.hpp"
+#include "voltron_msgs/msg/trajectory.hpp"
+#include "voltron_msgs/msg/steering_angle.hpp"
 
 #include "nova_pure_pursuit/PurePursuit.hpp"
 
@@ -26,32 +29,33 @@ using namespace std::chrono_literals;
 namespace Nova {
 namespace PurePursuit {
 
-
+constexpr auto message_frequency = 100ms; // will change
 
 class PurePursuitNode : public rclcpp::Node {
 
 public:
-  PurePursuitNode();
-  ~PurePursuitNode();
 
- private:
-  void update_lookahead_point();
-  void timer_callback();
-  void topic_callback(const std_msgs::msg::String::SharedPtr msg);
+    PurePursuitNode();
+    ~PurePursuitNode();
 
-  std::unique_ptr<PurePursuit> controller;
-
-  rclcpp::TimerBase::SharedPtr timer_;
-  size_t count_;
+private:  
     
-  rclcpp::Publisher<std_msgs::msg::String>::
-      SharedPtr steering_control_publisher;
+    // publish steering angle
+    rclcpp::Publisher<voltron_msgs::msg::SteeringAngle>::SharedPtr steering_control_publisher;
+    
+    // subscribe to get trajectory
+    rclcpp::Subscription<voltron_msgs::msg::Trajectories>::SharedPtr trajectory_subscription;
 
-  rclcpp::Subscription<std_msgs::msg::String>::
-      SharedPtr trajectory_subscription;
+    // var
+    std::unique_ptr<PurePursuit> controller;
+    rclcpp::TimerBase::SharedPtr control_timer;
+    voltron_msgs::msg::Trajectory trajectory;
 
-}; // class PurePursuitNode
+    // functions
+    void send_message();
+    void update_trajectory(voltron_msgs::msg::Trajectories::SharedPtr trajectories);
+};
 
 
-} // namespace PurePursuit
-} // namespace Nova
+}
+}

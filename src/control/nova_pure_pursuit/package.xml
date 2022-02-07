@@ -11,9 +11,9 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
 
-  <depend>rclcpp</depend>
-  <depend>std_msgs</depend>
   <depend>autoware_auto_msgs</depend>
+  <depend>voltron_msgs</depend>
+  <depend>rclcpp</depend>
 
 
   <test_depend>ament_lint_auto</test_depend>
