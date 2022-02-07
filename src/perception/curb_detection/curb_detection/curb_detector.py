@@ -19,7 +19,7 @@ class CurbDetector(Node):
     def __init__(self):
         super().__init__('curb_detector')
 
-        self.TOP_RING = 4
+        self.TOP_RING = 6
         self.DIST_TOLERANCE = 0.04 # meters-- 6 cm
         self.MAX_HEIGHT = 0.5 # meters
         self.MIN_ANGLE = -math.pi/2
@@ -128,6 +128,14 @@ class CurbDetector(Node):
         #     point['y'] = xyz[1]
         #     point['z'] = xyz[2]
 
+        # Remove points far to side
+        pts = pts[
+            np.logical_and(
+                pts['y'] < 10.0,
+                pts['y'] > -5.0
+            )
+        ]
+
         # Crop by angle
         pts = pts[
             np.logical_and(
@@ -148,25 +156,42 @@ class CurbDetector(Node):
         )
         return res
 
-    def slide(self, ring_pts, min_x=4.5):
+    def distFromPoints(self, ptStart, ptBetween, ptEnd):
+        x0 = ptBetween['x']
+        x1 = ptStart['x']
+        x2 = ptEnd['x']
+        y0 = ptBetween['y']
+        y1 = ptStart['y']
+        y2 = ptEnd['y']
+
+        numerator = abs((x2-x1)*(y1-y0)-(x1-x0)*(y2-y1))
+        denominator = math.sqrt((x2-x1)**2 + (y2-y1)**2)
+
+        return numerator/denominator
+
+    def slide(self, ring_pts, min_x=4.5, linear_dist_threshold = 0.006, min_dz = 0.06, max_dz = 0.2, window=10, debug=False):
         if ring_pts.shape[0] < 10:
             # self.get_logger().warn("Received ring with < 2 points, skipping")
             return
-
-        front_dz = (
-            abs(ring_pts[5]['z']-ring_pts[0]['z'])/5.0 +
-            abs(ring_pts[9]['z']-ring_pts[4]['z'])/5.0
-        )/2 # This approximates the change in z from point to point
         
-        for i in range(len(ring_pts)-10):
-            # Check linearity with dy
-            dy_a = ring_pts[i]['y'] - ring_pts[i+5]['y']
-            dx_a = ring_pts[i]['x'] - ring_pts[i+5]['x']
-            dy_b = ring_pts[i+5]['y'] - ring_pts[i+10]['y']
-            dx_b = ring_pts[i+5]['x'] - ring_pts[i+10]['x']
-            if abs(dy_a - dy_b) < 0.02 and abs(dy_a) < 0.05:
-                if abs(dx_a - dx_b) < 0.05 and abs(dx_a) > 0.2:
-                    return ring_pts[i]
+        if window < 6:
+            self.get_logger().warn("Window must be at least 6.")
+            return
+        
+        for i in range(len(ring_pts)-window):
+            dz = abs(ring_pts[i+window]['z'] - ring_pts[i]['z'])
+            if dz > min_dz and dz < max_dz:
+                linear_dist = self.distFromPoints(
+                    ring_pts[i], ring_pts[int(i+window/2)], ring_pts[i+window]
+                )
+                if linear_dist < linear_dist_threshold:
+                    linear_dist = self.distFromPoints(
+                        ring_pts[i+2], ring_pts[int(i+window/2)], ring_pts[i+window-2]
+                    )
+                    if linear_dist < linear_dist_threshold:
+                        if debug:
+                            self.get_logger().info("{} lin dist, {} dz".format(linear_dist, dz))
+                        return ring_pts[i]
 
         # for i, pt in enumerate(ring_pts[1:]):
         #     dist = self.dist_2d(pt, prev_point)
@@ -188,7 +213,7 @@ class CurbDetector(Node):
         # ring_pts = ring_pts[angles>0]
         # angles = angles[angles>0]
         left_pts = ring_pts[:zero_idx]
-        left_curb_pt = self.slide(left_pts[::-1])
+        left_curb_pt = self.slide(left_pts[::-1], linear_dist_threshold=0.007, min_dz=0.03, window=10, debug=True)
         # if pt is not None:
         #     plt.scatter(-pt['y'], pt['x'], s=20)
 
