@@ -19,7 +19,7 @@ class CurbDetector(Node):
     def __init__(self):
         super().__init__('curb_detector')
 
-        self.TOP_RING = 6
+        self.TOP_RING = 4
         self.DIST_TOLERANCE = 0.04 # meters-- 6 cm
         self.MAX_HEIGHT = 0.5 # meters
         self.MIN_ANGLE = -math.pi/2
@@ -159,10 +159,14 @@ class CurbDetector(Node):
         )/2 # This approximates the change in z from point to point
         
         for i in range(len(ring_pts)-10):
-            dz = abs(ring_pts[i+5]['z']-ring_pts[i]['z'])/5
-            if dz > (front_dz)+0.01 and ring_pts[i]['x'] > min_x and ring_pts[i+5]['x']:
-                self.get_logger().info("{}".format(ring_pts[i]['x']))
-                return ring_pts[i]
+            # Check linearity with dy
+            dy_a = ring_pts[i]['y'] - ring_pts[i+5]['y']
+            dx_a = ring_pts[i]['x'] - ring_pts[i+5]['x']
+            dy_b = ring_pts[i+5]['y'] - ring_pts[i+10]['y']
+            dx_b = ring_pts[i+5]['x'] - ring_pts[i+10]['x']
+            if abs(dy_a - dy_b) < 0.02 and abs(dy_a) < 0.05:
+                if abs(dx_a - dx_b) < 0.05 and abs(dx_a) > 0.2:
+                    return ring_pts[i]
 
         # for i, pt in enumerate(ring_pts[1:]):
         #     dist = self.dist_2d(pt, prev_point)
