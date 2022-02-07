@@ -218,6 +218,7 @@ def generate_launch_description():
             ('vehicle_state_command', '/vehicle/state_command')
         ]
     )
+    
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -235,12 +236,33 @@ def generate_launch_description():
         remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
     )
 
+    obstacle_republisher = Node(
+        package='obstacle_repub',
+        name='obstacle_republisher_node',
+        executable='obstacle_repub_exe',
+        remappings=[
+            ('svl_obstacle_array', '/ground_truth_3d/detections'),
+            ('zed_obstacle_array', '/zed_2i/obj_det/objects'),
+            ('nova_obstacle_array', '/obstacles/array')
+        ]
+    )
+
+    obstacle_drawer = Node(
+        package='obstacle_drawer',
+        name='obstacle_drawer_node',
+        executable='obstacle_drawer_exe',
+        remappings=[
+            ('obstacle_marker_array', '/obstacles/marker_array'),
+            ('nova_obstacle_array', '/obstacles/array')
+        ]
+    )
+    
     # VIZ
     lanelet_visualizer = Node(
         package='map_publishers',
         executable='lanelet_loader'
     )
-
+    
     return LaunchDescription([
         # CONTROL
         # steering_controller,
@@ -275,6 +297,8 @@ def generate_launch_description():
         lidar_pointcloud_front,
         lidar_driver_rear,
         lidar_pointcloud_rear,
+        obstacle_republisher,
+        obstacle_drawer,
 
         # PLANNING
         # route_planner,
