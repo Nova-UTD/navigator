@@ -82,7 +82,7 @@ def generate_launch_description():
         executable='interface',
         parameters=[],
         remappings=[],
-        arguments=['/dev/i2c-8']
+        arguments=['/dev/ttyACM0']
     )
 
     # LOCALIZATION
