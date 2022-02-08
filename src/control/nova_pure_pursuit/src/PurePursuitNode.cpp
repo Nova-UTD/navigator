@@ -13,8 +13,22 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include "rclcpp/rclcpp.hpp"
+#include <vector>
+#include <fstream>
+#include <iostream>
+#include <unistd.h>
 
+#include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/string.hpp"
+#include "std_msgs/msg/float32.hpp"
+
+#include "autoware_auto_msgs/msg/vehicle_control_command.hpp"
+#include "autoware_auto_msgs/msg/trajectory.hpp"
+#include <autoware_auto_msgs/msg/trajectory.hpp>
+#include <autoware_auto_msgs/msg/vehicle_control_command.hpp>
+
+using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
+using Trajectory = autoware_auto_msgs::msg::Trajectory;
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
@@ -29,6 +43,9 @@ PurePursuitNode::PurePursuitNode() : rclcpp::Node("pure_pursuit_controller") {
     
   this->controller = std::make_unique<PurePursuit>(0.1); // User-defined, default lookahead
   this->control_timer = this->create_wall_timer(message_frequency, std::bind(&PurePursuitNode::send_message, this));
+
+  std::vector<TrajectoryPoint> test_trajectory;
+  load_test_trajectory(test_trajectory);
 }
 
 PurePursuitNode::~PurePursuitNode() {}
@@ -65,3 +82,44 @@ void PurePursuitNode::update_trajectory(voltron_msgs::msg::Trajectories::SharedP
 }
 
 
+/**********************************************************************************
+* Function:     load_test_trajectory()
+*
+* Descr:        Parses an input txt file of xyz points to build a sample trajectory
+*               Format:
+*                   x
+*                   y
+*                   z
+*                   [empty line]
+**********************************************************************************/
+void PurePursuitNode::load_test_trajectory(std::vector<TrajectoryPoint> &v) {
+
+  std::ifstream testing_data;
+  std::string username = static_cast<std::string>(getenv("USER"));
+  testing_data.open("/home/" + username + "/navigator/data/TrajTest1_Gomentum(unformated).txt");
+
+  if (testing_data.is_open()) {
+
+    std::cout << "Loading the testing file...." << std::endl;
+
+    std::string line = "";
+    while (testing_data) {
+
+      std::getline(testing_data, line);
+      TrajectoryPoint trajectory_point;
+      testing_data >> trajectory_point.x;
+      testing_data >> trajectory_point.y;
+      testing_data >> trajectory_point.z;
+
+      trajectory_point.longitudinal_velocity_mps = 0;
+      
+      if (!testing_data.eof()) {
+        v.push_back(trajectory_point);
+      }
+
+    }
+
+  }
+  else { std::cout << "ERROR: Testing file is NOT found!." << std::endl; }
+  testing_data.close();
+}
