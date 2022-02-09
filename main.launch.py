@@ -56,6 +56,17 @@ def generate_launch_description():
             ("outgoing_can_frames", "outgoing_can_frames")
         ]
     )
+
+    speedometer_reporter = Node(
+        package='can_translation',
+        executable='float_reporter',
+        parameters=[(path.join(param_dir,"interface","speedometer_reporter.param.yaml"))]
+        remappings=[
+            ("incoming_can_frames", "incoming_can_frames_can1"),
+            ("result_topic", "vehicle_speedometer")
+        ]
+    )
+    
     # steering_pid
     can = Node(
         package='voltron_can',
@@ -71,7 +82,7 @@ def generate_launch_description():
         executable='interface',
         parameters=[],
         remappings=[],
-        arguments=['/dev/i2c-8']
+        arguments=['/dev/ttyACM0']
     )
 
     # LOCALIZATION
@@ -212,6 +223,7 @@ def generate_launch_description():
             ('vehicle_state_command', '/vehicle/state_command')
         ]
     )
+    
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -229,12 +241,33 @@ def generate_launch_description():
         remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
     )
 
+    obstacle_republisher = Node(
+        package='obstacle_repub',
+        name='obstacle_republisher_node',
+        executable='obstacle_repub_exe',
+        remappings=[
+            ('svl_obstacle_array', '/ground_truth_3d/detections'),
+            ('zed_obstacle_array', '/zed_2i/obj_det/objects'),
+            ('nova_obstacle_array', '/obstacles/array')
+        ]
+    )
+
+    obstacle_drawer = Node(
+        package='obstacle_drawer',
+        name='obstacle_drawer_node',
+        executable='obstacle_drawer_exe',
+        remappings=[
+            ('obstacle_marker_array', '/obstacles/marker_array'),
+            ('nova_obstacle_array', '/obstacles/array')
+        ]
+    )
+    
     # VIZ
     lanelet_visualizer = Node(
         package='map_publishers',
         executable='lanelet_loader'
     )
-
+    
     return LaunchDescription([
         # CONTROL
         # steering_controller,
@@ -246,6 +279,7 @@ def generate_launch_description():
         # gnss,
         svl_bridge,
         # vehicle_bridge,
+        # speedometer_reporter,
 
         # LOCALIZATION
         # ndt,
