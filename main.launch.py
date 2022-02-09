@@ -60,7 +60,7 @@ def generate_launch_description():
     speedometer_reporter = Node(
         package='can_translation',
         executable='float_reporter',
-        parameters=[(path.join(param_dir,"interface","speedometer_reporter.param.yaml"))]
+        parameters=[(path.join(param_dir,"interface","speedometer_reporter.param.yaml"))],
         remappings=[
             ("incoming_can_frames", "incoming_can_frames_can1"),
             ("result_topic", "vehicle_speedometer")
