@@ -38,9 +38,15 @@ class CurbDetector(Node):
             10
         )
 
-        self.curb_pts_pub = self.create_publisher(
+        self.left_curb_pts_pub = self.create_publisher(
             PointCloud2,
-            '/lidar_front/curb_points',
+            '/lidar_front/curb_points/left',
+            10
+        )
+
+        self.right_curb_pts_pub = self.create_publisher(
+            PointCloud2,
+            '/lidar_front/curb_points/right',
             10
         )
         
@@ -128,12 +134,16 @@ class CurbDetector(Node):
         #     point['y'] = xyz[1]
         #     point['z'] = xyz[2]
 
-        # Remove points far to side
+        # Remove points far to side, behind
         pts = pts[
             np.logical_and(
-                pts['y'] < 10.0,
-                pts['y'] > -5.0
+                 np.logical_and(
+                    pts['y'] < 10.0,
+                    pts['y'] > -5.0
+                ),
+                pts['x'] > 5.0
             )
+            
         ]
 
         # Crop by angle
@@ -233,16 +243,18 @@ class CurbDetector(Node):
         return (left_curb_pt, right_curb_pt)
 
     def findAllCurbBounds(self, pts):
-        curb_bounds = []
+        left_curbs = []
+        right_curbs = []
 
         for ring in range(self.TOP_RING):
             ring_pts = pts[pts['ring']==ring]
             bounds = self.searchRingForCurbs(ring_pts)
-            for i in range(len(bounds)):
-                if bounds[i] is not None:
-                    curb_bounds.append(bounds[i])
+            if bounds[0] is not None:
+                left_curbs.append(bounds[0])
+            if bounds[1] is not None:
+                right_curbs.append(bounds[1])
 
-        return curb_bounds
+        return left_curbs, right_curbs
 
     def formPointCloud2(self, nparray, frame_id: str):
         filtered_msg: PointCloud2 = rnp.msgify(PointCloud2, nparray)
@@ -260,18 +272,30 @@ class CurbDetector(Node):
             # self.publishCloud(pts, msg.header.frame_id)
             self.curb_candidates_pub.publish(self.formPointCloud2(pts, 'base_link'))
 
-            curb_bounds = self.findAllCurbBounds(pts)
-            np_bounds = np.array(curb_bounds, dtype=[
+            left_curbs, right_curbs = self.findAllCurbBounds(pts)
+            left_array = np.array(left_curbs, dtype=[
                 ('x', np.float32),
                 ('y', np.float32),
                 ('z', np.float32),
                 ('intensity', np.float32),
                 ('ring', np.uint8)
             ])
-            res_msg: PointCloud2 = rnp.msgify(PointCloud2, np_bounds)
-            res_msg.header.frame_id = 'base_link'
-            res_msg.header.stamp = self.get_clock().now().to_msg()
-            self.curb_pts_pub.publish(res_msg)
+            left_res_msg: PointCloud2 = rnp.msgify(PointCloud2, left_array)
+            left_res_msg.header.frame_id = 'base_link'
+            left_res_msg.header.stamp = self.get_clock().now().to_msg()
+            self.left_curb_pts_pub.publish(left_res_msg)
+
+            right_array = np.array(right_curbs, dtype=[
+                ('x', np.float32),
+                ('y', np.float32),
+                ('z', np.float32),
+                ('intensity', np.float32),
+                ('ring', np.uint8)
+            ])
+            right_res_msg: PointCloud2 = rnp.msgify(PointCloud2, right_array)
+            right_res_msg.header.frame_id = 'base_link'
+            right_res_msg.header.stamp = self.get_clock().now().to_msg()
+            self.right_curb_pts_pub.publish(right_res_msg)
 
 def main(args=None):
     rclpy.init(args=args)
