@@ -106,4 +106,42 @@ Nova::UBX::HNRPVT Nova::UBX::parse_hnrpvt(const std::unique_ptr<Nova::UBX::UBXMe
   };
   return st;
 }
+Nova::UBX::NAVPVT Nova::UBX::parse_navpvt(const std::unique_ptr<Nova::UBX::UBXMessage> msg) {
+  Nova::UBX::NAVPVT st = {
+    .iTOW = msg->data->read_dword(),
+    .year = msg->data->read_word(),
+    .month = msg->data->read_byte(),
+    .day = msg->data->read_byte(),
+    .hour = msg->data->read_byte(),
+    .min = msg->data->read_byte(),
+    .sec = msg->data->read_byte(),
+    .valid = msg->data->read_byte(),
+    .tAcc = msg->data->read_dword(),
+    .nano = msg->data->read_signed_int(),
+    .fixType = msg->data->read_byte(),
+    .flags = msg->data->read_byte(),
+    .flags2 = msg->data->read_byte(),
+    .numSV = msg->data->read_byte(),
+    .lon = msg->data->read_signed_int(),
+    .lat = msg->data->read_signed_int(),
+    .height = msg->data->read_signed_int(),
+    .hMSL = msg->data->read_signed_int(),
+    .hAcc = msg->data->read_dword(),
+    .vAcc = msg->data->read_dword(),
+    .velN = msg->data->read_signed_int(),
+    .velE = msg->data->read_signed_int(),
+    .velD = msg->data->read_signed_int(),
+    .gSpeed = msg->data->read_signed_int(),
+    .headMot = msg->data->read_dword(),
+    .sAcc = msg->data->read_dword(),
+    .headAcc = msg->data->read_dword(),
+    .pDOP = msg->data->read_word(),
+    .flags3 = msg->data->read_word(),
+    .reserved = msg->data->read_dword(),
+    .headVeh = msg->data->read_signed_int(),
+    .magDec = msg->data->read_signed_short(),
+    .magAcc = msg->data->read_word()
+  };
+  return st;
+}
 #pragma GCC diagnostic pop

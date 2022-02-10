@@ -15,6 +15,7 @@
 
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <std_msgs/msg/float64.hpp>
+#include <std_msgs/msg/u_int8.hpp>
 #include "GPSInterface.hpp"
 #include <nav_msgs/msg/odometry.hpp> // Pub GPS data as odometry
 #include <math.h>
@@ -38,6 +39,7 @@ private:
   // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr velocity_publisher;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_publisher;
   rclcpp::Publisher<nova_gps::msg::GPSDiagnostic>::SharedPtr diagnostic_publisher;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr sv_publisher;
 };
 
 }

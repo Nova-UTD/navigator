@@ -31,6 +31,42 @@ enum GPSFix {
   TIME_ONLY_FIX
 };
 
+struct NAVPVT {
+  uint32_t iTOW;   // ms, GPS Time-Of-Week of the current epoch
+  uint16_t year;   // y
+  uint8_t month;   // m, 1..12 (UTC)
+  uint8_t day;     // d, 1..31 (UTC)
+  uint8_t hour;    // h, 0..23 (UTC)
+  uint8_t min;     // m, 0..59 (UTC)
+  uint8_t sec;     // s, 0..59 (UTC)
+  uint8_t valid;   // bitfield, 0 validDate 1 validTime 2 fullyResolved
+  uint32_t tAcc;
+  int32_t nano;    // ns, -1e9 .. 1e9 (UTC)
+  uint8_t fixType;  // GPSFix
+  uint8_t flags;
+  uint8_t flags2;
+  uint8_t numSV;
+  int32_t lon;     // deg * 1e-7
+  int32_t lat;     // deg * 1e-7
+  int32_t height;  // mm, above elipsoid
+  int32_t hMSL;    // mm, above mean sea level
+  uint32_t hAcc;   // mm, horizontal accuracy
+  uint32_t vAcc;   // mm, vertical accuracy
+  int32_t velN;    // mm/s NED N vel
+  int32_t velE;
+  int32_t velD;
+  int32_t gSpeed;
+  int32_t headMot;
+  uint32_t sAcc;
+  uint32_t headAcc;
+  uint16_t pDOP; // * 0.01
+  uint16_t flags3;
+  uint32_t reserved;
+  int32_t headVeh;
+  int16_t magDec;
+  int16_t magAcc;
+};
+
 // if you ever want to read this struct straight from memory,
 // make sure to pack it
 struct HNRPVT {
@@ -113,6 +149,7 @@ struct CFGPRT_I2C {
 };
 
 HNRPVT parse_hnrpvt(const std::unique_ptr<UBXMessage> msg);
+NAVPVT parse_navpvt(const std::unique_ptr<UBXMessage> msg);
 
 }
 }

@@ -30,6 +30,7 @@ GPSInterfaceNode::GPSInterfaceNode(const std::string & interface_name) // The in
     (receive_frequency, bind(& GPSInterfaceNode::send_pose, this));
   this->odometry_publisher = this->create_publisher<nav_msgs::msg::Odometry>("/gps/odometry", 10);
   this->diagnostic_publisher = this->create_publisher<nova_gps::msg::GPSDiagnostic>("/gps/diagnostic", 10);
+  this->sv_publisher = this->create_publisher<std_msgs::msg::UInt8>("/gps/numsv", 10);
 }
 
 GPSInterfaceNode::~GPSInterfaceNode() {
@@ -69,7 +70,7 @@ void GPSInterfaceNode::send_pose() {
           std::cout << "ACK" << std::endl;
         }
       } else
-      if(msg->id == 0x00 && msg->mclass == 0x28) {
+      if(msg->id == 0x07 && msg->mclass == 0x01) {
         raw_msg = std::move(msg);
         found = true;
       }
@@ -78,12 +79,12 @@ void GPSInterfaceNode::send_pose() {
     // message.header.frame_id = "/earth";
     // for correctness, we should use the utc from the message.
 
-    Nova::UBX::HNRPVT hnrpvt = parse_hnrpvt(std::move(raw_msg));
+    Nova::UBX::NAVPVT navpvt = parse_navpvt(std::move(raw_msg));
     
-    double lat = hnrpvt.lat / (double)1e7;
-    double lon = hnrpvt.lon / (double)1e7;
+    double lat = navpvt.lat / (double)1e7;
+    double lon = navpvt.lon / (double)1e7;
 
-    double altitude = hnrpvt.hMSL / 1000.0;
+    double altitude = navpvt.hMSL / 1000.0;
 
     double lat_rad = lat * M_PI / 180.0;
     double lon_rad = lon * M_PI / 180.0;
@@ -113,7 +114,7 @@ void GPSInterfaceNode::send_pose() {
     // message.pose.pose.position = point;
     // utterly useless, but let's control what we send
 
-    double heading_deg = hnrpvt.headVeh / (double)1e5;
+    double heading_deg = navpvt.headVeh / (double)1e5;
     double heading_rad = heading_deg * M_PI / 180.0;
 
     // this->publisher->publish(message);
@@ -123,24 +124,26 @@ void GPSInterfaceNode::send_pose() {
 
     // hdg.data = heading_rad;
 
-    double speed = hnrpvt.gSpeed / 1000.0;
+    double speed = navpvt.gSpeed / 1000.0;
 
     // this->heading_publisher->publish(hdg);
     // this->velocity_publisher->publish(vel);
     
     nav_msgs::msg::Odometry odom_msg;
+    /*
     nova_gps::msg::GPSDiagnostic diag_msg;
 
-    diag_msg.nano = hnrpvt.nano;
-    diag_msg.valid_date = !!(hnrpvt.valid & 1);
-    diag_msg.valid_time = !!(hnrpvt.valid & 2);
-    diag_msg.fully_resolved = !!(hnrpvt.valid & 4);
-    diag_msg.gps_fix = hnrpvt.gpsFix;
-    diag_msg.gps_fix_ok = !!(hnrpvt.flags & 1);
-    diag_msg.diff_soln = !!(hnrpvt.flags & 2);
-    diag_msg.wknset = !!(hnrpvt.flags & 4);
-    diag_msg.towset = !!(hnrpvt.flags & 8);
-    diag_msg.head_veh_valid = !!(hnrpvt.flags & 16);
+    diag_msg.nano = navpvt.nano;
+    diag_msg.valid_date = !!(navpvt.valid & 1);
+    diag_msg.valid_time = !!(navpvt.valid & 2);
+    diag_msg.fully_resolved = !!(navpvt.valid & 4);
+    diag_msg.gps_fix = navpvt.gpsFix;
+    diag_msg.gps_fix_ok = !!(navpvt.flags & 1);
+    diag_msg.diff_soln = !!(navpvt.flags & 2);
+    diag_msg.wknset = !!(navpvt.flags & 4);
+    diag_msg.towset = !!(navpvt.flags & 8);
+    diag_msg.head_veh_valid = !!(navpvt.flags & 16);
+    */
     odom_msg.header.frame_id = "/earth";
     odom_msg.child_frame_id = "/base_link";
     odom_msg.header.stamp = rclcpp::Clock().now();
@@ -158,7 +161,10 @@ void GPSInterfaceNode::send_pose() {
     odom_msg.twist.twist.linear.z = 0; // Assume that the car is traveling on a level plane.
     RCLCPP_INFO(get_logger(), "Publishing GPS message.");
     this->odometry_publisher->publish(odom_msg);
-    this->diagnostic_publisher->publish(diag_msg);
+    // this->diagnostic_publisher->publish(diag_msg);
+    std_msgs::msg::UInt8 numsv;
+    numsv.data = navpvt.numSV;
+    this->sv_publisher->publish(numsv);
   } else {
     RCLCPP_INFO(get_logger(), "Didn't get a message to publish.");
   }
