@@ -19,6 +19,9 @@
 using namespace navigator::linear_actuator;
 
 ControllerNode::ControllerNode() : Node("linear_actuator") {
+  this->declare_parameter("engaged_position");
+  this->declare_parameter("disengaged_position");
+  this->declare_parameter("command_id");
   this->get_parameter("engaged_position", this->params.engaged_position);
   this->get_parameter("disengaged_position", this->params.disengaged_position);
   this->get_parameter("command_id", this->params.command_id);
@@ -46,14 +49,11 @@ void ControllerNode::send_control_message() {
       (float) this->params.disengaged_position,
       (float) this->params.engaged_position,
       this->target_position);
-  can_data_t target_position_low_bit = target_position % 256;
-  can_data_t target_position_high_bit = target_position / 256;
 
   auto message = voltron_msgs::msg::CanFrame();
   message.identifier = this->params.command_id;
-  message.data = 0x0F0A00C000000000;
-  message.data = message.data | target_position_low_bit << 40;
-  message.data = message.data | target_position_high_bit << 32;
+  message.data = 0x00000000C0000A0F;
+  message.data = message.data | target_position << 16;
   
   this->can_publisher->publish(message);
 }

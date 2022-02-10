@@ -16,7 +16,7 @@ def generate_launch_description():
     launch_path = path.realpath(__file__)
     launch_dir = path.dirname(launch_path)
     param_dir = path.join(launch_dir,"param")
-    interface = "can1"
+    interface = "vcan0"
 
     # steering_pid
     can = Node(
@@ -31,7 +31,7 @@ def generate_launch_description():
         name='linear_actuator_controller',
         parameters=[(path.join(param_dir,"interface","throttle_controller.param.yaml"))],
         remappings=[
-            ("outgoing_can_frames", "outgoing_can_frames_can1"),
+            ("outgoing_can_frames", "outgoing_can_frames_" + interface),
         ]
     )
     return LaunchDescription([
