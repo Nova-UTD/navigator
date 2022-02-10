@@ -59,5 +59,5 @@ void ControllerNode::send_control_message() {
 }
 
 void ControllerNode::update_target_position(const std_msgs::msg::Float32::SharedPtr message) {
-  this->target_position = message->position;
+  this->target_position = message->data;
 }
