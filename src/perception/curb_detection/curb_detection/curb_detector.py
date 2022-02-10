@@ -223,7 +223,7 @@ class CurbDetector(Node):
         # ring_pts = ring_pts[angles>0]
         # angles = angles[angles>0]
         left_pts = ring_pts[:zero_idx]
-        left_curb_pt = self.slide(left_pts[::-1], linear_dist_threshold=0.007, min_dz=0.03, window=10, debug=True)
+        left_curb_pt = self.slide(left_pts[::-1], linear_dist_threshold=0.007, min_dz=0.03, window=10, debug=False)
         # if pt is not None:
         #     plt.scatter(-pt['y'], pt['x'], s=20)
 
