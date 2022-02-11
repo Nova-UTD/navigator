@@ -16,7 +16,7 @@ def generate_launch_description():
     launch_path = path.realpath(__file__)
     launch_dir = path.dirname(launch_path)
     param_dir = path.join(launch_dir,"param")
-    interface = "vcan0"
+    interface = "can1"
 
     # steering_pid
     can = Node(
