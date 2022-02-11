@@ -38,7 +38,7 @@ CanFrame::data_t CanFrame::get_data() const {
 std::unique_ptr<struct can_frame> CanFrame::to_system_frame() const {
   auto system_frame = std::make_unique<struct can_frame>();
   system_frame->can_id = this->identifier;
-  system_frame->can_id |= CAN_EFF_FLAG;
+  // system_frame->can_id |= CAN_EFF_FLAG;
   (*(CanFrame::data_t *) system_frame->data) = this->data;
   system_frame->can_dlc = 8;
   return system_frame;
