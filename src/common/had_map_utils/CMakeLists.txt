@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.5)
 
 ### Export headers
 project(had_map_utils)
+
 find_package(ament_cmake_auto REQUIRED)
 find_package(CGAL REQUIRED COMPONENTS Core)
 #find_package(Eigen3 REQUIRED)
