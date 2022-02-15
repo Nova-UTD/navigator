@@ -8,11 +8,8 @@
  */
 
 
-#include <chrono>
-#include <memory>
-#include <utility>
 #include <cmath>
-#include <string>
+#include <memory>
 
 #include "nova_pure_pursuit/PurePursuit.hpp"
 
@@ -21,9 +18,9 @@ using namespace Nova::PurePursuit;
 
 PurePursuit::PurePursuit(float lookahead_distance) {
     
-    this->trajectory = voltron_msgs::msg::Trajectory();
-    this->closest_point = voltron_msgs::msg::TrajectoryPoint();
-    this->lookahead_point = voltron_msgs::msg::TrajectoryPoint();
+    this->trajectory = Trajectory();
+    this->closest_point = TrajectoryPoint();
+    this->lookahead_point = TrajectoryPoint();
     this->lookahead_distance = lookahead_distance;
     this->curvature = 0.0;
     this->steering_angle = 0.0;
@@ -33,7 +30,7 @@ PurePursuit::PurePursuit(float lookahead_distance) {
 PurePursuit::~PurePursuit() {}
 
 
-double PurePursuit::get_steering_angle(voltron_msgs::msg::Trajectory cur_trajectory) {
+double PurePursuit::get_steering_angle(Trajectory cur_trajectory) {
     
     if(cur_trajectory.points.size() == 0) {
         return this->steering_angle; // error occurred, return old angle
