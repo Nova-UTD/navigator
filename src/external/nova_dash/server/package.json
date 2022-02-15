@@ -1,0 +1,18 @@
+{
+  "name": "nova-dash-server",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [],
+
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "express-ws": "^5.0.2",
+    "nodemon": "^2.0.15",
+    "ws": "^8.3.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "server": "nodemon server.js"
+  }
+}

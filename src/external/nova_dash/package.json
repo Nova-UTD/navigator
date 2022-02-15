@@ -1,10 +1,15 @@
 {
-  "dependencies": {
-    "body-parser": "^1.19.0",
-    "express": "^4.17.1",
-    "express-ws": "^5.0.2",
-    "nodemon": "^2.0.15",
-    "ws": "^8.3.0"
+  "name": "nova_dash",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [],
+  "scripts": {
+    "client": "cd client && npm start",
+    "backend": "cd server && nodemon server.js",
+    "dev": "concurrently \"npm run backend\" \"npm run client\""
   },
-  "start": "nodemon server.js"
+  "dependencies": {
+    "concurrently": "^7.0.0",
+    "nodemon": "^2.0.15"
+  }
 }
