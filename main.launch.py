@@ -56,6 +56,17 @@ def generate_launch_description():
             ("outgoing_can_frames", "outgoing_can_frames")
         ]
     )
+
+    speedometer_reporter = Node(
+        package='can_translation',
+        executable='float_reporter',
+        parameters=[(path.join(param_dir,"interface","speedometer_reporter.param.yaml"))]
+        remappings=[
+            ("incoming_can_frames", "incoming_can_frames_can1"),
+            ("result_topic", "vehicle_speedometer")
+        ]
+    )
+    
     # steering_pid
     can = Node(
         package='voltron_can',
@@ -153,59 +164,29 @@ def generate_launch_description():
 #    )
 
     # PERCEPTION
-    lidar_front = Node(
-        package='velodyne_nodes',
-        namespace="lidar_front",
-        executable='velodyne_cloud_node_exe',
-        parameters=[(path.join(param_dir,"perception","lidar_front.param.yaml"))],
-        remappings=[("topic", "points_raw")],
-        arguments=["--model", "vlp16"])
-
-    lidar_rear = Node(
-        package='velodyne_nodes',
-        namespace="lidar_rear",
-        executable='velodyne_cloud_node_exe',
-        parameters=[(path.join(param_dir,"perception","lidar_rear.param.yaml"))],
-        remappings=[("topic", "points_raw")],
-        arguments=["--model", "vlp16"])
-    
-    lidar_front_filter = Node(
-        package="point_cloud_filter_transform_nodes",
-        executable="point_cloud_filter_transform_node_exe",
-        namespace = "lidar_front",
-        parameters=[(path.join(param_dir,"perception","pc_filter_transform_front_sim.param.yaml"))],
-        remappings = [("points_in", "/lidar_front/points_raw")]
+    lidar_driver_front = Node(
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        namespace='lidar_front',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_front.param.yaml"))]
     )
-
-    lidar_rear_filter = Node(
-        package="point_cloud_filter_transform_nodes",
-        executable="point_cloud_filter_transform_node_exe",
-        namespace = "lidar_rear",
-        parameters=[(path.join(param_dir,"perception","pc_filter_transform_rear_sim.param.yaml"))],
-        remappings = [("points_in", "/lidar_rear/points_raw")]
+    lidar_pointcloud_front = Node(
+        package='velodyne_pointcloud',
+        executable='velodyne_convert_node',
+        namespace='lidar_front',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_front.param.yaml"))]
     )
-
-    lidar_fusion = Node(
-        package='point_cloud_fusion_nodes',
-        executable='pointcloud_fusion_node_exe',
-        namespace="lidars",
-        parameters=[(path.join(param_dir,"perception","lidar_fusion.param.yaml"))],
-        remappings=[
-            ("output_topic", "points_fused"),
-            ("input_topic1", "/lidar_front/points_filtered"), 
-            ("input_topic2", "/lidar_rear/points_filtered")
-        ]
+    lidar_driver_rear = Node(
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        namespace='lidar_rear',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_rear.param.yaml"))]
     )
-
-    lidar_downsampler = Node(
-        package='voxel_grid_nodes',
-        executable='voxel_grid_node_exe',
-        namespace='lidars',
-        parameters=[(path.join(param_dir,"perception","lidar_downsampler.param.yaml"))],
-        remappings=[
-            ("points_in", "points_fused"),
-            ("points_downsampled", "points_fused_downsampled")
-        ],
+    lidar_pointcloud_rear = Node(
+        package='velodyne_pointcloud',
+        executable='velodyne_convert_node',
+        namespace='lidar_rear',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_rear.param.yaml"))]
     )
     
     # PLANNING
@@ -237,6 +218,7 @@ def generate_launch_description():
             ('vehicle_state_command', '/vehicle/state_command')
         ]
     )
+    
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -254,12 +236,33 @@ def generate_launch_description():
 #        remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
 #    )
 
+    obstacle_republisher = Node(
+        package='obstacle_repub',
+        name='obstacle_republisher_node',
+        executable='obstacle_repub_exe',
+        remappings=[
+            ('svl_obstacle_array', '/ground_truth_3d/detections'),
+            ('zed_obstacle_array', '/zed_2i/obj_det/objects'),
+            ('nova_obstacle_array', '/obstacles/array')
+        ]
+    )
+
+    obstacle_drawer = Node(
+        package='obstacle_drawer',
+        name='obstacle_drawer_node',
+        executable='obstacle_drawer_exe',
+        remappings=[
+            ('obstacle_marker_array', '/obstacles/marker_array'),
+            ('nova_obstacle_array', '/obstacles/array')
+        ]
+    )
+    
     # VIZ
     lanelet_visualizer = Node(
         package='map_publishers',
         executable='lanelet_loader'
     )
-
+    
     return LaunchDescription([
         # CONTROL
         # steering_controller,
@@ -271,17 +274,18 @@ def generate_launch_description():
         # gnss,
         svl_bridge,
         # vehicle_bridge,
+        # speedometer_reporter,
 
         # LOCALIZATION
         # ndt,
-        robot_localization,
+        # robot_localization,
         # icp_nudger,
         # deviation_reporter,
 
         # MAPPING
         # lanelet_server,
-        lanelet_visualizer,
-        pcd_loader,
+        # lanelet_visualizer,
+        # pcd_loader,
 
         # MISC
         odom_bl_link,
@@ -289,12 +293,12 @@ def generate_launch_description():
         # visuals,
 
         # PERCEPTION
-        # lidar_front,
-        # lidar_rear,
-        # lidar_front_filter,
-        # lidar_rear_filter,
-        # lidar_fusion,
-        # lidar_downsampler,
+        lidar_driver_front,
+        lidar_pointcloud_front,
+        lidar_driver_rear,
+        lidar_pointcloud_rear,
+        obstacle_republisher,
+        obstacle_drawer,
 
         # PLANNING
         # route_planner,
