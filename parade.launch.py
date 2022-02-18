@@ -298,10 +298,10 @@ def generate_launch_description():
         # visuals,
 
         # PERCEPTION
-        # lidar_driver_front,
-        # lidar_pointcloud_front,
-        # lidar_driver_rear,
-        # lidar_pointcloud_rear,
+        lidar_driver_front,
+        lidar_pointcloud_front,
+        lidar_driver_rear,
+        lidar_pointcloud_rear,
         curb_detector,
 
         # PLANNING
