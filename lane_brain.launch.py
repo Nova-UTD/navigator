@@ -100,7 +100,7 @@ def generate_launch_description():
     icp_nudger = Node(
         package='icp_nudger',
         executable='icp_nudger',
-        parameters=[(path.join(param_dir,"hubble","icp_nudger.param.yaml"))],
+        parameters=[(path.join(param_dir,"atlas","icp_nudger.param.yaml"))],
         remappings=[
             ("/gps", "/gps/odom"),
             ("/lidar", "/lidar_front/points_raw"),
@@ -112,7 +112,7 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=[(path.join(param_dir,"hubble","robot_localization.param.yaml"))],
+        parameters=[(path.join(param_dir,"atlas","robot_localization.param.yaml"))],
         remappings=[
             ("/odom0", "/gps/odom"),
             ("/odom1", "/zed2i/zed_node/odom"),
@@ -191,7 +191,11 @@ def generate_launch_description():
 
     curb_detector = Node(
         package='curb_detection',
-        executable='curb_detector'
+        executable='curb_detector',
+        namespace='lidar_front',
+        remappings=[
+            ("input_points", "points_raw")
+        ]
     )
     
     # PLANNING
@@ -283,7 +287,7 @@ def generate_launch_description():
 
         # LOCALIZATION
         # ndt,
-        # robot_localization,
+        robot_localization,
         # icp_nudger,
         # deviation_reporter,
 
