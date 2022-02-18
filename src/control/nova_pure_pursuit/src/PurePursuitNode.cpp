@@ -42,15 +42,20 @@ PurePursuitNode::PurePursuitNode() : rclcpp::Node("pure_pursuit_controller") {
 
 PurePursuitNode::~PurePursuitNode() {}
 
-void PurePursuitNode::send_message() {  
-  // calculate steering angle
-  auto angle = controller->get_steering_angle(trajectory);
+void PurePursuitNode::send_message() {
+
+  /* TODO:
+  - Select lookahead & closest points using util functions
+  - set new points for the controller
+  - This must be done regardless of whether having received a new trajectory 
+  */
+
+  auto angle = controller->get_steering_angle();
 
   // format of published message
   auto steering_angle_msg = SteeringAngle();
   steering_angle_msg.steering_angle = angle;
 
-  // logging & publishing
   RCLCPP_INFO(this->get_logger(), "Publishing: '%f'", angle);
   steering_control_publisher->publish(steering_angle_msg);
 }
@@ -59,15 +64,9 @@ void PurePursuitNode::update_trajectory(Trajectory::SharedPtr ptr) {
 
   RCLCPP_INFO(this->get_logger(), "Trajectory received");
   auto trajectory = ptr->points;
-
-
-  // if(trajectories.size() == 0) {
-  //   return; // keep using old trajectory
-  // }
-
 }
 
-// ToDo: Move this function to a test-providing node
+// TODO: Move this function to a test-providing node
 /**********************************************************************************
 * Function:     load_test_trajectory()
 *

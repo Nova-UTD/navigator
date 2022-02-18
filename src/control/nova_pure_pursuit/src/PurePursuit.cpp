@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <memory>
+#include <iostream>
 
 #include "nova_pure_pursuit/PurePursuit.hpp"
 
@@ -18,9 +19,12 @@ using namespace Nova::PurePursuit;
 
 PurePursuit::PurePursuit(float lookahead_distance) {
     
-    this->trajectory = Trajectory();
-    this->closest_point = TrajectoryPoint();
-    this->lookahead_point = TrajectoryPoint();
+    this->closest_point_x = 0.0;
+    this->closest_point_y = 0.0;
+    
+    this->lookahead_point_x = 0.0;
+    this->lookahead_point_y = 0.0;
+
     this->lookahead_distance = lookahead_distance;
     this->curvature = 0.0;
     this->steering_angle = 0.0;
@@ -29,28 +33,14 @@ PurePursuit::PurePursuit(float lookahead_distance) {
 
 PurePursuit::~PurePursuit() {}
 
-
-double PurePursuit::get_steering_angle(Trajectory cur_trajectory) {
-    
-    if(cur_trajectory.points.size() == 0) {
-        return this->steering_angle; // error occurred, return old angle
-    }
-
-    this->trajectory = cur_trajectory;
-    this->closest_point = this->trajectory.points[0];
-    set_lookahead_point();
-    compute_curvature();
-    compute_steering_angle();
-    return this->steering_angle;
-}
-
-void PurePursuit::set_lookahead_point() {
-    lookahead_point = trajectory.points[1];
+void PurePursuit::set_lookahead_point(float x, float y) {
+    lookahead_point_x = x;
+    lookahead_point_y = y;
 }
 
 void PurePursuit::compute_curvature() {
-    double denominator = pow(lookahead_point.x, 2) + pow(lookahead_point.y, 2);
-    double numerator = 2.0 * lookahead_point.x;
+    double denominator = pow(lookahead_point_x, 2) + pow(lookahead_point_y, 2);
+    double numerator = 2.0 * lookahead_point_x;
     
     if (denominator != 0) {
         this->curvature = numerator / denominator;
@@ -61,6 +51,20 @@ void PurePursuit::compute_curvature() {
 
 void PurePursuit::compute_steering_angle() {
     this->steering_angle = atan(WHEEL_BASE * this->curvature);
+}
+
+double PurePursuit::get_steering_angle() {
+    
+    // if(cur_trajectory.points.size() == 0) {
+    //     return this->steering_angle; // error occurred, return old angle
+    // }
+
+    // this->trajectory = cur_trajectory;
+    // this->closest_point = this->trajectory.points[0];
+    set_lookahead_point(0.0, 0.0);
+    compute_curvature();
+    compute_steering_angle();
+    return this->steering_angle;
 }
 
 /** Adaptative lateral control -> might use later */
