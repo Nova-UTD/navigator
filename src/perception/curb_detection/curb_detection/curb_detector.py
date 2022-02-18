@@ -27,26 +27,26 @@ class CurbDetector(Node):
 
         self.lidar_sub = self.create_subscription(
             PointCloud2,
-            '/lidar_front/velodyne_points',
+            'input_points',
             self.front_lidar_cb,
             10
         )
 
         self.curb_candidates_pub = self.create_publisher(
             PointCloud2,
-            '/lidar_front/curb_candidates',
+            'curb_candidates',
             10
         )
 
         self.left_curb_pts_pub = self.create_publisher(
             PointCloud2,
-            '/lidar_front/curb_points/left',
+            'curb_points/left',
             10
         )
 
         self.right_curb_pts_pub = self.create_publisher(
             PointCloud2,
-            '/lidar_front/curb_points/right',
+            'curb_points/right',
             10
         )
         
