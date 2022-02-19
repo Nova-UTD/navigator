@@ -52,7 +52,6 @@ private:
     std::unique_ptr<PurePursuit> controller;
     rclcpp::TimerBase::SharedPtr control_timer;
     Trajectory trajectory;
-    std::vector<autoware_auto_msgs::msg::TrajectoryPoint> test_trajectory;
 
     // functions
     void send_message();

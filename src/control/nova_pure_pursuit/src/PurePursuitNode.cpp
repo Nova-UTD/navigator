@@ -11,10 +11,6 @@
 #include "nova_pure_pursuit/PurePursuitNode.hpp"
 #include <chrono>
 #include <memory>
-#include <vector>
-#include <fstream>
-#include <iostream>
-#include <unistd.h>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -35,9 +31,6 @@ PurePursuitNode::PurePursuitNode() : rclcpp::Node("pure_pursuit_controller") {
   
   this->trajectory_subscription = this->create_subscription
     <Trajectory>("reference_trajectory", 8, std::bind(&PurePursuitNode::update_trajectory, this, _1));
-
-  std::vector<autoware_auto_msgs::msg::TrajectoryPoint> test_trajectory;
-  load_test_trajectory(test_trajectory);
 }
 
 PurePursuitNode::~PurePursuitNode() {}
@@ -62,49 +55,6 @@ void PurePursuitNode::send_message() {
 
 void PurePursuitNode::update_trajectory(Trajectory::SharedPtr ptr) {
 
-  RCLCPP_INFO(this->get_logger(), "Trajectory received");
-  auto trajectory = ptr->points;
-}
-
-// TODO: Move this function to a test-providing node
-/**********************************************************************************
-* Function:     load_test_trajectory()
-*
-* Descr:        Parses an input txt file of xyz points to build a sample trajectory
-*               Format:
-*                   x
-*                   y
-*                   z
-*                   [empty line]
-**********************************************************************************/
-void PurePursuitNode::load_test_trajectory(std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &v) {
-
-  std::ifstream testing_data;
-  std::string username = static_cast<std::string>(getenv("USER"));
-  testing_data.open("/home/" + username + "/navigator/data/TrajTest1_Gomentum(unformated).txt");
-
-  if (testing_data.is_open()) {
-
-    std::cout << "Loading the testing file...." << std::endl;
-
-    std::string line = "";
-    while (testing_data) {
-
-      std::getline(testing_data, line);
-      autoware_auto_msgs::msg::TrajectoryPoint trajectory_point;
-      testing_data >> trajectory_point.x;
-      testing_data >> trajectory_point.y;
-      testing_data >> trajectory_point.z;
-
-      trajectory_point.longitudinal_velocity_mps = 0;
-      
-      if (!testing_data.eof()) {
-        v.push_back(trajectory_point);
-      }
-
-    }
-
-  }
-  else { std::cout << "ERROR: Testing file is NOT found!." << std::endl; }
-  testing_data.close();
+  RCLCPP_INFO(this->get_logger(), "Trajectory received!");
+  this->trajectory = *ptr;
 }
