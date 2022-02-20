@@ -30,24 +30,14 @@ using namespace std::chrono_literals;
 using sensor_msgs::msg::PointCloud2;
 
 /*
-
 PSEUDOCODE
-On init:
-1. Load lanelet map binary and store as pointer
-2. Add tf listener, buffer
 
-Every 100ms:
-1. Get translation (inverse transfrom) from map to base_link.
-	- This is the robot's position on the map.
-2. Get nearest lanelet
-3. Get nearest point on lanelet centerline
-4. Find distance from robot_pos to centerline_point
-5. Add distance to total_deviation
-6. Increment deviation_count
+On init: Load our HD map
 
-On shutdown:
-1. Print (total_deviation/deviation_count)
-	- This is the average deviation from the centerline
+On curb detections received (sub cb):
+	1. Get latest map->base_link tf
+	2. Find nearest lane segment to vehilce using tf
+	3. Print ID of nearest segment
 */
 
 class CurbLocalizerNode : public rclcpp::Node
@@ -59,7 +49,9 @@ class CurbLocalizerNode : public rclcpp::Node
 				this->declare_parameter<std::string>("osm_path", "/home/main/voltron/assets/grand_loop.osm");
 				_map = load_from_osm();
 				timer_ = this->create_wall_timer(100ms, std::bind(&CurbLocalizerNode::checkDeviation, this));
-                curb_detection_sub = this->create_subscription<PointCloud2>("/lidar_front/curb_points")
+                curb_detection_sub = this->create_subscription<PointCloud2>("/lidar_front/curb_points", 10,
+					[this](PointCloud2::SharedPtr msg) { curbDetectionCb(msg); }
+				);
 
 				// TF2
 				tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
@@ -69,6 +61,10 @@ class CurbLocalizerNode : public rclcpp::Node
 		}
 
 	private:
+
+		void curbDetectionCb( PointCloud2::SharedPtr msg ) {
+			RCLCPP_INFO_STREAM(this->get_logger(), "Curbs received!");
+		}
 
         void getNearestLanelet() {
 
