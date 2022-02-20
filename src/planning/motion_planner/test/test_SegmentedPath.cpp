@@ -91,3 +91,47 @@ TEST_F(test_SegmentedPath, test_branch) {
     ASSERT_TRUE(abs(turn_angle - M_PI_2) < tolerance);
   }
 }
+
+TEST_F(test_SegmentedPath, test_intersection) {
+  using std::vector;
+  //use a horizontal path that loops back on iteself and a vertical line
+  auto points = std::make_shared<vector<PathPoint>>();
+  points->push_back(PathPoint(0,0));
+  points->push_back(PathPoint(0.5,0));
+  points->push_back(PathPoint(1,0));
+  points->push_back(PathPoint(1.5,0));
+  points->push_back(PathPoint(1.5,0.5));
+  points->push_back(PathPoint(1,0.5));
+  points->push_back(PathPoint(0.5,0.5));
+  SegmentedPath path(points, 0.5);
+  //intersect with vertical line with point (0.6,-1)
+  auto intersection = path.intersection(0,1,0.6,-1);
+  ASSERT_EQ(2, intersection.size());
+  ASSERT_EQ(0.6, intersection[0]);
+}
+
+TEST_F(test_SegmentedPath, test_intersection_x_slope) {
+  using std::vector;
+  //use a vertical path with horizontal line
+  auto points = std::make_shared<vector<PathPoint>>();
+  points->push_back(PathPoint(0,0));
+  points->push_back(PathPoint(0,0.5));
+  points->push_back(PathPoint(0,1));
+  points->push_back(PathPoint(0,1.5));
+  SegmentedPath path(points, 0.5);
+  //intersect with horizontal line with point (-1,0.6)
+  auto intersection = path.intersection(1,0,-1,0.6);
+  ASSERT_EQ(1, intersection.size());
+  ASSERT_EQ(0.6, intersection[0]);
+}
+
+TEST_F(test_SegmentedPath, test_intersection_weird_path) {
+  using std::vector;
+  //use the weird path and with a non-axis-aligned slope
+  auto intersection = segments->intersection(-0.001,100,0.05,0);
+  ASSERT_EQ(1, intersection.size());
+  //make sure the intersections are on the right parts of each segment
+  //not using exact values because of the weird slope 
+  ASSERT_LT(0.07, intersection[0]);
+  ASSERT_GT(0.08, intersection[0]);
+}

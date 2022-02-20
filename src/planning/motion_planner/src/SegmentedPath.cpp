@@ -151,3 +151,40 @@ size_t SegmentedPath::closest_point(PathPoint p) const {
 	}
 	return min_index;
 }
+
+std::vector<double> SegmentedPath::intersection(double mx, double my, double x0, double y0) const {
+	if (mx == 0 && my == 0) {
+		//TODO: return arclength is x0,y0 is on (or close enough) to line
+		return std::vector<double>();
+	}
+	double slope = mx/my;
+	bool use_x_slope = false;
+	if (my == 0) {
+		//we need to use my/mx slope instead of mx/my to avoid division by 0
+		use_x_slope = true;
+		slope = my/mx;
+	}
+	
+	//for each line segment:
+	//1. calculate intersection of given line and current segment
+	//2. if the intersection is outisde the bounds of the segment, move on to next segment
+	//3. if it is within the boundary, calculate the arclength of the intersection relative to this segment.
+	//4. then add i*spacing to that, push the value onto the vector, and move on to next segment
+	std::vector<double> intersections;
+	for (int i = 0; i < points->size()-1; i++) {
+		auto a = points->at(i);
+		auto b = points->at(i+1);
+		double proportion;
+		if (use_x_slope) {
+			proportion = (a.y-y0-a.x+slope*x0)/(slope*(b.x-a.x)+a.y-b.y);	
+		} else {
+			proportion = (a.x-x0-a.y+slope*y0)/(slope*(b.y-a.y)+a.x-b.x);
+		}
+		if (0 <= proportion && proportion < 1) {
+			//intersection is between a and b
+			double arclength = i*spacing + proportion*spacing;
+			intersections.push_back(arclength);
+		}
+	}
+	return intersections;
+}

@@ -49,6 +49,9 @@ public:
 	double distance(PathPoint p) const;
 	//returns the index of the closest point in points to p 
 	size_t closest_point(PathPoint p) const;
+	//Returns the arclength of the points of intersection of the line and the path
+	//line is defined by x(t) = mx*t+x0, y(t) = my*t+y0
+	std::vector<double> intersection(double mx, double my, double x0, double y0) const;
 	const double spacing;
 	const std::shared_ptr<const std::vector<PathPoint>> points;
 	double cost;
