@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 '''
+Nova at UT Dallas, 2022
+
 The Navigator Simulation Bridge for CARLA
 
 The goal is to mimick Hail Bopp as much as possible.
@@ -59,6 +61,7 @@ from std_msgs.msg import Header
 from sensor_msgs.msg import Image # For cameras
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry # For GPS, ground truth
+from voltron_msgs.msg import PeddlePosition, SteeringPosition
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 
@@ -72,18 +75,10 @@ class SimBridgeNode(Node):
         """
         Function to transform the received carla camera data into a ROS image message
         """
-        # if ((carla_camera_data.height != self._camera_info.height) or
-        #         (carla_camera_data.width != self._camera_info.width)):
-        #     self.node.logerr(
-        #         "Camera{} received image not matching configuration".format(self.get_prefix()))
-        # image_data_array, encoding = self.get_carla_image_data_array(
-        #     carla_camera_data)
         carla_image_data_array = np.ndarray(
         shape=(carla_image.height, carla_image.width, 4),
         dtype=np.uint8, buffer=carla_image.raw_data)
         img_msg = self.cv_bridge.cv2_to_imgmsg(carla_image_data_array, encoding=encoding)
-        # the camera data is in respect to the camera's own frame
-        # img_msg.header = self.get_msg_header(timestamp=carla_camera_data.timestamp)
         img_msg.header.stamp = self.get_clock().now().to_msg()
         img_msg.header.frame_id = '/base_link'
 
@@ -270,6 +265,13 @@ class SimBridgeNode(Node):
         self.rgb_front_pub = self.create_publisher(
             Image,
             '/camera_front/rgb',
+            10
+        )
+
+        self.steering_command_sub = self.create_subscription(
+            SteeringPosition,
+            '/command/steering_position',
+            self.steering_command_cb,
             10
         )
 
