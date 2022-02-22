@@ -11,6 +11,7 @@ Will target joystick control using joy_node in the future.
 
 # For fancy console UI stuff
 import curses
+from pynput import keyboard
 
 import random
 import rclpy
@@ -40,6 +41,59 @@ from sensor_msgs.msg import PointCloud2
 screen = curses.initscr()
 num_rows, num_cols = screen.getmaxyx()
 
+pressed_keys = []
+
+def on_kb_update():
+    # print(pressed_keys)
+    if 'w' in pressed_keys:
+        screen.addstr(6,5,"⬆", curses.A_REVERSE)
+        screen.refresh()
+    else:
+        screen.addstr(6,5,"⬆", curses.A_NORMAL)
+        screen.refresh()
+    if 's' in pressed_keys:
+        screen.addstr(8,5,"⬇", curses.A_REVERSE)
+        screen.refresh()
+    else:
+        screen.addstr(8,5,"⬇", curses.A_NORMAL)
+        screen.refresh()
+    if 'a' in pressed_keys:
+        screen.addstr(7,3,"⬅", curses.A_REVERSE)
+        screen.refresh()
+    else:
+        screen.addstr(7,3,"⬅", curses.A_NORMAL)
+        screen.refresh()
+    
+
+
+def on_press(key):
+    try:
+        if key.char == 'q':
+            screen.nodelay(False)
+            curses.nocbreak()
+            screen.keypad(False)
+            curses.endwin()
+            rclpy.shutdown()
+        if pressed_keys.count(key.char) == 0:
+            pressed_keys.append(key.char)
+            on_kb_update()
+        # print(pressed_keys)
+
+    except AttributeError:
+        return
+        # print('special key {0} pressed'.format(
+        #     key))
+
+def on_release(key):
+    try: 
+        pressed_keys.remove(key.char)
+        on_kb_update()
+    except:
+        return
+    if key == keyboard.Key.esc:
+        # Stop listener
+        return False
+
 def print_center(message):
     # Calculate center row
     middle_row = int(num_rows / 2)
@@ -50,24 +104,29 @@ def print_center(message):
     middle_column = int(num_cols / 2)
     x_position = middle_column - half_length_of_message
 
-    # Draw the text
-    screen.addstr(0,0,'Nova Manual Control')
-    screen.addstr(1,0,'---------------------')
-    screen.addstr(2,0,'W+S: Throttle + brake')
-    screen.addstr(3,0,'A+D: Left + right')
-    screen.addstr(4,0,'---------------------')
+    screen.addstr(0 ,0,'N════════════════════════O')
+    screen.addstr(1 ,0,'║      MANUAL CONTROL    ║')
+    screen.addstr(2 ,0,'╠════════════════════════╣')
+    screen.addstr(3 ,0,'║ WASD,Shift,R           ║')
+    screen.addstr(4 ,0,'╠════════════════════════╣')
+    screen.addstr(5 ,0,'║ ┌─────┐  T ███████████ ║')
+    screen.addstr(6 ,0,'║ │  ⬆  │  B █████▒▒▒▒▒▒ ║')
+    screen.addstr(7 ,0,'║ │⬅ B ➡│  S ▒▒▒▒▒:▒▒▒▒▒ ║')
+    screen.addstr(8 ,0,'║ │  ⬇  │                ║')
+    screen.addstr(9 ,0,'║ └─────┘                ║')
+    screen.addstr(10,0,'║         Press q to quit║')
+    screen.addstr(11,0,'V════════════════════════A')
+    curses.echo(False)
     screen.refresh()
 
-    screen.nodelay(1)
-    while True:
-        # get keyboard input, returns -1 if none available
-        c = screen.getch()
-        if c != -1:
-            # print numeric value
-            screen.addstr(str(c) + ' ')
-            screen.refresh()
-            # return curser to start position
-            screen.move(0, 0)
+    screen.nodelay(True)
+    curses.cbreak()
+    screen.keypad(1)
+    # curses.endwin()
+    listener = keyboard.Listener(
+        on_press=on_press,
+        on_release=on_release)
+    listener.start()
 
 # ╔═══════════════╗
 # ║ MANUAL CONTROL║
@@ -105,7 +164,6 @@ class ManualControlNode(Node):
 
         print("Trying wrapper...")
         print_center("Hello world!")
-        curses.napms(3000)
         
 
 def main(args=None):
