@@ -28,7 +28,7 @@ Todos:
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
 CLIENT_WORLD = 'Town10HD'
-EGO_AUTOPILOT_ENABLED = True
+EGO_AUTOPILOT_ENABLED = False
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0) # 2 Hz
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0) # 10 Hz
@@ -57,6 +57,7 @@ import math
 from os.path import exists
 
 # Message definitons
+from std_msgs.msg import Bool
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image # For cameras
 from sensor_msgs.msg import Imu
@@ -157,6 +158,26 @@ class SimBridgeNode(Node):
         imu_msg.angular_velocity.z = data.gyroscope.z
 
         self.primary_imu_pub.publish(imu_msg)
+    
+    def process_command(self):
+        cmd = carla.VehicleControl()
+        cmd.throttle = self.throttle_cmd
+        cmd.brake = self.brake_cmd
+        cmd.steer = self.steering_cmd
+        cmd.reverse = self.reverse_cmd
+        self.ego.apply_control(cmd)
+
+    def steering_command_cb(self, msg: SteeringPosition):
+        self.steering_cmd = msg.data
+
+    def throttle_command_cb(self, msg: PeddlePosition):
+        self.throttle_cmd = msg.data
+
+    def brake_command_cb(self, msg: PeddlePosition):
+        self.brake_cmd = msg.data
+
+    def reverse_command_cb(self, msg: Bool):
+        self.reverse_cmd = msg.data
 
     def true_odom_cb(self):
         ego: carla.Actor = self.ego
@@ -213,6 +234,12 @@ class SimBridgeNode(Node):
         self.front_lidar_cloud = np.array([])
         self.cv_bridge = CvBridge()
 
+        # Define vehicle command state
+        self.steering_cmd = 0.0
+        self.brake_cmd = 0.0
+        self.throttle_cmd = 0.0
+        self.reverse_cmd = False
+
         # Create our publishers
         self.birds_eye_cam_pub = self.create_publisher(
             Image,
@@ -262,12 +289,6 @@ class SimBridgeNode(Node):
             10
         )
 
-        self.rgb_front_pub = self.create_publisher(
-            Image,
-            '/camera_front/rgb',
-            10
-        )
-
         self.steering_command_sub = self.create_subscription(
             SteeringPosition,
             '/command/steering_position',
@@ -275,9 +296,32 @@ class SimBridgeNode(Node):
             10
         )
 
+        self.throttle_command_sub = self.create_subscription(
+            PeddlePosition,
+            '/command/throttle_position',
+            self.throttle_command_cb,
+            10
+        )
+
+        self.brake_command_sub = self.create_subscription(
+            PeddlePosition,
+            '/command/brake_position',
+            self.brake_command_cb,
+            10
+        )
+
+        self.reverse_command_sub = self.create_subscription(
+            Bool,
+            '/command/reverse',
+            self.reverse_command_cb,
+            10
+        )
+
         self.ground_truth_odom_timer = self.create_timer(
             GROUND_TRUTH_ODOM_PERIOD, self.true_odom_cb
         )
+
+        self.command_timer = self.create_timer(0.1, self.process_command)
         
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
