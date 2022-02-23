@@ -60,7 +60,7 @@ def generate_launch_description():
     speedometer_reporter = Node(
         package='can_translation',
         executable='float_reporter',
-        parameters=[(path.join(param_dir,"interface","speedometer_reporter.param.yaml"))]
+        parameters=[(path.join(param_dir,"interface","speedometer_reporter.param.yaml"))],
         remappings=[
             ("incoming_can_frames", "incoming_can_frames_can1"),
             ("result_topic", "vehicle_speedometer")
@@ -82,7 +82,7 @@ def generate_launch_description():
         executable='interface',
         parameters=[],
         remappings=[],
-        arguments=['/dev/i2c-8']
+        arguments=['/dev/ttyACM0']
     )
 
     # LOCALIZATION
@@ -187,6 +187,11 @@ def generate_launch_description():
         executable='velodyne_convert_node',
         namespace='lidar_rear',
         parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_rear.param.yaml"))]
+    )
+
+    curb_detector = Node(
+        package='curb_detection',
+        executable='curb_detector'
     )
     
     # PLANNING
@@ -293,12 +298,11 @@ def generate_launch_description():
         # visuals,
 
         # PERCEPTION
-        lidar_driver_front,
-        lidar_pointcloud_front,
-        lidar_driver_rear,
-        lidar_pointcloud_rear,
-        obstacle_republisher,
-        obstacle_drawer,
+        # lidar_driver_front,
+        # lidar_pointcloud_front,
+        # lidar_driver_rear,
+        # lidar_pointcloud_rear,
+        curb_detector,
 
         # PLANNING
         # route_planner,

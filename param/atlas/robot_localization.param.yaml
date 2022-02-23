@@ -1,0 +1,17 @@
+# param/robot_localization.param.yaml
+---
+/**:
+  ros__parameters:
+    frequency: 100.0 # Estimate update frequency, Hz, double
+    world_frame: "map"
+
+    odom0: "/gps/odom"
+    odom0_config: [true, true, true, false, false, true,
+                   false, false, false, false, false, false,
+                   false, false, false]
+
+    odom1: "/zed2i/zed_node/odom"
+    odom1_config: [true, true, false, false, false, true,
+                   false, false, false, false, false, false,
+                   false, false, false]
+    odom1_differential: true
