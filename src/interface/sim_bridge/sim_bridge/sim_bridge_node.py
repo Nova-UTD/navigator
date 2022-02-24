@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 '''
+Nova at UT Dallas, 2022
+
 The Navigator Simulation Bridge for CARLA
 
 The goal is to mimick Hail Bopp as much as possible.
@@ -26,7 +28,7 @@ Todos:
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
 CLIENT_WORLD = 'Town10HD'
-EGO_AUTOPILOT_ENABLED = True
+EGO_AUTOPILOT_ENABLED = False
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0) # 2 Hz
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0) # 10 Hz
@@ -55,10 +57,12 @@ import math
 from os.path import exists
 
 # Message definitons
+from std_msgs.msg import Bool
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image # For cameras
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry # For GPS, ground truth
+from voltron_msgs.msg import PeddlePosition, SteeringPosition
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 
@@ -72,18 +76,10 @@ class SimBridgeNode(Node):
         """
         Function to transform the received carla camera data into a ROS image message
         """
-        # if ((carla_camera_data.height != self._camera_info.height) or
-        #         (carla_camera_data.width != self._camera_info.width)):
-        #     self.node.logerr(
-        #         "Camera{} received image not matching configuration".format(self.get_prefix()))
-        # image_data_array, encoding = self.get_carla_image_data_array(
-        #     carla_camera_data)
         carla_image_data_array = np.ndarray(
         shape=(carla_image.height, carla_image.width, 4),
         dtype=np.uint8, buffer=carla_image.raw_data)
         img_msg = self.cv_bridge.cv2_to_imgmsg(carla_image_data_array, encoding=encoding)
-        # the camera data is in respect to the camera's own frame
-        # img_msg.header = self.get_msg_header(timestamp=carla_camera_data.timestamp)
         img_msg.header.stamp = self.get_clock().now().to_msg()
         img_msg.header.frame_id = '/base_link'
 
@@ -162,6 +158,26 @@ class SimBridgeNode(Node):
         imu_msg.angular_velocity.z = data.gyroscope.z
 
         self.primary_imu_pub.publish(imu_msg)
+    
+    def process_command(self):
+        cmd = carla.VehicleControl()
+        cmd.throttle = self.throttle_cmd
+        cmd.brake = self.brake_cmd
+        cmd.steer = self.steering_cmd
+        cmd.reverse = self.reverse_cmd
+        self.ego.apply_control(cmd)
+
+    def steering_command_cb(self, msg: SteeringPosition):
+        self.steering_cmd = msg.data
+
+    def throttle_command_cb(self, msg: PeddlePosition):
+        self.throttle_cmd = msg.data
+
+    def brake_command_cb(self, msg: PeddlePosition):
+        self.brake_cmd = msg.data
+
+    def reverse_command_cb(self, msg: Bool):
+        self.reverse_cmd = msg.data
 
     def true_odom_cb(self):
         ego: carla.Actor = self.ego
@@ -218,6 +234,12 @@ class SimBridgeNode(Node):
         self.front_lidar_cloud = np.array([])
         self.cv_bridge = CvBridge()
 
+        # Define vehicle command state
+        self.steering_cmd = 0.0
+        self.brake_cmd = 0.0
+        self.throttle_cmd = 0.0
+        self.reverse_cmd = False
+
         # Create our publishers
         self.birds_eye_cam_pub = self.create_publisher(
             Image,
@@ -267,15 +289,39 @@ class SimBridgeNode(Node):
             10
         )
 
-        self.rgb_front_pub = self.create_publisher(
-            Image,
-            '/camera_front/rgb',
+        self.steering_command_sub = self.create_subscription(
+            SteeringPosition,
+            '/command/steering_position',
+            self.steering_command_cb,
+            10
+        )
+
+        self.throttle_command_sub = self.create_subscription(
+            PeddlePosition,
+            '/command/throttle_position',
+            self.throttle_command_cb,
+            10
+        )
+
+        self.brake_command_sub = self.create_subscription(
+            PeddlePosition,
+            '/command/brake_position',
+            self.brake_command_cb,
+            10
+        )
+
+        self.reverse_command_sub = self.create_subscription(
+            Bool,
+            '/command/reverse',
+            self.reverse_command_cb,
             10
         )
 
         self.ground_truth_odom_timer = self.create_timer(
             GROUND_TRUTH_ODOM_PERIOD, self.true_odom_cb
         )
+
+        self.command_timer = self.create_timer(0.1, self.process_command)
         
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
