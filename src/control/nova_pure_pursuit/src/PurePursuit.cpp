@@ -8,11 +8,9 @@
  */
 
 
-#include <chrono>
-#include <memory>
-#include <utility>
 #include <cmath>
-#include <string>
+#include <memory>
+#include <iostream>
 
 #include "nova_pure_pursuit/PurePursuit.hpp"
 
@@ -21,9 +19,12 @@ using namespace Nova::PurePursuit;
 
 PurePursuit::PurePursuit(float lookahead_distance) {
     
-    this->trajectory = voltron_msgs::msg::Trajectory();
-    this->closest_point = voltron_msgs::msg::TrajectoryPoint();
-    this->lookahead_point = voltron_msgs::msg::TrajectoryPoint();
+    this->closest_point_x = 0.0;
+    this->closest_point_y = 0.0;
+    
+    this->lookahead_point_x = 0.0;
+    this->lookahead_point_y = 0.0;
+
     this->lookahead_distance = lookahead_distance;
     this->curvature = 0.0;
     this->steering_angle = 0.0;
@@ -56,8 +57,8 @@ void PurePursuit::set_lookahead_point() {
 }
 
 void PurePursuit::compute_curvature() {
-    double denominator = pow(lookahead_point.x, 2) + pow(lookahead_point.y, 2);
-    double numerator = 2.0 * lookahead_point.x;
+    double denominator = pow(lookahead_point_x, 2) + pow(lookahead_point_y, 2);
+    double numerator = 2.0 * lookahead_point_x;
     
     if (denominator != 0) {
         this->curvature = numerator / denominator;
@@ -68,6 +69,20 @@ void PurePursuit::compute_curvature() {
 
 void PurePursuit::compute_steering_angle() {
     this->steering_angle = atan(WHEEL_BASE * this->curvature);
+}
+
+double PurePursuit::get_steering_angle() {
+    
+    // if(cur_trajectory.points.size() == 0) {
+    //     return this->steering_angle; // error occurred, return old angle
+    // }
+
+    // this->trajectory = cur_trajectory;
+    // this->closest_point = this->trajectory.points[0];
+    set_lookahead_point(0.0, 0.0);
+    compute_curvature();
+    compute_steering_angle();
+    return this->steering_angle;
 }
 
 /** Adaptative lateral control -> might use later */

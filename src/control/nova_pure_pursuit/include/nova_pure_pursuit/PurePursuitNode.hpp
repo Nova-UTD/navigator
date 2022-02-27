@@ -9,19 +9,21 @@
 
 #pragma once
 
-#include <chrono>
-#include <functional>
-#include <memory>
-#include <string>
+#include "nova_pure_pursuit/PurePursuit.hpp"
 
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/string.hpp"
-#include "std_msgs/msg/float32.hpp"
-#include "voltron_msgs/msg/trajectories.hpp"
-#include "voltron_msgs/msg/trajectory.hpp"
+
+#include "autoware_auto_msgs/msg/vehicle_control_command.hpp"
+#include "autoware_auto_msgs/msg/trajectory.hpp"
+#include <autoware_auto_msgs/msg/trajectory.hpp>
+#include <autoware_auto_msgs/msg/vehicle_control_command.hpp>
+
 #include "voltron_msgs/msg/steering_angle.hpp"
 
-#include "nova_pure_pursuit/PurePursuit.hpp"
+using Trajectory = autoware_auto_msgs::msg::Trajectory;
+using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
+using SteeringAngle = voltron_msgs::msg::SteeringAngle;
+
 
 using namespace std::chrono_literals;
 
@@ -41,19 +43,20 @@ public:
 private:  
     
     // publish steering angle
-    rclcpp::Publisher<voltron_msgs::msg::SteeringAngle>::SharedPtr steering_control_publisher;
+    rclcpp::Publisher<SteeringAngle>::SharedPtr steering_control_publisher;
     
     // subscribe to get trajectory
-    rclcpp::Subscription<voltron_msgs::msg::Trajectories>::SharedPtr trajectory_subscription;
+    rclcpp::Subscription<Trajectory>::SharedPtr trajectory_subscription;
 
     // var
     std::unique_ptr<PurePursuit> controller;
     rclcpp::TimerBase::SharedPtr control_timer;
-    voltron_msgs::msg::Trajectory trajectory;
+    Trajectory trajectory;
 
     // functions
     void send_message();
-    void update_trajectory(voltron_msgs::msg::Trajectories::SharedPtr trajectories);
+    void update_trajectory(Trajectory::SharedPtr trajectory);
+    void load_test_trajectory(std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &v);
 };
 
 

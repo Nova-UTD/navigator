@@ -7,18 +7,13 @@
  * License:   MIT License
  */
 
+#include "autoware_auto_msgs/msg/vehicle_control_command.hpp"
+#include "autoware_auto_msgs/msg/trajectory.hpp"
+#include <autoware_auto_msgs/msg/trajectory.hpp>
+#include <autoware_auto_msgs/msg/vehicle_control_command.hpp>
 
-// 1) Update closest point through node update
-// 2) Compute the lookahead point through node update
-// 3) Compute the curvature
-// 4) Finally, compute & publish steering angle
-
-#include <chrono>
-#include <memory>
-#include <string>
-#include "voltron_msgs/msg/trajectory.hpp"
-#include "voltron_msgs/msg/trajectory_point.hpp"
-
+using Trajectory = autoware_auto_msgs::msg::Trajectory;
+using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
 
 namespace Nova {
 namespace PurePursuit {
@@ -33,20 +28,23 @@ public:
     PurePursuit(float lookahead_distance);
     ~PurePursuit();
 
-    double get_steering_angle(voltron_msgs::msg::Trajectory cur_trajectory);
+    double get_steering_angle();
 
 private:
 
     // var
-    voltron_msgs::msg::Trajectory trajectory;
-    voltron_msgs::msg::TrajectoryPoint closest_point;
-    voltron_msgs::msg::TrajectoryPoint lookahead_point;
+    float closest_point_x;
+    float closest_point_y;
+
+    float lookahead_point_x;
+    float lookahead_point_y;
+
     float lookahead_distance;
     double curvature;
     double steering_angle;
 
     // functions
-    void set_lookahead_point();
+    void set_lookahead_point(float x, float y);
     void compute_curvature();
     void compute_steering_angle();
     void set_lookahead_distance(float lookahead_distance);
