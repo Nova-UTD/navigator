@@ -1,2 +1,2 @@
-uint16 identifier
+uint32 identifier
 uint64 data

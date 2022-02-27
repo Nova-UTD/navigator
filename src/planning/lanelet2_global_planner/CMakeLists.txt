@@ -6,6 +6,8 @@ find_package(ament_cmake_auto REQUIRED)
 find_package(Eigen3 REQUIRED)
 ament_auto_find_build_dependencies()
 
+include_directories(SYSTEM /opt/ros/foxy/include)
+
 # build
 set(GB_PLANNER_LIB lanelet2_global_planner)
 ament_auto_add_library(${GB_PLANNER_LIB} SHARED
@@ -18,7 +20,8 @@ autoware_set_compile_options(${GB_PLANNER_LIB})
 if(BUILD_TESTING)
   # run linters
   find_package(ament_lint_auto)
-  ament_lint_auto_find_test_dependencies()
+  find_package(ament_index_cpp)
+  find_package(ament_cmake_gtest)
 
   # Install test maps to share directory
   install(DIRECTORY test/map_data

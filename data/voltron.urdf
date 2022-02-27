@@ -16,7 +16,7 @@
   <link name="base_link">
     <visual>
       <geometry>
-        <mesh filename="package://lexus_rx_450h_description/meshes/LexusRX.obj" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://home/main/voltron/assets/hailbopp.obj" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="maroon"/>
       <origin xyz="0.83 0 0.28" rpy="0 0 1.570796"/>
@@ -86,7 +86,7 @@
   <joint name="lidar_front_joint" type="fixed">
     <parent link="base_link"/>
     <child link="lidar_front"/>
-    <origin xyz="3.4 -0.902 0.7876" rpy="0 0 -1.45"/>
+    <origin xyz="3.4 -0.902 0.7876" rpy="-0.015 -0.03 -1.45"/>
   </joint>
 
   <link name="lidar_rear">
@@ -113,6 +113,18 @@
   <joint name="lidar_rear_joint" type="fixed">
     <parent link="base_link"/>
     <child link="lidar_rear"/>
-    <origin xyz="-0.1 0.9 1.0" rpy="0 -0.0672 2.65"/>
+    <origin xyz="-0.1 0.9 1.1" rpy="+0.03 -0.0472 2.65"/>
+  </joint>
+
+  zed2_left_camera_optical_frame
+
+  <link name="zed2_left_camera_optical_frame">
+
+  </link>
+
+  <joint name="zed2_left_camera_optical_frame_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="zed2_left_camera_optical_frame"/>
+    <origin xyz="3.4 0.0 1.0" rpy="0.0 0.0 0.0"/>
   </joint>
 </robot>

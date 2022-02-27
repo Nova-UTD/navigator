@@ -10,7 +10,6 @@
 #include "pid_controller/PidControllerNode.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
-#include "autoware_auto_msgs/msg/vehicle_control_command.hpp"
 
 #include <memory>
 #include <utility>
@@ -34,7 +33,7 @@ PidControllerNode::PidControllerNode() : rclcpp::Node("pid_controller") {
   this->steering_control_publisher = this->create_publisher<std_msgs::msg::Float32>
     ("output", 8);
   this->command_subscription = this->create_subscription
-    <autoware_auto_msgs::msg::VehicleControlCommand>("target", 8,
+    <std_msgs::msg::Float32>("target", 8,
     std::bind(& PidControllerNode::update_target, this, std::placeholders::_1));
   this->measurement_subscription = this->create_subscription
     <std_msgs::msg::Float32>("measurement", 8,
@@ -45,8 +44,8 @@ PidControllerNode::PidControllerNode() : rclcpp::Node("pid_controller") {
 PidControllerNode::~PidControllerNode() {}
 
 void PidControllerNode::update_target(
-  const autoware_auto_msgs::msg::VehicleControlCommand::SharedPtr command) {
-  float target = command->front_wheel_angle_rad;
+  const std_msgs::msg::Float32::SharedPtr command) {
+  float target = command->data;
   if(target > max_steering_angle_radians) target = max_steering_angle_radians;
   if(target < (-1 * max_steering_angle_radians)) target = (-1 * max_steering_angle_radians);
   this->controller->set_target(target);

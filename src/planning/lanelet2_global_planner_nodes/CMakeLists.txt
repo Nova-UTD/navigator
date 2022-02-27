@@ -5,6 +5,8 @@ project(lanelet2_global_planner_nodes)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
+include_directories(SYSTEM /opt/ros/foxy/include)
+
 # build
 set(GB_PLANNER_NODE_LIB lanelet2_global_planner_node)
 ament_auto_add_library(${GB_PLANNER_NODE_LIB} SHARED

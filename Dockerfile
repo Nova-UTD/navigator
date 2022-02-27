@@ -35,8 +35,21 @@ RUN /tmp/rosdep.sh && rm -rf /var/lib/apt/lists/*
 WORKDIR $OVERLAY_WS
 
 COPY src/ src/
-RUN apt update && rosdep update && rosdep install -y --from-paths src --ignore-src
-RUN apt update && apt install ros-foxy-lgsvl-bridge
+
+# Install using rosdep. NOTE: Rosdep's -r will continue despite errors.
+RUN apt update && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository ppa:borglab/gtsam-release-4.0 && \
+    apt install -y libgtsam-dev libgtsam-unstable-dev && \
+    rosdep update && rosdep install -y -r --from-paths src --ignore-src
+
+# FILES HERE should be moved to "rosdep.sh" periodically.
+RUN apt update && \
+    apt install -y ros-foxy-lgsvl-bridge \
+    ros-foxy-velodyne \
+    ros-foxy-angles \
+    libpcap-dev
+
 # install overlay dependencies
 
 

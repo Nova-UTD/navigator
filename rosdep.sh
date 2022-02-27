@@ -1,5 +1,5 @@
 #!/bin/sh
-
+apt-get update
 apt-get install -y ros-foxy-ros-testing
 apt-get install -y python3-psutil
 apt-get install -y ros-foxy-qt-dotgraph

@@ -1,4 +1,4 @@
-from os import path, environ
+from os import name, path, environ
 
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import IncludeLaunchDescription
@@ -17,27 +17,21 @@ def generate_launch_description():
     launch_dir = path.dirname(launch_path)
     param_dir = path.join(launch_dir,"param")
     interface = "vcan0"
-    map_name = "borregas_host"
-
-    with_svl = DeclareLaunchArgument(
-        'with_svl',
-        default_value='False',
-        description='Enable SVL bridge'
-    )
+    map_name = "grandloop"
 
     # CONTROL
-    steering_controller = Node(
-        package='vt_steering_controller',
-        executable='controller_exe',
-        name='controller_exe',
-        namespace='control'
-    )
+#    steering_controller = Node(
+#        package='vt_steering_controller',
+#        executable='controller_exe',
+#        name='controller_exe',
+#        namespace='control'
+#    )
 
     # INTERFACE
-    vehicle_bridge = Node(
-        package='vt_vehicle_bridge',
-        executable='svl_bridge_exe',
-    )
+#    vehicle_bridge = Node(
+#        package='vt_vehicle_bridge',
+#        executable='svl_bridge_exe',
+#    )
 
     svl_bridge = Node(
         executable='lgsvl_bridge',
@@ -62,6 +56,17 @@ def generate_launch_description():
             ("outgoing_can_frames", "outgoing_can_frames")
         ]
     )
+
+    speedometer_reporter = Node(
+        package='can_translation',
+        executable='float_reporter',
+        parameters=[(path.join(param_dir,"interface","speedometer_reporter.param.yaml"))],
+        remappings=[
+            ("incoming_can_frames", "incoming_can_frames_can1"),
+            ("result_topic", "vehicle_speedometer")
+        ]
+    )
+    
     # steering_pid
     can = Node(
         package='voltron_can',
@@ -77,7 +82,7 @@ def generate_launch_description():
         executable='interface',
         parameters=[],
         remappings=[],
-        arguments=['/dev/i2c-8']
+        arguments=['/dev/ttyACM0']
     )
 
     # LOCALIZATION
@@ -92,6 +97,28 @@ def generate_launch_description():
             ("observation_republish", "/lidars/points_fused_viz"),
         ]
     )
+    icp_nudger = Node(
+        package='icp_nudger',
+        executable='icp_nudger',
+        parameters=[(path.join(param_dir,"hubble","icp_nudger.param.yaml"))],
+        remappings=[
+            ("/gps", "/gps/odom"),
+            ("/lidar", "/lidar_front/points_raw"),
+            ("/map", "/map/pcd")
+        ],
+        output='screen'
+    )
+    robot_localization = Node(
+        package='robot_localization',
+        executable='ukf_node',
+        name='localization_map_odom',
+        parameters=[(path.join(param_dir,"hubble","robot_localization.param.yaml"))],
+        remappings=[
+            ("/odom0", "/gps/odom"),
+            ("/odom1", "/zed2i/zed_node/odom"),
+            ("/imu0", "/zed2i/zed_node/imu/data_raw")
+        ]
+    )
 
     # MAPPING
     lanelet_server = Node(
@@ -102,26 +129,25 @@ def generate_launch_description():
         parameters=[(path.join(launch_dir, "data", "maps", map_name, "lanelet_server.param.yaml"))]
     )
 
-    lanelet_visualizer = Node(
-        package='lanelet2_map_provider',
-        executable='lanelet2_map_visualizer_exe',
-        name='lanelet2_map_visualizer_node',
-        namespace='had_maps'
-    )
+    # lanelet_visualizer = Node(
+    #     package='lanelet2_map_provider',
+    #     executable='lanelet2_map_visualizer_exe',
+    #     name='lanelet2_map_visualizer_node',
+    #     namespace='had_maps'
+    # )
 
-    pcd_publisher = Node(
-        package='ndt_nodes',
-        executable='ndt_map_publisher_exe',
-        namespace='localization',
-        parameters=[(path.join(launch_dir, "data", "maps", map_name, "pcd_publisher.param.yaml"))]
+    pcd_loader = Node(
+        package='map_publishers',
+        executable='pcd_loader',
+        parameters=[(path.join(launch_dir, "data", "maps", map_name, "map.param.yaml"))]
     )
 
     # MISC
-    odom_bl_publisher = Node(
+    odom_bl_link = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0','0','0','0','0','0','odom','base_link'
+            '0','0','0','0','0','0.0','1.0','odom','base_link'
         ]
     )
 
@@ -131,66 +157,41 @@ def generate_launch_description():
         arguments=[path.join(launch_dir, "data", "voltron.urdf")]
     )
     
-    visuals = Node(
-        package='vt_viz',
-        name='vt_viz_node',
-        executable='vt_viz_exe',
-    )
+#    visuals = Node(
+#        package='vt_viz',
+#        name='vt_viz_node',
+#        executable='vt_viz_exe',
+#    )
 
     # PERCEPTION
-    lidar_front = Node(
-        package='velodyne_nodes',
-        namespace="lidar_front",
-        executable='velodyne_cloud_node_exe',
-        parameters=[(path.join(param_dir,"perception","lidar_front.param.yaml"))],
-        remappings=[("topic", "points_raw")],
-        arguments=["--model", "vlp16"])
-
-    lidar_rear = Node(
-        package='velodyne_nodes',
-        namespace="lidar_rear",
-        executable='velodyne_cloud_node_exe',
-        parameters=[(path.join(param_dir,"perception","lidar_rear.param.yaml"))],
-        remappings=[("topic", "points_raw")],
-        arguments=["--model", "vlp16"])
-    
-    lidar_front_filter = Node(
-        package="point_cloud_filter_transform_nodes",
-        executable="point_cloud_filter_transform_node_exe",
-        namespace = "lidar_front",
-        parameters=[(path.join(param_dir,"perception","pc_filter_transform_front_sim.param.yaml"))],
-        remappings = [("points_in", "/lidar_front/points_raw")]
+    lidar_driver_front = Node(
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        namespace='lidar_front',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_front.param.yaml"))]
+    )
+    lidar_pointcloud_front = Node(
+        package='velodyne_pointcloud',
+        executable='velodyne_convert_node',
+        namespace='lidar_front',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_front.param.yaml"))]
+    )
+    lidar_driver_rear = Node(
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        namespace='lidar_rear',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_rear.param.yaml"))]
+    )
+    lidar_pointcloud_rear = Node(
+        package='velodyne_pointcloud',
+        executable='velodyne_convert_node',
+        namespace='lidar_rear',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_rear.param.yaml"))]
     )
 
-    lidar_rear_filter = Node(
-        package="point_cloud_filter_transform_nodes",
-        executable="point_cloud_filter_transform_node_exe",
-        namespace = "lidar_rear",
-        parameters=[(path.join(param_dir,"perception","pc_filter_transform_rear_sim.param.yaml"))],
-        remappings = [("points_in", "/lidar_rear/points_raw")]
-    )
-
-    lidar_fusion = Node(
-        package='point_cloud_fusion_nodes',
-        executable='pointcloud_fusion_node_exe',
-        namespace="lidars",
-        parameters=[(path.join(param_dir,"perception","lidar_fusion.param.yaml"))],
-        remappings=[
-            ("output_topic", "points_fused"),
-            ("input_topic1", "/lidar_front/points_filtered"), 
-            ("input_topic2", "/lidar_rear/points_filtered")
-        ]
-    )
-
-    lidar_downsampler = Node(
-        package='voxel_grid_nodes',
-        executable='voxel_grid_node_exe',
-        namespace='lidars',
-        parameters=[(path.join(param_dir,"perception","lidar_downsampler.param.yaml"))],
-        remappings=[
-            ("points_in", "points_fused"),
-            ("points_downsampled", "points_fused_downsampled")
-        ],
+    curb_detector = Node(
+        package='curb_detection',
+        executable='curb_detector'
     )
     
     # PLANNING
@@ -239,7 +240,6 @@ def generate_launch_description():
             ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
         ]
     )
-
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -248,18 +248,45 @@ def generate_launch_description():
         parameters=[(path.join(param_dir,"planning","lane_planner.param.yaml"))],
         remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
     )
-    parking_planner = Node(
-        package='parking_planner_nodes',
-        name='parking_planner_node',
-        namespace='planning',
-        executable='parking_planner_node_exe',
-        parameters=[(path.join(param_dir,"planning","parking_planner.param.yaml"))],
-        remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
+#    parking_planner = Node(
+#        package='parking_planner_nodes',
+#        name='parking_planner_node',
+#        namespace='planning',
+#        executable='parking_planner_node_exe',
+#        parameters=[(path.join(param_dir,"planning","parking_planner.param.yaml"))],
+#        remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
+#    )
+
+    obstacle_republisher = Node(
+        package='obstacle_repub',
+        name='obstacle_republisher_node',
+        executable='obstacle_repub_exe',
+        remappings=[
+            ('svl_obstacle_array', '/ground_truth_3d/detections'),
+            ('zed_obstacle_array', '/zed_2i/obj_det/objects'),
+            ('nova_obstacle_array', '/obstacles/array')
+        ]
     )
 
+    obstacle_drawer = Node(
+        package='obstacle_drawer',
+        name='obstacle_drawer_node',
+        executable='obstacle_drawer_exe',
+        remappings=[
+            ('obstacle_marker_array', '/obstacles/marker_array'),
+            ('nova_obstacle_array', '/obstacles/array')
+        ]
+    )
+    
+    # VIZ
+    lanelet_visualizer = Node(
+        package='map_publishers',
+        executable='lanelet_loader'
+    )
+    
     return LaunchDescription([
         # CONTROL
-        steering_controller,
+        # steering_controller,
 
         # INTERFACE
         # can,
@@ -267,28 +294,31 @@ def generate_launch_description():
         # epas_reporter,
         # gnss,
         svl_bridge,
-        vehicle_bridge,
+        # vehicle_bridge,
+        # speedometer_reporter,
 
         # LOCALIZATION
-        ndt,
+        # ndt,
+        # robot_localization,
+        # icp_nudger,
+        # deviation_reporter,
 
         # MAPPING
-        lanelet_server,
-        lanelet_visualizer,
-        pcd_publisher,
+        # lanelet_server,
+        # lanelet_visualizer,
+        # pcd_loader,
 
         # MISC
-        odom_bl_publisher,
+        odom_bl_link,
         urdf_publisher,
-        visuals,
+        # visuals,
 
         # PERCEPTION
-        lidar_front,
-        lidar_rear,
-        lidar_front_filter,
-        lidar_rear_filter,
-        lidar_fusion,
-        lidar_downsampler,
+        # lidar_driver_front,
+        # lidar_pointcloud_front,
+        # lidar_driver_rear,
+        # lidar_pointcloud_rear,
+        curb_detector,
 
         # PLANNING
         route_planner,
