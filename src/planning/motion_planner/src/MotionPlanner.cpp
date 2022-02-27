@@ -205,23 +205,26 @@ std::vector<Collision> MotionPlanner::get_collisions(const SegmentedPath& path, 
     std::vector<Collision> output;
     for (const CarPose& obj : objects) {
         //offsets from center of front left and right corners of object
-        double x_size_2 = std::cos(obj.heading)*obj.width/2+std::sin(obj.heading)*obj.length/2;
-        double y_size_2 = std::sin(obj.heading)*obj.width/2+std::cos(obj.heading)*obj.length/2;
+        double left_x = obj.x+std::cos(obj.heading)*obj.length/2+std::sin(obj.heading)*obj.width/2;
+        double left_y = obj.y+std::sin(obj.heading)*obj.length/2+std::cos(obj.heading)*obj.width/2;
+        double right_x = obj.x+std::cos(obj.heading)*obj.length/2-std::sin(obj.heading)*obj.width/2;
+        double right_y = obj.y+std::sin(obj.heading)*obj.length/2-std::cos(obj.heading)*obj.width/2;
+        
         //duration each side will be in the path for
         double linger_time = INFINITY;
         double speed = std::sqrt(obj.xv*obj.xv+obj.yv*obj.yv);
         if (speed > 0) {
             linger_time = obj.length/speed;
         }
-        std::vector<double> left_intersections = path.intersection(obj.xv, obj.yv, obj.x-x_size_2, obj.y-y_size_2);
-        std::vector<double> right_intersections = path.intersection(obj.xv, obj.yv, obj.x+x_size_2, obj.y+y_size_2);
+        std::vector<double> left_intersections = path.intersection(obj.xv, obj.yv, left_x, left_y);
+        std::vector<double> right_intersections = path.intersection(obj.xv, obj.yv, right_x, right_y);
         //some collisions may only take the left or right sides, so
         //we will treat each side as separate collisions.
         for (double s : left_intersections) {
             //make sure object is heading toward collisions point before adding, since it could be behind the object
             PathPoint p = path.sample(s);
-            double dx = obj.x - p.x;
-            double dy = obj.y - p.y;
+            double dx = p.x-left_x;
+            double dy = p.y-left_y;
             if (dx*obj.xv + dy*obj.yv > 0) {
                 //dot product is positive, so object is heading towards the collision point
                 double t_in = std::sqrt(dx*dx+dy*dy)/speed;
@@ -232,8 +235,8 @@ std::vector<Collision> MotionPlanner::get_collisions(const SegmentedPath& path, 
         for (double s : right_intersections) {
             //make sure object is heading toward collisions point before adding, since it could be behind the object
             PathPoint p = path.sample(s);
-            double dx = obj.x - p.x;
-            double dy = obj.y - p.y;
+            double dx = p.x-right_x;
+            double dy = p.y-right_y;
             if (dx*obj.xv + dy*obj.yv > 0) {
                 //dot product is positive, so object is heading towards the collision point
                 double t_in = std::sqrt(dx*dx+dy*dy)/speed;

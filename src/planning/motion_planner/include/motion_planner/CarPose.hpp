@@ -22,11 +22,11 @@ namespace navigator
 			double heading;
             double xv;
             double yv;
-			double width, length;
-			CarPose(double x, double y, double heading, double xv, double yv, double width, double length)
-				: x(x), y(y), heading(heading), xv(xv), yv(yv), width(width), length(length) {}
+			double length, width;
+			CarPose(double x, double y, double heading, double xv, double yv, double length, double width)
+				: x(x), y(y), heading(heading), xv(xv), yv(yv), length(length), width(width) {}
 			CarPose(double x, double y, double heading, double xv, double yv) : x(x), y(y), heading(heading), xv(xv), yv(yv), width(0), length(0) {}
-			CarPose() : x(0), y(0), heading(0), xv(0), yv(0), width(0), length(0) {}
+			CarPose() : x(0), y(0), heading(0), xv(0), yv(0), length(0), width(0) {}
 		};
 	}
 }

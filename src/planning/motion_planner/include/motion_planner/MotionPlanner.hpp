@@ -49,10 +49,6 @@ namespace navigator
             std::vector<Collision> get_collisions(const SegmentedPath& path, const std::vector<CarPose>& objects) const;
             //
             double cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose, size_t start, size_t end) const;
-
-        private:
-            //gets iteration bounds on the chosen input path based on car position and the horizon size
-            std::pair<size_t,size_t> get_path_bounds(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const;
             //currently, these numbers are chosen as a guess. they will need to be determined later for safety.
             //(all units are in meters, seconds, radians if not mentioned)
             const size_t points = 100; //number of points on path
@@ -67,6 +63,9 @@ namespace navigator
             const double horizon = points*spacing; //max distance to consider anything for cost 
             const double following_time = 2; //safe following time (seconds). This is also used to pad the time for all collisions.
             const double following_distance = 1; //safe following distance (m). This is also used to pad the distance for all collisions.
+        private:
+            //gets iteration bounds on the chosen input path based on car position and the horizon size
+            std::pair<size_t,size_t> get_path_bounds(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const;
         };
     }
 }

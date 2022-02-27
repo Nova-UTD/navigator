@@ -88,10 +88,9 @@ PathPoint SegmentedPath::sample(double arclength) const
 	
 	size_t segment_id = static_cast<size_t>(segment); //index of the first point
 	PathPoint a = points->at(segment_id);
-	PathPoint b = points->at(segment_id);
+	PathPoint b = points->at(segment_id+1);
 	//we assume a and b are spacing units apart (can check with valid_points)
-	double progress = (arclength - segment) / arclength; //proportion between a and b the target point is
-
+	double progress = (arclength - segment) / spacing; //proportion between a and b the target point is
 	return PathPoint(a.x + (b.x - a.x) * progress, a.y + (b.y - a.y) * progress);
 }
 
