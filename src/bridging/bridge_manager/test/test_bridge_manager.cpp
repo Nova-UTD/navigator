@@ -14,7 +14,6 @@
 #include <unistd.h>
 
 #include "rclcpp/rclcpp.hpp"
-#include "voltron_msgs/srv/safety_event.hpp"
 
 #include "voltron_test_utils/TestClient.hpp"
 
