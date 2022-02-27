@@ -52,6 +52,11 @@ private:
     void set_lookahead_distance(float lookahead_distance);
     double compute_steering_effort();
 
+    // Needed for post to map transform
+    tf2::BufferCore tf_buffer;
+    tf2_ros::TransformListener tf_listener;
+
+
 };
 
 
