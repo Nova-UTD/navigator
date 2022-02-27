@@ -42,8 +42,8 @@ MotionPlannerNode::MotionPlannerNode(const rclcpp::NodeOptions &node_options) :
     RCLCPP_WARN(this->get_logger(), "motion planner constructor");
     trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectories>("outgoing_trajectories", 8);
     path_subscription = this->create_subscription<voltron_msgs::msg::CostedPaths>("paths", 8, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
-    odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/lgsvl/gnss_odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
-    current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
+    odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
+    //current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
     control_timer = this->create_wall_timer(message_frequency, bind(&MotionPlannerNode::send_message, this));
     planner = std::make_shared<MotionPlanner>();
 }
@@ -106,6 +106,11 @@ void MotionPlannerNode::update_path(voltron_msgs::msg::CostedPaths::SharedPtr pt
 void MotionPlannerNode::odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg) {
   pose.heading = 2*asin(msg->pose.pose.orientation.z);
   current_pose.pose.orientation = msg->pose.pose.orientation;
+  current_pose.pose.position = msg->pose.pose.position;
+  pose.x = msg->pose.pose.position.x;
+  pose.y = msg->pose.pose.position.y;
+  pose.xv = msg->twist.twist.linear.x;
+  pose.yv = msg->twist.twist.linear.y;
 }
 
 /**
@@ -113,6 +118,8 @@ void MotionPlannerNode::odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPt
  * 
  * Transform to TrajectoryPoint and pass to PathPlanner logic.
  * Copied from autoware code in Lanelet2GlobalPlannerNode
+ * 
+ * May be removed?
  * 
  * @param state 
  */

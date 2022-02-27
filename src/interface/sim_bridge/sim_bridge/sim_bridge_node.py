@@ -36,6 +36,9 @@ LIDAR_PERIOD = 1/(10.0) # 20 Hz
 OBSTACLE_QTY_CAR = 10 # Spawn n cars
 OBSTACLE_QTY_PED = 10 # Spawn n peds
 
+import sys
+sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
+
 import carla
 import random
 import rclpy

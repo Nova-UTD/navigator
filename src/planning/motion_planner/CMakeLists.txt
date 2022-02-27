@@ -32,6 +32,7 @@ ament_auto_add_library(motion_planner_lib SHARED
   include/motion_planner/IdealPoint.hpp
   include/motion_planner/CarPose.hpp
   include/motion_planner/MotionPlannerNode.hpp
+  include/motion_planner/Collision.hpp
   src/MotionPlanner.cpp
   src/map_utils.cpp
   src/SegmentedPath.cpp

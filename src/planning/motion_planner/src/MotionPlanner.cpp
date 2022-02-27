@@ -200,6 +200,51 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
     return candidates;
 }
 
+std::vector<Collision> MotionPlanner::get_collisions(const SegmentedPath& path, const std::vector<CarPose>& objects) const
+{
+    std::vector<Collision> output;
+    for (const CarPose& obj : objects) {
+        //offsets from center of front left and right corners of object
+        double x_size_2 = std::cos(obj.heading)*obj.width/2+std::sin(obj.heading)*obj.length/2;
+        double y_size_2 = std::sin(obj.heading)*obj.width/2+std::cos(obj.heading)*obj.length/2;
+        //duration each side will be in the path for
+        double linger_time = INFINITY;
+        double speed = std::sqrt(obj.xv*obj.xv+obj.yv*obj.yv);
+        if (speed > 0) {
+            linger_time = obj.length/speed;
+        }
+        std::vector<double> left_intersections = path.intersection(obj.xv, obj.yv, obj.x-x_size_2, obj.y-y_size_2);
+        std::vector<double> right_intersections = path.intersection(obj.xv, obj.yv, obj.x+x_size_2, obj.y+y_size_2);
+        //some collisions may only take the left or right sides, so
+        //we will treat each side as separate collisions.
+        for (double s : left_intersections) {
+            //make sure object is heading toward collisions point before adding, since it could be behind the object
+            PathPoint p = path.sample(s);
+            double dx = obj.x - p.x;
+            double dy = obj.y - p.y;
+            if (dx*obj.xv + dy*obj.yv > 0) {
+                //dot product is positive, so object is heading towards the collision point
+                double t_in = std::sqrt(dx*dx+dy*dy)/speed;
+                output.push_back(
+                    Collision(s, t_in, t_in + linger_time, t_in-following_time, t_in+linger_time+following_time, s-following_distance));
+            }
+        }
+        for (double s : right_intersections) {
+            //make sure object is heading toward collisions point before adding, since it could be behind the object
+            PathPoint p = path.sample(s);
+            double dx = obj.x - p.x;
+            double dy = obj.y - p.y;
+            if (dx*obj.xv + dy*obj.yv > 0) {
+                //dot product is positive, so object is heading towards the collision point
+                double t_in = std::sqrt(dx*dx+dy*dy)/speed;
+                output.push_back(
+                    Collision(s, t_in, t_in + linger_time, t_in-following_time, t_in+linger_time+following_time, s-following_distance));
+            }
+        }
+    }
+    return output;
+}
+
 double MotionPlanner::cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose, size_t start, size_t end) const {
     double dist = INFINITY;
     if (start <= end) {

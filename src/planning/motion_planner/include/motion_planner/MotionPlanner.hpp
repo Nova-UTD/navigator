@@ -15,6 +15,7 @@
 #include <motion_planner/PathPoint.hpp>
 #include <motion_planner/IdealPoint.hpp>
 #include <motion_planner/CarPose.hpp>
+#include <motion_planner/Collision.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <autoware_auto_msgs/msg/had_map_route.hpp>
 #include <autoware_auto_msgs/msg/trajectory_point.hpp>
@@ -44,8 +45,11 @@ namespace navigator
             std::vector<autoware_auto_msgs::msg::TrajectoryPoint> get_center_line_points(const autoware_auto_msgs::msg::HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution);
             //generates and costs a vector of candidate immedate trajectories the car could follow
             std::shared_ptr<std::vector<SegmentedPath>> get_trajectory(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose);
+            //gets all potential collision events along the specified path given the objects to collide with
+            std::vector<Collision> get_collisions(const SegmentedPath& path, const std::vector<CarPose>& objects) const;
             //
             double cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose, size_t start, size_t end) const;
+
         private:
             //gets iteration bounds on the chosen input path based on car position and the horizon size
             std::pair<size_t,size_t> get_path_bounds(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const;
@@ -61,6 +65,8 @@ namespace navigator
             const double car_size_x = 1.5; //width of the car
             const double car_size_y = 3; //length of the car
             const double horizon = points*spacing; //max distance to consider anything for cost 
+            const double following_time = 2; //safe following time (seconds). This is also used to pad the time for all collisions.
+            const double following_distance = 1; //safe following distance (m). This is also used to pad the distance for all collisions.
         };
     }
 }
