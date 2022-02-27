@@ -13,7 +13,7 @@ ament_auto_add_library(${PATH_PLANNER_LIB} SHARED
   src/path_planner.cpp
   src/path_planner_node.cpp
 )
-autoware_set_compile_options(${PATH_PLANNER_LIB})
+#autoware_set_compile_options(${PATH_PLANNER_LIB})
 
 set(PATH_PLANNER_NODE_EXE ${PATH_PLANNER_LIB}_exe)
 rclcpp_components_register_node(${PATH_PLANNER_LIB}

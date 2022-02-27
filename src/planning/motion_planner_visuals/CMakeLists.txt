@@ -28,7 +28,7 @@ ament_auto_add_library(${MOTION_PLANNER_VISUALS_LIB} SHARED
   include/motion_planner_visuals/MotionPlannerVisualsNode.hpp
   src/MotionPlannerVisualsNode.cpp
 )
-autoware_set_compile_options(${MOTION_PLANNER_VISUALS_LIB})
+#autoware_set_compile_options(${MOTION_PLANNER_VISUALS_LIB})
 
 rclcpp_components_register_node(${MOTION_PLANNER_VISUALS_LIB}
   PLUGIN "navigator::MotionPlannerVisuals::MotionPlannerVisualsNode"
