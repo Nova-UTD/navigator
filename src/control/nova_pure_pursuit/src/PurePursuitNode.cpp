@@ -37,12 +37,15 @@ PurePursuitNode::~PurePursuitNode() {}
 
 void PurePursuitNode::send_message() {
 
-  /* TODO:
-  - Select lookahead & closest points using util functions
-  - set new points for the controller
-  - This must be done regardless of whether having received a new trajectory 
-  */
+  // Temporary
+  TrajectoryPoint current_point;
+  current_point.x = 0.0;
+  current_point.y = 0.0;
 
+  // For later use: obtain the new target longitudinal velocity
+  TrajectoryPoint closest_point = compute_closest_point(current_point);
+
+  // TODO: Select & update lookahead_point of controller
   auto angle = controller->get_steering_angle(trajectory);
 
   // format of published message
@@ -51,10 +54,34 @@ void PurePursuitNode::send_message() {
 
   RCLCPP_INFO(this->get_logger(), "Publishing: '%f'", angle);
   steering_control_publisher->publish(steering_angle_msg);
+
 }
 
 void PurePursuitNode::update_trajectory(Trajectory::SharedPtr ptr) {
 
   RCLCPP_INFO(this->get_logger(), "Trajectory received!");
   this->trajectory = *ptr;
+}
+
+TrajectoryPoint PurePursuitNode::compute_closest_point(TrajectoryPoint current_point) {
+
+  TrajectoryPoint closest_point;
+  float minimum_distance = std::numeric_limits<float>::max();
+
+  for (size_t i = 0; i < this->trajectory.points.size(); i++) {
+
+    std::shared_ptr<TrajectoryPoint> point_ptr {new TrajectoryPoint};
+    *point_ptr = this->trajectory.points[i];
+
+    float x_diff = point_ptr->x - current_point.x;
+    float y_diff = point_ptr->y - current_point.y;
+    float distance = sqrt( (x_diff*x_diff) + (y_diff*y_diff) );
+
+    if (distance < minimum_distance) {
+      minimum_distance = distance;
+      closest_point = *point_ptr;
+    }
+  }
+
+  return closest_point;
 }
