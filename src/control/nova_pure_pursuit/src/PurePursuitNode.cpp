@@ -43,7 +43,7 @@ void PurePursuitNode::send_message() {
   - This must be done regardless of whether having received a new trajectory 
   */
 
-  auto angle = controller->get_steering_angle();
+  auto angle = controller->get_steering_angle(trajectory);
 
   // format of published message
   auto steering_angle_msg = SteeringAngle();

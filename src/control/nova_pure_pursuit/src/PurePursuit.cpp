@@ -11,20 +11,23 @@
 #include <cmath>
 #include <memory>
 #include <iostream>
+#include <tf2/utils.h>
+
+
 
 #include "nova_pure_pursuit/PurePursuit.hpp"
 
 using namespace Nova::PurePursuit;
 
+using Trajectory = autoware_auto_msgs::msg::Trajectory;
+using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
+
 
 PurePursuit::PurePursuit(float lookahead_distance) {
     
-    this->closest_point_x = 0.0;
-    this->closest_point_y = 0.0;
+    closest_point = TrajectoryPoint();
+    lookahead_point = TrajectoryPoint();
     
-    this->lookahead_point_x = 0.0;
-    this->lookahead_point_y = 0.0;
-
     this->lookahead_distance = lookahead_distance;
     this->curvature = 0.0;
     this->steering_angle = 0.0;
@@ -34,7 +37,7 @@ PurePursuit::PurePursuit(float lookahead_distance) {
 PurePursuit::~PurePursuit() {}
 
 
-double PurePursuit::get_steering_angle(voltron_msgs::msg::Trajectory cur_trajectory) {
+double PurePursuit::get_steering_angle(Trajectory cur_trajectory) {
     
     if(cur_trajectory.points.size() == 0) {
         return this->steering_angle; // error occurred, return old angle
@@ -42,23 +45,36 @@ double PurePursuit::get_steering_angle(voltron_msgs::msg::Trajectory cur_traject
 
     this->trajectory = cur_trajectory;
 
-    // do we need to localize?
-    calcRelativeCoordinate();
-    this->closest_point = this->trajectory.points[0];
+    // Find first point outside lookahead distance to use to find lookahead point
+    int next_waypoint_idx;
+
+    for(size_t i = 0; i < cur_trajectory.points.size(); i++) {
+      
+      auto waypoint = cur_trajectory.points[i];
+      auto currentPosition = TrajectoryPoint(); // fill-in get current location logic
+      double distance = sqrt(pow(currentPosition.x - waypoint.x, 2) + pow(currentPosition.y - waypoint.y, 2));
+      
+      // first waypoint to be greater than lookahead distance
+      if (distance > lookahead_distance) {
+        next_waypoint_idx = i;
+      }
+
+    }
+
+    // TODO perform check that curve exists
+    // TODO special logic if chosen waypoint is first or last in trajectory
     
-    set_lookahead_point();
+    // call function to set lookahead point
+    set_lookahead_point(next_waypoint_idx);
+    
     compute_curvature();
     compute_steering_angle();
     return this->steering_angle;
 }
 
-void PurePursuit::set_lookahead_point() {
-    lookahead_point = trajectory.points[1];
-}
-
 void PurePursuit::compute_curvature() {
-    double denominator = pow(lookahead_point_x, 2) + pow(lookahead_point_y, 2);
-    double numerator = 2.0 * lookahead_point_x;
+    double denominator = pow(lookahead_point.x, 2) + pow(lookahead_point.y, 2);
+    double numerator = 2.0 * lookahead_point.x;
     
     if (denominator != 0) {
         this->curvature = numerator / denominator;
@@ -71,20 +87,6 @@ void PurePursuit::compute_steering_angle() {
     this->steering_angle = atan(WHEEL_BASE * this->curvature);
 }
 
-double PurePursuit::get_steering_angle() {
-    
-    // if(cur_trajectory.points.size() == 0) {
-    //     return this->steering_angle; // error occurred, return old angle
-    // }
-
-    // this->trajectory = cur_trajectory;
-    // this->closest_point = this->trajectory.points[0];
-    set_lookahead_point(0.0, 0.0);
-    compute_curvature();
-    compute_steering_angle();
-    return this->steering_angle;
-}
-
 /** Adaptative lateral control -> might use later */
 void PurePursuit::set_lookahead_distance(float lookahead_distance) {
     this->lookahead_distance = lookahead_distance;
@@ -95,73 +97,48 @@ double PurePursuit::compute_steering_effort() {
     return 0.0;
 }
 
+/** Interpolate lookahead point for steering angle calculation */
+bool PurePursuit::set_lookahead_point(int next_waypoint_idx) {
 
+  const TrajectoryPoint start = trajectory.points[next_waypoint_idx - 1];
+  const TrajectoryPoint end = trajectory.points[next_waypoint_idx];
+  auto currentPosition = TrajectoryPoint(); // fill-in get current location logic
 
-
-
-
-
-bool PurePursuit::interpolateNextTarget(int next_waypoint, geometry_msgs::Point* next_target) const
-{
-    
-  const double search_radius = lookahead_distance_;
-  const geometry_msgs::Point end = current_waypoints_.at(next_waypoint).pose.pose.position;
-  const geometry_msgs::Point start = current_waypoints_.at(next_waypoint - 1).pose.pose.position;
-
-  // project ego vehicle's current position at C onto the line at D in between two waypoints A and B.
-  const tf::Vector3 p_A(start.x, start.y, 0.0);
-  const tf::Vector3 p_B(end.x, end.y, 0.0);
-  const tf::Vector3 p_C(current_pose_.position.x, current_pose_.position.y, 0.0);
-  const tf::Vector3 AB = p_B - p_A;
-  const tf::Vector3 AC = p_C - p_A;
-  const tf::Vector3 p_D = p_A + AC.dot(AB) / AB.dot(AB) * AB;
+  // Project vehicle's current position onto line between start and end points
+  const tf2::Vector3 p_A(start.x, start.y, 0.0);
+  const tf2::Vector3 p_B(end.x, end.y, 0.0);
+  const tf2::Vector3 p_C(currentPosition.x, currentPosition.y, 0.0);
+  const tf2::Vector3 AB = p_B - p_A;
+  const tf2::Vector3 AC = p_C - p_A;
+  const tf2::Vector3 p_D = p_A + AC.dot(AB) / AB.dot(AB) * AB;
   const double dist_CD = (p_D - p_C).length();
 
-  bool found = false;
-  tf::Vector3 final_goal;
-  // Draw a circle centered at p_C with a radius of search_radius
-  if (dist_CD > search_radius)
-  {
-    // no intersection in between the circle and AB
-    found = false;
-  }
-  else if (dist_CD == search_radius)
-  {
-    // one intersection
-    final_goal = p_D;
-    found = true;
-  }
-  else
-  {
-    // two intersections
-    // get intersection in front of vehicle
-    double s = sqrt(pow(search_radius, 2) - pow(dist_CD, 2));
-    tf::Vector3 p_E = p_D + s * AB.normalized();
-    tf::Vector3 p_F = p_D - s * AB.normalized();
+  // set lookahead point based on intersection
 
-    // verify whether these two points lie on line segment AB
-    if ((p_B - p_E).length2() < AB.length2())
-    {
-      final_goal = p_E;
-      found = true;
+  if (dist_CD > lookahead_distance) {
+    // circle surrounding vehicle's current location 
+    // does not intersect with trajectory
+    return false;
+  } else if (dist_CD == lookahead_distance) {
+    // lookahead circle intersects exactly at projection
+    lookahead_point.x = p_D.getX();
+    lookahead_point.y = p_D.getY();
+  } else {
+
+    // two intersections, take intersection in front of vehicle
+    double s = sqrt(pow(lookahead_distance, 2) - pow(dist_CD, 2));
+    tf2::Vector3 p_E = p_D + s * AB.normalized();
+    tf2::Vector3 p_F = p_D - s * AB.normalized();
+
+    if ((p_B - p_E).length2() < AB.length2()) {
+      lookahead_point.x = p_E.getX();
+      lookahead_point.y = p_E.getY();
+    } else if ((p_B - p_F).length2() < AB.length2()) {
+      lookahead_point.x = p_F.getX();
+      lookahead_point.y = p_F.getY();
     }
-    else if ((p_B - p_F).length2() < AB.length2())
-    {
-      final_goal = p_F;
-      found = true;
-    }
-    else
-    {
-      found = false;
-    }
+
   }
 
-  if (found)
-  {
-    next_target->x = final_goal.x();
-    next_target->y = final_goal.y();
-    next_target->z = current_pose_.position.z;
-  }
-
-  return found;
+  return true;
 }

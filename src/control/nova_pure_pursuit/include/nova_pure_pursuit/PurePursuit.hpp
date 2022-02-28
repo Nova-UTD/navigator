@@ -28,32 +28,25 @@ public:
     PurePursuit(float lookahead_distance);
     ~PurePursuit();
 
-    double get_steering_angle();
+    double get_steering_angle(Trajectory cur_trajectory);
 
 private:
 
     // var
-    float closest_point_x;
-    float closest_point_y;
-
-    float lookahead_point_x;
-    float lookahead_point_y;
+    TrajectoryPoint closest_point;
+    TrajectoryPoint lookahead_point;
+    Trajectory trajectory;
 
     float lookahead_distance;
     double curvature;
     double steering_angle;
 
     // functions
-    void set_lookahead_point(float x, float y);
+    bool set_lookahead_point(int next_waypoint_idx);
     void compute_curvature();
     void compute_steering_angle();
     void set_lookahead_distance(float lookahead_distance);
     double compute_steering_effort();
-
-    // Needed for post to map transform
-    tf2::BufferCore tf_buffer;
-    tf2_ros::TransformListener tf_listener;
-
 
 };
 
