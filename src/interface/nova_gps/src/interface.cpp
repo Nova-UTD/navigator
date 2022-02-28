@@ -10,7 +10,6 @@
 #include <iostream>
 #include <memory> // std::make_shared
 #include "rclcpp/rclcpp.hpp"
-#include "nova_gps/ConcreteGPSInterface.hpp"
 #include "nova_gps/GPSInterfaceNode.hpp"
 
 int main(int argc, char ** argv) {

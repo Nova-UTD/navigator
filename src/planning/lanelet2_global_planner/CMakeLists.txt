@@ -6,6 +6,8 @@ find_package(ament_cmake_auto REQUIRED)
 find_package(Eigen3 REQUIRED)
 ament_auto_find_build_dependencies()
 
+include_directories(SYSTEM /opt/ros/foxy/include)
+
 # build
 set(GB_PLANNER_LIB lanelet2_global_planner)
 ament_auto_add_library(${GB_PLANNER_LIB} SHARED
