@@ -69,11 +69,11 @@ def on_kb_update():
     elif 'a' in pressed_keys:
         screen.addstr(7,3,"⬅", curses.A_REVERSE)
         screen.addstr(7,7,"➡", curses.A_NORMAL)
-        steer = -0.2
+        steer = -0.35
     elif 'd' in pressed_keys:
         screen.addstr(7,7,"➡", curses.A_REVERSE)
         screen.addstr(7,3,"⬅", curses.A_NORMAL)
-        steer = 0.2
+        steer = 0.35
     else:
         screen.addstr(7,7,"➡", curses.A_NORMAL)
         screen.addstr(7,3,"⬅", curses.A_NORMAL)
