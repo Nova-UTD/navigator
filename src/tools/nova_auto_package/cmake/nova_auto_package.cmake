@@ -40,10 +40,6 @@ if(BUILD_TESTING AND test_filenames) # If we have any tests to build
   ament_auto_add_gtest(tests ${test_filenames}) # And add our tests
 endif()
 
-if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/launch)
-  install(DIRECTORY "launch" DESTINATION "share/${PROJECT_NAME}")
-endif()
-
 ament_auto_package()
 
 endmacro()

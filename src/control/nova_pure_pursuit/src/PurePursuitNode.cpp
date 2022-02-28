@@ -11,6 +11,8 @@
 #include "nova_pure_pursuit/PurePursuitNode.hpp"
 #include <chrono>
 #include <memory>
+#include <cmath>
+#include <limits>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;

@@ -13,6 +13,8 @@ ament_auto_find_build_dependencies()
 # Disable warnings due to external dependencies (Eigen)
 #include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 
+include_directories(SYSTEM /opt/ros/foxy/include)
+
 ament_auto_add_library(${PROJECT_NAME} SHARED
   include/had_map_utils/had_map_utils.hpp
   include/had_map_utils/had_map_computation.hpp

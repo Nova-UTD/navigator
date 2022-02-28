@@ -18,6 +18,7 @@
 #include "GPSInterface.hpp"
 #include <nav_msgs/msg/odometry.hpp> // Pub GPS data as odometry
 #include <math.h>
+#include "nova_gps/msg/gps_diagnostic.hpp"
 
 namespace Nova {
 namespace GPS {
@@ -36,6 +37,7 @@ private:
   // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr heading_publisher;
   // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr velocity_publisher;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odometry_publisher;
+  rclcpp::Publisher<nova_gps::msg::GPSDiagnostic>::SharedPtr diagnostic_publisher;
 };
 
 }

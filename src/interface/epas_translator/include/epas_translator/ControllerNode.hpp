@@ -16,7 +16,7 @@
 #include "voltron_msgs/msg/can_frame.hpp" // CAN messages
 #include "std_msgs/msg/float32.hpp" // UInt8 messages
 
-typedef uint16_t can_id_t;
+typedef uint32_t can_id_t;
 typedef uint64_t can_data_t;
 
 using namespace std::chrono_literals;
