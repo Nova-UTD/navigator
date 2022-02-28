@@ -57,6 +57,7 @@ private:
     void send_message();
     void update_trajectory(Trajectory::SharedPtr trajectory);
     void load_test_trajectory(std::vector<autoware_auto_msgs::msg::TrajectoryPoint> &v);
+    TrajectoryPoint compute_closest_point(TrajectoryPoint current_point);
 };
 
 

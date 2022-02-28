@@ -29,7 +29,7 @@ public:
     ~PurePursuit();
 
     double get_steering_angle();
-
+    
 private:
 
     // var
