@@ -7,6 +7,8 @@
   <maintainer email="joshmackwilliams@protonmail.com">Joshua Williams</maintainer>
   <license>MIT License</license>
 
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>
