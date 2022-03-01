@@ -36,6 +36,9 @@ LIDAR_PERIOD = 1/(10.0) # 20 Hz
 OBSTACLE_QTY_CAR = 10 # Spawn n cars
 OBSTACLE_QTY_PED = 10 # Spawn n peds
 
+import sys
+sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
+
 import carla
 import random
 import rclpy
@@ -167,6 +170,53 @@ class SimBridgeNode(Node):
         cmd.reverse = self.reverse_cmd
         self.ego.apply_control(cmd)
 
+    def sem_lidar_cb(self, data: carla.SemanticLidarMeasurement):
+        # For output classes, see https://carla.readthedocs.io/en/latest/ref_sensors/#semantic-segmentation-camera
+        # Roads: yellow
+        # Other ground: green
+        # Vehicles (incl. bikes): purple
+        # Signs: blue
+        # Other: off-white
+        road_color_rgb = [252,255,166] # FCFFA6, yellow
+        ground_color_rgb = [193,255,215] # C1FFD7, light green
+        vehicle_color_rgb = [202,184,255] # CAB8FF, purple
+        sign_color_rgb = [181,222,255] # B5DEFF, light blue
+        other_color_rgb = [249,248,248] # F9F8F8, off-white
+
+        # for det in data:
+        #     self.get_logger().info("{}".format(det))
+
+        # Taken from carla_ros_bridge's "lidar.py". WSH.
+        header = Header(
+            stamp=self.get_clock().now().to_msg(),
+            frame_id='lidar_front'
+        )
+
+        lidar_data = np.fromstring(
+            bytes(data.raw_data), dtype=np.float32)
+        lidar_data = np.reshape(
+            lidar_data, (int(lidar_data.shape[0] / 6), 6))
+        lidar_dar = np.append(
+            lidar_data,
+            np.zeros((lidar_data.shape[0], 3)),
+            axis=1
+        ) # Cols for r,g,b. WSH.
+        lidar_data.dtype=[
+            ('x', np.float32),
+            ('y', np.float32),
+            ('z', np.float32),
+            ('angle', np.float32),
+            ('id', np.int32),
+            ('intensity', np.int32)
+        ]
+        # we take the opposite of y axis
+        # (as lidar point are expressed in left handed coordinate system, and ros need right handed)
+        lidar_data['y'] *= -1
+
+        msg = rnp.msgify(PointCloud2, lidar_data)
+        msg.header = header
+        self.sem_lidar_pub.publish(msg)
+
     def steering_command_cb(self, msg: SteeringPosition):
         self.steering_cmd = msg.data
 
@@ -289,6 +339,12 @@ class SimBridgeNode(Node):
             10
         )
 
+        self.sem_lidar_pub = self.create_publisher(
+            PointCloud2,
+            '/lidar/semantic',
+            10
+        )
+
         self.steering_command_sub = self.create_subscription(
             SteeringPosition,
             '/command/steering_position',
@@ -354,15 +410,32 @@ class SimBridgeNode(Node):
         self.add_ego_sensors()        
 
     def add_ego_sensors(self):
+
+        front_lidar_tf = carla.Transform(
+            carla.Location(x = 3.4, y = 0.902, z = 0.7876),
+            carla.Rotation(roll=0.85943669, pitch = 1.71887339, yaw = 83.0788803) # DEGREES, left-handed. Come on, CARLA...
+        ) 
+
         # Attach Lidar sensor
         lidar_bp = self.blueprint_library.find('sensor.lidar.ray_cast')
         lidar_bp.set_attribute('channels', '16') # VLP-16
         lidar_bp.set_attribute('sensor_tick', str(LIDAR_PERIOD))
         lidar_bp.set_attribute('rotation_frequency', '40')
         # lidar_bp.set_attribute('points_per_second', '11,200')
-        relative_transform = carla.Transform(carla.Location(x=0.0, y=0.0, z=0.0), carla.Rotation()) # TODO: Fix transform
+        relative_transform = front_lidar_tf
         self.front_lidar = self.world.spawn_actor(lidar_bp, relative_transform, attach_to=self.ego)
         self.front_lidar.listen(self.front_lidar_cb)
+
+        # Semantic lidar
+        sem_lidar_bp = self.blueprint_library.find('sensor.lidar.ray_cast_semantic')
+        sem_lidar_bp.set_attribute('channels', '16') # VLP-16
+        sem_lidar_bp.set_attribute('rotation_frequency','30') # "30" is CARLA's default FPS.
+        # sem_lidar_bp.set_attribute('sensor_tick', str(LIDAR_PERIOD))
+        # sem_lidar_bp.set_attribute('rotation_frequency', '40')
+        # sem_lidar_bp.set_attribute('points_per_second', '11,200') # 3.4 -0.902 0.7876
+        relative_transform = front_lidar_tf
+        self.sem_lidar = self.world.spawn_actor(sem_lidar_bp, relative_transform, attach_to=self.ego)
+        self.sem_lidar.listen(self.sem_lidar_cb)
 
         # Attach GNSS sensor TODO (WSH)
         # gnss_bp = self.blueprint_library.find('sensor.other.gnss')
