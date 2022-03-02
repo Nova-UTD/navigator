@@ -166,9 +166,12 @@ export default function Example() {
 
   client.onmessage = (message) => { // On client message
     const data = JSON.parse(message.data);
-    for (var i = 0; i < data.length; i++) {
-      console.log( data[i] );
-      createCube( data[i] );
+    if(data[0] === "Object") {
+      const newData = data[1];
+      for (var i = 0; i < newData.length; i++) {
+        console.log( newData[i] );
+        createCube( newData[i] );
+      }
     }
   };
   

@@ -6,7 +6,9 @@
   "main": "src/index.js",
   "dependencies": {
     "react": "16.8.0",
+    "react-burger-menu": "^3.0.6",
     "react-dom": "16.8.0",
+    "react-router-dom": "^6.2.2",
     "react-scripts": "2.0.3",
     "regl-worldview": "latest",
     "websocket": "^1.0.34"

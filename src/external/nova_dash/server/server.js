@@ -37,7 +37,7 @@ app.post('/console', function (req, res) { // Console log POST request
 
   socketServer.clients.forEach((client) => { // Push to each client
     if (client.readyState === WebSocket.OPEN) { // If client is ready
-      client.send(JSON.stringify([string]));
+      client.send(JSON.stringify(["Message", [string]] ));
       console.log(JSON.stringify([string]));
     }
   });
@@ -90,12 +90,25 @@ let box4 = {
 
 let activeObjects = []; // Active object array
 
+/*socketServer.on('connection', (socketClient) => { // On client connection event
+  let conn = setInterval(function(){ // Connection loop
+    socketClient.send( JSON.stringify(["TESTA"]) ); // Send current active objects to client
+  }, 1000); // Every 1000ms
+
+  socketClient.on('close', (socketClient) => { // On client disconnect
+    clearInterval(conn); // Clear the connection loop
+    console.log('Client closed');
+    console.log('Number of clients: ', socketServer.clients.size);
+  });
+});*/
+
 socketServer.on('connection', (socketClient) => { // On client connection event
   console.log('New client connected');
   console.log('Number of clients: ', socketServer.clients.size);
 
   let conn = setInterval(function(){ // Connection loop
-    socketClient.send( JSON.stringify(activeObjects) ); // Send current active objects to client
+    socketClient.send( JSON.stringify(["Object", activeObjects]) ); // Send current active objects to client
+    socketClient.send( JSON.stringify(["Message", ["WEEE"]]) ); // Message test
   }, 1000); // Every 1000ms
     
   // Dummy messages for testing
@@ -114,5 +127,5 @@ socketServer.on('connection', (socketClient) => { // On client connection event
     clearInterval(conn); // Clear the connection loop
     console.log('Client closed');
     console.log('Number of clients: ', socketServer.clients.size);
-    });
+  });
 });
