@@ -31,6 +31,7 @@ CLIENT_WORLD = 'Town10HD'
 EGO_AUTOPILOT_ENABLED = False
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0) # 2 Hz
+GROUND_TRUTH_OBJ_PERIOD = 1/(2.0) # 2 Hz (purposely bad)
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0) # 10 Hz
 LIDAR_PERIOD = 1/(10.0) # 20 Hz
 OBSTACLE_QTY_CAR = 10 # Spawn n cars
@@ -65,7 +66,7 @@ from std_msgs.msg import Header
 from sensor_msgs.msg import Image # For cameras
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry # For GPS, ground truth
-from voltron_msgs.msg import PeddlePosition, SteeringPosition
+from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 
@@ -229,6 +230,26 @@ class SimBridgeNode(Node):
     def reverse_command_cb(self, msg: Bool):
         self.reverse_cmd = msg.data
 
+    def publish_true_boxes(self):
+        self.get_logger().info("Publishing boxes.")
+        vehicles = self.world.get_actors().filter('vehicle.*')
+        obstacles = []
+        for vehicle in vehicles:
+            obst = Obstacle3D()
+            obst.id = vehicle.id
+            obst.label = obst.CAR # TODO: Generalize, e.g. "bike", "car"
+            obst.confidence = random.uniform(0.5, 1.0)
+
+            # Set velocity
+            actor_vel = vehicle.get_velocity()
+            obst.velocity.x = actor_vel.x
+            obst.velocity.y = actor.vel.y*-1 # Fix coordinate system
+
+            # Set bounding box
+            obstacles.append(obst)
+            # boxes.append(vehicle.bounding_box)
+        self.get_logger().info("{}".format(obstacles))
+
     def true_odom_cb(self):
         ego: carla.Actor = self.ego
 
@@ -378,6 +399,10 @@ class SimBridgeNode(Node):
         )
 
         self.command_timer = self.create_timer(0.1, self.process_command)
+
+        self.ground_truth_objects_timer = self.create_timer(
+            GROUND_TRUTH_OBJ_PERIOD, self.publish_true_boxes
+        )
         
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)

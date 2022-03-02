@@ -1,3 +1,8 @@
+uint8 CAR=0
+uint8 BIKE=1
+uint8 PEDESTRIAN=2
+uint8 OTHER=99
+
 # car, pedestrian, etc.
 uint8 label
 
