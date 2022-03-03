@@ -27,7 +27,7 @@ Todos:
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
-CLIENT_WORLD = 'Town01'
+CLIENT_WORLD = 'Town10HD'
 EGO_AUTOPILOT_ENABLED = False
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0) # 2 Hz
@@ -35,7 +35,11 @@ GROUND_TRUTH_OBJ_PERIOD = 1/(2.0) # 2 Hz (purposely bad)
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0) # 10 Hz
 LIDAR_PERIOD = 1/(10.0) # 20 Hz
 OBSTACLE_QTY_VEHICLE = 20 # Spawn n cars
-OBSTACLE_QTY_PED = 10 # Spawn n peds
+OBSTACLE_QTY_PED = 30 # Spawn n peds
+
+# Publish a true map->base_link transform. Disable this if
+# another localization algorithm (ukf, ndt, etc.) is running! WSH.
+PULBISH_MAP_BL_TRANSFORM = True 
 
 import sys
 sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
@@ -57,6 +61,7 @@ import tf2_msgs
 from tf2_ros.buffer import Buffer
 import tf2_py
 from tf2_ros.transform_listener import TransformListener
+from tf2_ros.transform_broadcaster import TransformBroadcaster
 import math
 from os.path import exists
 
@@ -230,8 +235,10 @@ class SimBridgeNode(Node):
         self.reverse_cmd = msg.data
 
     def publish_true_boxes(self):
-        self.get_logger().info("Publishing boxes.")
+        
         vehicles = self.world.get_actors().filter('vehicle.*')
+        self.get_logger().info("Publishing {} boxes.".format(len(vehicles)))
+
         obstacles = []
         for vehicle in vehicles:
             obst = Obstacle3D()
@@ -274,27 +281,34 @@ class SimBridgeNode(Node):
             )
 
             obstacles.append(obst)
+        obstacles_msg = Obstacle3DArray()
+        obstacles_msg.obstacles = obstacles
+        obstacles_msg.header.stamp = self.get_clock().now().to_msg()
+        obstacles_msg.header.frame_id = 'map'
+
+        self.ground_truth_obst_pub.publish(obstacles_msg)
         # self.get_logger().info("{}".format(obstacles))
 
     def true_odom_cb(self):
         ego: carla.Actor = self.ego
 
         odom = Odometry()
-        odom.header.frame_id = 'base_link'
+        odom.header.frame_id = 'map'
         odom.header.stamp = self.get_clock().now().to_msg()
+        odom.child_frame_id = 'base_link'
 
         ego_position = Point()
         ego_orientation = Quaternion()
         ego_tf: carla.Transform = ego.get_transform()
         ego_position.x = ego_tf.location.x
-        ego_position.y = ego_tf.location.y
+        ego_position.y = ego_tf.location.y*-1
         ego_position.z = ego_tf.location.z
 
         ego_quat = R.from_euler(
             'yzx',
-            [ego_tf.rotation.pitch,
-            ego_tf.rotation.yaw,
-            ego_tf.rotation.roll]
+            [ego_tf.rotation.pitch*-1*math.pi/180.0,
+            ego_tf.rotation.yaw*-1*math.pi/180.0-math.pi,
+            ego_tf.rotation.roll*-1*math.pi/180.0]
         ).as_quat()
         ego_orientation.x = ego_quat[0]
         ego_orientation.y = ego_quat[1]
@@ -305,6 +319,25 @@ class SimBridgeNode(Node):
         odom.pose.pose.orientation = ego_orientation
 
         self.ground_truth_odom_pub.publish(odom)
+
+        # Publish tf if enabled
+        if PULBISH_MAP_BL_TRANSFORM:
+            t = TransformStamped()
+            t.header = odom.header
+            t.child_frame_id = odom.child_frame_id
+            translation = Vector3(
+                x = odom.pose.pose.position.x,
+                y = odom.pose.pose.position.y,
+                z = odom.pose.pose.position.z
+            )
+            t.transform.translation = translation
+            t.transform.rotation = Quaternion(
+                x = ego_quat[0],
+                y = ego_quat[1],
+                z = ego_quat[2],
+                w = ego_quat[3]
+            )
+            self.tf_broadcaster.sendTransform(t)
 
         # Now add some very simple noise to fake a GPS sensor. WSH.
         # We'll go easy and add random deviation of just <2m on each axis
@@ -380,6 +413,12 @@ class SimBridgeNode(Node):
             10
         )
 
+        self.ground_truth_obst_pub = self.create_publisher(
+            Obstacle3DArray,
+            '/objects',
+            10
+        )
+
         self.primary_imu_pub = self.create_publisher(
             Imu,
             '/imu_primary/data',
@@ -432,20 +471,35 @@ class SimBridgeNode(Node):
         
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.tf_broadcaster = TransformBroadcaster(self)
 
         self.connect_to_carla()
 
     def add_vehicles(self, vehicle_count: int):
         self.get_logger().info("Spawning {} vehicles".format(vehicle_count))
 
-        vehicle_bps = self.blueprint_library.filter("vehicle.*")
-        for vehicle_count in range(vehicle_count):
+        for vehicle in range(vehicle_count):
             # Choose a vehicle blueprint at random.
             vehicle_bp = random.choice(self.blueprint_library.filter('vehicle.*.*'))
             random_spawn = random.choice(self.world.get_map().get_spawn_points())
             self.get_logger().info("Spawning vehicle ({}) @ {}".format(vehicle_bp.id, random_spawn))
             vehicle = self.world.try_spawn_actor(vehicle_bp, random_spawn)
-            vehicle.set_autopilot(enabled=True)
+            if vehicle is not None:
+                vehicle.set_autopilot(enabled=True)
+
+    def add_pedestrians(self, count: int):
+        self.get_logger().info("Spawning {} pedestrians".format(count))
+
+        for ped in range(count):
+            # Choose a vehicle blueprint at random.
+            ped_bp = random.choice(self.blueprint_library.filter('walker.*.*'))
+            spawn = self.world.get_random_location_from_navigation()
+            self.get_logger().info("Spawning ped ({}) @ {}".format(ped_bp.id, spawn))
+            random_spawn = random.choice(self.world.get_map().get_spawn_points())
+            random_spawn.location = spawn
+            ped = self.world.try_spawn_actor(ped_bp, random_spawn)
+            # if ped is not None:
+            #     ped.set_autopilot(enabled=True)
 
     def connect_to_carla(self):
         # Connect to client, load world
@@ -455,10 +509,10 @@ class SimBridgeNode(Node):
         self.world = client.load_world(CLIENT_WORLD)
         
         # Forcefully destroy existing actors
-        if len(self.world.get_actors()) > 0:
-            self.get_logger().info("Removing {} old actors".format(len(self.world.get_actors())))
-            for actor in self.world.get_actors():
-                actor.destroy()
+        # if len(self.world.get_actors()) > 0:
+        #     self.get_logger().info("Removing {} old actors".format(len(self.world.get_actors())))
+        #     for actor in self.world.get_actors():
+        #         actor.destroy()
 
         # Spawn ego vehicle
         # Get car blueprint
@@ -476,7 +530,9 @@ class SimBridgeNode(Node):
 
         self.add_ego_sensors()        
 
-        # self.add_vehicles(OBSTACLE_QTY_VEHICLE)
+        self.add_vehicles(OBSTACLE_QTY_VEHICLE)
+
+        self.add_pedestrians(OBSTACLE_QTY_PED)
 
     def add_ego_sensors(self):
 
