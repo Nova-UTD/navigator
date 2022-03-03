@@ -82,11 +82,11 @@ private:
       std::string line = "";
       while (testing_data) {
 
-        std::getline(testing_data, line);
         TrajectoryPoint trajectory_point;
         testing_data >> trajectory_point.x;
         testing_data >> trajectory_point.y;
         testing_data >> trajectory_point.z;
+        std::getline(testing_data, line);
 
         trajectory_point.longitudinal_velocity_mps = 0;
         
