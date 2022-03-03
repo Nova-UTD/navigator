@@ -44,20 +44,16 @@ void PurePursuitNode::send_message() {
   current_point.x = 0.0;
   current_point.y = 0.0;
 
-  // For later use: obtain the new target longitudinal velocity
   TrajectoryPoint closest_point = compute_closest_point(current_point);
-  std::cout << "SELECTED CLOSEST POINT: " << std::endl;
-  std::cout << closest_point.x << "\t" << closest_point.y << std::endl;
+  trim_trajectory(closest_point);
+
   // TODO: Select & update lookahead_point of controller
-
-
-  float angle = get_steering_angle();
 
   // format of published message
   auto steering_angle_msg = SteeringPosition();
-  steering_angle_msg.data = angle;
+  steering_angle_msg.data = get_steering_angle();
 
-  RCLCPP_INFO(this->get_logger(), "Publishing: '%f'", angle);
+  RCLCPP_INFO(this->get_logger(), "Publishing: '%f'", steering_angle_msg);
   steering_control_publisher->publish(steering_angle_msg);
 }
 
@@ -85,11 +81,32 @@ TrajectoryPoint PurePursuitNode::compute_closest_point(TrajectoryPoint current_p
       minimum_distance = distance;
       closest_point = *point_ptr;
     }
+
   }
 
-  //TODO: Trim the trajectory points behind the closest point
-
   return closest_point;
+}
+
+void PurePursuitNode::trim_trajectory(TrajectoryPoint closest_point) {
+
+  std::vector<TrajectoryPoint>::iterator delete_start, delete_end;
+  delete_start = this->trajectory.points.begin();
+  delete_end = this->trajectory.points.begin();
+
+  for (size_t i = 0; i < this->trajectory.points.size(); i++) {
+
+    std::shared_ptr<TrajectoryPoint> point_ptr {new TrajectoryPoint};
+    *point_ptr = this->trajectory.points[i];
+
+    if (closest_point.x == point_ptr->x && closest_point.y == point_ptr->y) {
+      break;
+    }
+
+    delete_end++;
+  }
+  
+  // Trim the trajectory points behind the closest point
+  this->trajectory.points.erase(delete_start, delete_end);
 }
 
 /** Interpolate lookahead point for steering angle calculation */

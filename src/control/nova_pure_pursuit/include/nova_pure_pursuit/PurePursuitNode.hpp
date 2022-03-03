@@ -58,6 +58,7 @@ private:
     void send_message();
     void update_trajectory(Trajectory::SharedPtr trajectory);
     TrajectoryPoint compute_closest_point(TrajectoryPoint current_point);
+    void trim_trajectory(TrajectoryPoint current_point);
     bool compute_lookahead_point();
     float get_steering_angle();
 };
