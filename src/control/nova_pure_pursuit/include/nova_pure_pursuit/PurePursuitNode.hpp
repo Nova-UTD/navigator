@@ -14,9 +14,9 @@
 #include "rclcpp/rclcpp.hpp"
 
 #include "autoware_auto_msgs/msg/vehicle_control_command.hpp"
+#include <autoware_auto_msgs/msg/vehicle_control_command.hpp>
 #include "autoware_auto_msgs/msg/trajectory.hpp"
 #include <autoware_auto_msgs/msg/trajectory.hpp>
-#include <autoware_auto_msgs/msg/vehicle_control_command.hpp>
 
 #include "voltron_msgs/msg/steering_position.hpp"
 
@@ -58,6 +58,8 @@ private:
     void send_message();
     void update_trajectory(Trajectory::SharedPtr trajectory);
     TrajectoryPoint compute_closest_point(TrajectoryPoint current_point);
+    bool compute_lookahead_point();
+    float get_steering_angle();
 };
 
 

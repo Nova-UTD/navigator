@@ -7,14 +7,6 @@
  * License:   MIT License
  */
 
-#include "autoware_auto_msgs/msg/vehicle_control_command.hpp"
-#include "autoware_auto_msgs/msg/trajectory.hpp"
-#include <autoware_auto_msgs/msg/trajectory.hpp>
-#include <autoware_auto_msgs/msg/vehicle_control_command.hpp>
-
-using Trajectory = autoware_auto_msgs::msg::Trajectory;
-using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
-
 namespace Nova {
 namespace PurePursuit {
 
@@ -28,23 +20,28 @@ public:
     PurePursuit(float lookahead_distance);
     ~PurePursuit();
 
-    double get_steering_angle(Trajectory cur_trajectory);
+    double get_steering_angle();
+    float get_lookahead_distance();
+
+    void set_lookahead_point(float x, float y);
+
+    double compute_steering_angle();
+    void compute_curvature();
 
 private:
 
     // var
-    TrajectoryPoint closest_point;
-    TrajectoryPoint lookahead_point;
-    Trajectory trajectory;
+    float closest_point_x;
+    float closest_point_y;
+
+    float lookahead_point_x;
+    float lookahead_point_y;
 
     float lookahead_distance;
     double curvature;
     double steering_angle;
 
     // functions
-    bool set_lookahead_point(int next_waypoint_idx);
-    void compute_curvature();
-    void compute_steering_angle();
     void set_lookahead_distance(float lookahead_distance);
     double compute_steering_effort();
 
