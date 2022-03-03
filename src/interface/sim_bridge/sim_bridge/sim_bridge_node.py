@@ -27,14 +27,14 @@ Todos:
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
-CLIENT_WORLD = 'Town10HD'
+CLIENT_WORLD = 'Town01'
 EGO_AUTOPILOT_ENABLED = False
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0) # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0) # 2 Hz (purposely bad)
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0) # 10 Hz
 LIDAR_PERIOD = 1/(10.0) # 20 Hz
-OBSTACLE_QTY_CAR = 10 # Spawn n cars
+OBSTACLE_QTY_VEHICLE = 20 # Spawn n cars
 OBSTACLE_QTY_PED = 10 # Spawn n peds
 
 import sys
@@ -67,8 +67,7 @@ from sensor_msgs.msg import Image # For cameras
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry # For GPS, ground truth
 from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D
-from geometry_msgs.msg import Point
-from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import Point, Quaternion, Vector3
 
 from scipy.spatial.transform import Rotation as R
 
@@ -240,15 +239,42 @@ class SimBridgeNode(Node):
             obst.label = obst.CAR # TODO: Generalize, e.g. "bike", "car"
             obst.confidence = random.uniform(0.5, 1.0)
 
+            bbox = vehicle.bounding_box
+
             # Set velocity
             actor_vel = vehicle.get_velocity()
             obst.velocity.x = actor_vel.x
-            obst.velocity.y = actor.vel.y*-1 # Fix coordinate system
+            obst.velocity.y = actor_vel.y*-1 # Fix coordinate system
+            obst.velocity.z = actor_vel.z
 
             # Set bounding box
+            pos = Point()
+            pos.x = bbox.location.x
+            pos.y = bbox.location.y
+            pos.z = bbox.location.z
+
+            actor_quat = R.from_euler(
+                'yzx', 
+                [bbox.rotation.pitch,
+                bbox.rotation.yaw,
+                bbox.rotation.roll]
+            ).as_quat()
+            orientation_msg = Quaternion()
+            orientation_msg.x = actor_quat[0]
+            orientation_msg.y = actor_quat[1]
+            orientation_msg.z = actor_quat[2]
+            orientation_msg.w = actor_quat[3]
+
+            obst.bounding_box.center.position = pos
+            obst.bounding_box.center.orientation = orientation_msg
+            obst.bounding_box.size = Vector3(
+                x = bbox.extent.x,
+                y = bbox.extent.y,
+                z = bbox.extent.z
+            )
+
             obstacles.append(obst)
-            # boxes.append(vehicle.bounding_box)
-        self.get_logger().info("{}".format(obstacles))
+        # self.get_logger().info("{}".format(obstacles))
 
     def true_odom_cb(self):
         ego: carla.Actor = self.ego
@@ -409,30 +435,48 @@ class SimBridgeNode(Node):
 
         self.connect_to_carla()
 
+    def add_vehicles(self, vehicle_count: int):
+        self.get_logger().info("Spawning {} vehicles".format(vehicle_count))
+
+        vehicle_bps = self.blueprint_library.filter("vehicle.*")
+        for vehicle_count in range(vehicle_count):
+            # Choose a vehicle blueprint at random.
+            vehicle_bp = random.choice(self.blueprint_library.filter('vehicle.*.*'))
+            random_spawn = random.choice(self.world.get_map().get_spawn_points())
+            self.get_logger().info("Spawning vehicle ({}) @ {}".format(vehicle_bp.id, random_spawn))
+            vehicle = self.world.try_spawn_actor(vehicle_bp, random_spawn)
+            vehicle.set_autopilot(enabled=True)
+
     def connect_to_carla(self):
         # Connect to client, load world
         self.get_logger().info("Connecting to CARLA on port {}".format(CLIENT_PORT))
         client = carla.Client('localhost', CLIENT_PORT)
         client.set_timeout(20.0)
         self.world = client.load_world(CLIENT_WORLD)
+        
+        # Forcefully destroy existing actors
+        if len(self.world.get_actors()) > 0:
+            self.get_logger().info("Removing {} old actors".format(len(self.world.get_actors())))
+            for actor in self.world.get_actors():
+                actor.destroy()
 
         # Spawn ego vehicle
         # Get car blueprint
         self.blueprint_library = self.world.get_blueprint_library()
-        # for bp in blueprint_library.filter('vehicle.*.*'):
-        #     self.get_logger().info("{}".format(bp.id))
-        vehicle_bp = self.blueprint_library.find(EGO_MODEL)
 
         # collision_sensor_bp = blueprint_library.find('sensor.other.collision')
         # Get random spawn point
         random_spawn = self.world.get_map().get_spawn_points()[0]
         self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, random_spawn))
+        vehicle_bp = self.blueprint_library.find(EGO_MODEL)
         self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, random_spawn) 
         # TODO: Destroy ego actor when node exits or crashes. Currently keeps actor alive in CARLA,
         # which eventually leads to memory overflow. WSH.
         self.ego.set_autopilot(enabled=EGO_AUTOPILOT_ENABLED)
 
         self.add_ego_sensors()        
+
+        # self.add_vehicles(OBSTACLE_QTY_VEHICLE)
 
     def add_ego_sensors(self):
 
