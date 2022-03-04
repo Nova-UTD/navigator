@@ -8,13 +8,13 @@
  */
 
 #include "opendrive_utils/GeometricMap.hpp"
-using navigator::GeometricMap;
+using navigator::opendrive::GeometricMap;
 using odr::OpenDriveMap;
 
 GeometricMap::GeometricMap(const OpenDriveMap & map) {
   this->number_of_roads = map.get_roads().size();
 }
 
-unsigned int GeometricMap::get_n_roads() {
-  return this->number_of_roads;
-}
+// unsigned int GeometricMap::get_n_roads() {
+//   return this->number_of_roads;
+// }

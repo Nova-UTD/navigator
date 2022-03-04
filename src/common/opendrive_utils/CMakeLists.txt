@@ -16,3 +16,8 @@ project(${directory_name})
 
 find_package(nova_auto_package REQUIRED)
 nova_auto_package()
+
+# Install test maps to share directory
+install(DIRECTORY test/maps
+DESTINATION share/${PROJECT_NAME}/test
+)
