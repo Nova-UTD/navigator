@@ -44,10 +44,11 @@ void PurePursuitNode::send_message() {
   current_point.x = 0.0;
   current_point.y = 0.0;
 
-  TrajectoryPoint closest_point = compute_closest_point(current_point);
-  trim_trajectory(closest_point);
+  // Report error & delete trajectory points behind the closest point
+  size_t closest_point_idx = find_closest_point(current_point);
+  trim_trajectory(closest_point_idx);
 
-  // TODO: Select & update lookahead_point of controller
+  compute_lookahead_point();
 
   // format of published message
   auto steering_angle_msg = SteeringPosition();
@@ -63,9 +64,10 @@ void PurePursuitNode::update_trajectory(Trajectory::SharedPtr ptr) {
   this->trajectory = *ptr;
 }
 
-TrajectoryPoint PurePursuitNode::compute_closest_point(TrajectoryPoint current_point) {
+size_t PurePursuitNode::find_closest_point(TrajectoryPoint current_point) {
 
-  TrajectoryPoint closest_point;
+  size_t closest_point_idx = 0;
+  float distance = 0.0;
   float minimum_distance = std::numeric_limits<float>::max();
 
   for (size_t i = 0; i < this->trajectory.points.size(); i++) {
@@ -73,35 +75,31 @@ TrajectoryPoint PurePursuitNode::compute_closest_point(TrajectoryPoint current_p
     std::shared_ptr<TrajectoryPoint> point_ptr {new TrajectoryPoint};
     *point_ptr = this->trajectory.points[i];
 
-    float x_diff = point_ptr->x - current_point.x;
-    float y_diff = point_ptr->y - current_point.y;
-    float distance = sqrt( (x_diff*x_diff) + (y_diff*y_diff) );
+    distance = sqrt(pow(current_point.x - point_ptr->x, 2) + pow(current_point.y - point_ptr->y, 2));
 
     if (distance < minimum_distance) {
       minimum_distance = distance;
-      closest_point = *point_ptr;
+      closest_point_idx = i;
     }
 
   }
 
-  return closest_point;
+  std::cout << "Lateral offset error: " << distance << std::endl;
+
+  return closest_point_idx;
 }
 
-void PurePursuitNode::trim_trajectory(TrajectoryPoint closest_point) {
+void PurePursuitNode::trim_trajectory(size_t closest_point_idx) {
+
+  if (this->trajectory.points.empty()) {
+    return;
+  }
 
   std::vector<TrajectoryPoint>::iterator delete_start, delete_end;
   delete_start = this->trajectory.points.begin();
   delete_end = this->trajectory.points.begin();
 
-  for (size_t i = 0; i < this->trajectory.points.size(); i++) {
-
-    std::shared_ptr<TrajectoryPoint> point_ptr {new TrajectoryPoint};
-    *point_ptr = this->trajectory.points[i];
-
-    if (closest_point.x == point_ptr->x && closest_point.y == point_ptr->y) {
-      break;
-    }
-
+  for (size_t i = 0; i < closest_point_idx; i++) {
     delete_end++;
   }
   
@@ -109,14 +107,10 @@ void PurePursuitNode::trim_trajectory(TrajectoryPoint closest_point) {
   this->trajectory.points.erase(delete_start, delete_end);
 }
 
-/** Interpolate lookahead point for steering angle calculation */
-bool PurePursuitNode::compute_lookahead_point() {
-
-  float lookahead_distance = controller->get_lookahead_distance();
+size_t PurePursuitNode::find_lookahead_point(float lookahead_distance) {
 
 
-  // Find first point outside lookahead distance to use to find lookahead point
-  int next_waypoint_idx;
+  size_t next_waypoint_idx;
 
   for(size_t i = 0; i < trajectory.points.size(); i++) {
     
@@ -130,6 +124,22 @@ bool PurePursuitNode::compute_lookahead_point() {
     }
 
   }
+
+  return next_waypoint_idx;
+}
+
+/** Interpolate lookahead point for steering angle calculation */
+bool PurePursuitNode::compute_lookahead_point() {
+
+  if (this->trajectory.points.empty()) {
+    return false;
+  }
+
+  float lookahead_distance = controller->get_lookahead_distance();
+
+
+  // Find first point outside lookahead distance to use to find lookahead point
+  int next_waypoint_idx = find_lookahead_point(lookahead_distance);
 
 
   // TODO perform check that curve exists

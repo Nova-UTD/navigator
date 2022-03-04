@@ -57,8 +57,11 @@ private:
     // functions
     void send_message();
     void update_trajectory(Trajectory::SharedPtr trajectory);
-    TrajectoryPoint compute_closest_point(TrajectoryPoint current_point);
-    void trim_trajectory(TrajectoryPoint current_point);
+
+    size_t find_closest_point(TrajectoryPoint current_point);
+    size_t find_lookahead_point(float lookahead_distance);
+    
+    void trim_trajectory(size_t current_point_idx);
     bool compute_lookahead_point();
     float get_steering_angle();
 };
