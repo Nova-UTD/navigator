@@ -7,17 +7,18 @@
  * License:   MIT License
  */
 
+// Contains every other opendrive_utils header, in addition to basic extra utility.
+
 #pragma once
 
 #include "OpenDriveMap.h"
+#include "opendrive_utils/OpenDriveTypes.hpp"
 #include "opendrive_utils/GeometricMap.hpp"
 #include "opendrive_utils/LaneGraph.hpp"
 
 namespace navigator {
   namespace opendrive{
-    using OpenDriveMapPtr = std::shared_ptr<odr::OpenDriveMap>;
-    
+    using namespace types;
     OpenDriveMapPtr load_map(const std::string & filename);
-
   }
 }

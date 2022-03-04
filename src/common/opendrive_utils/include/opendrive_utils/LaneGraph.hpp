@@ -10,38 +10,27 @@
 #pragma once
 
 #include "OpenDriveMap.h"
+#include "opendrive_utils/OpenDriveTypes.hpp"
 
 namespace navigator {
     namespace opendrive {
 
-        using RoadId = std::string;
-        using LaneSectionId = int;
-        using LaneId = int;
-
-        struct LaneIdentifier {
-            RoadId road;
-            LaneSectionId section;
-            LaneId lane;
-        };
-
-        struct LaneLink {
-            LaneIdentifier left;
-            LaneIdentifier right;
-
-            // Predecessor and successor guarenteed to be in correct driving direction.
-            LaneIdentifier predecessor;
-            LaneIdentifier successor;
-        };
+        using namespace types;
 
         class LaneGraph {
         public:
-            LaneGraph(std::shared_ptr<odr::OpenDriveMap> map);
+            LaneGraph(OpenDriveMapPtr map);
 
             // Retrieves a lane by identifier
-            std::shared_ptr<odr::Lane> get_lane(LaneIdentifier lane_id);
+            LanePtr get_lane(LaneIdentifier lane_id);
+            
+            OpenDriveMapPtr get_map(){
+                return map;
+            }
 
         private:
-            std::shared_ptr<odr::OpenDriveMap> map;
+            OpenDriveMapPtr map;
+            std::map<LaneIdentifier, LanePtr> lanes;
         };
     }
 }
