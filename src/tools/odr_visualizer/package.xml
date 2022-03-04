@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>odr_visualizer</name>
+  <version>0.0.1</version>
+  <description>Nodes for calculating the car's position based on input curb points and an HD map</description>
+  <maintainer email="will.heitman@utdallas.edu">Will Heitman</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>nova_auto_package</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>libopendrive</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>visualization_msgs</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
