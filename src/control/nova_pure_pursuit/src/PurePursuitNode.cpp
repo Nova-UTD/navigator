@@ -29,23 +29,21 @@ PurePursuitNode::PurePursuitNode() : rclcpp::Node("pure_pursuit_controller") {
     (message_frequency, std::bind(&PurePursuitNode::send_message, this));
 
   this->steering_control_publisher = this->create_publisher
-    <SteeringPosition>("steering_angle", 10);
+    <SteeringPosition>("/command/steering_position", 10);
   
   this->trajectory_subscription = this->create_subscription
     <Trajectory>("reference_trajectory", 8, std::bind(&PurePursuitNode::update_trajectory, this, _1));
+
+  this->odometry_subscription = this->create_subscription
+    <Odometry>("/carla/odom", 8, std::bind(&PurePursuitNode::update_current_position, this, _1));
 }
 
 PurePursuitNode::~PurePursuitNode() {}
 
 void PurePursuitNode::send_message() {
 
-  // Temporary
-  TrajectoryPoint current_point;
-  current_point.x = 0.0;
-  current_point.y = 0.0;
-
   // Report error & delete trajectory points behind the closest point
-  size_t closest_point_idx = find_closest_point(current_point);
+  size_t closest_point_idx = find_closest_point();
   trim_trajectory(closest_point_idx);
 
   compute_lookahead_point();
@@ -64,9 +62,18 @@ void PurePursuitNode::update_trajectory(Trajectory::SharedPtr ptr) {
   this->trajectory = *ptr;
 }
 
-size_t PurePursuitNode::find_closest_point(TrajectoryPoint current_point) {
+void PurePursuitNode::update_current_position(Odometry::SharedPtr ptr) {
+
+  //RCLCPP_INFO(this->get_logger(), "Current position received!");
+  this->current_position.x = ptr->pose.pose.position.x;
+  this->current_position.y = ptr->pose.pose.position.y;
+}
+
+size_t PurePursuitNode::find_closest_point() {
 
   size_t closest_point_idx = 0;
+  TrajectoryPoint current_position = this->current_position;
+
   float distance = 0.0;
   float minimum_distance = std::numeric_limits<float>::max();
 
@@ -75,7 +82,7 @@ size_t PurePursuitNode::find_closest_point(TrajectoryPoint current_point) {
     std::shared_ptr<TrajectoryPoint> point_ptr {new TrajectoryPoint};
     *point_ptr = this->trajectory.points[i];
 
-    distance = sqrt(pow(current_point.x - point_ptr->x, 2) + pow(current_point.y - point_ptr->y, 2));
+    distance = sqrt(pow(current_position.x - point_ptr->x, 2) + pow(current_position.y - point_ptr->y, 2));
 
     if (distance < minimum_distance) {
       minimum_distance = distance;
@@ -107,15 +114,13 @@ void PurePursuitNode::trim_trajectory(size_t closest_point_idx) {
   this->trajectory.points.erase(delete_start, delete_end);
 }
 
-size_t PurePursuitNode::find_lookahead_point(float lookahead_distance) {
-
+size_t PurePursuitNode::find_lookahead_point(float lookahead_distance, TrajectoryPoint current_position) {
 
   size_t next_waypoint_idx;
 
   for(size_t i = 0; i < trajectory.points.size(); i++) {
     
     auto waypoint = trajectory.points[i];
-    auto current_position = TrajectoryPoint(); // fill-in get current location logic
     double distance = sqrt(pow(current_position.x - waypoint.x, 2) + pow(current_position.y - waypoint.y, 2));
     
     // First waypoint to be greater than lookahead distance
@@ -136,10 +141,11 @@ bool PurePursuitNode::compute_lookahead_point() {
   }
 
   float lookahead_distance = controller->get_lookahead_distance();
+  TrajectoryPoint current_position = this->current_position;
 
 
   // Find first point outside lookahead distance to use to find lookahead point
-  int next_waypoint_idx = find_lookahead_point(lookahead_distance);
+  int next_waypoint_idx = find_lookahead_point(lookahead_distance, current_position);
 
 
   // TODO perform check that curve exists
@@ -148,7 +154,6 @@ bool PurePursuitNode::compute_lookahead_point() {
 
   const TrajectoryPoint start = trajectory.points[next_waypoint_idx - 1];
   const TrajectoryPoint end = trajectory.points[next_waypoint_idx];
-  auto current_position = TrajectoryPoint(); // fill-in get current location logic
 
   // Project vehicle's current position onto line between start and end points
   const tf2::Vector3 p_A(start.x, start.y, 0.0);

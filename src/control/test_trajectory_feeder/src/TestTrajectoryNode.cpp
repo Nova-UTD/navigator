@@ -72,7 +72,7 @@ private:
 
     std::ifstream testing_data;
     std::string username = static_cast<std::string>(getenv("USER"));
-    testing_data.open("/home/" + username + "/navigator/data/TrajTest1_Gomentum(unformated).txt");
+    testing_data.open("/home/" + username + "/navigator/data/TestTraj_Carla.txt");
 
     if (testing_data.is_open()) {
 

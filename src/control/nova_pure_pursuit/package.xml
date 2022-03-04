@@ -11,6 +11,7 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
 
+  <build_depend>nav_msgs</build_depend>
   <depend>autoware_auto_msgs</depend>
   <depend>voltron_msgs</depend>
   <depend>rclcpp</depend>
