@@ -170,7 +170,7 @@ std::vector<double> SegmentedPath::intersection(double mx, double my, double x0,
 	//3. if it is within the boundary, calculate the arclength of the intersection relative to this segment.
 	//4. then add i*spacing to that, push the value onto the vector, and move on to next segment
 	std::vector<double> intersections;
-	for (int i = 0; i < points->size()-1; i++) {
+	for (size_t i = 0; i < points->size()-1; i++) {
 		auto a = points->at(i);
 		auto b = points->at(i+1);
 		double proportion;
