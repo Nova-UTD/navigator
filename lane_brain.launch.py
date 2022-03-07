@@ -66,10 +66,10 @@ def generate_launch_description():
             ("result_topic", "vehicle_speedometer")
         ]
     )
-    
+
     # steering_pid
     can = Node(
-        package='voltron_can',
+        package='can_interface',
         executable='interface',
         parameters=[(path.join(param_dir,"interface","can_interface.param.yaml"))],
         remappings=[
@@ -156,7 +156,7 @@ def generate_launch_description():
         executable='robot_state_publisher',
         arguments=[path.join(launch_dir, "data", "voltron.urdf")]
     )
-    
+
     visuals = Node(
         package='vt_viz',
         name='vt_viz_node',
@@ -197,7 +197,7 @@ def generate_launch_description():
             ("input_points", "points_raw")
         ]
     )
-    
+
     # PLANNING
     route_planner = Node(
         package='lanelet2_global_planner_nodes',
@@ -209,7 +209,7 @@ def generate_launch_description():
                     ('ndt_pose', '/localization/ndt_pose'),
                     ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')]
     )
-    
+
     path_planner = Node(
         package='behavior_planner_nodes',
         name='behavior_planner_node',
@@ -227,7 +227,7 @@ def generate_launch_description():
             ('vehicle_state_command', '/vehicle/state_command')
         ]
     )
-    
+
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -265,13 +265,13 @@ def generate_launch_description():
             ('nova_obstacle_array', '/obstacles/array')
         ]
     )
-    
+
     # VIZ
     lanelet_visualizer = Node(
         package='map_publishers',
         executable='lanelet_loader'
     )
-    
+
     return LaunchDescription([
         # CONTROL
         # steering_controller,

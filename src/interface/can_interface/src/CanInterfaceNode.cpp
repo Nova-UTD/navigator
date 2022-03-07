@@ -1,9 +1,9 @@
 /*
- * Package:   volron_can
+ * Package:   can_interface
  * Filename:  CanBusInterface.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
- * Copyright: 2021, Voltron UTD
+ * Copyright: 2022, Nova UTD
  * License:   MIT License
  */
 
@@ -15,13 +15,12 @@
 #include "rclcpp/rclcpp.hpp" // ROS node
 
 #include "voltron_msgs/msg/can_frame.hpp" // CAN frame messages
-#include "voltron_can/CanBus.hpp" // CAN interface
-#include "voltron_can/ConcreteCanBus.hpp"
+#include "can_interface/CanBus.hpp" // CAN interface
 
-#include "voltron_can/CanInterfaceNode.hpp" // Header for this class
+#include "can_interface/CanInterfaceNode.hpp" // Header for this class
 
 using namespace std::chrono_literals;
-using Voltron::Can::CanInterfaceNode;
+using navigator::can_interface::CanInterfaceNode;
 using std::placeholders::_1;
 
 const auto receive_frequency = 15ms;
@@ -29,7 +28,7 @@ const auto receive_frequency = 15ms;
 CanInterfaceNode::CanInterfaceNode(const std::string & interface_name)
   : Node("can_interface_node_" + interface_name) {
 
-  this->can_bus = std::make_unique<Voltron::Can::ConcreteCanBus>(interface_name);
+  this->can_bus = std::make_unique<navigator::can_interface::CanBus>(interface_name);
 
   // Set up the timer
   this->incoming_message_timer = this->create_wall_timer
@@ -47,11 +46,11 @@ CanInterfaceNode::CanInterfaceNode(const std::string & interface_name)
 }
 
 CanInterfaceNode::~CanInterfaceNode() {
-    
+
 }
 
 void CanInterfaceNode::send_frame(const voltron_msgs::msg::CanFrame::SharedPtr msg) {
-  this->can_bus->write_frame(Voltron::Can::CanFrame(msg->identifier, msg->data));
+  this->can_bus->write_frame(navigator::can_interface::CanFrame(msg->identifier, msg->data));
 }
 
 void CanInterfaceNode::check_incoming_messages() {
@@ -61,7 +60,7 @@ void CanInterfaceNode::check_incoming_messages() {
 }
 
 void CanInterfaceNode::receive_frame() {
-  std::unique_ptr<Voltron::Can::CanFrame> frame = this->can_bus->read_frame();
+  std::unique_ptr<navigator::can_interface::CanFrame> frame = this->can_bus->read_frame();
   voltron_msgs::msg::CanFrame message;
   message.identifier = frame->get_identifier();
   message.data = frame->get_data();

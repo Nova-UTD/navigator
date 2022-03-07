@@ -39,7 +39,7 @@ def generate_launch_description():
     )
 
     can = Node(
-        package='voltron_can',
+        package='can_interface',
         executable='interface',
         parameters=[(path.join(param_dir,"interface","can_interface.param.yaml"))],
         arguments=[interface]

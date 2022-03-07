@@ -1,9 +1,9 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  CanFrame.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
- * Copyright: 2021, Voltron UTD
+ * Copyright: 2022, Nova UTD
  * License:   MIT License
  */
 
@@ -16,9 +16,9 @@
 #include <linux/can.h> // struct can_frame
 #include <memory> // std::unique_ptr
 
-namespace Voltron {
-  namespace Can {
-    class CanFrame {
+namespace navigator {
+  namespace can_interface {
+    class CanFrame final {
     public:
       typedef uint32_t identifier_t;
       typedef uint64_t data_t;
@@ -29,7 +29,7 @@ namespace Voltron {
       // Construct from a system-provided can frame
       CanFrame(const struct can_frame & frame_struct);
 
-      virtual ~CanFrame();
+      ~CanFrame();
 
       // Members can be freely read
       identifier_t get_identifier() const;
@@ -37,7 +37,7 @@ namespace Voltron {
 
       // Convert this to the struct provided by the system
       std::unique_ptr<can_frame> to_system_frame() const;
-    
+
     private:
       identifier_t identifier;
       data_t data;

@@ -20,7 +20,7 @@ def generate_launch_description():
 
     # steering_pid
     can = Node(
-        package='voltron_can',
+        package='can_interface',
         executable='interface',
         arguments=[interface]
     )
