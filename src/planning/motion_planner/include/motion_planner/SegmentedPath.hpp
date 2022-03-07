@@ -47,6 +47,12 @@ public:
 	//Returns the distance to the closest point on the path (including on the segments between input points)
 	//(if path is empty, returns -1)
 	double distance(PathPoint p) const;
+	//returns curvature of the path over the segment at the given index
+	//returns the curvature at the closest valid point at index=0 and from the second to last point onward
+	//	or infinity if the path isn't long enough
+	//uses a "special" type of curvature, so it's not just 0 because we are using line segments
+	//it's basically the magnitude of the difference in slopes in the parametric equations of the lines.
+	double curvature(size_t index) const;
 	//returns the index of the closest point in points to p 
 	size_t closest_point(PathPoint p) const;
 	//Returns the arclength of the points of intersection of the line and the path

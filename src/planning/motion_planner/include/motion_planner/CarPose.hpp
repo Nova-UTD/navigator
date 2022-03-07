@@ -28,6 +28,9 @@ namespace navigator
 				: x(x), y(y), heading(heading), xv(xv), yv(yv), length(length), width(width), steering_angle(steering_angle) {}
 			CarPose(double x, double y, double heading, double xv, double yv) : x(x), y(y), heading(heading), xv(xv), yv(yv), length(0), width(0) {}
 			CarPose() : x(0), y(0), heading(0), xv(0), yv(0), length(0), width(0), steering_angle(0) {}
+			double speed() {
+				return std::sqrt(xv*xv+yv*yv);
+			}
 		};
 	}
 }

@@ -187,3 +187,49 @@ std::vector<double> SegmentedPath::intersection(double mx, double my, double x0,
 	}
 	return intersections;
 }
+
+double SegmentedPath::curvature(size_t i) const {
+	//we need two points past i and one point before to calculate curvature, so return infinity if we don't have enough points
+	if (points->size() < 4) {
+		return INFINITY;
+	}
+	//if we have enough points, but are outside the bounds, return curvature at the closest point that it's valid for
+	if (i<=0) {
+		return curvature(1);
+	}
+	if (i >= points->size()-2) {
+		return curvature(points->size()-3);
+	}
+	//since the path is made up of line segments, we use a subtitution for actual curvature
+	/*
+	curvature = |dT/ds| where T is unit tangent vector
+	https://activecalculus.org/multi/S-9-8-Arc-Length-Curvature.html
+	if r = (a*s+b,c*s+d)
+		T = (a/sqrt(a^2+c^2),c/sqrt(a^2+c^2))
+
+	say we have 3 adjacent segments: L0,L1,L2
+	We can define dT1/ds = ((T1-T0)+(T2-T1))/(length(L1)) = (T2-T0)/(Length(L1))
+		- in the limit where L0,L1,L2 get small, this works out to be perpendicular to L1 (good)
+		- if s=length(L1), T1*s would give the change over all of L1
+		- dT1/dx*s would give the change in derivative from T0 to T2
+	*/
+	auto p0 = points->at(i-1);
+	auto p1 = points->at(i);
+	auto p2 = points->at(i+1);
+	auto p3 = points->at(i+2);
+	double a = (p1.x-p0.x); //don't worry about magnitudes because we are normalizing anyway
+	auto c = (p1.y-p0.y);
+	double slope_mag = std::sqrt(a*a+c*c);
+	double T0x = a/slope_mag;
+	double T0y = c/slope_mag;
+	a = p3.x-p2.x;
+	c = p3.y-p2.y;
+	slope_mag = std::sqrt(a*a+c*c);
+	double T2x = a/slope_mag;
+	double T2y = c/slope_mag;
+	
+	double result_x = (T2x-T0x)/spacing;
+	double result_y = (T2y-T0y)/spacing;
+	return std::sqrt(result_x*result_x+result_y*result_y);
+
+}

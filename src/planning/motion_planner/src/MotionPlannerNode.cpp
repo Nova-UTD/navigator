@@ -53,7 +53,8 @@ MotionPlannerNode::MotionPlannerNode(const rclcpp::NodeOptions &node_options) :
 void MotionPlannerNode::send_message() {
     auto trajectories = voltron_msgs::msg::Trajectories();
     //get candidate costed trajectories from the motion planner class
-    auto candidates = planner->get_trajectory(ideal_path, pose);
+    std::vector<CarPose> colliders;
+    auto candidates = planner->get_trajectory(ideal_path, pose, colliders);
 
     //find min cost path
     double min_cost = candidates->at(0).cost;
