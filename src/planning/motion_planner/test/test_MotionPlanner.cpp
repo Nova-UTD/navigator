@@ -126,16 +126,16 @@ TEST_F(MotionPlannerTest, test_collision) {
 
   //create objects to collide with
   std::vector<CarPose> objects;
-  //starts at (-5,2) with velocity (1,0). bounding box is size (2,1)
-  objects.push_back(CarPose(-5,2,0,1,0,2,1));
-  //starts at (3,1) with velocity (1,0). bounding box is size (0.5,0.5)
+  //starts at (-5,2) with velocity (1,0).steering angle=0. bounding box is size (2,1)
+  objects.push_back(CarPose(-5,2,0,1,0,2,1,0));
+  //starts at (3,1) with velocity (1,0). steering angle=0. bounding box is size (0.5,0.5)
   //this one should never hit the path
-  objects.push_back(CarPose(3,1,0,1,0,0.5,0.5));
+  objects.push_back(CarPose(3,1,0,1,0,0.5,0.5,0));
 
   auto collisions = m_planner_ptr->get_collisions(path, objects);
 
   //this should yield 2 collisions (one for the left and right sides of the car)
-  ASSERT_EQ(2, collisions.size());
+  ASSERT_EQ(2ul, collisions.size());
   //should keep y coordinate for each collision (y coordinate = arclength here)
   ASSERT_EQ(2.5, collisions[0].s_in);
   ASSERT_EQ(1.5, collisions[1].s_in);

@@ -44,7 +44,9 @@ MotionPlannerNode::MotionPlannerNode(const rclcpp::NodeOptions &node_options) :
     path_subscription = this->create_subscription<voltron_msgs::msg::CostedPaths>("paths", 8, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
     odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
     //current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
+    steering_angle_subscription = this->create_subscription<std_msgs::msg::Float32>("real_steering_angle", 8, bind(&MotionPlannerNode::update_steering_angle, this, std::placeholders::_1));
     control_timer = this->create_wall_timer(message_frequency, bind(&MotionPlannerNode::send_message, this));
+    
     planner = std::make_shared<MotionPlanner>();
 }
 
@@ -101,6 +103,10 @@ void MotionPlannerNode::update_path(voltron_msgs::msg::CostedPaths::SharedPtr pt
         }
     }
     ideal_path = ptr->paths[min_index];
+}
+
+void MotionPlannerNode::update_steering_angle(std_msgs::msg::Float32::SharedPtr ptr) {
+  steering_angle = ptr->data; //radians
 }
 
 void MotionPlannerNode::odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg) {

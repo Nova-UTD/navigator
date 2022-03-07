@@ -66,18 +66,21 @@ private:
     //helper function for current_pose_cb
     bool transform_pose_to_map(const geometry_msgs::msg::PoseStamped &pose_in,
           geometry_msgs::msg::PoseStamped &pose_out);
+    void update_steering_angle(std_msgs::msg::Float32::SharedPtr ptr);
 
     rclcpp::Publisher<voltron_msgs::msg::Trajectories>::SharedPtr trajectory_publisher;
     rclcpp::Subscription<voltron_msgs::msg::CostedPaths>::SharedPtr path_subscription;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr perception_subscription;
     rclcpp::Subscription<VehicleKinematicState>::SharedPtr current_pose_subscription;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odomtery_pose_subscription;
+    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr steering_angle_subscription; //radians
     rclcpp::TimerBase::SharedPtr control_timer;
 
     std::shared_ptr<MotionPlanner> planner;
     voltron_msgs::msg::CostedPath ideal_path;
     geometry_msgs::msg::PoseStamped current_pose;
     CarPose pose;
+    float steering_angle; //radians
     
     // Needed for post to map transform
     tf2::BufferCore tf_buffer;
