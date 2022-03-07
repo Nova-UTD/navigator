@@ -5,7 +5,8 @@
 #include "voltron_msgs/msg/costed_paths.hpp"
 #include "voltron_msgs/msg/costed_path.hpp"
 #include <nav_msgs/msg/odometry.hpp>
-
+#include "nova_behavior_planner/BehaviorPlanner.hpp"
+#include "nova_behavior_planner/BehaviorStates.hpp"
 
 using namespace std::chrono_literals;
 using FinalPath = voltron_msgs::msg::FinalPath;
@@ -33,18 +34,22 @@ private:
     rclcpp::Subscription<Odometry>::SharedPtr odometry_subscription;
 
     // var
-    //std::unique_ptr<PurePursuit> behavior_planner;
+    std::unique_ptr<BehaviorPlanner> behavior_planner;
     rclcpp::TimerBase::SharedPtr control_timer;
+    
     CostedPaths costed_paths;
     Odometry current_position;
     FinalPath final_path;
+
+    State current_state;    
+
 
     // functions
     void send_message();
     void update_paths(CostedPaths::SharedPtr ptr);
     void update_current_position(Odometry::SharedPtr ptr);
+    void update_state();
 };
-
 
 }
 }

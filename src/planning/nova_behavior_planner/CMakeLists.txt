@@ -24,7 +24,8 @@ ament_auto_find_build_dependencies()
 # find_package(<dependency> REQUIRED)
 
 ament_auto_add_library(bp_lib STATIC
-  src/BehaviorPlannerNode.cpp)
+  src/BehaviorPlannerNode.cpp
+  src/BehaviorPlanner.cpp)
 target_include_directories(bp_lib PUBLIC include)
 
 

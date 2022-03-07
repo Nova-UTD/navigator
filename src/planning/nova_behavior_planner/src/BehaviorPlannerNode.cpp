@@ -32,8 +32,17 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 BehaviorPlannerNode::~BehaviorPlannerNode() {}
 
 void BehaviorPlannerNode::send_message() {
-  RCLCPP_INFO(this->get_logger(), "Publishing:");
-  final_path_publisher->publish(this->final_path);
+  
+    CostedPath chosen_path;
+    for(size_t i = 0; i < costed_paths.paths.size(); i++) {
+        float total_cost = costed_paths.paths[i].safety_cost + costed_paths.paths[i].routing_cost;
+        if (total_cost < chosen_path.safety_cost + chosen_path.routing_cost) {
+            chosen_path = costed_paths.paths[i];    
+        }
+    }
+
+    final_path.points = chosen_path.points;
+    final_path_publisher->publish(this->final_path);
 }
 
 void BehaviorPlannerNode::update_paths(CostedPaths::SharedPtr ptr) {
@@ -43,4 +52,8 @@ void BehaviorPlannerNode::update_paths(CostedPaths::SharedPtr ptr) {
 
 void BehaviorPlannerNode::update_current_position(Odometry::SharedPtr ptr) {
   this->current_position = *ptr;
+}
+
+void BehaviorPlannerNode::update_state() {
+
 }
