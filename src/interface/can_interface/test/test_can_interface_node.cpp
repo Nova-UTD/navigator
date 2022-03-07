@@ -33,9 +33,9 @@ protected:
     interface_node = std::make_shared<CanInterfaceNode>("vcan0");
     can_bus = std::make_unique<CanBus>("vcan0");
     can_publisher = std::make_unique<TestPublisher<
-      voltron_msgs::msg::CanFrame>>("outgoing_can_frames_vcan0");
+      voltron_msgs::msg::CanFrame>>("can_interface_outgoing_can_frames");
     can_subscriber = std::make_unique<TestSubscriber<
-      voltron_msgs::msg::CanFrame>>("incoming_can_frames_vcan0");
+      voltron_msgs::msg::CanFrame>>("can_interface_incoming_can_frames");
   }
 
   void TearDown() override {

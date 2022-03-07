@@ -26,7 +26,7 @@ using std::placeholders::_1;
 const auto receive_frequency = 15ms;
 
 CanInterfaceNode::CanInterfaceNode(const std::string & interface_name)
-  : Node("can_interface_node_" + interface_name) {
+  : Node("can_interface") {
 
   this->can_bus = std::make_unique<navigator::can_interface::CanBus>(interface_name);
 
@@ -36,12 +36,12 @@ CanInterfaceNode::CanInterfaceNode(const std::string & interface_name)
 
   // Set up the publisher. Buffer up to 64 since the CAN bus could get fairly busy
   this->incoming_message_publisher = this->create_publisher<voltron_msgs::msg::CanFrame>
-    ("incoming_can_frames_" + interface_name, 64);
+    ("can_interface_incoming_can_frames", 64);
 
   // Subscribe to outgoing CAN messages
   this->outgoing_message_subscription =
     this->create_subscription<voltron_msgs::msg::CanFrame>
-    ("outgoing_can_frames_" + interface_name, 64,
+    ("can_interface_outgoing_can_frames", 64,
      bind(& CanInterfaceNode::send_frame, this, _1));
 }
 
