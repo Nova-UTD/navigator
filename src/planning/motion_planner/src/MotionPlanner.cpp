@@ -201,7 +201,7 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
     //assign velocity to each path
     for (size_t i = 0; i < candidates->size(); i++) {
         auto candidate = candidates->at(i);
-        assign_velocity(ideal_path, candidate, get_collisions(candidate, pose, colliders));
+        assign_velocity(ideal_path, candidate, pose, get_collisions(candidate, colliders));
     }
     return candidates;
 }
@@ -209,12 +209,12 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
 //COLLISIONS SHOULD BE SORTED BY CLOSEST FIRST
 double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_path, SegmentedPath& assignee, const CarPose& my_pose, const std::vector<Collision>& collisions) const {
     //temp until behavior planner exists
-    std::vector<double> speed_limit(assignee.points.size());
-    for (size_t i = 0; i < assignee.points.size(); i++) {
+    std::vector<double> speed_limit(assignee.points->size());
+    for (size_t i = 0; i < assignee.points->size(); i++) {
         speed_limit.push_back(8.94); //20 mph in m/s
     }
     double curr_speed = my_pose.speed();
-    int speed_index = 0;
+    size_t speed_index = 0;
     //calculate accelerating up to speed limit
     //could probably extract this out so this work isn't done for each path. will wait until behavior planner to do this though
     while (speed_limit[speed_index] > curr_speed) {
@@ -227,7 +227,7 @@ double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_
         speed_index++;
     }
     //calcuate speed limit in terms of max lateral acceleration, set the speed limit to the minimum of this and the road's speed limit
-    for (size_t i = 0; i < assignee.points.size(); i++) {
+    for (size_t i = 0; i < assignee.points->size(); i++) {
         //a = v^2/r
         //v = sqrt(ar)
         double curvature = assignee.curvature(i);
@@ -260,7 +260,7 @@ double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_
             continue;
         }
         //we are already going max speed, so now the only option is to slow down to avoid the obstacle
-        
+        //TODO: refactor this, a lot of repeated code between coasting and braking.
         //check if coasting at current speed is slow enough to enter collision zone after vehicle moves through
         curr_speed = my_pose.speed();
         double coast_time = curr_speed == 0 ? INFINITY : collisions[i].s_safe_in/curr_speed;
@@ -297,7 +297,7 @@ double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_
             }
             //accelerate after collision as needed to smooth the speeds
             speed_index = target_in_index;
-            double new_speed = new_speeds[new_speeds.size()-1];
+            new_speed = new_speeds[new_speeds.size()-1];
             for (size_t j = target_in_index; j < speed_limit.size(); j++) {
                 if (new_speed == 0)
                     new_speed = max_accel*std::sqrt(2*spacing/max_accel);
@@ -312,9 +312,50 @@ double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_
             continue;
         }
         //we need to brake
-        //TODO
-        double time_difference = collisions[i].t_safe_out - coast_time;
-
+        //TODO - smooth this out, it just brakes hard at the beginning. it also slows down too much, since it'll take time to accelerate back up to speed
+        //maybe add another mode for light braking?
+        double time_difference = coast_time - collisions[i].t_safe_out;
+        std::vector<double> new_speeds;
+        speed_index = 0;
+        double new_speed = curr_speed;
+        double old_speed = curr_speed;
+        while (time_difference > 0 && speed_index < speed_limit.size()) {
+            if (new_speed == 0)
+                new_speed = 0;
+            else
+                new_speed -= (spacing / curr_speed) * max_brake_accel;
+            new_speed = std::max(0.0, curr_speed);
+            double d = (target_in_index - speed_index) * spacing;
+            double time_expansion = d / new_speed - d / old_speed;
+            if (time_expansion <= time_difference) {
+                time_difference -= time_expansion;
+                new_speeds.push_back(new_speed);
+            }
+            else {
+                break;
+            }
+            speed_index++;
+        }
+        // apply new_speeds
+        for (size_t j = 0; j < new_speeds.size(); j++) {
+            speed_limit[j] = new_speeds[j];
+        }
+        for (size_t j = new_speeds.size(); j < target_out_index; j++) {
+            // min will be fine because braking is linear
+            speed_limit[j] = std::min(speed_limit[j], new_speeds[new_speeds.size() - 1]);
+        }
+        // accelerate after collision as needed to smooth the speeds
+        new_speed = new_speeds[new_speeds.size() - 1];
+        for (size_t j = target_out_index; j < speed_limit.size(); j++) {
+            if (new_speed == 0)
+                new_speed = max_accel * std::sqrt(2 * spacing / max_accel);
+            else
+                new_speed += (spacing / curr_speed) * max_accel;
+            if (new_speed >= speed_limit[j]) {
+                break; // we've accelerated up to speed
+            }
+            speed_limit[j] = new_speed; // this is less than the old speed limit
+        }
     }
     return reciprocal_collision_time_sum;
 }
@@ -348,7 +389,7 @@ std::vector<Collision> MotionPlanner::get_collisions(const SegmentedPath& path, 
                 //dot product is positive, so object is heading towards the collision point
                 double t_in = std::sqrt(dx*dx+dy*dy)/speed;
                 output.push_back(
-                    Collision(s, t_in, t_in + linger_time, t_in-following_time, t_in+linger_time+following_time, s-following_distance));
+                    Collision(s, t_in, t_in + linger_time, t_in-following_time, t_in+linger_time+following_time, s-following_distance, s+following_distance));
             }
         }
         for (double s : right_intersections) {
@@ -360,7 +401,7 @@ std::vector<Collision> MotionPlanner::get_collisions(const SegmentedPath& path, 
                 //dot product is positive, so object is heading towards the collision point
                 double t_in = std::sqrt(dx*dx+dy*dy)/speed;
                 output.push_back(
-                    Collision(s, t_in, t_in + linger_time, t_in-following_time, t_in+linger_time+following_time, s-following_distance));
+                    Collision(s, t_in, t_in + linger_time, t_in-following_time, t_in+linger_time+following_time, s-following_distance, s+following_distance));
             }
         }
     }

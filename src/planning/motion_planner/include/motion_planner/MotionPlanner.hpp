@@ -63,6 +63,7 @@ namespace navigator
             const double max_steering_speed = 0.1; //max speed we can change the car's direction in radians/sec (ignoring speed)
             const double max_lateral_accel = 10; //max acceleration of the car on turns (used to prevent skidding/flipping)
             const double max_accel = 1;
+            const double max_brake_accel = 5;
             const double car_size_x = 1.5; //width of the car
             const double car_size_y = 3; //length of the car
             const double horizon = points*spacing; //max distance to consider anything for cost 
