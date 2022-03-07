@@ -23,8 +23,8 @@ def generate_launch_description():
         executable='reporter',
         parameters=[(path.join(param_dir,"interface","epas_reporter.param.yaml"))],
         remappings=[
-            ("incoming_can_frames", "incoming_can_frames_"+interface),
-            ("real_steering_angle", "real_steering_angle")
+            ("epas_translator_incoming_can_frames", "incoming_can_frames_"+interface),
+            ("epas_translator_real_steering_angle", "real_steering_angle")
         ]
     )
 
@@ -33,8 +33,8 @@ def generate_launch_description():
         executable='controller',
         parameters=[(path.join(param_dir,"interface","epas_controller.param.yaml"))],
         remappings=[
-            ("steering_power", "steering_power"),
-            ("outgoing_can_frames", "outgoing_can_frames_"+interface)
+            ("epas_translator_steering_power", "steering_power"),
+            ("epas_translator_outgoing_can_frames", "outgoing_can_frames_"+interface)
         ]
     )
 
