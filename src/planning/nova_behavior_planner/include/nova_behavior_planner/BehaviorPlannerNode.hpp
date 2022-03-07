@@ -20,6 +20,10 @@ namespace Nova {
 namespace BehaviorPlanner {
 
 constexpr auto message_frequency = 100ms; // will change
+constexpr float STOP_SPEED = 0.0;
+constexpr float YIELD_SPEED = 5.0;
+constexpr float SLOW_SPEED = 10.0;
+
 
 class BehaviorPlannerNode : public rclcpp::Node {
 
@@ -49,6 +53,8 @@ private:
     void update_paths(CostedPaths::SharedPtr ptr);
     void update_current_position(Odometry::SharedPtr ptr);
     void update_state();
+    bool reached_desired_velocity(float desired_velocity);
+  
 };
 
 }
