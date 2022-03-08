@@ -51,6 +51,7 @@ BridgeManagerNode::~BridgeManagerNode() {
 
 // Log event from any topic subscriptions
 void BridgeManagerNode::log_event(const std_msgs::msg::String::SharedPtr msg) {
+  RCLCPP_INFO(this->get_logger(), "Recieved: '%s'", msg->data.c_str());
   try { // try-catch for error handling
     http::Request request{"http://localhost:3000/"}; // Create http request from http header to local server handler
 
@@ -74,10 +75,9 @@ void BridgeManagerNode::log_event(const std_msgs::msg::String::SharedPtr msg) {
 
     std::string res = std::string{response.body.begin(), response.body.end()} + '\n'; // Response to log
     RCLCPP_INFO(this->get_logger(), res); // Log message via rclcpp
+  }catch (const std::exception& e) { // Error handling, output error if error is spotted
+    std::cerr << "Request failed, error: " << e.what() << '\n'; // Output error message
   }
-    catch (const std::exception& e) { // Error handling, output error if error is spotted
-      std::cerr << "Request failed, error: " << e.what() << '\n'; // Output error message
-    }
 }
 
 void BridgeManagerNode::initialize() {
@@ -87,9 +87,9 @@ void BridgeManagerNode::initialize() {
     ("outgoing_bridge_messaging", 8);*/
   
   // Create bridge subscription and assign it ros string type, set it to log to log_event
-  this->bridge_subscription = this->create_subscription<std_msgs::msg::String>
-    ("incoming_bridge_messages", 8,
-      std::bind(& BridgeManagerNode::log_event, this, std::placeholders::_1));
+  this->bridge_subscription = this->create_subscription<std_msgs::msg::String>(
+    "bridge", 10, std::bind(&MinimalSubscriber::log_event, this, std::placeholders::_1)
+  );
 
   //this->log_event("Beginning Logging");
 }
