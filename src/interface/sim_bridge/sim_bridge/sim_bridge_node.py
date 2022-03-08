@@ -260,11 +260,13 @@ class SimBridgeNode(Node):
             pos.y = bbox.location.y*-1
             pos.z = bbox.location.z
 
+            actor_tf: carla.Transform = vehicle.get_transform()
+
             actor_quat = R.from_euler(
             'yzx',
-                [ego_tf.rotation.pitch*-1*math.pi/180.0,
-                ego_tf.rotation.yaw*-1*math.pi/180.0-math.pi,
-                ego_tf.rotation.roll*-1*math.pi/180.0]
+                [actor_tf.rotation.pitch*-1*math.pi/180.0,
+                actor_tf.rotation.yaw*-1*math.pi/180.0-math.pi,
+                actor_tf.rotation.roll*-1*math.pi/180.0]
             ).as_quat()
             orientation_msg = Quaternion()
             orientation_msg.x = actor_quat[0]

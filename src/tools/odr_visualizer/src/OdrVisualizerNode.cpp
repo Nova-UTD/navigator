@@ -4,6 +4,15 @@
 #include <string>
 #include <rclcpp/rclcpp.hpp>
 
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+
+#include <ctime>
+#include <cstdlib> 
+
+using namespace std;
+
 #include "odr_visualizer/OdrVisualizerNode.hpp"
 /*
 PSEUDOCODE
@@ -29,103 +38,151 @@ using namespace std::chrono_literals;
 
 OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node") {
 
+	srand (static_cast <unsigned> (time(0)));
+
 	this->declare_parameter<std::string>("xodr_path", "/home/share/maps/Town10HD_Opt.xodr");
+	this->declare_parameter<double>("draw_detail", 0.3);
 	marker_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>("/map/viz", 1);
 
-	map_pub_timer = this->create_wall_timer(1s, std::bind(&OdrVisualizerNode::publishMarkerArray, this));
+	map_pub_timer = this->create_wall_timer(3s, std::bind(&OdrVisualizerNode::publishMarkerArray, this));
 
 	// Read map from file, using our path param
 	std::string xodr_path = this->get_parameter("xodr_path").as_string();
+	double draw_detail = this->get_parameter("draw_detail").as_double();
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
 	odr::OpenDriveMap odr(xodr_path);
-	std::vector<Marker> marker_vec;
 
+	// Iterate through all roads->lanesections->lanes
+	// For each lane: Construct Line Strip markers for left and right bound
+		// Append markers to MarkerArray
+
+	/**
+	 * ELEMENT COLORS
+	 **/
+	
+	ColorRGBA line_color;
+	line_color.a = 1.0;
+	line_color.r = 0.59;
+	line_color.g = 0.67;
+	line_color.b = 0.69;
+
+	ColorRGBA driving_color;
+	driving_color.a = 1.0;
+	driving_color.r = 0.22;
+	driving_color.g = 0.27;
+	driving_color.b = 0.27;
+
+	ColorRGBA shoulder_color;
+	shoulder_color.a = 1.0;
+	shoulder_color.r = 0.71;
+	shoulder_color.g = 0.77;
+	shoulder_color.b = 0.79;
+
+	ColorRGBA sidewalk_color;
+	sidewalk_color.a = 1.0;
+	sidewalk_color.r = 0.89;
+	sidewalk_color.g = 0.91;
+	sidewalk_color.b = 0.91;
+
+	/** 
+	 * Mesh markers (triangle lists) and line list marker
+	 **/
+
+	Marker trilist_driving;
+	trilist_driving.type = trilist_driving.TRIANGLE_LIST;
+	trilist_driving.header.stamp = now();
+	trilist_driving.header.frame_id = "map";
+	trilist_driving.ns = "lanes_driving";
+	trilist_driving.action = trilist_driving.ADD;
+	trilist_driving.frame_locked = true;
+	trilist_driving.color = driving_color;
+	trilist_driving.scale.x = 1.0;
+	trilist_driving.scale.y = 1.0;
+	trilist_driving.scale.z = 1.0;
+
+	Marker trilist_shoulder = trilist_driving;
+	trilist_shoulder.ns = "lanes_shoulder";
+	trilist_shoulder.color = shoulder_color;
+
+	Marker trilist_sidewalk = trilist_driving;
+	trilist_sidewalk.ns = "lanes_sidewalk";
+	trilist_sidewalk.color = sidewalk_color;
+
+	Marker line_list; // Stores borders for lane bounds, sidewalks, etc.
+	line_list.type = line_list.LINE_LIST;
+	line_list.header.stamp = now();
+	line_list.header.frame_id = "map";
+	line_list.ns = "lanes";
+	line_list.id = 883883; // Why not? WSH.
+	line_list.action = line_list.ADD;
+	line_list.scale.x = 0.3; // Only scale.x is used
+	line_list.frame_locked = true; // Move with the Rviz camera
+	line_list.color = line_color;
+	line_list.pose.position.z = 0.1; // Set lines ever-so-slightly above the surface to prevent overlap.
+
+
+	/**
+	 * Iterate through every lane in the map.
+	 * For each lane, get its mesh, including vertices and indices.
+	 * For each index (which corresponds to a triange's point in the mesh),
+	 * 	- Add the point to the appropriate mesh
+	 *  - Add the point and its predecessor to the line list (borders etc)
+	 **/
 	for (std::shared_ptr<odr::Road> road : odr.get_roads()) {
-        // printf("road: %s, length: %.2f\n", road->id.c_str(), road->length);
-        for (std::shared_ptr<odr::LaneSection> lanesec : road->get_lanesections()) {
-            for (std::shared_ptr<odr::Lane> lane : lanesec->get_lanes()) {
-				// RCLCPP_INFO(this->get_logger(), "Loaded a lane!");
-                odr::Mesh3D lane_mesh = lane->get_mesh(lanesec->s0, lanesec->get_end(), 0.1);
-				// printf("%i\n", lane_mesh.vertices.size());
-				// for (auto vector : lane_mesh.vertices) {
-					// printf("(%f,%f,%f) \n", vector[0], vector[1], vector[2]);
-				// }
+		for(auto lsec : road->get_lanesections()) {
+			for (auto lane : lsec->get_lanes()) {
+				// Convert lane curves to triangles. The last get_mesh param describes resolution.
+				auto mesh = lane->get_mesh(lsec->s0, lsec->get_end(), draw_detail); 
+				auto pts = mesh.vertices; // Points are triangle vertices
+				auto indices = mesh.indices; // Describes order of verts to make tris
 
-				/**
-				 * We rely on a small lib called "polypartition" to convert
-				 * our lanelet polygon into triangles. Rviz only accepts
-				 * triangles, not more complex polygons.
-				 * See: https://en.wikipedia.org/wiki/Tessellation_(computer_graphics)
-				 */
-				TPPLPoly *inpoly = new TPPLPoly();
-				TPPLPolyList *triangulationResults = new TPPLPolyList();
-				inpoly->Init(lane_mesh.vertices.size());
-				for(uint i=0; i < lane_mesh.vertices.size(); i++) {
-					inpoly->GetPoint(i).x = lane_mesh.vertices[i][0]; // x
-					inpoly->GetPoint(i).y = lane_mesh.vertices[i][1]; // y
+				for (auto idx : indices) {
+					Point p;
+					p.x = pts[idx][0];
+					p.y = pts[idx][1];
+					if (lane->type=="driving") {
+						trilist_driving.points.push_back(p);
+					} else if (lane->type=="shoulder") {
+						p.z -= 0.03; // Prevent overlap glitching. WSH.
+						trilist_shoulder.points.push_back(p);
+					} else if (lane->type == "sidewalk") {
+						p.z += 0.1;
+						trilist_sidewalk.points.push_back(p);
+					}
+					
+					// Add a line segment to our line list marker.
+					// See http://wiki.ros.org/rviz/DisplayTypes/Marker#Line_List_.28LINE_LIST.3D5.29
+					// We can do this because points in the libOpenDRIVE mesh alternate from the
+					// left to right side, so that even indices are on one side and odds are on the other.
+					if (idx > 1) { 
+						Point a;
+						a.x = pts[idx-2][0];
+						a.y = pts[idx-2][1];
+
+						Point b;
+						b.x = pts[idx][0];
+						b.y = pts[idx][1];
+
+						line_list.points.push_back(a);
+						line_list.points.push_back(b);
+					}
 				}
-				// Orientation of vertices must be set for algorithm to work.
-				inpoly->SetOrientation(TPPLOrientation::TPPL_ORIENTATION_CCW);
-				TPPLPartition partitioner;
+			}
+		}
+	}
+	// Add each marker to our marker array.
 
-				// Triangulate using ear clipping
-				partitioner.Triangulate_EC(inpoly, triangulationResults);
-
-				// Construct an array of Point messages
-				std::vector<Point> triangle_points;
-				for(TPPLPoly triangle : *triangulationResults) {
-					Point a;
-					a.x = triangle[0].x;
-					a.y = triangle[0].y;
-					triangle_points.push_back(a);
-					a.x = triangle[1].x;
-					a.y = triangle[1].y;
-					triangle_points.push_back(a);
-					a.x = triangle[2].x;
-					a.y = triangle[2].y;
-					triangle_points.push_back(a);
-				}
-
-				Marker triangleList;
-
-				// Set message header
-				triangleList.header.stamp = now();
-				triangleList.header.frame_id = "map";
-				triangleList.ns = "lanelets"; // Set namespace of viz message
-				triangleList.id = lane->id; // Set unique ID of viz msg
-
-				// Marker type
-				triangleList.type = triangleList.TRIANGLE_LIST;
-				triangleList.action = triangleList.MODIFY;
-				triangleList.points = triangle_points;
-
-				// Create vector for message scale
-				Vector3 scale_vector;
-				scale_vector.x = 1;
-				scale_vector.y = 1;
-				scale_vector.z = 1;
-				triangleList.scale = scale_vector;
-
-				// Set color (blue-gray)
-				ColorRGBA color;
-				color.r = .588;
-				color.g = .675;
-				color.b = .718;
-				color.a = .8;
-				triangleList.color = color;
-
-				// Ask Rviz to move our marker with the camera
-				triangleList.frame_locked = true;
-				marker_vec.push_back(triangleList);
-            }
-        }
-    }
-	printf("%i\n", marker_vec.size());
-
-	lane_markers.markers = marker_vec;
-	marker_pub->publish(lane_markers);
+	point_count = 	trilist_driving.points.size() +
+					trilist_shoulder.points.size() +
+					trilist_sidewalk.points.size() +
+					line_list.points.size();
+	lane_markers.markers.push_back(trilist_driving); // Triangles that form surfaces for e.g. roads
+	lane_markers.markers.push_back(trilist_shoulder); 
+	lane_markers.markers.push_back(trilist_sidewalk); // Triangles that form surfaces for e.g. roads
+	lane_markers.markers.push_back(line_list); // Borders and other lines
 }
 
 void OdrVisualizerNode::publishMarkerArray() {
+	RCLCPP_INFO_ONCE(get_logger(), "Publishing %i map markers with %i points. This will print once.", lane_markers.markers.size(), point_count);
 	marker_pub->publish(lane_markers);
 }

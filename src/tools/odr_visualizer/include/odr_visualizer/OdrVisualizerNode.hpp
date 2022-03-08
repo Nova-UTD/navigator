@@ -1,3 +1,5 @@
+#pragma once
+
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -9,9 +11,6 @@
 #include "Lanes.h"
 #include "Road.h"
 
-// Small ear clipping (triangle) library
-#include "polypartition.h"
-
 // Message headers
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
@@ -20,14 +19,13 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 
 class OdrVisualizerNode : public rclcpp::Node {
-	public:
-		OdrVisualizerNode();
+public:
+	OdrVisualizerNode();
+	void publishMarkerArray();
 
-    void publishMarkerArray();
-
-	private:
-		visualization_msgs::msg::MarkerArray lane_markers;
+private:
+	visualization_msgs::msg::MarkerArray lane_markers;
+	int point_count;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub;
-
     rclcpp::TimerBase::SharedPtr map_pub_timer{nullptr};
 };

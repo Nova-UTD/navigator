@@ -17,9 +17,5 @@ project(${directory_name})
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-ament_auto_add_library(polypartition STATIC
-  lib/polypartition.cpp)
-target_include_directories(polypartition PUBLIC lib)
-
 find_package(nova_auto_package REQUIRED)
 nova_auto_package()
