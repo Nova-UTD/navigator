@@ -92,7 +92,7 @@ void ObstacleRepublisher::svl_obstacle_callback(const lgsvl_msgs::msg::Detection
             nova_obstacle.bounding_box.corners[i].z = tranformed.point.z + detection.bbox.position.position.z;
         }   
 
-        nova_obstacle.bounding_box.position = detection.bbox.position.position;
+        nova_obstacle.bounding_box.center.position = detection.bbox.position.position;
 
         if (detection.label != "Pedestrian"){
             nova_obstacle.label = navigator::obstacle_classes::OBSTACLE_CLASS::VEHICLE;
@@ -127,9 +127,9 @@ void ObstacleRepublisher::zed_obstacle_callback(const zed_interfaces::msg::Objec
         nova_obstacle.bounding_box.size.y = static_cast<double>(detection.dimensions_3d.at(1));
         nova_obstacle.bounding_box.size.z = static_cast<double>(detection.dimensions_3d.at(2));
 
-        nova_obstacle.bounding_box.position.x = static_cast<double>(detection.position.at(0));
-        nova_obstacle.bounding_box.position.y = static_cast<double>(detection.position.at(1));
-        nova_obstacle.bounding_box.position.z = static_cast<double>(detection.position.at(2));
+        nova_obstacle.bounding_box.center.position.x = static_cast<double>(detection.position.at(0));
+        nova_obstacle.bounding_box.center.position.y = static_cast<double>(detection.position.at(1));
+        nova_obstacle.bounding_box.center.position.z = static_cast<double>(detection.position.at(2));
         
         for (int i = 0; i < 8; i++){
             nova_obstacle.bounding_box.corners[i].x = static_cast<double>(detection.bounding_box_3d.corners[i].kp[0]);

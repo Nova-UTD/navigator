@@ -19,6 +19,15 @@ def generate_launch_description():
     interface = "vcan0"
     map_name = "grandloop"
 
+    # BRIDGING
+    interface_bridge = Node(
+        package='bridge_manager',
+        executable='bridge_manager',
+        remappings=[
+            ("incoming_bridge_messages", "incoming_bridge_messages")
+        ]
+    )
+
     # CONTROL
 #    steering_controller = Node(
 #        package='vt_steering_controller',
@@ -276,7 +285,8 @@ def generate_launch_description():
         # can,
         # epas_controller,
         # epas_reporter,
-        # gnss,
+
+        interface_bridge,
         svl_bridge,
         # vehicle_bridge,
         # speedometer_reporter,
