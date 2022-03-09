@@ -134,6 +134,11 @@ def generate_launch_description():
         parameters=[(path.join(launch_dir, "data", "maps", map_name, "lanelet_server.param.yaml"))]
     )
 
+    odr_viz = Node(
+        package='odr_visualizer',
+        executable='visualizer'
+    )
+
     # lanelet_visualizer = Node(
     #     package='lanelet2_map_provider',
     #     executable='lanelet2_map_visualizer_exe',
@@ -294,9 +299,7 @@ def generate_launch_description():
         # deviation_reporter,
 
         # MAPPING
-        # lanelet_server,
-        # lanelet_visualizer,
-        # pcd_loader,
+        odr_viz,
 
         # MISC
         odom_bl_link,

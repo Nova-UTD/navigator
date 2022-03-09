@@ -31,10 +31,15 @@ CLIENT_WORLD = 'Town10HD'
 EGO_AUTOPILOT_ENABLED = False
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0) # 2 Hz
+GROUND_TRUTH_OBJ_PERIOD = 1/(2.0) # 2 Hz (purposely bad)
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0) # 10 Hz
 LIDAR_PERIOD = 1/(10.0) # 20 Hz
-OBSTACLE_QTY_CAR = 10 # Spawn n cars
-OBSTACLE_QTY_PED = 10 # Spawn n peds
+OBSTACLE_QTY_VEHICLE = 20 # Spawn n cars
+OBSTACLE_QTY_PED = 30 # Spawn n peds
+
+# Publish a true map->base_link transform. Disable this if
+# another localization algorithm (ukf, ndt, etc.) is running! WSH.
+PULBISH_MAP_BL_TRANSFORM = True 
 
 import sys
 sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
@@ -56,6 +61,7 @@ import tf2_msgs
 from tf2_ros.buffer import Buffer
 import tf2_py
 from tf2_ros.transform_listener import TransformListener
+from tf2_ros.transform_broadcaster import TransformBroadcaster
 import math
 from os.path import exists
 
@@ -65,9 +71,8 @@ from std_msgs.msg import Header
 from sensor_msgs.msg import Image # For cameras
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry # For GPS, ground truth
-from voltron_msgs.msg import PeddlePosition, SteeringPosition
-from geometry_msgs.msg import Point
-from geometry_msgs.msg import Quaternion
+from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D
+from geometry_msgs.msg import Point, Quaternion, Vector3
 
 from scipy.spatial.transform import Rotation as R
 
@@ -229,25 +234,83 @@ class SimBridgeNode(Node):
     def reverse_command_cb(self, msg: Bool):
         self.reverse_cmd = msg.data
 
+    def publish_true_boxes(self):
+        
+        vehicles = self.world.get_actors().filter('vehicle.*')
+        self.get_logger().info("Publishing {} boxes.".format(len(vehicles)))
+
+        obstacles = []
+        for vehicle in vehicles:
+            obst = Obstacle3D()
+            obst.id = vehicle.id
+            obst.label = obst.CAR # TODO: Generalize, e.g. "bike", "car"
+            obst.confidence = random.uniform(0.5, 1.0)
+
+            bbox = vehicle.bounding_box
+
+            # Set velocity
+            actor_vel = vehicle.get_velocity()
+            obst.velocity.x = actor_vel.x
+            obst.velocity.y = actor_vel.y*-1 # Fix coordinate system
+            obst.velocity.z = actor_vel.z
+
+            # Set bounding box
+            pos = Point()
+            pos.x = bbox.location.x
+            pos.y = bbox.location.y*-1
+            pos.z = bbox.location.z
+
+            actor_tf: carla.Transform = vehicle.get_transform()
+
+            actor_quat = R.from_euler(
+            'yzx',
+                [actor_tf.rotation.pitch*-1*math.pi/180.0,
+                actor_tf.rotation.yaw*-1*math.pi/180.0-math.pi,
+                actor_tf.rotation.roll*-1*math.pi/180.0]
+            ).as_quat()
+            orientation_msg = Quaternion()
+            orientation_msg.x = actor_quat[0]
+            orientation_msg.y = actor_quat[1]
+            orientation_msg.z = actor_quat[2]
+            orientation_msg.w = actor_quat[3]
+
+            obst.bounding_box.center.position = pos
+            obst.bounding_box.center.orientation = orientation_msg
+            obst.bounding_box.size = Vector3(
+                x = bbox.extent.x,
+                y = bbox.extent.y,
+                z = bbox.extent.z
+            )
+
+            obstacles.append(obst)
+        obstacles_msg = Obstacle3DArray()
+        obstacles_msg.obstacles = obstacles
+        obstacles_msg.header.stamp = self.get_clock().now().to_msg()
+        obstacles_msg.header.frame_id = 'map'
+
+        self.ground_truth_obst_pub.publish(obstacles_msg)
+        # self.get_logger().info("{}".format(obstacles))
+
     def true_odom_cb(self):
         ego: carla.Actor = self.ego
 
         odom = Odometry()
-        odom.header.frame_id = 'base_link'
+        odom.header.frame_id = 'map'
         odom.header.stamp = self.get_clock().now().to_msg()
+        odom.child_frame_id = 'base_link'
 
         ego_position = Point()
         ego_orientation = Quaternion()
         ego_tf: carla.Transform = ego.get_transform()
         ego_position.x = ego_tf.location.x
-        ego_position.y = ego_tf.location.y
+        ego_position.y = ego_tf.location.y*-1
         ego_position.z = ego_tf.location.z
 
         ego_quat = R.from_euler(
             'yzx',
-            [ego_tf.rotation.pitch,
-            ego_tf.rotation.yaw,
-            ego_tf.rotation.roll]
+            [ego_tf.rotation.pitch*-1*math.pi/180.0,
+            ego_tf.rotation.yaw*-1*math.pi/180.0-math.pi,
+            ego_tf.rotation.roll*-1*math.pi/180.0]
         ).as_quat()
         ego_orientation.x = ego_quat[0]
         ego_orientation.y = ego_quat[1]
@@ -258,6 +321,25 @@ class SimBridgeNode(Node):
         odom.pose.pose.orientation = ego_orientation
 
         self.ground_truth_odom_pub.publish(odom)
+
+        # Publish tf if enabled
+        if PULBISH_MAP_BL_TRANSFORM:
+            t = TransformStamped()
+            t.header = odom.header
+            t.child_frame_id = odom.child_frame_id
+            translation = Vector3(
+                x = odom.pose.pose.position.x,
+                y = odom.pose.pose.position.y,
+                z = odom.pose.pose.position.z
+            )
+            t.transform.translation = translation
+            t.transform.rotation = Quaternion(
+                x = ego_quat[0],
+                y = ego_quat[1],
+                z = ego_quat[2],
+                w = ego_quat[3]
+            )
+            self.tf_broadcaster.sendTransform(t)
 
         # Now add some very simple noise to fake a GPS sensor. WSH.
         # We'll go easy and add random deviation of just <2m on each axis
@@ -333,6 +415,12 @@ class SimBridgeNode(Node):
             10
         )
 
+        self.ground_truth_obst_pub = self.create_publisher(
+            Obstacle3DArray,
+            '/objects',
+            10
+        )
+
         self.primary_imu_pub = self.create_publisher(
             Imu,
             '/imu_primary/data',
@@ -378,11 +466,42 @@ class SimBridgeNode(Node):
         )
 
         self.command_timer = self.create_timer(0.1, self.process_command)
+
+        self.ground_truth_objects_timer = self.create_timer(
+            GROUND_TRUTH_OBJ_PERIOD, self.publish_true_boxes
+        )
         
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.tf_broadcaster = TransformBroadcaster(self)
 
         self.connect_to_carla()
+
+    def add_vehicles(self, vehicle_count: int):
+        self.get_logger().info("Spawning {} vehicles".format(vehicle_count))
+
+        for vehicle in range(vehicle_count):
+            # Choose a vehicle blueprint at random.
+            vehicle_bp = random.choice(self.blueprint_library.filter('vehicle.*.*'))
+            random_spawn = random.choice(self.world.get_map().get_spawn_points())
+            self.get_logger().info("Spawning vehicle ({}) @ {}".format(vehicle_bp.id, random_spawn))
+            vehicle = self.world.try_spawn_actor(vehicle_bp, random_spawn)
+            if vehicle is not None:
+                vehicle.set_autopilot(enabled=True)
+
+    def add_pedestrians(self, count: int):
+        self.get_logger().info("Spawning {} pedestrians".format(count))
+
+        for ped in range(count):
+            # Choose a vehicle blueprint at random.
+            ped_bp = random.choice(self.blueprint_library.filter('walker.*.*'))
+            spawn = self.world.get_random_location_from_navigation()
+            self.get_logger().info("Spawning ped ({}) @ {}".format(ped_bp.id, spawn))
+            random_spawn = random.choice(self.world.get_map().get_spawn_points())
+            random_spawn.location = spawn
+            ped = self.world.try_spawn_actor(ped_bp, random_spawn)
+            # if ped is not None:
+            #     ped.set_autopilot(enabled=True)
 
     def connect_to_carla(self):
         # Connect to client, load world
@@ -390,24 +509,32 @@ class SimBridgeNode(Node):
         client = carla.Client('localhost', CLIENT_PORT)
         client.set_timeout(20.0)
         self.world = client.load_world(CLIENT_WORLD)
+        
+        # Forcefully destroy existing actors
+        # if len(self.world.get_actors()) > 0:
+        #     self.get_logger().info("Removing {} old actors".format(len(self.world.get_actors())))
+        #     for actor in self.world.get_actors():
+        #         actor.destroy()
 
         # Spawn ego vehicle
         # Get car blueprint
         self.blueprint_library = self.world.get_blueprint_library()
-        # for bp in blueprint_library.filter('vehicle.*.*'):
-        #     self.get_logger().info("{}".format(bp.id))
-        vehicle_bp = self.blueprint_library.find(EGO_MODEL)
 
         # collision_sensor_bp = blueprint_library.find('sensor.other.collision')
         # Get random spawn point
         random_spawn = self.world.get_map().get_spawn_points()[0]
         self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, random_spawn))
+        vehicle_bp = self.blueprint_library.find(EGO_MODEL)
         self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, random_spawn) 
         # TODO: Destroy ego actor when node exits or crashes. Currently keeps actor alive in CARLA,
         # which eventually leads to memory overflow. WSH.
         self.ego.set_autopilot(enabled=EGO_AUTOPILOT_ENABLED)
 
         self.add_ego_sensors()        
+
+        self.add_vehicles(OBSTACLE_QTY_VEHICLE)
+
+        self.add_pedestrians(OBSTACLE_QTY_PED)
 
     def add_ego_sensors(self):
 
