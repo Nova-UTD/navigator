@@ -13,6 +13,7 @@
 #include <memory>
 #include <iostream>
 #include <tf2/utils.h>
+#include <string>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -30,12 +31,18 @@ PurePursuitNode::PurePursuitNode() : rclcpp::Node("pure_pursuit_controller") {
 
   this->steering_control_publisher = this->create_publisher
     <SteeringPosition>("/command/steering_position", 10);
+
+  //TODO: Interface with PidController & publish Peddle messages
   
   this->trajectory_subscription = this->create_subscription
     <Trajectory>("reference_trajectory", 8, std::bind(&PurePursuitNode::update_trajectory, this, _1));
 
   this->odometry_subscription = this->create_subscription
     <Odometry>("/carla/odom", 8, std::bind(&PurePursuitNode::update_current_position, this, _1));
+  
+  this->marker_array_publisher = this->create_publisher
+      <MarkerArray>("/controller/trajectory_visuals", 10);
+  
 }
 
 PurePursuitNode::~PurePursuitNode() {}
@@ -67,6 +74,8 @@ void PurePursuitNode::update_current_position(Odometry::SharedPtr ptr) {
   //RCLCPP_INFO(this->get_logger(), "Current position received!");
   this->current_position.x = ptr->pose.pose.position.x;
   this->current_position.y = ptr->pose.pose.position.y;
+
+  visualize_markers(ptr->header.frame_id, now());
 }
 
 size_t PurePursuitNode::find_closest_point() {
@@ -202,4 +211,39 @@ float PurePursuitNode::get_steering_angle() {
     
     this->controller->compute_curvature();
     return this->controller->compute_steering_angle();
+}
+
+void PurePursuitNode::visualize_markers(std::string frame_id, rclcpp::Time time) {
+
+  MarkerArray recorded_markers {};
+
+  Marker line_strip;
+  line_strip.type = Marker::LINE_STRIP;
+  line_strip.header.stamp = time;
+  line_strip.header.frame_id = frame_id;
+  line_strip.ns = "trajectory";
+  line_strip.action = Marker::ADD;
+
+  line_strip.scale.x = 0.3;
+  line_strip.frame_locked = true;
+
+  line_strip.color.r = 0.2588;
+  line_strip.color.g = 0.8784;
+  line_strip.color.b = 0.7725;
+  line_strip.color.a = 1.0;
+
+  for(size_t i = 0; i < this->trajectory.points.size(); i++) {
+
+    TrajectoryPoint tp = trajectory.points[i];
+    geometry_msgs::msg::Point p;
+    p.x = tp.x;
+    p.y = tp.y;
+    p.z = tp.z;
+
+    line_strip.points.push_back(p);
+  }
+
+  recorded_markers.markers.clear();
+  recorded_markers.markers.push_back(line_strip);
+  this->marker_array_publisher->publish(recorded_markers);
 }

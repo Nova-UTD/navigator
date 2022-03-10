@@ -10,23 +10,29 @@
 #pragma once
 
 #include "nova_pure_pursuit/PurePursuit.hpp"
+#include "nova_pure_pursuit/PidController.hpp"
 
 #include "rclcpp/rclcpp.hpp"
+#include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 
 #include "autoware_auto_msgs/msg/vehicle_control_command.hpp"
 #include <autoware_auto_msgs/msg/vehicle_control_command.hpp>
 #include "autoware_auto_msgs/msg/trajectory.hpp"
 #include <autoware_auto_msgs/msg/trajectory.hpp>
 
-#include <nav_msgs/msg/odometry.hpp>
-
 #include "voltron_msgs/msg/steering_position.hpp"
+
+//#include <string>
 
 using Trajectory = autoware_auto_msgs::msg::Trajectory;
 using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
 using SteeringPosition = voltron_msgs::msg::SteeringPosition;
 using Odometry = nav_msgs::msg::Odometry;
 
+using Marker = visualization_msgs::msg::Marker;
+using MarkerArray = visualization_msgs::msg::MarkerArray;
 
 using namespace std::chrono_literals;
 
@@ -49,6 +55,7 @@ private:
     rclcpp::Publisher<SteeringPosition>::SharedPtr steering_control_publisher;    
     rclcpp::Subscription<Trajectory>::SharedPtr trajectory_subscription;
     rclcpp::Subscription<Odometry>::SharedPtr odometry_subscription;
+    rclcpp::Publisher<MarkerArray>::SharedPtr marker_array_publisher;    
 
     // var
     std::unique_ptr<PurePursuit> controller;
@@ -60,6 +67,7 @@ private:
     void send_message();
     void update_trajectory(Trajectory::SharedPtr ptr);
     void update_current_position(Odometry::SharedPtr ptr);
+    void visualize_markers(std::string frame_id, rclcpp::Time time);
 
     size_t find_closest_point();
     size_t find_lookahead_point(float lookahead_distance, TrajectoryPoint current_position);

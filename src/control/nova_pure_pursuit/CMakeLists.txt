@@ -22,7 +22,8 @@ ament_auto_find_build_dependencies()
 
 ament_auto_add_library(pp_lib STATIC
   src/PurePursuit.cpp
-  src/PurePursuitNode.cpp)
+  src/PurePursuitNode.cpp
+  src/PidController.cpp)
 target_include_directories(pp_lib PUBLIC include)
 
 
