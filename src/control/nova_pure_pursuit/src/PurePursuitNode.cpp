@@ -14,17 +14,22 @@
 #include <iostream>
 #include <tf2/utils.h>
 #include <string>
+#include <functional>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
 using namespace Nova::PurePursuit;
+//using namespace Nova::PidController;
 
 
 PurePursuitNode::PurePursuitNode() : rclcpp::Node("pure_pursuit_controller") {  
 
-  this->controller = std::make_unique
-    <PurePursuit>(0.1); // User-defined, default lookahead
+  this->steering_controller = std::make_unique
+    <PurePursuit>(1.0); // User-defined, default lookahead
+
+  this->speed_controller = std::make_unique
+    <Nova::PidController::PidController>(1.0, 1.0, 1.0, 1.0);
   
   this->control_timer = this->create_wall_timer
     (message_frequency, std::bind(&PurePursuitNode::send_message, this));
@@ -114,16 +119,13 @@ void PurePursuitNode::trim_trajectory(size_t closest_point_idx) {
   std::vector<TrajectoryPoint>::iterator delete_start, delete_end;
   delete_start = this->trajectory.points.begin();
   delete_end = this->trajectory.points.begin();
+  std::advance(delete_end, closest_point_idx);
 
-  for (size_t i = 0; i < closest_point_idx; i++) {
-    delete_end++;
-  }
-  
-  // Trim the trajectory points behind the closest point
-  this->trajectory.points.erase(delete_start, delete_end);
+  this->trajectory.points.erase(delete_start, delete_end); // Trim the trajectory points behind the closest point
+  this->trajectory.points.shrink_to_fit();                 // Release allocated memory
 }
 
-size_t PurePursuitNode::find_lookahead_point(float lookahead_distance, TrajectoryPoint current_position) {
+size_t PurePursuitNode::find_lookahead_point(float lookahead_distance, TrajectoryPoint& current_position) {
 
   size_t next_waypoint_idx;
 
@@ -135,6 +137,7 @@ size_t PurePursuitNode::find_lookahead_point(float lookahead_distance, Trajector
     // First waypoint to be greater than lookahead distance
     if (distance > lookahead_distance) {
       next_waypoint_idx = i;
+      break;
     }
 
   }
@@ -149,7 +152,7 @@ bool PurePursuitNode::compute_lookahead_point() {
     return false;
   }
 
-  float lookahead_distance = controller->get_lookahead_distance();
+  float lookahead_distance = steering_controller->get_lookahead_distance();
   TrajectoryPoint current_position = this->current_position;
 
 
@@ -181,7 +184,7 @@ bool PurePursuitNode::compute_lookahead_point() {
     return false;
   } else if (dist_CD == lookahead_distance) {
     // lookahead circle intersects exactly at projection
-    this->controller->set_lookahead_point(p_D.getX(), p_D.getY());
+    this->steering_controller->set_lookahead_point(p_D.getX(), p_D.getY());
   } else {
 
     // two intersections, take intersection in front of vehicle
@@ -190,10 +193,10 @@ bool PurePursuitNode::compute_lookahead_point() {
     tf2::Vector3 p_F = p_D - s * AB.normalized();
 
     if ((p_B - p_E).length2() < AB.length2()) {
-      this->controller->set_lookahead_point(p_E.getX(), p_E.getY());
+      this->steering_controller->set_lookahead_point(p_E.getX(), p_E.getY());
 
     } else if ((p_B - p_F).length2() < AB.length2()) {
-      this->controller->set_lookahead_point(p_F.getX(), p_F.getY());
+      this->steering_controller->set_lookahead_point(p_F.getX(), p_F.getY());
 
     }
 
@@ -206,11 +209,11 @@ float PurePursuitNode::get_steering_angle() {
     
     if(this->trajectory.points.empty()) {
       // Error occurred, return old angle
-      return controller->get_steering_angle();
+      return this->steering_controller->get_steering_angle();
     }
     
-    this->controller->compute_curvature();
-    return this->controller->compute_steering_angle();
+    this->steering_controller->compute_curvature();
+    return this->steering_controller->compute_steering_angle();
 }
 
 void PurePursuitNode::visualize_markers(std::string frame_id, rclcpp::Time time) {
@@ -234,16 +237,21 @@ void PurePursuitNode::visualize_markers(std::string frame_id, rclcpp::Time time)
 
   for(size_t i = 0; i < this->trajectory.points.size(); i++) {
 
-    TrajectoryPoint tp = trajectory.points[i];
+    std::shared_ptr<TrajectoryPoint> point_ptr {new TrajectoryPoint};
+    *point_ptr = this->trajectory.points[i];
+
     geometry_msgs::msg::Point p;
-    p.x = tp.x;
-    p.y = tp.y;
-    p.z = tp.z;
+    p.x = point_ptr->x;
+    p.y = point_ptr->y;
+    p.z = point_ptr->z;
 
     line_strip.points.push_back(p);
   }
 
-  recorded_markers.markers.clear();
+
   recorded_markers.markers.push_back(line_strip);
   this->marker_array_publisher->publish(recorded_markers);
+  
+  recorded_markers.markers.clear();
+  recorded_markers.markers.shrink_to_fit();
 }

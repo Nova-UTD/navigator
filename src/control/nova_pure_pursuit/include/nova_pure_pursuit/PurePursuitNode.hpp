@@ -24,7 +24,6 @@
 
 #include "voltron_msgs/msg/steering_position.hpp"
 
-//#include <string>
 
 using Trajectory = autoware_auto_msgs::msg::Trajectory;
 using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
@@ -35,7 +34,6 @@ using Marker = visualization_msgs::msg::Marker;
 using MarkerArray = visualization_msgs::msg::MarkerArray;
 
 using namespace std::chrono_literals;
-
 
 namespace Nova {
 namespace PurePursuit {
@@ -58,7 +56,8 @@ private:
     rclcpp::Publisher<MarkerArray>::SharedPtr marker_array_publisher;    
 
     // var
-    std::unique_ptr<PurePursuit> controller;
+    std::unique_ptr<PurePursuit> steering_controller;
+    std::unique_ptr<Nova::PidController::PidController> speed_controller;
     rclcpp::TimerBase::SharedPtr control_timer;
     Trajectory trajectory;
     TrajectoryPoint current_position;
@@ -70,7 +69,7 @@ private:
     void visualize_markers(std::string frame_id, rclcpp::Time time);
 
     size_t find_closest_point();
-    size_t find_lookahead_point(float lookahead_distance, TrajectoryPoint current_position);
+    size_t find_lookahead_point(float lookahead_distance, TrajectoryPoint& current_position);
 
     void trim_trajectory(size_t current_point_idx);
     bool compute_lookahead_point();
