@@ -1,6 +1,6 @@
 /*
- * Package:   nova_pure_pursuit
- * Filename:  PurePursuitNode.cpp
+ * Package:   nova_motion_control
+ * Filename:  MotionControlNode.cpp
  * Author:    Cristian Cruz, Nikhil Narvekar
  * Email:     Cristian.CruzLopez@utdallas.edu
  * Copyright: 2021, Nova UTD
@@ -8,7 +8,7 @@
  */
 
 
-#include "nova_pure_pursuit/PurePursuitNode.hpp"
+#include "nova_motion_control/MotionControlNode.hpp"
 #include <chrono>
 #include <memory>
 #include <iostream>
@@ -19,20 +19,19 @@
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
-using namespace Nova::PurePursuit;
-//using namespace Nova::PidController;
+using namespace Nova::MotionControl;
 
 
-PurePursuitNode::PurePursuitNode() : rclcpp::Node("pure_pursuit_controller") {  
+MotionControlNode::MotionControlNode() : rclcpp::Node("pure_pursuit_controller") {  
 
   this->steering_controller = std::make_unique
-    <PurePursuit>(1.0); // User-defined, default lookahead
+    <Nova::PurePursuit::PurePursuit>(1.0); // User-defined, default lookahead
 
   this->speed_controller = std::make_unique
     <Nova::PidController::PidController>(1.0, 1.0, 1.0, 1.0);
   
   this->control_timer = this->create_wall_timer
-    (message_frequency, std::bind(&PurePursuitNode::send_message, this));
+    (message_frequency, std::bind(&MotionControlNode::send_message, this));
 
   this->steering_control_publisher = this->create_publisher
     <SteeringPosition>("/command/steering_position", 10);
@@ -40,19 +39,19 @@ PurePursuitNode::PurePursuitNode() : rclcpp::Node("pure_pursuit_controller") {
   //TODO: Interface with PidController & publish Peddle messages
   
   this->trajectory_subscription = this->create_subscription
-    <Trajectory>("reference_trajectory", 8, std::bind(&PurePursuitNode::update_trajectory, this, _1));
+    <Trajectory>("reference_trajectory", 8, std::bind(&MotionControlNode::update_trajectory, this, _1));
 
   this->odometry_subscription = this->create_subscription
-    <Odometry>("/carla/odom", 8, std::bind(&PurePursuitNode::update_current_position, this, _1));
+    <Odometry>("/carla/odom", 8, std::bind(&MotionControlNode::update_current_position, this, _1));
   
   this->marker_array_publisher = this->create_publisher
       <MarkerArray>("/controller/trajectory_visuals", 10);
   
 }
 
-PurePursuitNode::~PurePursuitNode() {}
+MotionControlNode::~MotionControlNode() {}
 
-void PurePursuitNode::send_message() {
+void MotionControlNode::send_message() {
 
   // Report error & delete trajectory points behind the closest point
   size_t closest_point_idx = find_closest_point();
@@ -68,13 +67,13 @@ void PurePursuitNode::send_message() {
   steering_control_publisher->publish(steering_angle_msg);
 }
 
-void PurePursuitNode::update_trajectory(Trajectory::SharedPtr ptr) {
+void MotionControlNode::update_trajectory(Trajectory::SharedPtr ptr) {
 
   RCLCPP_INFO(this->get_logger(), "Trajectory received!");
   this->trajectory = *ptr;
 }
 
-void PurePursuitNode::update_current_position(Odometry::SharedPtr ptr) {
+void MotionControlNode::update_current_position(Odometry::SharedPtr ptr) {
 
   //RCLCPP_INFO(this->get_logger(), "Current position received!");
   this->current_position.x = ptr->pose.pose.position.x;
@@ -83,7 +82,7 @@ void PurePursuitNode::update_current_position(Odometry::SharedPtr ptr) {
   visualize_markers(ptr->header.frame_id, now());
 }
 
-size_t PurePursuitNode::find_closest_point() {
+size_t MotionControlNode::find_closest_point() {
 
   size_t closest_point_idx = 0;
   TrajectoryPoint current_position = this->current_position;
@@ -110,7 +109,7 @@ size_t PurePursuitNode::find_closest_point() {
   return closest_point_idx;
 }
 
-void PurePursuitNode::trim_trajectory(size_t closest_point_idx) {
+void MotionControlNode::trim_trajectory(size_t closest_point_idx) {
 
   if (this->trajectory.points.empty()) {
     return;
@@ -125,7 +124,7 @@ void PurePursuitNode::trim_trajectory(size_t closest_point_idx) {
   this->trajectory.points.shrink_to_fit();                 // Release allocated memory
 }
 
-size_t PurePursuitNode::find_lookahead_point(float lookahead_distance, TrajectoryPoint& current_position) {
+size_t MotionControlNode::find_lookahead_point(float lookahead_distance, TrajectoryPoint& current_position) {
 
   size_t next_waypoint_idx;
 
@@ -146,7 +145,7 @@ size_t PurePursuitNode::find_lookahead_point(float lookahead_distance, Trajector
 }
 
 /** Interpolate lookahead point for steering angle calculation */
-bool PurePursuitNode::compute_lookahead_point() {
+bool MotionControlNode::compute_lookahead_point() {
 
   if (this->trajectory.points.empty()) {
     return false;
@@ -205,7 +204,7 @@ bool PurePursuitNode::compute_lookahead_point() {
   return true;
 }
 
-float PurePursuitNode::get_steering_angle() {
+float MotionControlNode::get_steering_angle() {
     
     if(this->trajectory.points.empty()) {
       // Error occurred, return old angle
@@ -216,7 +215,7 @@ float PurePursuitNode::get_steering_angle() {
     return this->steering_controller->compute_steering_angle();
 }
 
-void PurePursuitNode::visualize_markers(std::string frame_id, rclcpp::Time time) {
+void MotionControlNode::visualize_markers(std::string frame_id, rclcpp::Time time) {
 
   MarkerArray recorded_markers {};
 

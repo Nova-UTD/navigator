@@ -1,5 +1,5 @@
 /*
- * Package:   nova_pure_pursuit
+ * Package:   nova_motion_control
  * Filename:  PurePursuit.cpp
  * Authors:   Cristian Cruz, Nikhil Narvekar
  * Email:     Cristian.CruzLopez@utdallas.edu
@@ -13,7 +13,7 @@
 #include <iostream>
 
 
-#include "nova_pure_pursuit/PurePursuit.hpp"
+#include "nova_motion_control/PurePursuit.hpp"
 
 using namespace Nova::PurePursuit;
 

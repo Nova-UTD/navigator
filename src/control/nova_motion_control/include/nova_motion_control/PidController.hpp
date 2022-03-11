@@ -1,9 +1,9 @@
 /*
- * Package:   pid_controller
+ * Package:   nova_motion_control
  * Filename:  PidController.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
- * Copyright: 2021, Voltron UTD
+ * Copyright: 2021, Nova UTD
  * License:   MIT License
  */
 

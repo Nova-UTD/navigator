@@ -1,5 +1,5 @@
 /*
- * Package:   nova_pure_pursuit
+ * Package:   nova_motion_control
  * Filename:  PurePursuit.hpp
  * Author:    Cristian Cruz, Nikhil Narvekar
  * Email:     Cristian.CruzLopez@utdallas.edu

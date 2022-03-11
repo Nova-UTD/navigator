@@ -1,6 +1,6 @@
 /*
- * Package:   nova_pure_pursuit
- * Filename:  LateralController.cpp
+ * Package:   nova_motion_control
+ * Filename:  MotionControl.cpp
  * Author:    Cristian Cruz
  * Email:     Cristian.CruzLopez@utdallas.edu
  * Copyright: 2021, Nova UTD
@@ -8,7 +8,7 @@
  */
 
 
-#include "nova_pure_pursuit/PurePursuitNode.hpp"
+#include "nova_motion_control/MotionControlNode.hpp"
 
 #include <iostream>
 #include <memory>
@@ -19,7 +19,7 @@
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<Nova::PurePursuit::PurePursuitNode>());
+  rclcpp::spin(std::make_shared<Nova::MotionControl::MotionControlNode>());
   rclcpp::shutdown();
   return 0;
 }

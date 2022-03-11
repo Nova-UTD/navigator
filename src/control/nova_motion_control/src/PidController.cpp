@@ -1,9 +1,9 @@
 /*
- * Package:   pid_controller
+ * Package:   nova_motion_control
  * Filename:  PidController.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
- * Copyright: 2021, Voltron UTD
+ * Copyright: 2021, Nova UTD
  * License:   MIT License
  */
 
@@ -11,7 +11,7 @@
 #include <memory>
 #include <utility>
 
-#include "nova_pure_pursuit/PidController.hpp"
+#include "nova_motion_control/PidController.hpp"
 
 using namespace Nova::PidController;
 

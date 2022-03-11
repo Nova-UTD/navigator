@@ -1,6 +1,6 @@
 /*
- * Package:   nova_pure_pursuit
- * Filename:  PurePursuitNode.hpp
+ * Package:   nova_motion_control
+ * Filename:  MotionControlNode.hpp
  * Author:    Cristian Cruz, Nikhil Narvekar
  * Email:     Cristian.CruzLopez@utdallas.edu
  * Copyright: 2021, Nova UTD
@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include "nova_pure_pursuit/PurePursuit.hpp"
-#include "nova_pure_pursuit/PidController.hpp"
+#include "nova_motion_control/PurePursuit.hpp"
+#include "nova_motion_control/PidController.hpp"
 
 #include "rclcpp/rclcpp.hpp"
 #include <visualization_msgs/msg/marker.hpp>
@@ -36,16 +36,16 @@ using MarkerArray = visualization_msgs::msg::MarkerArray;
 using namespace std::chrono_literals;
 
 namespace Nova {
-namespace PurePursuit {
+namespace MotionControl {
 
 constexpr auto message_frequency = 100ms; // will change
 
-class PurePursuitNode : public rclcpp::Node {
+class MotionControlNode : public rclcpp::Node {
 
 public:
 
-    PurePursuitNode();
-    ~PurePursuitNode();
+    MotionControlNode();
+    ~MotionControlNode();
     
 
 private:  
@@ -56,7 +56,7 @@ private:
     rclcpp::Publisher<MarkerArray>::SharedPtr marker_array_publisher;    
 
     // var
-    std::unique_ptr<PurePursuit> steering_controller;
+    std::unique_ptr<Nova::PurePursuit::PurePursuit> steering_controller;
     std::unique_ptr<Nova::PidController::PidController> speed_controller;
     rclcpp::TimerBase::SharedPtr control_timer;
     Trajectory trajectory;
