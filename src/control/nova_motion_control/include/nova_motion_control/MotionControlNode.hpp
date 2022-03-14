@@ -69,7 +69,7 @@ private:
     void visualize_markers(std::string frame_id, rclcpp::Time time);
 
     size_t find_closest_point();
-    size_t find_lookahead_point(float lookahead_distance, TrajectoryPoint& current_position);
+    size_t find_waypoint(float lookahead_distance, TrajectoryPoint& current_position);
 
     void trim_trajectory(size_t current_point_idx);
     bool compute_lookahead_point();

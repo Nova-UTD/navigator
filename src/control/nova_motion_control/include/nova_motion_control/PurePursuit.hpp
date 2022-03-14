@@ -23,6 +23,9 @@ public:
     double get_steering_angle();
     float get_lookahead_distance();
 
+    float get_lookahead_point_x();
+    float get_lookahead_point_y();
+
     void set_lookahead_point(float x, float y);
 
     double compute_steering_angle();

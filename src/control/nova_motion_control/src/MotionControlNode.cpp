@@ -53,10 +53,6 @@ MotionControlNode::~MotionControlNode() {}
 
 void MotionControlNode::send_message() {
 
-  // Report error & delete trajectory points behind the closest point
-  size_t closest_point_idx = find_closest_point();
-  trim_trajectory(closest_point_idx);
-
   compute_lookahead_point();
 
   // format of published message
@@ -78,6 +74,10 @@ void MotionControlNode::update_current_position(Odometry::SharedPtr ptr) {
   //RCLCPP_INFO(this->get_logger(), "Current position received!");
   this->current_position.x = ptr->pose.pose.position.x;
   this->current_position.y = ptr->pose.pose.position.y;
+
+  // Report error & delete trajectory points behind the closest point
+  //size_t closest_point_idx = find_closest_point();
+  //trim_trajectory(closest_point_idx);
 
   visualize_markers(ptr->header.frame_id, now());
 }
@@ -104,7 +104,7 @@ size_t MotionControlNode::find_closest_point() {
 
   }
 
-  std::cout << "Lateral offset error: " << distance << std::endl;
+  std::cout << "Displacement: " << minimum_distance << std::endl;
 
   return closest_point_idx;
 }
@@ -124,7 +124,7 @@ void MotionControlNode::trim_trajectory(size_t closest_point_idx) {
   this->trajectory.points.shrink_to_fit();                 // Release allocated memory
 }
 
-size_t MotionControlNode::find_lookahead_point(float lookahead_distance, TrajectoryPoint& current_position) {
+size_t MotionControlNode::find_waypoint(float lookahead_distance, TrajectoryPoint& current_position) {
 
   size_t next_waypoint_idx;
 
@@ -156,7 +156,7 @@ bool MotionControlNode::compute_lookahead_point() {
 
 
   // Find first point outside lookahead distance to use to find lookahead point
-  int next_waypoint_idx = find_lookahead_point(lookahead_distance, current_position);
+  int next_waypoint_idx = find_waypoint(lookahead_distance, current_position);
 
 
   // TODO perform check that curve exists
@@ -219,20 +219,20 @@ void MotionControlNode::visualize_markers(std::string frame_id, rclcpp::Time tim
 
   MarkerArray recorded_markers {};
 
-  Marker line_strip;
-  line_strip.type = Marker::LINE_STRIP;
-  line_strip.header.stamp = time;
-  line_strip.header.frame_id = frame_id;
-  line_strip.ns = "trajectory";
-  line_strip.action = Marker::ADD;
+  Marker trajectory_mark;
+  trajectory_mark.type = Marker::LINE_STRIP;
+  trajectory_mark.header.stamp = time;
+  trajectory_mark.header.frame_id = frame_id;
+  trajectory_mark.ns = "trajectory";
+  trajectory_mark.action = Marker::ADD;
 
-  line_strip.scale.x = 0.3;
-  line_strip.frame_locked = true;
+  trajectory_mark.scale.x = 0.3;
+  trajectory_mark.frame_locked = true;
 
-  line_strip.color.r = 0.2588;
-  line_strip.color.g = 0.8784;
-  line_strip.color.b = 0.7725;
-  line_strip.color.a = 1.0;
+  trajectory_mark.color.r = 0.2588;
+  trajectory_mark.color.g = 0.8784;
+  trajectory_mark.color.b = 0.7725;
+  trajectory_mark.color.a = 1.0;
 
   for(size_t i = 0; i < this->trajectory.points.size(); i++) {
 
@@ -244,11 +244,33 @@ void MotionControlNode::visualize_markers(std::string frame_id, rclcpp::Time tim
     p.y = point_ptr->y;
     p.z = point_ptr->z;
 
-    line_strip.points.push_back(p);
+    trajectory_mark.points.push_back(p);
   }
 
+  Marker lookahead_point_mark;
+  lookahead_point_mark.type = Marker::POINTS;
+  lookahead_point_mark.header.stamp = time;
+  lookahead_point_mark.header.frame_id = frame_id;
+  lookahead_point_mark.ns = "trajectory";
+  lookahead_point_mark.action = Marker::ADD;
 
-  recorded_markers.markers.push_back(line_strip);
+  lookahead_point_mark.scale.x = 0.5;
+  lookahead_point_mark.scale.y = 0.5;
+
+  lookahead_point_mark.color.r = 1.0;
+  lookahead_point_mark.color.a = 1.0;
+
+  geometry_msgs::msg::Point p;
+  p.x = this->steering_controller->get_lookahead_point_x();
+  p.y = this->steering_controller->get_lookahead_point_y();
+  // std::cout << "LOOKAHEAD_POINT:" << std::endl;
+  // std::cout << p.x << "\t" << p.y << std::endl;
+
+  lookahead_point_mark.points.push_back(p);
+
+
+  recorded_markers.markers.push_back(trajectory_mark);
+  recorded_markers.markers.push_back(lookahead_point_mark);
   this->marker_array_publisher->publish(recorded_markers);
   
   recorded_markers.markers.clear();

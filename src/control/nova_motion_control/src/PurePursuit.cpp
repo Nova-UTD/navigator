@@ -37,6 +37,9 @@ PurePursuit::~PurePursuit() {}
 double PurePursuit::get_steering_angle() { return steering_angle; }
 float PurePursuit::get_lookahead_distance() { return lookahead_distance; }
 
+float PurePursuit::get_lookahead_point_x() { return lookahead_point_x; }
+float PurePursuit::get_lookahead_point_y() { return lookahead_point_y; }
+
 void PurePursuit::set_lookahead_point(float x, float y) {
     lookahead_point_x = x;
     lookahead_point_y = y;
