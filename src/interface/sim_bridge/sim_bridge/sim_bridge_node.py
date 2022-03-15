@@ -24,6 +24,8 @@ Todos:
 
 '''
 
+import random
+
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
@@ -38,8 +40,18 @@ OBSTACLE_QTY_VEHICLE = 0 # Spawn n cars
 OBSTACLE_QTY_PED = 0 # Spawn n peds
 
 # Map-specific constants
-MAP_ORIGIN_Y = 0.0 # meters
-MAP_ORIGIN_X = 0.0 # meters
+MAP_ORIGIN_LAT = 0.0 # degrees
+MAP_ORIGIN_LON = 0.0 # degrees
+
+# Sensor noise constants
+M_TO_DEG = 9e-6 # APPROXIMATE! WSH.
+
+GNSS_ALT_BIAS = random.uniform(0.25,1.0)*M_TO_DEG # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
+GNSS_ALT_SDEV = 0.5*M_TO_DEG
+GNSS_LAT_BIAS = random.uniform(0.25,1.0)*M_TO_DEG
+GNSS_LAT_SDEV = 0.5*M_TO_DEG
+GNSS_LON_BIAS = random.uniform(0.25,1.0)*M_TO_DEG
+GNSS_LON_SDEV = 0.5*M_TO_DEG
 
 # Publish a true map->base_link transform. Disable this if
 # another localization algorithm (ukf, ndt, etc.) is running! WSH.
@@ -49,7 +61,7 @@ import sys
 sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
 
 import carla
-import random
+
 import rclpy
 from rclpy.node import Node
 
@@ -59,6 +71,9 @@ import numpy as np
 
 # For camera data conversion. WSH.
 from cv_bridge import CvBridge
+
+# For lat/lon-> ENU conversions. WSH.
+import pymap3d
 
 from tf2_ros import TransformException, TransformStamped
 import tf2_msgs
@@ -76,7 +91,7 @@ from sensor_msgs.msg import Image # For cameras
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry # For GPS, ground truth
 from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D
-from geometry_msgs.msg import Point, Quaternion, Vector3
+from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance
 
 from scipy.spatial.transform import Rotation as R
 
@@ -155,6 +170,48 @@ class SimBridgeNode(Node):
     def front_depth_cb(self, data: carla.Image):
         img_msg = self.get_depth_image(data)
         self.front_depth_pub.publish(img_msg)
+
+    def gnss_cb(self, data: carla.GnssMeasurement) :
+        msg = Odometry()
+        posewithcov = PoseWithCovariance()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = 'map'
+        msg.child_frame_id = 'gnss'
+
+        enu_coords = pymap3d.geodetic2enu(
+            data.latitude, data.longitude, 0.0,
+            MAP_ORIGIN_LAT, MAP_ORIGIN_LON, 0.0
+        )
+
+        posewithcov.pose.position.x = enu_coords[0]
+        posewithcov.pose.position.y = enu_coords[1]
+        posewithcov.pose.position.z = enu_coords[2] # This should be 0.0. We don't care about altitude. WSH.
+        
+        ego_tf = self.ego.get_transform()
+        ego_quat = R.from_euler(
+            'yzx',
+            [ego_tf.rotation.pitch*-1*math.pi/180.0,
+            ego_tf.rotation.yaw*-1*math.pi/180.0-math.pi,
+            ego_tf.rotation.roll*-1*math.pi/180.0]
+        ).as_quat()
+        posewithcov.pose.orientation.x = ego_quat[0]
+        posewithcov.pose.orientation.y = ego_quat[1]
+        posewithcov.pose.orientation.z = ego_quat[2]
+        posewithcov.pose.orientation.w = ego_quat[3]
+
+        accuracy = 1.0 # Meters, s.t. pos.x = n +/- accuracy
+
+        posewithcov.covariance = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.25, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, 0.25, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, 0.25, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, 0.25, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, 0.0, 0.25]
+                                  
+
+        msg.pose = posewithcov
+
+        self.gnss_pub.publish(msg)
 
     def primary_imu_cb(self, data: carla.IMUMeasurement):
         imu_msg = Imu()
@@ -241,7 +298,7 @@ class SimBridgeNode(Node):
     def publish_true_boxes(self):
         
         vehicles = self.world.get_actors().filter('vehicle.*')
-        self.get_logger().info("Publishing {} boxes.".format(len(vehicles)))
+        # self.get_logger().info("Publishing {} boxes.".format(len(vehicles)))
 
         obstacles = []
         for vehicle in vehicles:
@@ -306,8 +363,8 @@ class SimBridgeNode(Node):
         ego_position = Point()
         ego_orientation = Quaternion()
         ego_tf: carla.Transform = ego.get_transform()
-        ego_position.x = ego_tf.location.x - MAP_ORIGIN_X
-        ego_position.y = ego_tf.location.y*-1 - MAP_ORIGIN_Y
+        ego_position.x = ego_tf.location.x
+        ego_position.y = ego_tf.location.y*-1
         ego_position.z = 0.0 # Force to zero
 
         ego_quat = R.from_euler(
@@ -344,23 +401,6 @@ class SimBridgeNode(Node):
                 w = ego_quat[3]
             )
             self.tf_broadcaster.sendTransform(t)
-
-        # Now add some very simple noise to fake a GPS sensor. WSH.
-        # We'll go easy and add random deviation of just <2m on each axis
-        ego_position.x += (random.randrange(-50, 50)/100.0)
-        ego_position.y += (random.randrange(-50, 50)/100.0)
-        # ego_position.z += (random.randrange(-200, 200)/100.0)
-        # Similarly, add <0.175 radians (~10 degrees) random to yaw
-        ego_tf.rotation.yaw += random.randrange(-175, 175)/1000.0
-        ego_quat = R.from_euler(
-            'yzx',
-            [ego_tf.rotation.pitch,
-            ego_tf.rotation.yaw,
-            ego_tf.rotation.roll]
-        ).as_quat()
-        odom.pose.pose.position = ego_position
-        odom.pose.pose.orientation = ego_orientation
-        self.gnss_pub.publish(odom)
 
     def __init__(self):
         super().__init__('sim_bridge_node')
@@ -574,15 +614,18 @@ class SimBridgeNode(Node):
         self.sem_lidar = self.world.spawn_actor(sem_lidar_bp, relative_transform, attach_to=self.ego)
         self.sem_lidar.listen(self.sem_lidar_cb)
 
-        # Attach GNSS sensor TODO (WSH)
-        # gnss_bp = self.blueprint_library.find('sensor.other.gnss')
-        # gnss_bp.set_attribute('noise_alt_stddev', '0.0') # We can add noise here. TODO.
-        # gnss_bp.set_attribute('noise_lat_stddev', '0.0')
-        # gnss_bp.set_attribute('noise_lon_stddev', '0.0')
-        # gnss_bp.set_attribute('sensor_tick', str(GNSS_PERIOD))
-        # relative_transform = carla.Transform(carla.Location(x=0.0, y=0.0, z=0.0), carla.Rotation()) # TODO: Fix transform
-        # self.gnss = self.world.spawn_actor(lidar_bp, relative_transform, attach_to=ego)
-        # self.gnss.listen(self.gnss_cb)
+        # Attach GNSS sensor
+        gnss_bp = self.blueprint_library.find('sensor.other.gnss')
+        gnss_bp.set_attribute('noise_alt_stddev', str(GNSS_ALT_SDEV)) # We can add noise here.
+        gnss_bp.set_attribute('noise_alt_bias', str(GNSS_ALT_BIAS)) 
+        gnss_bp.set_attribute('noise_lat_stddev', str(GNSS_LAT_SDEV))
+        gnss_bp.set_attribute('noise_lat_bias', str(GNSS_LAT_BIAS)) 
+        gnss_bp.set_attribute('noise_lon_stddev', str(GNSS_LON_SDEV))
+        gnss_bp.set_attribute('noise_lon_bias', str(GNSS_LON_BIAS))
+        gnss_bp.set_attribute('sensor_tick', str(GNSS_PERIOD))
+        relative_transform = carla.Transform(carla.Location(x=0.0, y=0.0, z=0.0), carla.Rotation()) # TODO: Fix transform
+        self.gnss = self.world.spawn_actor(gnss_bp, relative_transform, attach_to=self.ego)
+        self.gnss.listen(self.gnss_cb)
 
         # Attach bird's-eye camera
         birds_eye_cam_bp = self.blueprint_library.find('sensor.camera.rgb')

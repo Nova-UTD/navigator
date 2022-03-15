@@ -16,7 +16,7 @@
   <link name="base_link">
     <visual>
       <geometry>
-        <mesh filename="file://home/main/voltron/assets/hailbopp.obj" scale="0.001 0.001 0.001"/>
+        <mesh filename="file:///home/main/navigator/data/hailbopp.obj" scale="1.0 1.0 1.0"/>
       </geometry>
       <material name="maroon"/>
       <origin xyz="0.83 0 0.28" rpy="0 0 1.570796"/>
@@ -56,10 +56,12 @@
 
   <link name="gnss"/>
 
+  <!-- This specifies where our GNSS sensor is located relative to our rear axle. WSH. -->
+  <!-- TODO: Add RPY. -->
   <joint name="gnss_joint" type="fixed">
     <parent link="base_link"/>
     <child link="gnss"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <origin xyz="3.4 -0.5 0.5" rpy="0 0 0"/> 
   </joint>
 
   <link name="lidar_front">

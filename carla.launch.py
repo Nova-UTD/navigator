@@ -113,16 +113,25 @@ def generate_launch_description():
         ],
         output='screen'
     )
-    robot_localization = Node(
+    map_odom_ukf = Node(
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=[(path.join(param_dir,"atlas","robot_localization.param.yaml"))],
+        parameters=[(path.join(param_dir,"atlas","map_odom.param.yaml"))],
         remappings=[
-            ("/odom0", "/gnss/odom"),
-            ("/imu0", "/imu_primary/data")
+            ("/odom0", "/gnss/odom")
         ]
     )
+
+    # odom_bl_ukf = Node(
+    #     package='robot_localization',
+    #     executable='ukf_node',
+    #     name='localization_map_odom',
+    #     parameters=[(path.join(param_dir,"atlas","odom_bl.param.yaml"))],
+    #     remappings=[
+    #         ("/imu0", "/imu_primary/data")
+    #     ]
+    # )
 
     # MAPPING
     lanelet_server = Node(
@@ -159,7 +168,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0','0','0','0','0','0.0','1.0','odom','base_link'
+            '0.0','0.0','0.0','0.0','0.0','0.0','1.0','odom','base_link'
         ]
     )
 
@@ -296,7 +305,7 @@ def generate_launch_description():
 
         # LOCALIZATION
         # ndt,
-        robot_localization,
+        map_odom_ukf,
         # icp_nudger,
         # deviation_reporter,
 
