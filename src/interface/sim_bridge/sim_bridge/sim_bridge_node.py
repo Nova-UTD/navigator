@@ -308,7 +308,7 @@ class SimBridgeNode(Node):
         ego_tf: carla.Transform = ego.get_transform()
         ego_position.x = ego_tf.location.x - MAP_ORIGIN_X
         ego_position.y = ego_tf.location.y*-1 - MAP_ORIGIN_Y
-        ego_position.z = ego_tf.location.z
+        ego_position.z = 0.0 # Force to zero
 
         ego_quat = R.from_euler(
             'yzx',
@@ -347,9 +347,9 @@ class SimBridgeNode(Node):
 
         # Now add some very simple noise to fake a GPS sensor. WSH.
         # We'll go easy and add random deviation of just <2m on each axis
-        ego_position.x += (random.randrange(-200, 200)/100.0)
-        ego_position.y += (random.randrange(-200, 200)/100.0)
-        ego_position.z += (random.randrange(-200, 200)/100.0)
+        ego_position.x += (random.randrange(-50, 50)/100.0)
+        ego_position.y += (random.randrange(-50, 50)/100.0)
+        # ego_position.z += (random.randrange(-200, 200)/100.0)
         # Similarly, add <0.175 radians (~10 degrees) random to yaw
         ego_tf.rotation.yaw += random.randrange(-175, 175)/1000.0
         ego_quat = R.from_euler(
