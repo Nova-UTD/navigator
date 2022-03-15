@@ -5,13 +5,13 @@
     frequency: 100.0 # Estimate update frequency, Hz, double
     world_frame: "map"
 
-    odom0: "/gps/odom"
+    odom0: "/odom0" # xyz and yaw
     odom0_config: [true, true, true, false, false, true,
                    false, false, false, false, false, false,
                    false, false, false]
 
-    odom1: "/zed2i/zed_node/odom"
-    odom1_config: [true, true, false, false, false, true,
-                   false, false, false, false, false, false,
-                   false, false, false]
-    odom1_differential: true
+    imu1: "/imu0" # Angular vel, linear acc
+    imu1_config: [true, true, false, false, false, true,
+                   false, false, false, true, true, true,
+                   true, true, true]
+    imu1_differential: true

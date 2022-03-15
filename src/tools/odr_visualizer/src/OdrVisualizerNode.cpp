@@ -40,7 +40,7 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node") {
 
 	srand (static_cast <unsigned> (time(0)));
 
-	this->declare_parameter<std::string>("xodr_path", "/home/share/maps/Town10HD_Opt.xodr");
+	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town10/Town10HD_Opt.xodr");
 	this->declare_parameter<double>("draw_detail", 0.3);
 	marker_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>("/map/viz", 1);
 
@@ -50,7 +50,7 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node") {
 	std::string xodr_path = this->get_parameter("xodr_path").as_string();
 	double draw_detail = this->get_parameter("draw_detail").as_double();
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-	odr::OpenDriveMap odr(xodr_path);
+	odr::OpenDriveMap odr(xodr_path, true, true, false, true);
 
 	// Iterate through all roads->lanesections->lanes
 	// For each lane: Construct Line Strip markers for left and right bound

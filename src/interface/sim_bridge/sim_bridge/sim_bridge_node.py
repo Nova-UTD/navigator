@@ -34,12 +34,16 @@ GNSS_PERIOD = 1/(2.0) # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0) # 2 Hz (purposely bad)
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0) # 10 Hz
 LIDAR_PERIOD = 1/(10.0) # 20 Hz
-OBSTACLE_QTY_VEHICLE = 20 # Spawn n cars
-OBSTACLE_QTY_PED = 30 # Spawn n peds
+OBSTACLE_QTY_VEHICLE = 0 # Spawn n cars
+OBSTACLE_QTY_PED = 0 # Spawn n peds
+
+# Map-specific constants
+MAP_ORIGIN_Y = 0.0 # meters
+MAP_ORIGIN_X = 0.0 # meters
 
 # Publish a true map->base_link transform. Disable this if
 # another localization algorithm (ukf, ndt, etc.) is running! WSH.
-PULBISH_MAP_BL_TRANSFORM = True 
+PULBISH_MAP_BL_TRANSFORM = False 
 
 import sys
 sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
@@ -302,8 +306,8 @@ class SimBridgeNode(Node):
         ego_position = Point()
         ego_orientation = Quaternion()
         ego_tf: carla.Transform = ego.get_transform()
-        ego_position.x = ego_tf.location.x
-        ego_position.y = ego_tf.location.y*-1
+        ego_position.x = ego_tf.location.x - MAP_ORIGIN_X
+        ego_position.y = ego_tf.location.y*-1 - MAP_ORIGIN_Y
         ego_position.z = ego_tf.location.z
 
         ego_quat = R.from_euler(
@@ -522,10 +526,16 @@ class SimBridgeNode(Node):
 
         # collision_sensor_bp = blueprint_library.find('sensor.other.collision')
         # Get random spawn point
-        random_spawn = self.world.get_map().get_spawn_points()[0]
-        self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, random_spawn))
+        # random_spawn = self.world.get_map().get_spawn_points()[0]
+        spawn_loc = carla.Location()
+        spawn_loc.x = 0.0
+        spawn_loc.y = 29.0
+        spawn_loc.z = 2.0 # Start up in the air
+        spawn = carla.Transform()
+        spawn.location = spawn_loc
+        self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, spawn))
         vehicle_bp = self.blueprint_library.find(EGO_MODEL)
-        self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, random_spawn) 
+        self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, spawn) 
         # TODO: Destroy ego actor when node exits or crashes. Currently keeps actor alive in CARLA,
         # which eventually leads to memory overflow. WSH.
         self.ego.set_autopilot(enabled=EGO_AUTOPILOT_ENABLED)

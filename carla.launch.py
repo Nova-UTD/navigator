@@ -117,11 +117,10 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=[(path.join(param_dir,"hubble","robot_localization.param.yaml"))],
+        parameters=[(path.join(param_dir,"atlas","robot_localization.param.yaml"))],
         remappings=[
-            ("/odom0", "/gps/odom"),
-            ("/odom1", "/zed2i/zed_node/odom"),
-            ("/imu0", "/zed2i/zed_node/imu/data_raw")
+            ("/odom0", "/gnss/odom"),
+            ("/imu0", "/imu_primary/data")
         ]
     )
 
@@ -136,7 +135,10 @@ def generate_launch_description():
 
     odr_viz = Node(
         package='odr_visualizer',
-        executable='visualizer'
+        executable='visualizer',
+        parameters=[
+            (path.join(param_dir,"mapping","odr.param.yaml"))
+        ]
     )
 
     # lanelet_visualizer = Node(
@@ -294,7 +296,7 @@ def generate_launch_description():
 
         # LOCALIZATION
         # ndt,
-        # robot_localization,
+        robot_localization,
         # icp_nudger,
         # deviation_reporter,
 
