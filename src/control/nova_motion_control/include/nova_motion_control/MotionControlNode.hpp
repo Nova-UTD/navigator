@@ -23,11 +23,14 @@
 #include <autoware_auto_msgs/msg/trajectory.hpp>
 
 #include "voltron_msgs/msg/steering_position.hpp"
+#include "voltron_msgs/msg/peddle_position.hpp"
+
 
 
 using Trajectory = autoware_auto_msgs::msg::Trajectory;
 using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
 using SteeringPosition = voltron_msgs::msg::SteeringPosition;
+using PeddlePosition = voltron_msgs::msg::PeddlePosition;
 using Odometry = nav_msgs::msg::Odometry;
 
 using Marker = visualization_msgs::msg::Marker;
@@ -49,16 +52,19 @@ public:
     
 
 private:  
-    
-    rclcpp::Publisher<SteeringPosition>::SharedPtr steering_control_publisher;    
-    rclcpp::Subscription<Trajectory>::SharedPtr trajectory_subscription;
-    rclcpp::Subscription<Odometry>::SharedPtr odometry_subscription;
-    rclcpp::Publisher<MarkerArray>::SharedPtr marker_array_publisher;    
-
     // var
     std::unique_ptr<Nova::PurePursuit::PurePursuit> steering_controller;
     std::unique_ptr<Nova::PidController::PidController> speed_controller;
+
+    rclcpp::Publisher<MarkerArray>::SharedPtr marker_array_publisher;
     rclcpp::TimerBase::SharedPtr control_timer;
+
+    rclcpp::Subscription<Trajectory>::SharedPtr trajectory_subscription;
+    rclcpp::Subscription<Odometry>::SharedPtr odometry_subscription;
+    rclcpp::Publisher<SteeringPosition>::SharedPtr steering_control_publisher;
+    rclcpp::Publisher<PeddlePosition>::SharedPtr throttle_control_publisher;
+    rclcpp::Publisher<PeddlePosition>::SharedPtr brake_control_publisher;
+
     Trajectory trajectory;
     TrajectoryPoint current_position;
 
@@ -73,6 +79,7 @@ private:
 
     void trim_trajectory(size_t current_point_idx);
     bool compute_lookahead_point();
+    void compute_lookahead_point_v2();
     float get_steering_angle();
 };
 

@@ -24,28 +24,38 @@ using namespace Nova::MotionControl;
 
 MotionControlNode::MotionControlNode() : rclcpp::Node("pure_pursuit_controller") {  
 
+  // Controllers
   this->steering_controller = std::make_unique
-    <Nova::PurePursuit::PurePursuit>(1.0); // User-defined, default lookahead
+    <Nova::PurePursuit::PurePursuit>(10.0); // User-defined, default lookahead
 
   this->speed_controller = std::make_unique
     <Nova::PidController::PidController>(1.0, 1.0, 1.0, 1.0);
   
+  // Utilities
   this->control_timer = this->create_wall_timer
     (message_frequency, std::bind(&MotionControlNode::send_message, this));
 
-  this->steering_control_publisher = this->create_publisher
-    <SteeringPosition>("/command/steering_position", 10);
+  this->marker_array_publisher = this->create_publisher
+      <MarkerArray>("/controller/trajectory_visuals", 10);
 
-  //TODO: Interface with PidController & publish Peddle messages
-  
+  // Input
   this->trajectory_subscription = this->create_subscription
     <Trajectory>("reference_trajectory", 8, std::bind(&MotionControlNode::update_trajectory, this, _1));
 
   this->odometry_subscription = this->create_subscription
     <Odometry>("/carla/odom", 8, std::bind(&MotionControlNode::update_current_position, this, _1));
   
-  this->marker_array_publisher = this->create_publisher
-      <MarkerArray>("/controller/trajectory_visuals", 10);
+  // Output
+  this->steering_control_publisher = this->create_publisher
+    <SteeringPosition>("/command/steering_position", 10);
+
+  this->throttle_control_publisher = this->create_publisher
+    <PeddlePosition>("/command/throttle_peddle_position", 10);
+
+  this->brake_control_publisher = this->create_publisher
+    <PeddlePosition>("/command/brake_peddle_position", 10);
+  
+  //TODO: Interface with PidController & publish Peddle messages
   
 }
 
@@ -53,7 +63,8 @@ MotionControlNode::~MotionControlNode() {}
 
 void MotionControlNode::send_message() {
 
-  compute_lookahead_point();
+  //compute_lookahead_point();
+  compute_lookahead_point_v2();
 
   // format of published message
   auto steering_angle_msg = SteeringPosition();
@@ -76,8 +87,8 @@ void MotionControlNode::update_current_position(Odometry::SharedPtr ptr) {
   this->current_position.y = ptr->pose.pose.position.y;
 
   // Report error & delete trajectory points behind the closest point
-  //size_t closest_point_idx = find_closest_point();
-  //trim_trajectory(closest_point_idx);
+  size_t closest_point_idx = find_closest_point();
+  trim_trajectory(closest_point_idx);
 
   visualize_markers(ptr->header.frame_id, now());
 }
@@ -104,7 +115,7 @@ size_t MotionControlNode::find_closest_point() {
 
   }
 
-  std::cout << "Displacement: " << minimum_distance << std::endl;
+  //std::cout << "Displacement: " << minimum_distance << std::endl;
 
   return closest_point_idx;
 }
@@ -144,6 +155,86 @@ size_t MotionControlNode::find_waypoint(float lookahead_distance, TrajectoryPoin
   return next_waypoint_idx;
 }
 
+
+void MotionControlNode::compute_lookahead_point_v2() {
+  //https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm/1084899#1084899
+  //https://math.stackexchange.com/questions/311921/get-location-of-vector-circle-intersection
+
+  if (this->trajectory.points.empty()) {
+    return;
+  }
+
+  size_t next_waypoint_idx = find_waypoint(this->steering_controller->get_lookahead_distance(), this->current_position);
+
+  TrajectoryPoint waypoint = this->trajectory.points[next_waypoint_idx]; //waypoint just outside of lookahead distance
+  TrajectoryPoint in_range_point = this->trajectory.points[next_waypoint_idx - 1];
+  TrajectoryPoint current_pose = this->current_position; //current_position
+  float radius = this->steering_controller->get_lookahead_distance();
+
+  tf2::Vector3 d(waypoint.x - in_range_point.x, waypoint.y - in_range_point.y, 0.0);
+  tf2::Vector3 f(in_range_point.x - current_pose.x, in_range_point.y - current_pose.y, 0.0);
+
+  float a = d.dot(d);
+  float b = 2 * f.dot(d);
+  float c = f.dot(f) - (radius*radius);
+
+  float discriminant = (b*b) - (4*a*c);
+
+  float t_intersection = 0.0;
+
+  if (discriminant < 0) {
+
+    std::cout << "No intersection" << std::endl;
+
+  } else {
+
+    // Quadratics formula
+    discriminant = std::sqrt(discriminant);
+
+    if (a == 0.0) {
+      a += 0.001;
+    }
+
+    float t1 = ((-b)-discriminant) / (2*a);
+    float t2 = ((-b)+discriminant) / (2*a);
+
+    if (t1 >= 0 && t1 <= 2) {
+
+      std::cout << "Intersection detected" << std::endl;
+      t_intersection = t1;
+    }
+    else if (t2 >= 0 && t2 <= 1) {
+
+      std::cout << "Intersection detected" << std::endl;
+      t_intersection = t2;
+    }
+    else {
+
+      std::cout << "No intersection" << std::endl;
+    }
+
+
+  }
+
+  // TODO: Look into node crashes at the end of the trajectory
+  // TODO: investigage cases for "no intersection" ("intersection" is always signaled)
+
+  // Find the intersection point
+  TrajectoryPoint lookahead_point;
+  lookahead_point.x = (d.getX() * t_intersection) + waypoint.x;
+  lookahead_point.y = (d.getY() * t_intersection) + waypoint.y;
+
+  std::cout << "LOOKAHEAD_POINT:" << std::endl;
+  std::cout << lookahead_point.x << "\t" << lookahead_point.y << std::endl;
+
+  std::cout << "CURRENT_POINT:" << std::endl;
+  std::cout << current_pose.x << "\t" << current_pose.y << std::endl;
+
+  this->steering_controller->set_lookahead_point(lookahead_point.x, lookahead_point.y);
+}
+
+
+
 /** Interpolate lookahead point for steering angle calculation */
 bool MotionControlNode::compute_lookahead_point() {
 
@@ -176,6 +267,7 @@ bool MotionControlNode::compute_lookahead_point() {
   const double dist_CD = (p_D - p_C).length();
 
   // set lookahead point based on intersection
+  std::cout << "DIST: " << dist_CD << std::endl;
 
   if (dist_CD > lookahead_distance) {
     // circle surrounding vehicle's current location 
@@ -251,11 +343,13 @@ void MotionControlNode::visualize_markers(std::string frame_id, rclcpp::Time tim
   lookahead_point_mark.type = Marker::POINTS;
   lookahead_point_mark.header.stamp = time;
   lookahead_point_mark.header.frame_id = frame_id;
-  lookahead_point_mark.ns = "trajectory";
+  lookahead_point_mark.ns = "lookahead_point";
   lookahead_point_mark.action = Marker::ADD;
 
-  lookahead_point_mark.scale.x = 0.5;
-  lookahead_point_mark.scale.y = 0.5;
+  lookahead_point_mark.scale.x = 1.0;
+  lookahead_point_mark.scale.y = 1.0;
+  lookahead_point_mark.scale.z = 1.0;
+  lookahead_point_mark.frame_locked = true;
 
   lookahead_point_mark.color.r = 1.0;
   lookahead_point_mark.color.a = 1.0;
@@ -263,16 +357,11 @@ void MotionControlNode::visualize_markers(std::string frame_id, rclcpp::Time tim
   geometry_msgs::msg::Point p;
   p.x = this->steering_controller->get_lookahead_point_x();
   p.y = this->steering_controller->get_lookahead_point_y();
-  // std::cout << "LOOKAHEAD_POINT:" << std::endl;
-  // std::cout << p.x << "\t" << p.y << std::endl;
-
   lookahead_point_mark.points.push_back(p);
-
 
   recorded_markers.markers.push_back(trajectory_mark);
   recorded_markers.markers.push_back(lookahead_point_mark);
   this->marker_array_publisher->publish(recorded_markers);
   
-  recorded_markers.markers.clear();
-  recorded_markers.markers.shrink_to_fit();
+  std::vector<Marker>().swap(recorded_markers.markers); // De-allocate markers
 }
