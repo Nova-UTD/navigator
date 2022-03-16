@@ -41,10 +41,10 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node") {
 	srand (static_cast <unsigned> (time(0)));
 
 	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town10/Town10HD_Opt.xodr");
-	this->declare_parameter<double>("draw_detail", 0.3);
+	this->declare_parameter<double>("draw_detail", 2.0);
 	marker_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>("/map/viz", 1);
 
-	map_pub_timer = this->create_wall_timer(3s, std::bind(&OdrVisualizerNode::publishMarkerArray, this));
+	map_pub_timer = this->create_wall_timer(5s, std::bind(&OdrVisualizerNode::publishMarkerArray, this));
 
 	// Read map from file, using our path param
 	std::string xodr_path = this->get_parameter("xodr_path").as_string();
@@ -93,7 +93,7 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node") {
 	trilist_driving.header.stamp = now();
 	trilist_driving.header.frame_id = "map";
 	trilist_driving.ns = "lanes_driving";
-	trilist_driving.action = trilist_driving.ADD;
+	trilist_driving.action = trilist_driving.MODIFY;
 	trilist_driving.frame_locked = true;
 	trilist_driving.color = driving_color;
 	trilist_driving.scale.x = 1.0;
@@ -114,7 +114,7 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node") {
 	line_list.header.frame_id = "map";
 	line_list.ns = "lanes";
 	line_list.id = 883883; // Why not? WSH.
-	line_list.action = line_list.ADD;
+	line_list.action = line_list.MODIFY;
 	line_list.scale.x = 0.3; // Only scale.x is used
 	line_list.frame_locked = true; // Move with the Rviz camera
 	line_list.color = line_color;

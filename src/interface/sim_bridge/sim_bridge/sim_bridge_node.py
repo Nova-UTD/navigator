@@ -209,12 +209,12 @@ class SimBridgeNode(Node):
 
         accuracy = 1.0 # Meters, s.t. pos.x = n +/- accuracy
 
-        posewithcov.covariance = [0.5, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.5, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.5, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.5, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 0.5, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 0.0, 0.5]
+        posewithcov.covariance = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
                                   
 
         msg.pose = posewithcov
@@ -253,7 +253,7 @@ class SimBridgeNode(Node):
         speed = math.floor(math.sqrt((vel.x ** 2) + (vel.y ** 2) + (vel.z ** 2))/0.447) * 0.447
         if (speed > 10.2):
             cmd.throttle = 0.0 # Cap our speed at 23 mph. WSH.
-            self.get_logger().warn("Your speed of {} has maxed out".format(speed))
+            # self.get_logger().warn("Your speed of {} has maxed out".format(speed))
         self.ego.apply_control(cmd)
 
     def sem_lidar_cb(self, data: carla.SemanticLidarMeasurement):
