@@ -70,8 +70,8 @@ void ReporterNode::process_frame(const voltron_msgs::msg::CanFrame::SharedPtr in
 
 void ReporterNode::initialize() {
   this->angle_publisher = this->create_publisher<std_msgs::msg::Float32>
-    ("real_steering_angle", 8);
+    ("epas_translator_real_steering_angle", 8);
   this->can_subscription = this->create_subscription<voltron_msgs::msg::CanFrame>
-    ("incoming_can_frames", 8,
+    ("epas_translator_incoming_can_frames", 8,
      std::bind(& ReporterNode::process_frame, this, std::placeholders::_1));
 }
