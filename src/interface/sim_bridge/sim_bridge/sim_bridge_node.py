@@ -35,7 +35,8 @@ EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0) # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0) # 2 Hz (purposely bad)
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0) # 10 Hz
-LIDAR_PERIOD = 1/(10.0) # 20 Hz
+LIDAR_PERIOD = 1/(10.0) # 10 Hz
+SPEEDOMETER_PERIOD = 1/(10.0) # 10 Hz
 OBSTACLE_QTY_VEHICLE = 0 # Spawn n cars
 OBSTACLE_QTY_PED = 0 # Spawn n peds
 
@@ -91,7 +92,7 @@ from sensor_msgs.msg import Image # For cameras
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry # For GPS, ground truth
 from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D
-from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance
+from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, TwistWithCovarianceStamped
 
 from scipy.spatial.transform import Rotation as R
 
@@ -199,14 +200,21 @@ class SimBridgeNode(Node):
         posewithcov.pose.orientation.z = ego_quat[2]
         posewithcov.pose.orientation.w = ego_quat[3]
 
+        ego_vel = self.ego.get_velocity()
+        twist_linear = Vector3()
+        twist_linear.x = ego_vel.x
+        twist_linear.y = ego_vel.y * -1
+        twist_linear.z = ego_vel.z
+        msg.twist.twist.linear = twist_linear
+
         accuracy = 1.0 # Meters, s.t. pos.x = n +/- accuracy
 
-        posewithcov.covariance = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.25, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.25, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.25, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 0.25, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 0.0, 0.25]
+        posewithcov.covariance = [0.5, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.5, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, 0.5, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, 0.5, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, 0.5, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, 0.0, 0.5]
                                   
 
         msg.pose = posewithcov
@@ -221,10 +229,17 @@ class SimBridgeNode(Node):
         # UE4 uses a left-handed system, so we must invert y axis and angles. WSH
         imu_msg.linear_acceleration.x = data.accelerometer.x
         imu_msg.linear_acceleration.y = data.accelerometer.y * -1
-        imu_msg.linear_acceleration.z = data.accelerometer.z
+        imu_msg.linear_acceleration.z = data.accelerometer.z * -1
         imu_msg.angular_velocity.x = data.gyroscope.x * -1 
         imu_msg.angular_velocity.y = data.gyroscope.y * -1
         imu_msg.angular_velocity.z = data.gyroscope.z * -1
+        imu_msg.linear_acceleration_covariance = [0.3, 0.0, 0.0,
+                                                  0.0, 0.3, 0.0,
+                                                  0.0, 0.0, 0.3]
+
+        # imu_msg.angular_velocity_covariance   =  [0.1, 0.0, 0.0,
+        #                                           0.0, 0.1, 0.0,
+        #                                           0.0, 0.0, 0.1]
 
         self.primary_imu_pub.publish(imu_msg)
     
@@ -355,6 +370,17 @@ class SimBridgeNode(Node):
         self.ground_truth_obst_pub.publish(obstacles_msg)
         # self.get_logger().info("{}".format(obstacles))
 
+    def pub_speedometer(self):
+        vel = self.ego.get_velocity()
+        twist_linear = TwistWithCovarianceStamped()
+        speed = math.floor(math.sqrt((vel.x ** 2) + (vel.y ** 2) + (vel.z ** 2))/0.447) * 0.447
+        twist_linear.twist.twist.linear.x = speed
+        twist_linear.twist.covariance[0] = 0.25 # Our speedometer is accurate to ~0.5 m/s. Covariance is the square of stdev.
+        twist_linear.header.frame_id = 'base_link'
+        twist_linear.header.stamp = self.get_clock().now().to_msg()
+
+        self.speedometer_pub.publish(twist_linear)
+
     def true_odom_cb(self):
         ego: carla.Actor = self.ego
 
@@ -474,6 +500,12 @@ class SimBridgeNode(Node):
             10
         )
 
+        self.speedometer_pub = self.create_publisher(
+            TwistWithCovarianceStamped,
+            '/can/speedometer_twist',
+            10
+        )
+
         self.sem_lidar_pub = self.create_publisher(
             PointCloud2,
             '/lidar/semantic',
@@ -522,6 +554,10 @@ class SimBridgeNode(Node):
 
         self.ground_truth_objects_timer = self.create_timer(
             GROUND_TRUTH_OBJ_PERIOD, self.publish_true_boxes
+        )
+
+        self.speedometer_timer = self.create_timer(
+            SPEEDOMETER_PERIOD, self.pub_speedometer
         )
         
         self.tf_buffer = Buffer()
@@ -659,16 +695,18 @@ class SimBridgeNode(Node):
 
         # Attach front camera's IMU
         primary_imu_bp = self.blueprint_library.find('sensor.other.imu')
-        primary_imu_bp.set_attribute('sensor_tick', str(0.1))
+        primary_imu_bp.set_attribute('sensor_tick', str(0.025))
+        # primary_imu_bp.set_attribute('noise_accel_stddev_x', str(0.2))
+        # primary_imu_bp.set_attribute('noise_accel_stddev_y', str(0.2))
+        # primary_imu_bp.set_attribute('noise_accel_stddev_z', str(0.2))
+        # primary_imu_bp.set_attribute('noise_gyro_stddev_x', str(0.03))
+        # primary_imu_bp.set_attribute('noise_gyro_stddev_y', str(0.03))
+        # primary_imu_bp.set_attribute('noise_gyro_stddev_z', str(0.03))
+        primary_imu_bp.set_attribute('sensor_tick', str(0.025))
         # TODO: Add covariance. WSH.
         relative_transform = carla.Transform(carla.Location(x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
         self.primary_imu = self.world.spawn_actor(primary_imu_bp, relative_transform, attach_to=self.ego)
         self.primary_imu.listen(self.primary_imu_cb)
-
-    def spawn_obstacles(self):
-        walker_controller_bp = world.get_blueprint_library().find('controller.ai.walker')
-        for i in range(OBSTACLE_QTY_PED):
-            self.world.SpawnActor(walker_controller_bp, carla.Transform(), parent_walker)
 
 def main(args=None):
     rclpy.init(args=args)
