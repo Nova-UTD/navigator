@@ -15,6 +15,7 @@
 #include <tf2/utils.h>
 #include <string>
 #include <functional>
+#include <math.h>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -277,6 +278,28 @@ void MotionControlNode::visualize_markers(std::string frame_id, rclcpp::Time tim
     trajectory_mark.points.push_back(p);
   }
 
+  Marker circle_mark;
+  circle_mark.type = Marker::CYLINDER;
+  circle_mark.header.stamp = time;
+  circle_mark.header.frame_id = frame_id;
+  circle_mark.ns = "lookahead_circle";
+  circle_mark.action = Marker::ADD;
+
+  circle_mark.scale.x = this->steering_controller->get_lookahead_distance() * 2; // Diameter
+  circle_mark.scale.y = this->steering_controller->get_lookahead_distance() * 2; // Diameter width of ellipse
+  circle_mark.scale.z = 0.1;
+  circle_mark.frame_locked = true;
+
+  circle_mark.pose.position.x = this->current_position.x;
+  circle_mark.pose.position.y = this->current_position.y;
+  circle_mark.pose.position.z = this->current_position.z;
+
+  circle_mark.color.r = 0.96;
+  circle_mark.color.g = 0.831;
+  circle_mark.color.b = 0.153;
+  circle_mark.color.a = 0.7;
+
+
   Marker lookahead_point_mark;
   lookahead_point_mark.type = Marker::POINTS;
   lookahead_point_mark.header.stamp = time;
@@ -297,6 +320,7 @@ void MotionControlNode::visualize_markers(std::string frame_id, rclcpp::Time tim
   p.y = this->steering_controller->get_lookahead_point_y();
   lookahead_point_mark.points.push_back(p);
 
+  recorded_markers.markers.push_back(circle_mark);
   recorded_markers.markers.push_back(trajectory_mark);
   recorded_markers.markers.push_back(lookahead_point_mark);
   this->marker_array_publisher->publish(recorded_markers);
