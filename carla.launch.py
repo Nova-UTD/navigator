@@ -119,7 +119,8 @@ def generate_launch_description():
         name='localization_map_odom',
         parameters=[(path.join(param_dir,"atlas","map_odom.param.yaml"))],
         remappings=[
-            ("/odom0", "/gnss/odom")
+            ("/odom0", "/gnss/odom"),
+            ("/imu0", "/imu_primary/data")
         ]
     )
 

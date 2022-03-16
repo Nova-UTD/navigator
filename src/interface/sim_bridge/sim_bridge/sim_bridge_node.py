@@ -217,14 +217,14 @@ class SimBridgeNode(Node):
         imu_msg = Imu()
 
         imu_msg.header.stamp = self.get_clock().now().to_msg()
-        imu_msg.header.frame_id = '/base_link' # TODO add custom tf frame. WSH.
-        # TODO convert coordinate frame from Unreal Engine's to ROS's. WSH.
+        imu_msg.header.frame_id = 'imu'
+        # UE4 uses a left-handed system, so we must invert y axis and angles. WSH
         imu_msg.linear_acceleration.x = data.accelerometer.x
-        imu_msg.linear_acceleration.y = data.accelerometer.y
+        imu_msg.linear_acceleration.y = data.accelerometer.y * -1
         imu_msg.linear_acceleration.z = data.accelerometer.z
-        imu_msg.angular_velocity.x = data.gyroscope.x
-        imu_msg.angular_velocity.y = data.gyroscope.y
-        imu_msg.angular_velocity.z = data.gyroscope.z
+        imu_msg.angular_velocity.x = data.gyroscope.x * -1 
+        imu_msg.angular_velocity.y = data.gyroscope.y * -1
+        imu_msg.angular_velocity.z = data.gyroscope.z * -1
 
         self.primary_imu_pub.publish(imu_msg)
     

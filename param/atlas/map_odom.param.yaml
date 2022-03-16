@@ -2,7 +2,7 @@
 ---
 /**:
   ros__parameters:
-    frequency: 2.0 # Estimate update frequency, Hz, double
+    frequency: 10.0 # Estimate update frequency, Hz, double
     world_frame: "map"
     two_d_mode: true
     transform_time_offset: 0.5 # seconds
@@ -12,7 +12,7 @@
                    false, false, false, false, false, false,
                    false, false, false]
 
-    # imu1: "/imu0" # Angular vel, linear acc
-    # imu1_config: [false, false, false, false, false, false,
-    #                false, false, false, true, true, false,
-    #                true, true, false]
+    imu1: "/imu0" # Angular vel, linear acc
+    imu1_config: [false, false, false, false, false, false,
+                   false, false, false, true, true, false,
+                   true, true, false]

@@ -51,7 +51,7 @@
   <joint name="imu_joint" type="fixed">
     <parent link="base_link"/>
     <child link="imu"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <origin xyz="3.4 0.0 1.0" rpy="0 0 0"/>
   </joint>
 
   <link name="gnss"/>
