@@ -249,6 +249,11 @@ class SimBridgeNode(Node):
         cmd.brake = self.brake_cmd
         cmd.steer = self.steering_cmd
         cmd.reverse = self.reverse_cmd
+        vel = self.ego.get_velocity()
+        speed = math.floor(math.sqrt((vel.x ** 2) + (vel.y ** 2) + (vel.z ** 2))/0.447) * 0.447
+        if (speed > 10.2):
+            cmd.throttle = 0.0 # Cap our speed at 23 mph. WSH.
+            self.get_logger().warn("Your speed of {} has maxed out".format(speed))
         self.ego.apply_control(cmd)
 
     def sem_lidar_cb(self, data: carla.SemanticLidarMeasurement):
