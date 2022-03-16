@@ -30,6 +30,8 @@ PurePursuit::PurePursuit(float lookahead_distance) {
     this->curvature = 0.0;
     this->steering_angle = 0.0;
 
+    this->displacement_error = 0.0;
+
 }
 
 PurePursuit::~PurePursuit() {}
@@ -40,10 +42,15 @@ float PurePursuit::get_lookahead_distance() { return lookahead_distance; }
 float PurePursuit::get_lookahead_point_x() { return lookahead_point_x; }
 float PurePursuit::get_lookahead_point_y() { return lookahead_point_y; }
 
+float PurePursuit::get_displacement_error() { return displacement_error; }
+
 void PurePursuit::set_lookahead_point(float x, float y) {
     lookahead_point_x = x;
     lookahead_point_y = y;
 }
+
+void PurePursuit::set_displacement_error(float displacement) { this->displacement_error = displacement; }
+
 
 void PurePursuit::compute_curvature() {
     double denominator = pow(lookahead_point_x, 2) + pow(lookahead_point_y, 2);

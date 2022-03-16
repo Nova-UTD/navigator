@@ -43,7 +43,7 @@ MotionControlNode::MotionControlNode() : rclcpp::Node("pure_pursuit_controller")
     <Trajectory>("reference_trajectory", 8, std::bind(&MotionControlNode::update_trajectory, this, _1));
 
   this->odometry_subscription = this->create_subscription
-    <Odometry>("/carla/odom", 8, std::bind(&MotionControlNode::update_current_position, this, _1));
+    <Odometry>("/carla/odom", 8, std::bind(&MotionControlNode::update_odometry, this, _1));
   
   // Output
   this->steering_control_publisher = this->create_publisher
@@ -63,8 +63,7 @@ MotionControlNode::~MotionControlNode() {}
 
 void MotionControlNode::send_message() {
 
-  //compute_lookahead_point();
-  compute_lookahead_point_v2();
+  lookahead_coupling();
 
   // format of published message
   auto steering_angle_msg = SteeringPosition();
@@ -80,11 +79,15 @@ void MotionControlNode::update_trajectory(Trajectory::SharedPtr ptr) {
   this->trajectory = *ptr;
 }
 
-void MotionControlNode::update_current_position(Odometry::SharedPtr ptr) {
+void MotionControlNode::update_odometry(Odometry::SharedPtr ptr) {
 
   //RCLCPP_INFO(this->get_logger(), "Current position received!");
   this->current_position.x = ptr->pose.pose.position.x;
   this->current_position.y = ptr->pose.pose.position.y;
+
+  tf2::Vector3 vector_velocity(ptr->twist.twist.linear.x, ptr->twist.twist.linear.y, ptr->twist.twist.linear.z);
+  this->current_speed = std::sqrt( vector_velocity.dot(vector_velocity) ); // magnitude of vector
+  this->speed_controller->set_measurement(current_speed);
 
   // Report error & delete trajectory points behind the closest point
   size_t closest_point_idx = find_closest_point();
@@ -115,8 +118,7 @@ size_t MotionControlNode::find_closest_point() {
 
   }
 
-  //std::cout << "Displacement: " << minimum_distance << std::endl;
-
+  this->steering_controller->set_displacement_error(minimum_distance);
   return closest_point_idx;
 }
 
@@ -135,7 +137,7 @@ void MotionControlNode::trim_trajectory(size_t closest_point_idx) {
   this->trajectory.points.shrink_to_fit();                 // Release allocated memory
 }
 
-size_t MotionControlNode::find_waypoint(float lookahead_distance, TrajectoryPoint& current_position) {
+size_t MotionControlNode::find_next_waypoint(float lookahead_distance, TrajectoryPoint& current_position) {
 
   size_t next_waypoint_idx;
 
@@ -155,88 +157,19 @@ size_t MotionControlNode::find_waypoint(float lookahead_distance, TrajectoryPoin
   return next_waypoint_idx;
 }
 
+void MotionControlNode::compute_target_speed(const TrajectoryPoint start, const TrajectoryPoint end) {
 
-void MotionControlNode::compute_lookahead_point_v2() {
-  //https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm/1084899#1084899
-  //https://math.stackexchange.com/questions/311921/get-location-of-vector-circle-intersection
+  float lookahead_time = this->steering_controller->get_lookahead_distance() / this->current_speed;
 
-  if (this->trajectory.points.empty()) {
-    return;
-  }
-
-  size_t next_waypoint_idx = find_waypoint(this->steering_controller->get_lookahead_distance(), this->current_position);
-
-  TrajectoryPoint waypoint = this->trajectory.points[next_waypoint_idx]; //waypoint just outside of lookahead distance
-  TrajectoryPoint in_range_point = this->trajectory.points[next_waypoint_idx - 1];
-  TrajectoryPoint current_pose = this->current_position; //current_position
-  float radius = this->steering_controller->get_lookahead_distance();
-
-  tf2::Vector3 d(waypoint.x - in_range_point.x, waypoint.y - in_range_point.y, 0.0);
-  tf2::Vector3 f(in_range_point.x - current_pose.x, in_range_point.y - current_pose.y, 0.0);
-
-  float a = d.dot(d);
-  float b = 2 * f.dot(d);
-  float c = f.dot(f) - (radius*radius);
-
-  float discriminant = (b*b) - (4*a*c);
-
-  float t_intersection = 0.0;
-
-  if (discriminant < 0) {
-
-    std::cout << "No intersection" << std::endl;
-
-  } else {
-
-    // Quadratics formula
-    discriminant = std::sqrt(discriminant);
-
-    if (a == 0.0) {
-      a += 0.001;
-    }
-
-    float t1 = ((-b)-discriminant) / (2*a);
-    float t2 = ((-b)+discriminant) / (2*a);
-
-    if (t1 >= 0 && t1 <= 2) {
-
-      std::cout << "Intersection detected" << std::endl;
-      t_intersection = t1;
-    }
-    else if (t2 >= 0 && t2 <= 1) {
-
-      std::cout << "Intersection detected" << std::endl;
-      t_intersection = t2;
-    }
-    else {
-
-      std::cout << "No intersection" << std::endl;
-    }
-
-
-  }
-
-  // TODO: Look into node crashes at the end of the trajectory
-  // TODO: investigage cases for "no intersection" ("intersection" is always signaled)
-
-  // Find the intersection point
-  TrajectoryPoint lookahead_point;
-  lookahead_point.x = (d.getX() * t_intersection) + waypoint.x;
-  lookahead_point.y = (d.getY() * t_intersection) + waypoint.y;
-
-  std::cout << "LOOKAHEAD_POINT:" << std::endl;
-  std::cout << lookahead_point.x << "\t" << lookahead_point.y << std::endl;
-
-  std::cout << "CURRENT_POINT:" << std::endl;
-  std::cout << current_pose.x << "\t" << current_pose.y << std::endl;
-
-  this->steering_controller->set_lookahead_point(lookahead_point.x, lookahead_point.y);
+  float lookahead_speed = (end.longitudinal_velocity_mps + start.longitudinal_velocity_mps) / 2; // average of two velocities
+  lookahead_speed = abs(lookahead_speed);
+  
+  float target_acceleration = (lookahead_speed - this->current_speed) / lookahead_time;
+  this->speed_controller->set_target(this->current_speed + target_acceleration);
 }
 
-
-
 /** Interpolate lookahead point for steering angle calculation */
-bool MotionControlNode::compute_lookahead_point() {
+bool MotionControlNode::compute_lookahead_point(const TrajectoryPoint start, const TrajectoryPoint end) {
 
   if (this->trajectory.points.empty()) {
     return false;
@@ -245,17 +178,8 @@ bool MotionControlNode::compute_lookahead_point() {
   float lookahead_distance = steering_controller->get_lookahead_distance();
   TrajectoryPoint current_position = this->current_position;
 
-
-  // Find first point outside lookahead distance to use to find lookahead point
-  int next_waypoint_idx = find_waypoint(lookahead_distance, current_position);
-
-
   // TODO perform check that curve exists
   // TODO special logic if chosen waypoint is first or last in trajectory
-
-
-  const TrajectoryPoint start = trajectory.points[next_waypoint_idx - 1];
-  const TrajectoryPoint end = trajectory.points[next_waypoint_idx];
 
   // Project vehicle's current position onto line between start and end points
   const tf2::Vector3 p_A(start.x, start.y, 0.0);
@@ -294,6 +218,20 @@ bool MotionControlNode::compute_lookahead_point() {
   }
 
   return true;
+}
+
+void MotionControlNode::lookahead_coupling() {
+
+    if (this->trajectory.points.empty()) {
+    return;
+  }
+
+  size_t next_waypoint_idx = find_next_waypoint(this->steering_controller->get_lookahead_distance(), this->current_position);
+  TrajectoryPoint out_of_range_point = this->trajectory.points[next_waypoint_idx]; // point just outside of the lookahead distance
+  TrajectoryPoint in_range_point = this->trajectory.points[next_waypoint_idx - 1];
+
+  compute_lookahead_point(in_range_point, out_of_range_point);
+  compute_target_speed(in_range_point, out_of_range_point);
 }
 
 float MotionControlNode::get_steering_angle() {

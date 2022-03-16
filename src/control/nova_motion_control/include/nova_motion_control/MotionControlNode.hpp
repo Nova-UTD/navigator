@@ -67,19 +67,21 @@ private:
 
     Trajectory trajectory;
     TrajectoryPoint current_position;
+    float current_speed;
 
     // functions
     void send_message();
     void update_trajectory(Trajectory::SharedPtr ptr);
-    void update_current_position(Odometry::SharedPtr ptr);
+    void update_odometry(Odometry::SharedPtr ptr);
     void visualize_markers(std::string frame_id, rclcpp::Time time);
 
     size_t find_closest_point();
-    size_t find_waypoint(float lookahead_distance, TrajectoryPoint& current_position);
+    size_t find_next_waypoint(float lookahead_distance, TrajectoryPoint& current_position);
 
     void trim_trajectory(size_t current_point_idx);
-    bool compute_lookahead_point();
-    void compute_lookahead_point_v2();
+    bool compute_lookahead_point(const TrajectoryPoint start, const TrajectoryPoint end);
+    void compute_target_speed(const TrajectoryPoint start, const TrajectoryPoint end);
+    void lookahead_coupling();
     float get_steering_angle();
 };
 

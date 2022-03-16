@@ -26,7 +26,10 @@ public:
     float get_lookahead_point_x();
     float get_lookahead_point_y();
 
+    float get_displacement_error();
+
     void set_lookahead_point(float x, float y);
+    void set_displacement_error(float displacement);
 
     double compute_steering_angle();
     void compute_curvature();
@@ -43,6 +46,7 @@ private:
     float lookahead_distance;
     double curvature;
     double steering_angle;
+    float displacement_error;
 
     // functions
     void set_lookahead_distance(float lookahead_distance);
