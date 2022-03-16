@@ -191,7 +191,7 @@ class SimBridgeNode(Node):
         ego_quat = R.from_euler(
             'yzx',
             [ego_tf.rotation.pitch*-1*math.pi/180.0,
-            ego_tf.rotation.yaw*-1*math.pi/180.0-math.pi,
+            ego_tf.rotation.yaw*-1*math.pi/180.0,
             ego_tf.rotation.roll*-1*math.pi/180.0]
         ).as_quat()
         posewithcov.pose.orientation.x = ego_quat[0]
@@ -262,11 +262,6 @@ class SimBridgeNode(Node):
             bytes(data.raw_data), dtype=np.float32)
         lidar_data = np.reshape(
             lidar_data, (int(lidar_data.shape[0] / 6), 6))
-        lidar_dar = np.append(
-            lidar_data,
-            np.zeros((lidar_data.shape[0], 3)),
-            axis=1
-        ) # Cols for r,g,b. WSH.
         lidar_data.dtype=[
             ('x', np.float32),
             ('y', np.float32),
@@ -282,6 +277,14 @@ class SimBridgeNode(Node):
         msg = rnp.msgify(PointCloud2, lidar_data)
         msg.header = header
         self.sem_lidar_pub.publish(msg)
+
+        lidar_data = lidar_data[lidar_data['intensity'] == 7.0]
+        msg = rnp.msgify(PointCloud2, lidar_data)
+        msg.header = header
+        self.sem_road_lidar_pub.publish(msg)
+
+        # for detection in data:
+        #     self.get_logger().info("{}".format(detection))
 
     def steering_command_cb(self, msg: SteeringPosition):
         self.steering_cmd = msg.data
@@ -474,6 +477,12 @@ class SimBridgeNode(Node):
         self.sem_lidar_pub = self.create_publisher(
             PointCloud2,
             '/lidar/semantic',
+            10
+        )
+
+        self.sem_road_lidar_pub = self.create_publisher(
+            PointCloud2,
+            '/lidar/semantic/road',
             10
         )
 
