@@ -62,6 +62,9 @@ PULBISH_MAP_BL_TRANSFORM = False
 import sys
 sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
 
+import sys
+sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
+
 import carla
 
 import rclpy

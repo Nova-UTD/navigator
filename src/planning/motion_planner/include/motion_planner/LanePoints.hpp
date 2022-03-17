@@ -1,21 +1,21 @@
 /*
- * Package:   path_planner
- * Filename:  lane_points.hpp
+ * Package:   MotionPlanner
+ * Filename:  LanePoints.hpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
  * License:   MIT License
  */
 
-#ifndef PATH_PLANNER__LANE_POINTS_HPP_
-#define PATH_PLANNER__LANE_POINTS_HPP_
+#ifndef MotionPlanner__LanePoints_HPP_
+#define MotionPlanner__LanePoints_HPP_
 
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Point.h>
 
 namespace navigator
 {
-    namespace path_planner
+    namespace MotionPlanner
     {
         //represents a sampling of points for the left boundary, center line, and right boundary of a lane
 
