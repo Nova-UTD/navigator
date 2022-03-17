@@ -50,7 +50,7 @@ namespace navigator
             //assigns a velocity to each point in the path, respecting vehicle parameters, avoiding collisions, and limiting the max speed
             //COLLISIONS SHOULD BE SORTED BY CLOSEST FIRST
             //returns the sum of 1/(potential collision time) for all collisions that cross the path
-            double assign_velocity(const voltron_msgs::msg::CostedPath ideal_path, SegmentedPath& assignee, const CarPose& my_pose, const std::vector<Collision>& collisions) const;
+            double assign_velocity(const voltron_msgs::msg::CostedPath ideal_path, SegmentedPath& assignee, const CarPose& my_pose, const std::vector<double>& bp_speed_limit, const std::vector<Collision>& collisions) const;
             //
             double cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose, size_t start, size_t end) const;
             //currently, these numbers are chosen as a guess. they will need to be determined later for safety.
@@ -61,7 +61,7 @@ namespace navigator
             const double spacing = 0.25; //meters between points on path
             const double max_steering_angle = 1; //max angle the car can turn in radians
             const double max_steering_speed = 0.1; //max speed we can change the car's direction in radians/sec (ignoring speed)
-            const double max_lateral_accel = 10; //max acceleration of the car on turns (used to prevent skidding/flipping)
+            const double max_lateral_accel = 10000; //max acceleration of the car on turns (used to prevent skidding/flipping)
             const double max_accel = 1;
             const double max_brake_accel = 5;
             const double car_size_x = 1.5; //width of the car
@@ -72,6 +72,7 @@ namespace navigator
         private:
             //gets iteration bounds on the chosen input path based on car position and the horizon size
             std::pair<size_t,size_t> get_path_bounds(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const;
+            void put_speed(SegmentedPath& assignee, const std::vector<double>& speed) const;
         };
     }
 }

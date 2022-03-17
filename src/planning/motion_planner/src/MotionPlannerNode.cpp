@@ -40,7 +40,8 @@ MotionPlannerNode::MotionPlannerNode(const rclcpp::NodeOptions &node_options) :
     tf_listener(tf_buffer, std::shared_ptr<rclcpp::Node>(this, [](auto) {}), false)
 {
     RCLCPP_WARN(this->get_logger(), "motion planner constructor");
-    trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectories>("outgoing_trajectories", 8);
+    trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectory>("outgoing_trajectories", 8);
+    trajectory_viz_publisher = this->create_publisher<voltron_msgs::msg::Trajectories>("outgoing_trajectories_viz", 8);
     path_subscription = this->create_subscription<voltron_msgs::msg::CostedPaths>("paths", 8, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
     odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
     //current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
@@ -77,15 +78,16 @@ void MotionPlannerNode::send_message() {
         auto point = voltron_msgs::msg::TrajectoryPoint();
         point.x = trajectory.points->at(i).x;
         point.y = trajectory.points->at(i).y;
-        point.vx = 0;
-        point.vy = 0;
+        point.vx = trajectory.points->at(i).vx;
+        point.vy = trajectory.points->at(i).vy;
         trajectory_message.points.push_back(point);
       }
       trajectory_message.id = t;
       trajectory_message.selected = (t == min_index) ? 1 : 0;
       trajectories.trajectories.push_back(trajectory_message);
     }
-    trajectory_publisher->publish(trajectories);
+    trajectory_viz_publisher->publish(trajectories);
+    trajectory_publisher->publish(trajectories.trajectories[min_index]);
 }
 
 void MotionPlannerNode::update_path(voltron_msgs::msg::CostedPaths::SharedPtr ptr) {

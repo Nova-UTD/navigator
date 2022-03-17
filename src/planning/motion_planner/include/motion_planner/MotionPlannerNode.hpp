@@ -68,7 +68,8 @@ private:
           geometry_msgs::msg::PoseStamped &pose_out);
     void update_steering_angle(std_msgs::msg::Float32::SharedPtr ptr);
 
-    rclcpp::Publisher<voltron_msgs::msg::Trajectories>::SharedPtr trajectory_publisher;
+    rclcpp::Publisher<voltron_msgs::msg::Trajectory>::SharedPtr trajectory_publisher;
+    rclcpp::Publisher<voltron_msgs::msg::Trajectories>::SharedPtr trajectory_viz_publisher;
     rclcpp::Subscription<voltron_msgs::msg::CostedPaths>::SharedPtr path_subscription;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr perception_subscription;
     rclcpp::Subscription<VehicleKinematicState>::SharedPtr current_pose_subscription;

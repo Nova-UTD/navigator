@@ -183,6 +183,13 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
     
     auto candidates = std::make_shared<vector<SegmentedPath>>();
     auto base = SegmentedPath(linear_points);
+    
+    //temp until behavior planner exists
+    std::vector<double> speed_limit;
+    for (size_t i = 0; i < base.points->size(); i++) {
+        speed_limit.push_back(8.94); //20 mph in m/s
+    }
+
     auto bounds = get_path_bounds(ideal_path, pose);
     base.cost = cost_path(base, ideal_path, pose, bounds.first, bounds.second);
     candidates->push_back(base);
@@ -199,20 +206,26 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
         }
     }
     //assign velocity to each path
+    
     for (size_t i = 0; i < candidates->size(); i++) {
         auto candidate = candidates->at(i);
-        assign_velocity(ideal_path, candidate, pose, get_collisions(candidate, colliders));
+        assign_velocity(ideal_path, candidate, pose, speed_limit, get_collisions(candidate, colliders));
     }
     return candidates;
 }
 
-//COLLISIONS SHOULD BE SORTED BY CLOSEST FIRST
-double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_path, SegmentedPath& assignee, const CarPose& my_pose, const std::vector<Collision>& collisions) const {
-    //temp until behavior planner exists
-    std::vector<double> speed_limit(assignee.points->size());
+void MotionPlanner::put_speed(SegmentedPath& assignee, const std::vector<double>& speed) const {
     for (size_t i = 0; i < assignee.points->size(); i++) {
-        speed_limit.push_back(8.94); //20 mph in m/s
+        double angle = assignee.heading(i);
+        PathPoint point = assignee.points->at(i); 
+        const PathPoint v_point(point.x,point.y,std::cos(angle)*speed[i], std::sin(angle)*speed[i]);
+        assignee.points->at(i) = v_point;
     }
+}
+
+//COLLISIONS SHOULD BE SORTED BY CLOSEST FIRST
+double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_path, SegmentedPath& assignee, const CarPose& my_pose, const std::vector<double>& bp_speed_limit, const std::vector<Collision>& collisions) const {
+    std::vector<double> speed_limit = bp_speed_limit;
     double curr_speed = my_pose.speed();
     size_t speed_index = 0;
     //calculate accelerating up to speed limit
@@ -237,6 +250,9 @@ double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_
         double r = 1/curvature;
         speed_limit[i] = std::min(speed_limit[i], std::sqrt(max_lateral_accel*r));
     }
+
+    //TODO: smooth here
+
     //calcuate speed to avoid obstacles
     double reciprocal_collision_time_sum = 0;
     for (size_t i = 0; i < collisions.size(); i++) {
@@ -357,6 +373,7 @@ double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_
             speed_limit[j] = new_speed; // this is less than the old speed limit
         }
     }
+    this->put_speed(assignee, speed_limit);
     return reciprocal_collision_time_sum;
 }
 
