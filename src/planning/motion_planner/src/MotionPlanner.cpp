@@ -159,7 +159,7 @@ std::vector<autoware_auto_msgs::msg::TrajectoryPoint> MotionPlanner::get_center_
     return line_points;
 }
 
-std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose, const std::vector<CarPose>& colliders) {
+std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const voltron_msgs::msg::FinalPath::SharedPtr ideal_path, const CarPose pose, const std::vector<CarPose>& colliders) {
     //generates a bunch of different candidate paths for the car for the car to follow
     //if memory becomes an issue, could generate and cost the paths on demand, and recreate the lowest cost one.
     using namespace std;
@@ -450,29 +450,29 @@ std::vector<Collision> MotionPlanner::get_collisions(const SegmentedPath& path, 
     return output;
 }
 
-double MotionPlanner::cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose, size_t start, size_t end) const {
+double MotionPlanner::cost_path(const SegmentedPath &path, const voltron_msgs::msg::FinalPath::SharedPtr ideal_path, const CarPose pose, size_t start, size_t end) const {
     double dist = INFINITY;
     if (start <= end) {
         dist = 0;
         for (size_t i = start; i < end; i++) {
-            dist += path.distance(PathPoint(ideal_path.points[i].x,ideal_path.points[i].y));
+            dist += path.distance(PathPoint(ideal_path->points[i].x,ideal_path->points[i].y));
         }
     } else {
         dist = 0;
         for (size_t i = start; i > end; i--) {
-            dist += path.distance(PathPoint(ideal_path.points[i].x,ideal_path.points[i].y));
+            dist += path.distance(PathPoint(ideal_path->points[i].x,ideal_path->points[i].y));
         }
     }
     return dist;
 }
 
-std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const {
+std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg::FinalPath::SharedPtr ideal_path, const CarPose pose) const {
     //find closest point to car on ideal path
     size_t closest = 0;
     bool found = false;
     double min_dist = INFINITY;
-    for (size_t i = 0; i < ideal_path.points.size(); i++) {
-        const auto ideal = ideal_path.points[i];
+    for (size_t i = 0; i < ideal_path->points.size(); i++) {
+        const auto ideal = ideal_path->points[i];
         double d = (pose.x-ideal.x)*(pose.x-ideal.x)+(pose.y-ideal.y)*(pose.x-ideal.y);
         if (d < min_dist) {
             closest = i;
@@ -487,11 +487,11 @@ std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg:
 
     //find direction of car relative to ideal path (should we iterate forward or backward for distance horizon?)
     int direction = 1;
-    if (closest == ideal_path.points.size()-1) direction = -1;
-    if (ideal_path.points.size() > 1) {
+    if (closest == ideal_path->points.size()-1) direction = -1;
+    if (ideal_path->points.size() > 1) {
         //if dot product of the direction the path is going and the car heading is non-negative,
         //we iterate forward (the car is going in the same direction as the path)
-        PathPoint dir_vec = PathPoint(ideal_path.points[closest+1].x-ideal_path.points[closest].x,ideal_path.points[closest+1].y-ideal_path.points[closest].y);
+        PathPoint dir_vec = PathPoint(ideal_path->points[closest+1].x-ideal_path->points[closest].x,ideal_path->points[closest+1].y-ideal_path->points[closest].y);
         PathPoint heading_vec = PathPoint(cos(pose.heading), sin(pose.heading));
         double dot = dir_vec.x*heading_vec.x+dir_vec.y*heading_vec.y;
         direction = (dot >= 0) ? 1 : -1;
@@ -501,9 +501,9 @@ std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg:
     // or we hit either end of the path lol
     double acc_dist_sqr = 0;
     size_t end = closest+direction;
-    auto prev = ideal_path.points[closest];
-    while (acc_dist_sqr < horizon*horizon && end < ideal_path.points.size()) {
-        auto curr = ideal_path.points[end];
+    auto prev = ideal_path->points[closest];
+    while (acc_dist_sqr < horizon*horizon && end < ideal_path->points.size()) {
+        auto curr = ideal_path->points[end];
         acc_dist_sqr = (curr.x-prev.x)*(curr.x-prev.x)+(curr.y-prev.y)*(curr.y-prev.y);
         if (end == 0 && direction == -1) break; //avoid underflow (at bound anyway)
         end += direction;

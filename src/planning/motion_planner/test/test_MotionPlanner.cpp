@@ -10,7 +10,7 @@
 #include <motion_planner/MotionPlanner.hpp>
 #include <geometry/common_2d.hpp>
 #include <memory>
-#include "voltron_msgs/msg/costed_path.hpp"
+#include "voltron_msgs/msg/final_path.hpp"
 
 #include "gtest/gtest.h"
 
@@ -171,13 +171,13 @@ TEST_F(MotionPlannerTest, test_collision) {
 TEST_F(MotionPlannerTest, test_linear_speed) {
   using namespace navigator::MotionPlanner;
   //create vertical path from (0,0) to (0,4)
-  voltron_msgs::msg::CostedPath path;
+  auto path = std::make_shared<voltron_msgs::msg::FinalPath>();
   
-  path.points.push_back(get_ros_point(0,0));
-  path.points.push_back(get_ros_point(0,1));
-  path.points.push_back(get_ros_point(0,2));
-  path.points.push_back(get_ros_point(0,3));
-  path.points.push_back(get_ros_point(0,4));
+  path->points.push_back(get_ros_point(0,0));
+  path->points.push_back(get_ros_point(0,1));
+  path->points.push_back(get_ros_point(0,2));
+  path->points.push_back(get_ros_point(0,3));
+  path->points.push_back(get_ros_point(0,4));
 
   double speed_limit = 8.94;
 
@@ -195,11 +195,11 @@ TEST_F(MotionPlannerTest, test_linear_speed) {
 TEST_F(MotionPlannerTest, test_accel_smoothing) {
   using namespace navigator::MotionPlanner;
   //create vertical path from (0,0) to (0,3)
-  voltron_msgs::msg::CostedPath path;
+  auto path = std::make_shared<voltron_msgs::msg::FinalPath>();
   
   for (size_t i = 0; i < 4; i++)
   {
-    path.points.push_back(get_ros_point(0,i));
+    path->points.push_back(get_ros_point(0,i));
   }
 
   double speed_limit = 8.94; //big speed limit will never be reached

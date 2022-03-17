@@ -42,7 +42,7 @@ MotionPlannerNode::MotionPlannerNode(const rclcpp::NodeOptions &node_options) :
     RCLCPP_WARN(this->get_logger(), "motion planner constructor");
     trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectory>("outgoing_trajectories", 8);
     trajectory_viz_publisher = this->create_publisher<voltron_msgs::msg::Trajectories>("outgoing_trajectories_viz", 8);
-    path_subscription = this->create_subscription<voltron_msgs::msg::CostedPaths>("paths", 8, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
+    path_subscription = this->create_subscription<voltron_msgs::msg::FinalPath>("final_path", 10, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
     odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
     //current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
     steering_angle_subscription = this->create_subscription<std_msgs::msg::Float32>("real_steering_angle", 8, bind(&MotionPlannerNode::update_steering_angle, this, std::placeholders::_1));
@@ -90,22 +90,8 @@ void MotionPlannerNode::send_message() {
     trajectory_publisher->publish(trajectories.trajectories[min_index]);
 }
 
-void MotionPlannerNode::update_path(voltron_msgs::msg::CostedPaths::SharedPtr ptr) {
-    if (ptr->paths.size() == 0) {
-      return; //if there is no path, continue using the old one
-      //should probably raise an alert, but idk if that's this node's responsibility
-    }
-    //select min cost path
-    size_t min_index = 0;
-    double min_cost = ptr->paths[min_index].safety_cost+ptr->paths[min_index].routing_cost;
-    for (size_t i = 1; i < ptr->paths.size(); i++) {
-        double item_cost = ptr->paths[i].safety_cost+ptr->paths[i].routing_cost;
-        if (min_cost > item_cost) {
-            min_cost = item_cost;
-            min_index = i;
-        }
-    }
-    ideal_path = ptr->paths[min_index];
+void MotionPlannerNode::update_path(voltron_msgs::msg::FinalPath::SharedPtr ptr) {
+    ideal_path = ptr;
 }
 
 void MotionPlannerNode::update_steering_angle(std_msgs::msg::Float32::SharedPtr ptr) {
