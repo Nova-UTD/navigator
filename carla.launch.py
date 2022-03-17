@@ -33,10 +33,6 @@ def generate_launch_description():
         executable='svl_bridge_exe',
     )
 
-    svl_bridge = Node(
-        executable='lgsvl_bridge',
-    )
-
     epas_reporter = Node(
         package='epas_translator',
         executable='reporter',
@@ -301,7 +297,6 @@ def generate_launch_description():
         # epas_controller,
         # epas_reporter,
         # gnss,
-        svl_bridge,
         # vehicle_bridge,
         # speedometer_reporter,
 
