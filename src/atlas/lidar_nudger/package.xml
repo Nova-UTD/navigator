@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>odr_visualizer</name>
+  <name>lidar_nudger</name>
   <version>0.0.1</version>
-  <description>Package for reading a .xodr file and publishing a MarkerArray message</description>
+  <description>Package to form a state estimate using lidar semantic segmentation and an HD map</description>
   <maintainer email="will.heitman@utdallas.edu">Will Heitman</maintainer>
   <license>MIT</license>
 
