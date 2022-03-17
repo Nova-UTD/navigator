@@ -209,7 +209,7 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
     
     for (size_t i = 0; i < candidates->size(); i++) {
         auto candidate = candidates->at(i);
-        assign_velocity(ideal_path, candidate, pose, speed_limit, get_collisions(candidate, colliders));
+        assign_velocity(candidate, pose, speed_limit, get_collisions(candidate, colliders));
     }
     return candidates;
 }
@@ -223,22 +223,48 @@ void MotionPlanner::put_speed(SegmentedPath& assignee, const std::vector<double>
     }
 }
 
+void MotionPlanner::smooth(std::vector<double>& speed_limit, double speed) const {
+    double curr_speed = speed;
+    //acceleration
+    for (size_t i = 0; i < speed_limit.size(); i++)
+    {
+        while (i < speed_limit.size() && speed_limit[i] > curr_speed)
+        {
+            curr_speed = std::min(speed_limit[i], curr_speed);
+            speed_limit[i] = curr_speed;
+            //update speed after this point
+            //this is from kinetic energy
+            curr_speed = std::sqrt(2*max_accel*spacing+curr_speed*curr_speed);
+            i++;
+        }
+    }
+    //braking (currently this slams on the brakes lol)
+    double target_speed = speed_limit.back();
+
+    for (size_t i = 0; i < speed_limit.size(); i++)
+    {
+        size_t index = speed_limit.size()-i-1; //go through in reverse order
+        while (i < speed_limit.size() && speed_limit[index] > target_speed)
+        {
+            index = speed_limit.size()-i-1;
+            target_speed = std::min(speed_limit[index], target_speed);
+            speed_limit[index] = target_speed;
+            //update speed after this point
+            //this is from kinetic energy (remember that target_speed is v_f and we are trying to find v_0)
+            double new_target_sqr = target_speed*target_speed-2*max_brake_accel*spacing;
+            new_target_sqr = std::max(0.0,new_target_sqr);
+            target_speed = std::sqrt(new_target_sqr);
+            
+            i++;
+        }
+    }
+}
+
 //COLLISIONS SHOULD BE SORTED BY CLOSEST FIRST
-double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_path, SegmentedPath& assignee, const CarPose& my_pose, const std::vector<double>& bp_speed_limit, const std::vector<Collision>& collisions) const {
+double MotionPlanner::assign_velocity(SegmentedPath& assignee, const CarPose& my_pose, const std::vector<double>& bp_speed_limit, const std::vector<Collision>& collisions) const {
     std::vector<double> speed_limit = bp_speed_limit;
     double curr_speed = my_pose.speed();
     size_t speed_index = 0;
-    //calculate accelerating up to speed limit
-    //could probably extract this out so this work isn't done for each path. will wait until behavior planner to do this though
-    while (speed_limit[speed_index] > curr_speed) {
-        if (curr_speed == 0)
-            curr_speed = max_accel*std::sqrt(2*spacing/max_accel);
-        else
-            curr_speed += (spacing/curr_speed)*max_accel;
-        curr_speed = std::min(speed_limit[speed_index], curr_speed);
-        speed_limit[speed_index] = curr_speed;
-        speed_index++;
-    }
     //calcuate speed limit in terms of max lateral acceleration, set the speed limit to the minimum of this and the road's speed limit
     for (size_t i = 0; i < assignee.points->size(); i++) {
         //a = v^2/r
@@ -250,8 +276,7 @@ double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_
         double r = 1/curvature;
         speed_limit[i] = std::min(speed_limit[i], std::sqrt(max_lateral_accel*r));
     }
-
-    //TODO: smooth here
+    smooth(speed_limit, curr_speed);
 
     //calcuate speed to avoid obstacles
     double reciprocal_collision_time_sum = 0;
