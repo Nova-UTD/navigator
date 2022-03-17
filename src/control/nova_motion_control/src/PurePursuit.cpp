@@ -52,7 +52,7 @@ void PurePursuit::set_lookahead_point(float x, float y) {
 void PurePursuit::set_displacement_error(float displacement) { this->displacement_error = displacement; }
 
 
-void PurePursuit::compute_curvature() {
+float PurePursuit::compute_curvature() {
     double denominator = pow(lookahead_point_x, 2) + pow(lookahead_point_y, 2);
     double numerator = 2.0 * lookahead_point_x;
     
@@ -61,9 +61,11 @@ void PurePursuit::compute_curvature() {
     } else {
         this->curvature = numerator > 0 ? MIN_CURVATURE : -MIN_CURVATURE;
     }
+
+    return curvature;
 }
 
-double PurePursuit::compute_steering_angle() {
+float PurePursuit::compute_steering_angle() {
     this->steering_angle = atan(WHEEL_BASE * this->curvature);
     return steering_angle;
 }

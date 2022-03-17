@@ -11,7 +11,7 @@ namespace Nova {
 namespace PurePursuit {
 
 static constexpr double MIN_CURVATURE = 1.0 / 9e10;
-static constexpr double WHEEL_BASE = 0.1;
+static constexpr double WHEEL_BASE = 3.39; // meters
 
 class PurePursuit {
 
@@ -31,8 +31,8 @@ public:
     void set_lookahead_point(float x, float y);
     void set_displacement_error(float displacement);
 
-    double compute_steering_angle();
-    void compute_curvature();
+    float compute_steering_angle();
+    float compute_curvature();
 
 private:
 
