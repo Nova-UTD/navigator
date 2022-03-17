@@ -43,7 +43,9 @@ void BehaviorPlannerNode::send_message() {
   }
 
   final_path.points = chosen_path.points;
-  
+  for(size_t i = 0; i < final_path.points.size(); i++) {
+      final_path.speeds.push_back(SPEED_LIMIT);
+  }
   
   // CHOOSE COST BASED OFF STATE MACHINE
   // will modify final path variable to publish

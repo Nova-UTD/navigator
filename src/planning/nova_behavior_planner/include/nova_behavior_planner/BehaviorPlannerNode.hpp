@@ -23,6 +23,7 @@ constexpr auto message_frequency = 100ms; // will change
 constexpr float STOP_SPEED = 0.0;
 constexpr float YIELD_SPEED = 5.0;
 constexpr float SLOW_SPEED = 10.0;
+constexpr float SPEED_LIMIT = 20.0;
 
 
 class BehaviorPlannerNode : public rclcpp::Node {
