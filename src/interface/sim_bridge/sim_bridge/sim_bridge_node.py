@@ -37,6 +37,7 @@ GROUND_TRUTH_OBJ_PERIOD = 1/(2.0) # 2 Hz (purposely bad)
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0) # 10 Hz
 LIDAR_PERIOD = 1/(10.0) # 10 Hz
 SPEEDOMETER_PERIOD = 1/(10.0) # 10 Hz
+STEERING_ANGLE_PERIOD = 1/(10.0) # 10 Hz
 OBSTACLE_QTY_VEHICLE = 0 # Spawn n cars
 OBSTACLE_QTY_PED = 0 # Spawn n peds
 
@@ -86,8 +87,7 @@ import math
 from os.path import exists
 
 # Message definitons
-from std_msgs.msg import Bool
-from std_msgs.msg import Header
+from std_msgs.msg import Bool, Header, Float32
 from sensor_msgs.msg import Image # For cameras
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry # For GPS, ground truth
@@ -385,6 +385,17 @@ class SimBridgeNode(Node):
         twist_linear.header.stamp = self.get_clock().now().to_msg()
 
         self.speedometer_pub.publish(twist_linear)
+    
+    def pub_steering_angle(self):
+        front_left_wheel = self.ego.get_wheel_steer_angle(carla.VehicleWheelLocation.FL_Wheel)
+        front_right_wheel = self.ego.get_wheel_steer_angle(carla.VehicleWheelLocation.FR_Wheel)
+        tricycle_angle = (front_left_wheel + front_right_wheel)/2
+        # Convert to right-handed, degrees to radians
+        tricycle_angle *= -math.pi/180
+        msg = SteeringPosition()
+        msg.data = tricycle_angle
+        self.steering_angle_pub.publish(msg)
+
 
     def true_odom_cb(self):
         ego: carla.Actor = self.ego
@@ -510,6 +521,12 @@ class SimBridgeNode(Node):
             '/can/speedometer_twist',
             10
         )
+        
+        self.steering_angle_pub = self.create_publisher(
+            SteeringPosition,
+            '/can/steering_angle',
+            10
+        )
 
         self.sem_lidar_pub = self.create_publisher(
             PointCloud2,
@@ -563,6 +580,10 @@ class SimBridgeNode(Node):
 
         self.speedometer_timer = self.create_timer(
             SPEEDOMETER_PERIOD, self.pub_speedometer
+        )
+
+        self.steering_angle_timer = self.create_timer(
+            STEERING_ANGLE_PERIOD, self.pub_steering_angle
         )
         
         self.tf_buffer = Buffer()
