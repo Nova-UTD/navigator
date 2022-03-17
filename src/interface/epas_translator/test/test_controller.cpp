@@ -36,9 +36,9 @@ protected:
     rclcpp::init(0, nullptr);
     my_controller = std::make_shared<ControllerNode>();
     can_subscription = std::make_unique<TestSubscriber<
-      voltron_msgs::msg::CanFrame>>("outgoing_can_frames");
+      voltron_msgs::msg::CanFrame>>("epas_translator_outgoing_can_frames");
     power_publisher = std::make_unique<TestPublisher<
-      std_msgs::msg::Float32>>("steering_power");
+      std_msgs::msg::Float32>>("epas_translator_steering_power");
   }
 
   void TearDown() override {

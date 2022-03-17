@@ -23,9 +23,9 @@ can_id_t can_message_3_identifier = 0x296;
 
 ControllerNode::ControllerNode() : Node("steering_controller") {
   this->can_publisher = this->create_publisher<voltron_msgs::msg::CanFrame>
-    ("outgoing_can_frames", 8);
+    ("epas_translator_outgoing_can_frames", 8);
   this->power_subscription = this->create_subscription<std_msgs::msg::Float32>
-    ("steering_power", 8, bind(& ControllerNode::update_power, this, std::placeholders::_1));
+    ("epas_translator_steering_power", 8, bind(& ControllerNode::update_power, this, std::placeholders::_1));
   this->control_timer = this->create_wall_timer(control_message_frequency,
     bind(& ControllerNode::send_control_message, this));
 }

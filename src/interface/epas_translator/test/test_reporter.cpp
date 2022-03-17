@@ -33,9 +33,9 @@ protected:
     rclcpp::init(0, nullptr);
     my_reporter = std::make_shared<ReporterNode>(49, 71);
     angle_subscription = std::make_unique<TestSubscriber<
-      std_msgs::msg::Float32>>("real_steering_angle");
+      std_msgs::msg::Float32>>("epas_translator_real_steering_angle");
     can_publisher = std::make_unique<TestPublisher<
-      voltron_msgs::msg::CanFrame>>("incoming_can_frames");
+      voltron_msgs::msg::CanFrame>>("epas_translator_incoming_can_frames");
   }
 
   void TearDown() override {

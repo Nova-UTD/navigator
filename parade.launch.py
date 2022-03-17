@@ -42,8 +42,8 @@ def generate_launch_description():
         executable='reporter',
         parameters=[(path.join(param_dir,"interface","epas_reporter.param.yaml"))],
         remappings=[
-            ("incoming_can_frames", "incoming_can_frames"),
-            ("real_steering_angle", "real_steering_angle")
+            ("epas_translator_incoming_can_frames", "incoming_can_frames"),
+            ("epas_translator_real_steering_angle", "real_steering_angle")
         ]
     )
 
@@ -52,8 +52,8 @@ def generate_launch_description():
         executable='controller',
         parameters=[(path.join(param_dir,"interface","epas_controller.param.yaml"))],
         remappings=[
-            ("steering_power", "steering_power"),
-            ("outgoing_can_frames", "outgoing_can_frames")
+            ("epas_translator_steering_power", "steering_power"),
+            ("epas_translator_outgoing_can_frames", "outgoing_can_frames")
         ]
     )
 
@@ -62,11 +62,11 @@ def generate_launch_description():
         executable='float_reporter',
         parameters=[(path.join(param_dir,"interface","speedometer_reporter.param.yaml"))],
         remappings=[
-            ("incoming_can_frames", "incoming_can_frames_can1"),
-            ("result_topic", "vehicle_speedometer")
+            ("can_translation_incoming_can_frames", "incoming_can_frames_can1"),
+            ("can_translation_result_topic", "vehicle_speedometer")
         ]
     )
-    
+
     # steering_pid
     can = Node(
         package='voltron_can',
@@ -156,7 +156,7 @@ def generate_launch_description():
         executable='robot_state_publisher',
         arguments=[path.join(launch_dir, "data", "voltron.urdf")]
     )
-    
+
     visuals = Node(
         package='vt_viz',
         name='vt_viz_node',
@@ -193,7 +193,7 @@ def generate_launch_description():
         package='curb_detection',
         executable='curb_detector'
     )
-    
+
     # PLANNING
     route_planner = Node(
         package='lanelet2_global_planner_nodes',
@@ -205,7 +205,7 @@ def generate_launch_description():
                     ('ndt_pose', '/localization/ndt_pose'),
                     ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')]
     )
-    
+
     path_planner = Node(
         package='behavior_planner_nodes',
         name='behavior_planner_node',
@@ -223,7 +223,7 @@ def generate_launch_description():
             ('vehicle_state_command', '/vehicle/state_command')
         ]
     )
-    
+
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -261,13 +261,13 @@ def generate_launch_description():
             ('nova_obstacle_array', '/obstacles/array')
         ]
     )
-    
+
     # VIZ
     lanelet_visualizer = Node(
         package='map_publishers',
         executable='lanelet_loader'
     )
-    
+
     return LaunchDescription([
         # CONTROL
         # steering_controller,
