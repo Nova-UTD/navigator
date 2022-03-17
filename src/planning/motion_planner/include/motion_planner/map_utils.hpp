@@ -1,5 +1,5 @@
 /*
- * Package:   path_planner
+ * Package:   MotionPlanner
  * Filename:  map_utils.hpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
@@ -7,8 +7,8 @@
  * License:   MIT License
  */
 
-#ifndef PATH_PLANNER_MAP_UTILS_HPP
-#define PATH_PLANNER_MAP_UTILS_HPP
+#ifndef MotionPlanner_MAP_UTILS_HPP
+#define MotionPlanner_MAP_UTILS_HPP
 
 
 #include "autoware_auto_msgs/msg/trajectory.hpp"
@@ -19,7 +19,7 @@
 #include <autoware_auto_msgs/msg/trajectory.hpp>
 #include <autoware_auto_msgs/msg/had_map_route.hpp>
 #include <had_map_utils/had_map_utils.hpp>
-#include <path_planner/lane_points.hpp>
+#include <motion_planner/LanePoints.hpp>
 #include <common/types.hpp>
 #include <geometry/common_2d.hpp>
 
@@ -30,7 +30,7 @@ using autoware_auto_msgs::msg::Trajectory;
 
 namespace navigator
 {
-    namespace path_planner
+    namespace MotionPlanner
     {
         namespace map_utils {
             LanePoints sample_center_line_and_boundaries(

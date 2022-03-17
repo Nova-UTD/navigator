@@ -1,13 +1,13 @@
 /*
- * Package:   path_planner
- * Filename:  test_path_planner.cpp
+ * Package:   MotionPlanner
+ * Filename:  test_MotionPlanner.cpp
  * Author:    Jim Moore
  * Email:     jim3moore@gmail.com
  * Copyright: 2021, Nova UTD
  * License:   MIT License
  */
 
-#include <path_planner/path_planner.hpp>
+#include <motion_planner/MotionPlanner.hpp>
 #include <geometry/common_2d.hpp>
 #include <memory>
 
@@ -48,7 +48,7 @@ lanelet::LaneletMapPtr getALaneletMapWithLaneId(
 }
 
 //returns a HAD map route with one segment that starts at (0,0) and goes to (0,length)
-//this lets us test the path planner on a very simple route with easily predictable output
+//this lets us test the motion planner on a very simple route with easily predictable output
 HADMapRoute getARoute(const int64_t lane_id, const float32_t length)
 {
   HADMapRoute had_map_route;
@@ -71,17 +71,17 @@ double sqr_distance(TrajectoryPoint a, TrajectoryPoint b) {
   return (a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+(a.z-b.z)*(a.z-b.z);
 }
 
-class PathPlannerTest : public ::testing::Test
+class MotionPlannerTest : public ::testing::Test
 {
 public:
-  PathPlannerTest()
+  MotionPlannerTest()
   {
-    m_planner_ptr = std::make_shared<navigator::path_planner::PathPlanner>();
+    m_planner_ptr = std::make_shared<navigator::MotionPlanner::MotionPlanner>();
   }
-  std::shared_ptr<navigator::path_planner::PathPlanner> m_planner_ptr;
+  std::shared_ptr<navigator::MotionPlanner::MotionPlanner> m_planner_ptr;
 };
 
-TEST_F(PathPlannerTest, get_center_line)
+TEST_F(MotionPlannerTest, get_center_line)
 {
   // create map
   const auto lane_id = lanelet::utils::getId();
@@ -110,4 +110,51 @@ TEST_F(PathPlannerTest, get_center_line)
     ASSERT_DOUBLE_EQ(prev.x, points[i].x);
     prev = points[i];
   }
+}
+
+TEST_F(MotionPlannerTest, test_collision) {
+  using namespace navigator::MotionPlanner;
+  //create vertical path from (0,0) to (0,4)
+  auto points = std::make_shared<std::vector<PathPoint>>();
+  points->push_back(PathPoint(0,0));
+  points->push_back(PathPoint(0,1));
+  points->push_back(PathPoint(0,2));
+  points->push_back(PathPoint(0,3));
+  points->push_back(PathPoint(0,4));
+  auto path = SegmentedPath(points, 1);
+  ASSERT_TRUE(path.valid_points());
+
+  //create objects to collide with
+  std::vector<CarPose> objects;
+  //starts at (-5,2) with velocity (1,0).steering angle=0. bounding box is size (2,1)
+  objects.push_back(CarPose(-5,2,0,1,0,2,1,0));
+  //starts at (3,1) with velocity (1,0). steering angle=0. bounding box is size (0.5,0.5)
+  //this one should never hit the path
+  objects.push_back(CarPose(3,1,0,1,0,0.5,0.5,0));
+
+  auto collisions = m_planner_ptr->get_collisions(path, objects);
+
+  //this should yield 2 collisions (one for the left and right sides of the car)
+  ASSERT_EQ(2ul, collisions.size());
+  //should keep y coordinate for each collision (y coordinate = arclength here)
+  ASSERT_EQ(2.5, collisions[0].s_in);
+  ASSERT_EQ(1.5, collisions[1].s_in);
+  //they should be for the first car. left comes before right
+  //time until collision is 5 seconds
+  ASSERT_EQ(4, collisions[0].t_in);
+  ASSERT_EQ(4, collisions[1].t_in);
+  //car will be on the path for 2 seconds
+  ASSERT_EQ(6, collisions[0].t_out);
+  ASSERT_EQ(6, collisions[1].t_out);
+
+  //test safety padding
+  //safe entry should be earlier than actual by some constant
+  ASSERT_EQ(4-m_planner_ptr->following_time, collisions[0].t_safe_in);
+  ASSERT_EQ(4-m_planner_ptr->following_time, collisions[1].t_safe_in);
+  //safe exit should be later than actual by some constant
+  ASSERT_EQ(6+m_planner_ptr->following_time, collisions[0].t_safe_out);
+  ASSERT_EQ(6+m_planner_ptr->following_time, collisions[1].t_safe_out);
+  //safe entry arclength should be before the actual by some constant
+  ASSERT_EQ(2.5-m_planner_ptr->following_distance, collisions[0].s_safe_in);
+  ASSERT_EQ(1.5-m_planner_ptr->following_distance, collisions[1].s_safe_in);
 }
