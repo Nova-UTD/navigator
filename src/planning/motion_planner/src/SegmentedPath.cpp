@@ -187,7 +187,18 @@ std::vector<double> SegmentedPath::intersection(double mx, double my, double x0,
 	}
 	return intersections;
 }
-
+double SegmentedPath::heading(size_t i) const {
+	if (points->size() < 2) {
+		return 0;
+	}
+	if (i >= points->size()-1) {
+		//we need an extra point past i to determine the slope of the segment
+		return heading(points->size()-2);
+	}
+	double dx = points->at(i+1).x-points->at(i).x;
+	double dy = points->at(i+1).y-points->at(i).y;
+	return std::atan2(dy, dx);
+}
 double SegmentedPath::curvature(size_t i) const {
 	//we need two points past i and one point before to calculate curvature, so return infinity if we don't have enough points
 	if (points->size() < 4) {

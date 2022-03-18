@@ -159,7 +159,7 @@ std::vector<autoware_auto_msgs::msg::TrajectoryPoint> MotionPlanner::get_center_
     return line_points;
 }
 
-std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose, const std::vector<CarPose>& colliders) {
+std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const voltron_msgs::msg::FinalPath::SharedPtr ideal_path, const CarPose pose, const std::vector<CarPose>& colliders) {
     //generates a bunch of different candidate paths for the car for the car to follow
     //if memory becomes an issue, could generate and cost the paths on demand, and recreate the lowest cost one.
     using namespace std;
@@ -183,6 +183,13 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
     
     auto candidates = std::make_shared<vector<SegmentedPath>>();
     auto base = SegmentedPath(linear_points);
+    
+    //temp until behavior planner exists
+    std::vector<double> speed_limit;
+    for (size_t i = 0; i < base.points->size(); i++) {
+        speed_limit.push_back(8.94); //20 mph in m/s
+    }
+
     auto bounds = get_path_bounds(ideal_path, pose);
     base.cost = cost_path(base, ideal_path, pose, bounds.first, bounds.second);
     candidates->push_back(base);
@@ -199,33 +206,65 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
         }
     }
     //assign velocity to each path
+    
     for (size_t i = 0; i < candidates->size(); i++) {
         auto candidate = candidates->at(i);
-        assign_velocity(ideal_path, candidate, pose, get_collisions(candidate, colliders));
+        assign_velocity(candidate, pose, speed_limit, get_collisions(candidate, colliders));
     }
     return candidates;
 }
 
-//COLLISIONS SHOULD BE SORTED BY CLOSEST FIRST
-double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_path, SegmentedPath& assignee, const CarPose& my_pose, const std::vector<Collision>& collisions) const {
-    //temp until behavior planner exists
-    std::vector<double> speed_limit(assignee.points->size());
+void MotionPlanner::put_speed(SegmentedPath& assignee, const std::vector<double>& speed) const {
     for (size_t i = 0; i < assignee.points->size(); i++) {
-        speed_limit.push_back(8.94); //20 mph in m/s
+        double angle = assignee.heading(i);
+        PathPoint point = assignee.points->at(i); 
+        const PathPoint v_point(point.x,point.y,std::cos(angle)*speed[i], std::sin(angle)*speed[i]);
+        assignee.points->at(i) = v_point;
     }
+}
+
+void MotionPlanner::smooth(std::vector<double>& speed_limit, double speed) const {
+    double curr_speed = speed;
+    //acceleration
+    for (size_t i = 0; i < speed_limit.size(); i++)
+    {
+        while (i < speed_limit.size() && speed_limit[i] > curr_speed)
+        {
+            curr_speed = std::min(speed_limit[i], curr_speed);
+            speed_limit[i] = curr_speed;
+            //update speed after this point
+            //this is from kinetic energy
+            curr_speed = std::sqrt(2*max_accel*spacing+curr_speed*curr_speed);
+            i++;
+        }
+    }
+    //braking (currently this slams on the brakes lol)
+    double target_speed = speed_limit.back();
+
+    for (size_t i = 0; i < speed_limit.size(); i++)
+    {
+        size_t index = speed_limit.size()-i-1; //go through in reverse order
+        while (i < speed_limit.size() && speed_limit[index] > target_speed)
+        {
+            index = speed_limit.size()-i-1;
+            target_speed = std::min(speed_limit[index], target_speed);
+            speed_limit[index] = target_speed;
+            //update speed after this point
+            //this is from kinetic energy (remember that target_speed is v_f and we are trying to find v_0)
+            double new_target_sqr = target_speed*target_speed-2*max_brake_accel*spacing;
+            new_target_sqr = std::max(0.0,new_target_sqr);
+            target_speed = std::sqrt(new_target_sqr);
+            
+            i++;
+        }
+    }
+}
+
+//COLLISIONS SHOULD BE SORTED BY CLOSEST FIRST
+double MotionPlanner::assign_velocity(SegmentedPath& assignee, const CarPose& my_pose, const std::vector<double>& bp_speed_limit, const std::vector<Collision>& collisions) const {
+    std::vector<double> speed_limit = bp_speed_limit;
     double curr_speed = my_pose.speed();
     size_t speed_index = 0;
-    //calculate accelerating up to speed limit
-    //could probably extract this out so this work isn't done for each path. will wait until behavior planner to do this though
-    while (speed_limit[speed_index] > curr_speed) {
-        if (curr_speed == 0)
-            curr_speed = max_accel*std::sqrt(2*spacing/max_accel);
-        else
-            curr_speed += (spacing/curr_speed)*max_accel;
-        curr_speed = std::min(speed_limit[speed_index], curr_speed);
-        speed_limit[speed_index] = curr_speed;
-        speed_index++;
-    }
     //calcuate speed limit in terms of max lateral acceleration, set the speed limit to the minimum of this and the road's speed limit
     for (size_t i = 0; i < assignee.points->size(); i++) {
         //a = v^2/r
@@ -237,6 +276,8 @@ double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_
         double r = 1/curvature;
         speed_limit[i] = std::min(speed_limit[i], std::sqrt(max_lateral_accel*r));
     }
+    smooth(speed_limit, curr_speed);
+
     //calcuate speed to avoid obstacles
     double reciprocal_collision_time_sum = 0;
     for (size_t i = 0; i < collisions.size(); i++) {
@@ -357,6 +398,7 @@ double MotionPlanner::assign_velocity(const voltron_msgs::msg::CostedPath ideal_
             speed_limit[j] = new_speed; // this is less than the old speed limit
         }
     }
+    this->put_speed(assignee, speed_limit);
     return reciprocal_collision_time_sum;
 }
 
@@ -408,29 +450,29 @@ std::vector<Collision> MotionPlanner::get_collisions(const SegmentedPath& path, 
     return output;
 }
 
-double MotionPlanner::cost_path(const SegmentedPath &path, const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose, size_t start, size_t end) const {
+double MotionPlanner::cost_path(const SegmentedPath &path, const voltron_msgs::msg::FinalPath::SharedPtr ideal_path, const CarPose pose, size_t start, size_t end) const {
     double dist = INFINITY;
     if (start <= end) {
         dist = 0;
         for (size_t i = start; i < end; i++) {
-            dist += path.distance(PathPoint(ideal_path.points[i].x,ideal_path.points[i].y));
+            dist += path.distance(PathPoint(ideal_path->points[i].x,ideal_path->points[i].y));
         }
     } else {
         dist = 0;
         for (size_t i = start; i > end; i--) {
-            dist += path.distance(PathPoint(ideal_path.points[i].x,ideal_path.points[i].y));
+            dist += path.distance(PathPoint(ideal_path->points[i].x,ideal_path->points[i].y));
         }
     }
     return dist;
 }
 
-std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg::CostedPath ideal_path, const CarPose pose) const {
+std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg::FinalPath::SharedPtr ideal_path, const CarPose pose) const {
     //find closest point to car on ideal path
     size_t closest = 0;
     bool found = false;
     double min_dist = INFINITY;
-    for (size_t i = 0; i < ideal_path.points.size(); i++) {
-        const auto ideal = ideal_path.points[i];
+    for (size_t i = 0; i < ideal_path->points.size(); i++) {
+        const auto ideal = ideal_path->points[i];
         double d = (pose.x-ideal.x)*(pose.x-ideal.x)+(pose.y-ideal.y)*(pose.x-ideal.y);
         if (d < min_dist) {
             closest = i;
@@ -445,11 +487,11 @@ std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg:
 
     //find direction of car relative to ideal path (should we iterate forward or backward for distance horizon?)
     int direction = 1;
-    if (closest == ideal_path.points.size()-1) direction = -1;
-    if (ideal_path.points.size() > 1) {
+    if (closest == ideal_path->points.size()-1) direction = -1;
+    if (ideal_path->points.size() > 1) {
         //if dot product of the direction the path is going and the car heading is non-negative,
         //we iterate forward (the car is going in the same direction as the path)
-        PathPoint dir_vec = PathPoint(ideal_path.points[closest+1].x-ideal_path.points[closest].x,ideal_path.points[closest+1].y-ideal_path.points[closest].y);
+        PathPoint dir_vec = PathPoint(ideal_path->points[closest+1].x-ideal_path->points[closest].x,ideal_path->points[closest+1].y-ideal_path->points[closest].y);
         PathPoint heading_vec = PathPoint(cos(pose.heading), sin(pose.heading));
         double dot = dir_vec.x*heading_vec.x+dir_vec.y*heading_vec.y;
         direction = (dot >= 0) ? 1 : -1;
@@ -459,9 +501,9 @@ std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg:
     // or we hit either end of the path lol
     double acc_dist_sqr = 0;
     size_t end = closest+direction;
-    auto prev = ideal_path.points[closest];
-    while (acc_dist_sqr < horizon*horizon && end < ideal_path.points.size()) {
-        auto curr = ideal_path.points[end];
+    auto prev = ideal_path->points[closest];
+    while (acc_dist_sqr < horizon*horizon && end < ideal_path->points.size()) {
+        auto curr = ideal_path->points[end];
         acc_dist_sqr = (curr.x-prev.x)*(curr.x-prev.x)+(curr.y-prev.y)*(curr.y-prev.y);
         if (end == 0 && direction == -1) break; //avoid underflow (at bound anyway)
         end += direction;

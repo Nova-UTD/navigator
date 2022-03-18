@@ -135,3 +135,30 @@ TEST_F(test_SegmentedPath, test_intersection_weird_path) {
   ASSERT_LT(0.07, intersection[0]);
   ASSERT_GT(0.08, intersection[0]);
 }
+
+TEST_F(test_SegmentedPath, test_heading) {
+  using std::vector;
+  auto points = std::make_shared<vector<PathPoint>>();
+  points->push_back(PathPoint(0,0));
+  points->push_back(PathPoint(0.5,0.5));
+  points->push_back(PathPoint(0,1));
+  points->push_back(PathPoint(-0.5,0.5));
+  points->push_back(PathPoint(0,0));
+  SegmentedPath path(points);
+  ASSERT_EQ(M_PI_4, path.heading(0));
+  ASSERT_EQ(3*M_PI_4, path.heading(1));
+  ASSERT_EQ(-3*M_PI_4, path.heading(2));
+  ASSERT_EQ(-M_PI_4, path.heading(3));
+
+  points = std::make_shared<vector<PathPoint>>();
+  points->push_back(PathPoint(0,0));
+  points->push_back(PathPoint(1,0));
+  points->push_back(PathPoint(1,1));
+  points->push_back(PathPoint(0,1));
+  points->push_back(PathPoint(0,0));
+  SegmentedPath path2(points);
+  ASSERT_EQ(0, path2.heading(0));
+  ASSERT_EQ(M_PI_2, path2.heading(1));
+  ASSERT_EQ(M_PI, path2.heading(2));
+  ASSERT_EQ(-M_PI_2, path2.heading(3));
+}

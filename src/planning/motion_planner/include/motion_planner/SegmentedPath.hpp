@@ -24,10 +24,10 @@ class SegmentedPath
 {
 public:
 	//sets spacing to be distance between first 2 points (0 if there are < 2 points)
-	SegmentedPath(const std::shared_ptr<const std::vector<PathPoint>> points) 
+	SegmentedPath(const std::shared_ptr<std::vector<PathPoint>> points) 
 		: spacing(points->size() < 2 ? 0 : points->at(0).distance(points->at(1)))
 		, points(points), cost(INFINITY) {}
-	SegmentedPath(const std::shared_ptr<const std::vector<PathPoint>> points, double spacing) : spacing(spacing), points(points), cost (INFINITY) {}
+	SegmentedPath(const std::shared_ptr<std::vector<PathPoint>> points, double spacing) : spacing(spacing), points(points), cost (INFINITY) {}
 	//checks if points are spaced uniformly by spacing units apart.
 	//allows slight tolerance for floating point weirdness (0.00000001 on the square distance between each point)
 	//no argument method uses this path's points and spacing
@@ -53,13 +53,16 @@ public:
 	//uses a "special" type of curvature, so it's not just 0 because we are using line segments
 	//it's basically the magnitude of the difference in slopes in the parametric equations of the lines.
 	double curvature(size_t index) const;
+	//if index >= number of points, returns the heading of the last valid point
+	//angle of the line formed by the point at index and index+1. measured in radians from [-pi,pi]
+	double heading(size_t index) const;
 	//returns the index of the closest point in points to p 
 	size_t closest_point(PathPoint p) const;
 	//Returns the arclength of the points of intersection of the line and the path
 	//line is defined by x(t) = mx*t+x0, y(t) = my*t+y0
 	std::vector<double> intersection(double mx, double my, double x0, double y0) const;
 	const double spacing;
-	const std::shared_ptr<const std::vector<PathPoint>> points;
+	const std::shared_ptr<std::vector<PathPoint>> points;
 	double cost;
 };
 }

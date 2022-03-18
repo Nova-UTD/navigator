@@ -40,11 +40,12 @@ MotionPlannerNode::MotionPlannerNode(const rclcpp::NodeOptions &node_options) :
     tf_listener(tf_buffer, std::shared_ptr<rclcpp::Node>(this, [](auto) {}), false)
 {
     RCLCPP_WARN(this->get_logger(), "motion planner constructor");
-    trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectories>("outgoing_trajectories", 8);
-    path_subscription = this->create_subscription<voltron_msgs::msg::CostedPaths>("paths", 8, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
+    trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectory>("outgoing_trajectories", 8);
+    trajectory_viz_publisher = this->create_publisher<voltron_msgs::msg::Trajectories>("outgoing_trajectories_viz", 8);
+    path_subscription = this->create_subscription<voltron_msgs::msg::FinalPath>("final_path", 10, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
     odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
     //current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
-    steering_angle_subscription = this->create_subscription<std_msgs::msg::Float32>("real_steering_angle", 8, bind(&MotionPlannerNode::update_steering_angle, this, std::placeholders::_1));
+    steering_angle_subscription = this->create_subscription<voltron_msgs::msg::SteeringPosition>("/can/steering_angle", 8, bind(&MotionPlannerNode::update_steering_angle, this, std::placeholders::_1));
     control_timer = this->create_wall_timer(message_frequency, bind(&MotionPlannerNode::send_message, this));
     
     planner = std::make_shared<MotionPlanner>();
@@ -77,36 +78,23 @@ void MotionPlannerNode::send_message() {
         auto point = voltron_msgs::msg::TrajectoryPoint();
         point.x = trajectory.points->at(i).x;
         point.y = trajectory.points->at(i).y;
-        point.vx = 0;
-        point.vy = 0;
+        point.vx = trajectory.points->at(i).vx;
+        point.vy = trajectory.points->at(i).vy;
         trajectory_message.points.push_back(point);
       }
       trajectory_message.id = t;
       trajectory_message.selected = (t == min_index) ? 1 : 0;
       trajectories.trajectories.push_back(trajectory_message);
     }
-    trajectory_publisher->publish(trajectories);
+    trajectory_viz_publisher->publish(trajectories);
+    trajectory_publisher->publish(trajectories.trajectories[min_index]);
 }
 
-void MotionPlannerNode::update_path(voltron_msgs::msg::CostedPaths::SharedPtr ptr) {
-    if (ptr->paths.size() == 0) {
-      return; //if there is no path, continue using the old one
-      //should probably raise an alert, but idk if that's this node's responsibility
-    }
-    //select min cost path
-    size_t min_index = 0;
-    double min_cost = ptr->paths[min_index].safety_cost+ptr->paths[min_index].routing_cost;
-    for (size_t i = 1; i < ptr->paths.size(); i++) {
-        double item_cost = ptr->paths[i].safety_cost+ptr->paths[i].routing_cost;
-        if (min_cost > item_cost) {
-            min_cost = item_cost;
-            min_index = i;
-        }
-    }
-    ideal_path = ptr->paths[min_index];
+void MotionPlannerNode::update_path(voltron_msgs::msg::FinalPath::SharedPtr ptr) {
+    ideal_path = ptr;
 }
 
-void MotionPlannerNode::update_steering_angle(std_msgs::msg::Float32::SharedPtr ptr) {
+void MotionPlannerNode::update_steering_angle(voltron_msgs::msg::SteeringPosition::SharedPtr ptr) {
   steering_angle = ptr->data; //radians
 }
 

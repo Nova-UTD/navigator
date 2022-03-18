@@ -429,6 +429,13 @@ class SimBridgeNode(Node):
         odom.pose.pose.position = ego_position
         odom.pose.pose.orientation = ego_orientation
 
+        ego_vel = self.ego.get_velocity()
+        twist_linear = Vector3()
+        twist_linear.x = ego_vel.x
+        twist_linear.y = ego_vel.y * -1
+        twist_linear.z = ego_vel.z
+        odom.twist.twist.linear = twist_linear
+
         self.ground_truth_odom_pub.publish(odom)
 
         # Publish tf if enabled
