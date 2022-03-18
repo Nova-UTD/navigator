@@ -12,6 +12,7 @@
 #include "OpenDriveMap.h"
 #include "Lanes.h"
 #include "Road.h"
+#include "Geometries/Line.h"
 
 // Message headers
 #include <geometry_msgs/msg/point.hpp>

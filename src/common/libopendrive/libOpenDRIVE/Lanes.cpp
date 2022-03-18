@@ -79,6 +79,25 @@ std::set<double> Lane::approximate_border_linear(double s_start, double s_end, d
     return s_vals;
 }
 
+Line3D Lane::get_centerline_as_xy(double s_start, double s_end, double eps, bool outer) const
+{
+    Line3D outer_border_line = get_border_line(s_start, s_end, eps, true);
+    Line3D inner_border_line = get_border_line(s_start, s_end, eps, false);
+    Line3D result;
+    for (size_t i = 0; i < outer_border_line.size(); i++) {
+        Vec3D center_pt;
+        Vec3D outer_pt = outer_border_line.at(i);
+        Vec3D inner_pt = inner_border_line.at(i);
+        center_pt[0] = (outer_pt[0] + inner_pt[0])/2.0;
+        center_pt[1] = (outer_pt[1] + inner_pt[1])/2.0;
+        center_pt[2] = (outer_pt[2] + inner_pt[2])/2.0;
+
+        result.push_back(center_pt);
+    }
+    return result;
+}
+
+
 Line3D Lane::get_border_line(double s_start, double s_end, double eps, bool outer) const
 {
     auto road_ptr = this->road.lock();

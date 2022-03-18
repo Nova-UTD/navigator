@@ -501,9 +501,6 @@ std::shared_ptr<odr::Lane> OpenDriveMap::get_lane_from_xy(double x, double y)
             std::shared_ptr<Lane> lane_match = lsec->get_lane(s,t);
             auto lane_pt = lane_match->get_surface_pt(s,t);
 
-            std::cout << "t=" << t << ", " << lane_pt[0] <<" vs "<< x << std::endl;
-            std::cout << "t=" << t << ", " << lane_pt[1] <<" vs "<< y << std::endl;
-
             if (abs(lane_pt[0]-x) > 0.1 || abs(lane_pt[1]-y) > 0.1)
                 t *= -1;
 

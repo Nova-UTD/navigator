@@ -221,23 +221,33 @@ def generate_launch_description():
                     ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')]
     )
     
-    path_planner = Node(
-        package='behavior_planner_nodes',
-        name='behavior_planner_node',
-        namespace='planning',
-        executable='behavior_planner_node_exe',
+    # path_planner = Node(
+    #     package='behavior_planner_nodes',
+    #     name='behavior_planner_node',
+    #     namespace='planning',
+    #     executable='behavior_planner_node_exe',
+    #     parameters=[
+    #         (path.join(param_dir,"planning","path_planner.param.yaml"))
+    #     ],
+    #     output='screen',
+    #     remappings=[
+    #         ('HAD_Map_Service', '/had_maps/HAD_Map_Service'),
+    #         ('vehicle_state', '/vehicle/vehicle_kinematic_state'),
+    #         ('route', 'global_path'),
+    #         ('gear_report', '/vehicle/gear'),
+    #         ('vehicle_state_command', '/vehicle/state_command')
+    #     ]
+    # )
+
+    path_publisher = Node(
+        package='path_publisher',
+        executable='publisher',
         parameters=[
-            (path.join(param_dir,"planning","path_planner.param.yaml"))
+            (path.join(param_dir,"planning","path_publisher.param.yaml"))
         ],
-        output='screen',
-        remappings=[
-            ('HAD_Map_Service', '/had_maps/HAD_Map_Service'),
-            ('vehicle_state', '/vehicle/vehicle_kinematic_state'),
-            ('route', 'global_path'),
-            ('gear_report', '/vehicle/gear'),
-            ('vehicle_state_command', '/vehicle/state_command')
-        ]
+        output='screen'
     )
+
     motion_planner = Node(
         package='motion_planner',
         name='motion_planner_node',
@@ -340,6 +350,7 @@ def generate_launch_description():
         # path_planner,
         # lane_planner,
         # parking_planner,
-        motion_planner,
-        motion_planner_visuals
+        path_publisher,
+        # motion_planner,
+        # motion_planner_visuals
     ])
