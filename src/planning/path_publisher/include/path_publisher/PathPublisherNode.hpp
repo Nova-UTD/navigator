@@ -30,6 +30,7 @@ public:
 private:
 	std::vector<std::string> onramp_sequence; // Road IDs
 	std::vector<std::string> loop_sequence; // RoadIDs
+	odr::OpenDriveMap* map;
 	visualization_msgs::msg::MarkerArray lane_markers;
     rclcpp::Publisher<voltron_msgs::msg::CostedPaths>::SharedPtr paths_pub;
     rclcpp::TimerBase::SharedPtr path_pub_timer{nullptr};

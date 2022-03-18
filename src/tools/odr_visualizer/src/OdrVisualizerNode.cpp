@@ -46,13 +46,13 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node") {
 	marker_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>("/map/viz", 1);
 	odom_sub = this->create_subscription<Odometry>("/odometry/filtered", 1, [this](Odometry::SharedPtr msg)
 		{
-			double pos_x = msg->pose.pose.position.x;
-			double pos_y = msg->pose.pose.position.y;
-			auto closest_lane = odr_map.get_lane_from_xy(pos_x, pos_y);
-			std::shared_ptr<odr::Road> closest_road = (closest_lane->lane_section.lock())->road.lock();
-			double dist = closest_road->ref_line->get_distance(pos_x, pos_y);
-			double s = closest_road->ref_line->match(pos_x, pos_y);
-			RCLCPP_INFO(get_logger(), "%s/%i: %f, %f, %f", closest_road->id.c_str(), closest_lane->id, dist, s, closest_road->length);
+			// double pos_x = msg->pose.pose.position.x;
+			// double pos_y = msg->pose.pose.position.y;
+			// auto closest_lane = odr_map.get_lane_from_xy(pos_x, pos_y);
+			// std::shared_ptr<odr::Road> closest_road = (closest_lane->lane_section.lock())->road.lock();
+			// double dist = closest_road->ref_line->get_distance(pos_x, pos_y);
+			// double s = closest_road->ref_line->match(pos_x, pos_y);
+			// RCLCPP_INFO(get_logger(), "%s/%i: %f, %f, %f", closest_road->id.c_str(), closest_lane->id, dist, s, closest_road->length);
 		});
 
 	// curb_detection_sub = this->create_subscription<PointCloud2>("/lidar_front/curb_points", 10,
@@ -67,7 +67,7 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node") {
 	std::string xodr_path = this->get_parameter("xodr_path").as_string();
 	double draw_detail = this->get_parameter("draw_detail").as_double();
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-	odr_map = odr::OpenDriveMap(xodr_path, true, true, false, true);
+	odr_map = new odr::OpenDriveMap(xodr_path, true, true, false, true);
 
 	// Iterate through all roads->lanesections->lanes
 	// For each lane: Construct Line Strip markers for left and right bound
@@ -148,12 +148,12 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node") {
 	 **/
 	int lane_qty = 0;
 	int road_qty = 0;
-	auto closest_lane = odr_map.get_lane_from_xy(-117.0, 19.0);
+	auto closest_lane = odr_map->get_lane_from_xy(-117.0, 19.0);
 	std::shared_ptr<odr::Road> closest_road = (closest_lane->lane_section.lock())->road.lock();
 	double dist = closest_road->ref_line->get_distance(-117.0, 19.0);
 	double s = closest_road->ref_line->match(-117.0, 19.0);
 	RCLCPP_INFO(get_logger(), "%s/%i: %f, %f, %f", closest_road->id.c_str(), closest_lane->id, dist, s, closest_road->length);
-	for (auto road : odr_map.get_roads()) {
+	for (auto road : odr_map->get_roads()) {
 		road_qty++;
 		// std::shared_ptr<odr::Road> road = lane->road.lock();
 		// RCLCPP_INFO(get_logger(), "%i", lane->id);

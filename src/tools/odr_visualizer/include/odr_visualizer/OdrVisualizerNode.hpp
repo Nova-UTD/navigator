@@ -40,7 +40,7 @@ public:
 private:
 	visualization_msgs::msg::MarkerArray lane_markers;
 	int point_count;
-	odr::OpenDriveMap odr_map = odr::OpenDriveMap("", true, true, false, true);
+	odr::OpenDriveMap* odr_map;
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub;
 	nav_msgs::msg::Odometry cached_odom_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub;
