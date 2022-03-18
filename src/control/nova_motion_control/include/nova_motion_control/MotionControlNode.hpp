@@ -26,7 +26,6 @@
 #include "voltron_msgs/msg/peddle_position.hpp"
 
 
-
 using Trajectory = autoware_auto_msgs::msg::Trajectory;
 using TrajectoryPoint = autoware_auto_msgs::msg::TrajectoryPoint;
 using SteeringPosition = voltron_msgs::msg::SteeringPosition;
@@ -68,6 +67,7 @@ private:
     Trajectory trajectory;
     TrajectoryPoint current_position;
     float current_speed;
+    float heading;
 
     typedef std::chrono::steady_clock clock_t;
     clock_t clock;
@@ -80,6 +80,7 @@ private:
 
     void visualize_markers(std::string frame_id, rclcpp::Time time);
     float distance(TrajectoryPoint p1, TrajectoryPoint P2);
+    int steering_direction();
 
     size_t find_closest_point();
     size_t find_next_waypoint(float lookahead_distance, TrajectoryPoint& current_position);

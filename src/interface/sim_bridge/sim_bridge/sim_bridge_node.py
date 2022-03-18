@@ -659,7 +659,7 @@ class SimBridgeNode(Node):
         self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, spawn) 
         # TODO: Destroy ego actor when node exits or crashes. Currently keeps actor alive in CARLA,
         # which eventually leads to memory overflow. WSH.
-        self.ego.set_autopilot(enabled=EGO_AUTOPILOT_ENABLED)
+        #self.ego.set_autopilot(enabled=EGO_AUTOPILOT_ENABLED)
 
         self.add_ego_sensors()        
 
