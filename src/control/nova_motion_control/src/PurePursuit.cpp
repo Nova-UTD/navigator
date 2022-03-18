@@ -62,7 +62,7 @@ float PurePursuit::compute_curvature() {
         this->curvature = numerator > 0 ? MIN_CURVATURE : -MIN_CURVATURE;
     }
 
-    std::cout << "CURVATURE: " << this->curvature << std::endl;
+    //std::cout << "CURVATURE: " << this->curvature << std::endl;
 
     return curvature;
 }

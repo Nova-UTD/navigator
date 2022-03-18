@@ -46,10 +46,10 @@ MotionControlNode::MotionControlNode() : rclcpp::Node("pure_pursuit_controller")
 
   // Input
   this->trajectory_subscription = this->create_subscription
-    <Trajectory>("reference_trajectory", 8, std::bind(&MotionControlNode::update_trajectory, this, _1));
+    <Trajectory>("final_path", 8, std::bind(&MotionControlNode::update_trajectory, this, _1));
 
   this->odometry_subscription = this->create_subscription
-    <Odometry>("/carla/odom", 8, std::bind(&MotionControlNode::update_odometry, this, _1));
+    <Odometry>("/odom/filtered", 8, std::bind(&MotionControlNode::update_odometry, this, _1));
   
   // Output
   this->steering_control_publisher = this->create_publisher
@@ -92,18 +92,32 @@ void MotionControlNode::send_message() {
     throttle_position_msg.data = 0.0;
   }
 
-  this->throttle_control_publisher->publish(throttle_position_msg);
-  this->brake_control_publisher->publish(brake_position_msg);
+  // this->throttle_control_publisher->publish(throttle_position_msg);
+  // this->brake_control_publisher->publish(brake_position_msg);
 
   //----------------------STEERING----------------------
   compute_lookahead_point();
 
   // format of published message
   auto steering_angle_msg = SteeringPosition();
-  steering_angle_msg.data = get_steering_angle();
+  float steering_direction =  this->steering_direction();
+
+  // Method 1:
+  steering_angle_msg.data = abs(get_steering_angle()) * this->steering_direction();
+
+  // Method 2:
+  if (steering_direction > 0) // steer right
+    steering_angle_msg.data = 3.14 / 6;
+  else if (steering_direction < 0)
+    steering_angle_msg.data = -3.14 / 6;
+
+  // For the curves:
+  if (this->current_speed != 0.0)
+    steering_angle_msg.data *= 1 / this->current_speed;
+
 
   RCLCPP_INFO(this->get_logger(), "Publishing Steering Angle: '%f'", steering_angle_msg.data);
-  //steering_control_publisher->publish(steering_angle_msg);
+  steering_control_publisher->publish(steering_angle_msg);
 }
 
 void MotionControlNode::update_trajectory(Trajectory::SharedPtr ptr) {
@@ -124,6 +138,11 @@ void MotionControlNode::update_odometry(Odometry::SharedPtr ptr) {
   this->current_speed = std::sqrt( vector_velocity.dot(vector_velocity) ); // magnitude of vector
   //std::cout << "CURRENT SPEED: " << this->current_speed << std::endl;
   this->speed_controller->set_measurement(current_speed);
+
+  float z = ptr->pose.pose.orientation.z;
+  this->heading = 2 * asin(z);
+
+  //std::cout << "Heading: " << this->heading << std::endl;
 
   // Delete trajectory points behind the closest point
   size_t closest_point_idx = find_closest_point();
@@ -370,4 +389,30 @@ void MotionControlNode::visualize_markers(std::string frame_id, rclcpp::Time tim
 
 float MotionControlNode::distance(TrajectoryPoint p1, TrajectoryPoint p2) {
   return sqrt(pow(p2.x - p1.x, 2) + pow(p2.y - p1.y, 2));
+}
+
+int MotionControlNode::steering_direction() {
+
+  if (this->trajectory.points.empty()) {
+    return 0;
+  }
+
+  size_t closest_point_idx = find_closest_point();
+  TrajectoryPoint start = this->trajectory.points[closest_point_idx];
+  TrajectoryPoint end = this->trajectory.points[closest_point_idx + 1];
+
+
+  TrajectoryPoint P = this->current_position;
+
+  float d = (P.x - start.x) * (end.y - start.y) - (P.y - start.y) * (end.x - start.x);
+
+  if (d > 0) {
+    std::cout << "RIGHT OF LINE" << std::endl;
+    return -1;
+  } else if (d < 0) {
+    std::cout << "LEFT OF LINE" << std::endl;
+    return 1;
+  }
+
+
 }
