@@ -2,6 +2,7 @@
 
 #include "Mesh.h"
 #include "Road.h"
+#include "Lanes.h"
 #include "RoadNetworkMesh.h"
 
 #include "pugixml/pugixml.hpp"
@@ -20,6 +21,8 @@ public:
 
     ConstRoadSet get_roads() const;
     RoadSet      get_roads();
+
+    std::shared_ptr<odr::Lane> get_lane_from_xy(double x, double y);
 
     Mesh3D          get_refline_lines(double eps) const;
     RoadNetworkMesh get_mesh(double eps) const;
