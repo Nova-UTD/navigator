@@ -174,6 +174,11 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
         max_steer_speed_time = max_steering_speed/car_speed; //convert from rad/m to rad/s
     }
 
+    double ideal_path_spacing = sqrt((ideal_path->points[0].x-ideal_path->points[1].x)*(ideal_path->points[0].x-ideal_path->points[1].x)
+                        +(ideal_path->points[0].y-ideal_path->points[1].y)*(ideal_path->points[0].y-ideal_path->points[1].y));
+    double spacing_factor = spacing/ideal_path_spacing;
+
+
     //creates a "neutral" linear path straight ahead from the car.
     shared_ptr<vector<PathPoint>> linear_points = make_shared<vector<PathPoint>>();
     for (size_t i = 0; i < points; i++) {
@@ -184,10 +189,19 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
     auto candidates = std::make_shared<vector<SegmentedPath>>();
     auto base = SegmentedPath(linear_points);
     
-    //temp until behavior planner exists
     std::vector<double> speed_limit;
     for (size_t i = 0; i < base.points->size(); i++) {
-        speed_limit.push_back(8.94); //20 mph in m/s
+        size_t min = std::floor(spacing_factor*static_cast<double>(i));
+        size_t max = std::ceil(spacing_factor*static_cast<double>(i+1));
+        
+        double min_speed = min < ideal_path->speeds.size() ? ideal_path->speeds[min] : 0; //checking if ideal path is shorter than the trajectory we are planning. if so, set speed to 0.
+        //find min speed on ideal path over interval (if spacing of ideal path points is closer than our trajectory's points)
+        if (spacing_factor > 1) {
+            for (size_t j = min; j <= max && j < ideal_path->speeds.size(); j++) {
+                min_speed = std::min(min_speed, ideal_path->speeds[min]);
+            }
+        }
+        speed_limit.push_back(min_speed);
     }
 
     auto bounds = get_path_bounds(ideal_path, pose);

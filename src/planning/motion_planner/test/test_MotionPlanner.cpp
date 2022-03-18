@@ -172,14 +172,12 @@ TEST_F(MotionPlannerTest, test_linear_speed) {
   using namespace navigator::MotionPlanner;
   //create vertical path from (0,0) to (0,4)
   auto path = std::make_shared<voltron_msgs::msg::FinalPath>();
-  
-  path->points.push_back(get_ros_point(0,0));
-  path->points.push_back(get_ros_point(0,1));
-  path->points.push_back(get_ros_point(0,2));
-  path->points.push_back(get_ros_point(0,3));
-  path->points.push_back(get_ros_point(0,4));
-
-  double speed_limit = 8.94;
+  double speed_limit = 8.94; //can be any number
+  for (size_t i = 0; i < 100; i++)
+  {
+    path->points.push_back(get_ros_point(0,i));
+    path->speeds.push_back(speed_limit);
+  }
 
   std::shared_ptr<std::vector<SegmentedPath>> paths = m_planner_ptr->get_trajectory(path, CarPose(0,0,M_PI_2,0,speed_limit), std::vector<CarPose>());
   //linear path is first
@@ -196,13 +194,14 @@ TEST_F(MotionPlannerTest, test_accel_smoothing) {
   using namespace navigator::MotionPlanner;
   //create vertical path from (0,0) to (0,3)
   auto path = std::make_shared<voltron_msgs::msg::FinalPath>();
-  
-  for (size_t i = 0; i < 4; i++)
+  double speed_limit = 9999; //big speed limit will never be reached
+  for (size_t i = 0; i < 100; i++)
   {
     path->points.push_back(get_ros_point(0,i));
+    path->speeds.push_back(speed_limit);
   }
 
-  double speed_limit = 8.94; //big speed limit will never be reached
+  
   double a = m_planner_ptr->max_accel;
   double d = m_planner_ptr->spacing;
   //distance until we reach the speed limit. d=v^2/(2a)
@@ -235,3 +234,56 @@ TEST_F(MotionPlannerTest, test_accel_smoothing) {
   }
 
 }
+
+/*TEST_F(MotionPlannerTest, test_brake) {
+  using namespace navigator::MotionPlanner;
+  //create vertical path from (0,0) to (0,3)
+  auto path = std::make_shared<voltron_msgs::msg::FinalPath>();
+  double speed_limit = 9999; //big speed limit will never be reached
+  double trajectory_length = m_planner_ptr->spacing*m_planner_ptr->points;
+  size_t boundary = static_cast<size_t>(std::floor(trajectory_length)-1);
+  for (size_t i = 0; i < boundary; i++)
+  {
+    path->points.push_back(get_ros_point(0,i));
+    path->speeds.push_back(speed_limit);
+  }
+  for (size_t i = boundary; i < 100; i++)
+  {
+    path->points.push_back(get_ros_point(0,i));
+    path->speeds.push_back(0);
+  }
+
+  
+  double a = m_planner_ptr->max_accel;
+  double d = m_planner_ptr->spacing;
+  double b = m_planner_ptr->max_brake_accel;
+  //distance until we reach the speed limit. d=v^2/(2a)
+  size_t d_to_reach = std::floor(speed_limit*speed_limit/(2*a)/d);
+
+  std::shared_ptr<std::vector<SegmentedPath>> paths = m_planner_ptr->get_trajectory(path, CarPose(0,0,M_PI_2,0,0), std::vector<CarPose>());
+  //linear path is first
+  SegmentedPath linear_path = paths->at(0);
+
+  PathPoint p = linear_path.points->at(0);
+  double ke = p.vx*p.vx+p.vy*p.vy;
+  ASSERT_EQ(0, ke); //car beings at rest
+  
+  for (size_t i = 1; i < linear_path.points->size() && i < d_to_reach; i++) {
+    //should be full speed up
+    PathPoint p = linear_path.points->at(i);
+    double speed_sqr = p.vx*p.vx+p.vy*p.vy;
+    double delta_ke = 0.5*speed_sqr - ke;
+    ke = 0.5*speed_sqr;
+    ASSERT_FLOAT_EQ(m_planner_ptr->max_accel*d, delta_ke);
+  }
+
+  for (size_t i = d_to_reach+1; i < linear_path.points->size(); i++) {
+
+    //we have accelerated to max speed, so all points should be max speed
+    //not guaranteed to be tested
+    PathPoint p = linear_path.points->at(i);
+    double speed_sqr = p.vx*p.vx+p.vy*p.vy;
+    ASSERT_FLOAT_EQ(speed_limit*speed_limit, speed_sqr);
+  }
+
+}*/
