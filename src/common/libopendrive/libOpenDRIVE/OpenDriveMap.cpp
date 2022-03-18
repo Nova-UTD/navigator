@@ -8,11 +8,15 @@
 #include "Lanes.h"
 #include "RefLine.h"
 #include "Road.h"
+#include "Math.hpp"
+#include <math.h>  // atan2
 
 #include <iostream>
 #include <math.h>
 #include <string>
 #include <utility>
+
+#include <iostream>
 
 namespace odr
 {
@@ -472,6 +476,41 @@ RoadSet OpenDriveMap::get_roads()
     for (const auto& id_road : this->roads)
         roads.insert(id_road.second);
     return roads;
+}
+
+std::shared_ptr<odr::Lane> OpenDriveMap::get_lane_from_xy(double x, double y)
+{
+    for (auto road : get_roads()) {
+        double s = road->ref_line->match(x,y);
+        double len = road->length;
+        if (s > 0.01 && s-len < -0.01) {
+            double t = road->ref_line->get_distance(x,y);
+            auto lsec = std::shared_ptr<LaneSection>();
+            for (auto s_lsec : road->s_to_lanesection) { // Find the closest lane section
+                if (s_lsec.first > s)
+                    break;
+                lsec = s_lsec.second;
+            }
+
+            if (abs(t) > 10) // Too far from road center... This can't be right.
+                continue;
+
+            // Find out which side we're on (negative or position)
+            Vec3D ptA = road->ref_line->get_xyz(s-0.01);
+            Vec3D ptB = road->ref_line->get_xyz(s);
+            std::shared_ptr<Lane> lane_match = lsec->get_lane(s,t);
+            auto lane_pt = lane_match->get_surface_pt(s,t);
+
+            std::cout << "t=" << t << ", " << lane_pt[0] <<" vs "<< x << std::endl;
+            std::cout << "t=" << t << ", " << lane_pt[1] <<" vs "<< y << std::endl;
+
+            if (abs(lane_pt[0]-x) > 0.1 || abs(lane_pt[1]-y) > 0.1)
+                t *= -1;
+
+            return lsec->get_lane(s,t);
+        }
+    }
+    return std::shared_ptr<odr::Lane>(); // No road found!
 }
 
 Mesh3D OpenDriveMap::get_refline_lines(double eps) const

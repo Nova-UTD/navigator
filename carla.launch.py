@@ -140,7 +140,8 @@ def generate_launch_description():
         executable='visualizer',
         parameters=[
             (path.join(param_dir,"mapping","odr.param.yaml"))
-        ]
+        ],
+        output='screen'
     )
 
     # lanelet_visualizer = Node(
