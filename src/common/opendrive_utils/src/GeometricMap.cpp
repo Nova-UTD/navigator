@@ -112,7 +112,7 @@ bool GeometricMap::containing_lanes(double x, double y, std::vector<LanePtr> &re
     x = x - map->x_offs;
     y = y - map->y_offs;
 
-    Find the grid cell that contains the point
+    // Find the grid cell that contains the point
     int x_cell = trunc(x) / grid_size;
     int y_cell = trunc(y) / grid_size;
     
