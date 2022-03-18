@@ -72,18 +72,35 @@ void PathPublisherNode::generatePaths() {
 		RCLCPP_INFO(get_logger(), "Generating paths...");
 	}
 
+	CostedPaths costed_paths;
+	CostedPath costed_path;
+	costed_paths.header.frame_id = 'map';
+	costed_paths.header.stamp = get_clock()->now();
+
 	Point current_pos = cached_odom->pose.pose.position;
 
 	auto currentLane = map->get_lane_from_xy(current_pos.x, current_pos.y);
+	auto currentRoad = currentLane->road.lock();
+	auto refline = currentRoad->ref_line;
+	double s = refline->match(current_pos.x, current_pos.y);
+
 	if (currentLane == nullptr) {
 		RCLCPP_WARN(get_logger(), "Lane could not be located.");
 		return;
 	}
-	odr::Line3D centerline = currentLane->get_centerline_as_xy(0.0, 100.0, 1.0);
+	odr::Line3D centerline = currentLane->get_centerline_as_xy(s+1.0, refline->length, 1.0);
 	for (odr::Vec3D pt3d : centerline) {
 		RCLCPP_INFO(get_logger(), "%f, %f", pt3d[0], pt3d[1]);
+		Point path_pt;
+		path_pt.x = pt3d[0];
+		path_pt.y = pt3d[1];
+		path_pt.z = pt3d[2];
+		
+		costed_path.points.push_back(path_pt);
 	}
+
+	costed_paths.paths.push_back(costed_path);
 	RCLCPP_INFO(get_logger(), "Current lane: %i", currentLane->id);
 
-	// marker_pub->publish(lane_markers);
+	paths_pub->publish(costed_paths);
 }

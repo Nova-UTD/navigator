@@ -13,6 +13,7 @@
 #include "Lanes.h"
 #include "Road.h"
 #include "Geometries/Line.h"
+#include "RefLine.h"
 
 // Message headers
 #include <geometry_msgs/msg/point.hpp>
