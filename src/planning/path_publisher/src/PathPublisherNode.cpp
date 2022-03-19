@@ -87,18 +87,13 @@ void PathPublisherNode::generatePaths() {
 	if (cached_odom == nullptr) {
 		RCLCPP_WARN(get_logger(), "Odometry not yet received, skipping...");
 		return;
-	} else {
-		RCLCPP_INFO(get_logger(), "Generating paths...");
 	}
-
 	CostedPaths costed_paths;
 	CostedPath costed_path;
 	costed_paths.header.frame_id = 'map';
 	costed_paths.header.stamp = get_clock()->now();
 
 	Point current_pos = cached_odom->pose.pose.position;
-
-	RCLCPP_INFO(get_logger(), "Finding closest lane.");
 
 	auto currentLane = map->get_lane_from_xy_with_route(current_pos.x, current_pos.y, all_ids);
 	if (currentLane == nullptr)
@@ -112,18 +107,16 @@ void PathPublisherNode::generatePaths() {
 		RCLCPP_WARN(get_logger(), "Lane could not be located.");
 		return;
 	}
-	RCLCPP_INFO(get_logger(), "Current lane: %i", currentLane->id);
+	// RCLCPP_INFO(get_logger(), "Current lane: %i", currentLane->id);
 	odr::Line3D centerline;
 	// RCLCPP_INFO(get_logger(), "Getting centerline.");
 	if (currentLane->id < 0) {
-		RCLCPP_INFO(get_logger(), "Getting neg. centerline.");
 		centerline = currentLane->get_centerline_as_xy(s+1.0, refline->length, 1.0);
 	} else {
-		RCLCPP_INFO(get_logger(), "Getting pos. centerline.");
 		centerline = currentLane->get_centerline_as_xy(currentLane->lane_section.lock()->s0, s-1.0, 1.0);
 		// centerline = currentLane->get_centerline_as_xy(refline->length, s-1.0, 1.0);
 	}
-	RCLCPP_INFO(get_logger(), "Got centerline.");
+	// RCLCPP_INFO(get_logger(), "Got centerline.");
 	for (odr::Vec3D pt3d : centerline) {
 		// RCLCPP_INFO(get_logger(), "%f, %f", pt3d[0], pt3d[1]);
 		Point path_pt;

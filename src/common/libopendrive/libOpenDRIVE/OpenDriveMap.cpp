@@ -585,14 +585,13 @@ std::shared_ptr<odr::Lane> OpenDriveMap::get_lane_from_xy_with_route(double x, d
                 if (t > outer_border_t || t < inner_border_t)
                     continue;
             }
-            std::cout << "OK:   ("<<outer_border_t<<" < "<<t<<" > "<<inner_border_t<<") dx: "<<lane_pt[0]-x<<", dy: "<<abs(lane_pt[1]-y)<<std::endl;
+            // std::cout << "OK:   ("<<outer_border_t<<" < "<<t<<" > "<<inner_border_t<<") dx: "<<lane_pt[0]-x<<", dy: "<<abs(lane_pt[1]-y)<<std::endl;
 
             auto road_id = lane->road.lock()->id;
-            std::cout<<"VS: "<<road_id<<std::endl;
             if (rs.find(road_id) != rs.end()) {
                 // std::cout<<"INSIDE!"<<std::endl;
             } else {
-                std::cout<<"OUTSIDE!"<<std::endl;
+                // std::cout<<"OUTSIDE!"<<std::endl;
                 continue;
             }
 

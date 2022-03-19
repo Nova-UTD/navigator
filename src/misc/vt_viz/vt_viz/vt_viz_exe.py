@@ -43,6 +43,7 @@ class VizSubscriber(Node):
             b = 0.0,
             a = 1.0
         )
+        line_strip.pose.position.z = 0.6 # Offset from road surface
         line_strip.scale.x = 0.5 # Meters wide.
         line_strip.frame_locked = True
         line_strip.points = msg.paths[0].points

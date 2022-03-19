@@ -48,12 +48,12 @@ MAP_ORIGIN_LON = 0.0 # degrees
 # Sensor noise constants
 M_TO_DEG = 9e-6 # APPROXIMATE! WSH.
 
-GNSS_ALT_BIAS = random.uniform(0.25,1.0)*M_TO_DEG # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
-GNSS_ALT_SDEV = 0.5*M_TO_DEG
-GNSS_LAT_BIAS = random.uniform(0.25,1.0)*M_TO_DEG
-GNSS_LAT_SDEV = 0.5*M_TO_DEG
-GNSS_LON_BIAS = random.uniform(0.25,1.0)*M_TO_DEG
-GNSS_LON_SDEV = 0.5*M_TO_DEG
+GNSS_ALT_BIAS = random.uniform(0.25,1.0)*M_TO_DEG*0.3 # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
+GNSS_ALT_SDEV = 0.5*M_TO_DEG*0.3
+GNSS_LAT_BIAS = random.uniform(0.25,1.0)*M_TO_DEG*0.3
+GNSS_LAT_SDEV = 0.5*M_TO_DEG*0.3
+GNSS_LON_BIAS = random.uniform(0.25,1.0)*M_TO_DEG*0.3
+GNSS_LON_SDEV = 0.5*M_TO_DEG*0.3
 
 # Publish a true map->base_link transform. Disable this if
 # another localization algorithm (ukf, ndt, etc.) is running! WSH.
@@ -650,7 +650,7 @@ class SimBridgeNode(Node):
         # random_spawn = self.world.get_map().get_spawn_points()[0]
         spawn_loc = carla.Location()
         spawn_loc.x = 0.0
-        spawn_loc.y = 29.0
+        spawn_loc.y = 24.5
         spawn_loc.z = 2.0 # Start up in the air
         spawn = carla.Transform()
         spawn.location = spawn_loc

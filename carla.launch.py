@@ -20,11 +20,9 @@ def generate_launch_description():
     map_name = "grandloop"
 
     # CONTROL
-    steering_controller = Node(
-        package='vt_steering_controller',
-        executable='controller_exe',
-        name='controller_exe',
-        namespace='control'
+    unified_controller = Node(
+        package='unified_controller',
+        executable='unified_controller_node'
     )
 
     # INTERFACE
@@ -316,7 +314,7 @@ def generate_launch_description():
     
     return LaunchDescription([
         # CONTROL
-        # steering_controller,
+        unified_controller,
 
         # INTERFACE
         # can,
