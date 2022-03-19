@@ -3,6 +3,8 @@
 #include "Road.h"
 #include "Utils.hpp"
 
+#include <iostream>
+
 namespace odr
 {
 Lane::Lane(int id, bool level, std::string type) : id(id), level(level), type(type) {}
@@ -81,9 +83,11 @@ std::set<double> Lane::approximate_border_linear(double s_start, double s_end, d
 
 Line3D Lane::get_centerline_as_xy(double s_start, double s_end, double eps, bool outer) const
 {
+    std::cout << "Getting border lines... ";
     Line3D outer_border_line = get_border_line(s_start, s_end, eps, true);
     Line3D inner_border_line = get_border_line(s_start, s_end, eps, false);
     Line3D result;
+    std::cout << "Done."<<std::endl;
     for (size_t i = 0; i < outer_border_line.size(); i++) {
         Vec3D center_pt;
         Vec3D outer_pt = outer_border_line.at(i);
@@ -92,6 +96,7 @@ Line3D Lane::get_centerline_as_xy(double s_start, double s_end, double eps, bool
         center_pt[1] = (outer_pt[1] + inner_pt[1])/2.0;
         center_pt[2] = (outer_pt[2] + inner_pt[2])/2.0;
 
+        // std::cout << "Adding "<<center_pt[0]<<", "<<center_pt[1]<<std::endl;
         result.push_back(center_pt);
     }
     return result;

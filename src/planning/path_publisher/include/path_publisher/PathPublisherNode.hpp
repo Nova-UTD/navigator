@@ -6,6 +6,7 @@
 #include <string>
 #include <rclcpp/rclcpp.hpp>
 #include <vector>
+#include <set>
 #include <string>
 
 // libOpenDRIVE stuff
@@ -31,8 +32,9 @@ public:
 	void generatePaths();
 
 private:
-	std::vector<std::string> onramp_sequence; // Road IDs
-	std::vector<std::string> loop_sequence; // RoadIDs
+	std::set<std::string> onramp_ids; // Road IDs
+	std::set<std::string> loop_ids; // RoadIDs
+	std::set<std::string> all_ids;
 	odr::OpenDriveMap* map;
 	double path_resolution; // The sampling interval taken along a lane's centerline to form the path
 	visualization_msgs::msg::MarkerArray lane_markers;

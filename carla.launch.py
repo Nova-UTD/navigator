@@ -245,7 +245,9 @@ def generate_launch_description():
         parameters=[
             (path.join(param_dir,"planning","path_publisher.param.yaml"))
         ],
-        output='screen'
+        namespace='planning',
+        output='screen',
+        respawn=True
     )
 
     motion_planner = Node(
@@ -336,7 +338,7 @@ def generate_launch_description():
         # MISC
         odom_bl_link,
         urdf_publisher,
-        # visuals,
+        visuals,
 
         # PERCEPTION
         # lidar_driver_front,
