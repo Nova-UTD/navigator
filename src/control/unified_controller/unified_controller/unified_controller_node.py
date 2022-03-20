@@ -21,7 +21,7 @@ class UnifiedController(Node):
 
     cached_odometry = Odometry()
     cached_paths = CostedPaths()
-    pointA_idx = 10
+    pointA_idx = 40
     pointB_idx = pointA_idx+1
 
     def paths_cb(self, msg: CostedPaths):
@@ -31,22 +31,23 @@ class UnifiedController(Node):
         if len(self.cached_paths.paths)<=0:
             return
         path: CostedPath = self.cached_paths.paths[0]
-        # self.get_logger().info("Received path with {} points".format(len(path.points)))
+        self.get_logger().info("Received path with {} points".format(len(path.points)))
 
         throttle, brake, steering = (0.0, 0.0, 0.0)
 
-        if (len(path.points)<2):
-            print("Short path!")
-            steering = 0.0;
-        elif (len(path.points) < 5):
-            steering_theta = self.get_theta(path.points[0], path.points[len(path.points)-1], self.cached_odometry,
-                                            A=0.4, B=0.4, C=0.7) # Prioritize path direction over current deviation and heading
-            steering = data=steering_theta * 0.5
-            self.get_logger().info("Low-point mode")
+        if (len(path.points)<10):
+            self.get_logger().warn("Short path!")
+            steering = 0.0
         elif len(path.points) > self.pointB_idx:
             steering_theta = self.get_theta(path.points[self.pointA_idx], path.points[self.pointB_idx], self.cached_odometry,
                                             A=0.2, B=0.7, C=0.4)
             steering = data=steering_theta * 0.5
+        else:
+            steering_theta = self.get_theta(path.points[0], path.points[len(path.points)-1], self.cached_odometry,
+                                            A=0.4, B=0.4, C=0.7) # Prioritize path direction over current deviation and heading
+            steering = data=steering_theta * 0.5
+            self.get_logger().info("Low-point mode")
+        
             
 
         current_twist = self.cached_odometry.twist.twist.linear

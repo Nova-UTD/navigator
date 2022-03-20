@@ -46,6 +46,10 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 		"20","875","21","630","3","0","10","17","7","90","6","735",
 		"5","516","4","8","1","675","2","630"
 	};
+	auto road_ids = std::vector<std::string>{
+		"20","875","21","630","3","0","10","17","7","90","6","735",
+		"5","516","4","8","1","675","2","630"
+	};
 
 	path_pub_timer = this->create_wall_timer(0.5s, std::bind(&PathPublisherNode::generatePaths, this));
 
@@ -55,6 +59,42 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
 	map = new odr::OpenDriveMap(xodr_path, true, true, false, true);
 
+	std::vector<odr::Vec3D> route;
+	double step = 0.25;
+	for (auto id : road_ids) {
+		
+		double road_progress = 0;
+		auto road = map->roads[id];
+		while(true) {
+			std::shared_ptr<odr::LaneSection> lanesection = road->get_lanesection(road_progress);
+			if (road_progress > lanesection->get_end())
+			{
+				break;
+			}
+			route.push_back(lanesection->get_lane(road_progress, -1)->get_surface_pt(road_progress, -10));
+			road_progress += step;
+		}
+	}
+	RCLCPP_INFO(this->get_logger(), "generated path");
+
+	CostedPaths costed_paths;
+	CostedPath costed_path;
+	costed_paths.header.frame_id = "map";
+	costed_paths.header.stamp = get_clock()->now();
+
+	for (odr::Vec3D pt3d : route) {
+		// RCLCPP_INFO(get_logger(), "%f, %f", pt3d[0], pt3d[1]);
+		Point path_pt;
+		path_pt.x = pt3d[0];
+		path_pt.y = pt3d[1];
+		path_pt.z = pt3d[2];
+		
+		costed_path.points.push_back(path_pt);
+	}
+
+	costed_paths.paths.push_back(costed_path);
+	this->path = costed_paths;
+	paths_pub->publish(costed_paths);
 	// // Let's build our two RoadSets
 	// auto all_roads = map->get_roads();
 	// for (auto road : all_roads) {
@@ -82,15 +122,16 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
  */
 
 void PathPublisherNode::generatePaths() {
-
 	// Wait until odometry data is available
 	if (cached_odom == nullptr) {
 		RCLCPP_WARN(get_logger(), "Odometry not yet received, skipping...");
 		return;
 	}
+	paths_pub->publish(this->path);
+	RCLCPP_INFO(this->get_logger(), "publish path");
 	CostedPaths costed_paths;
 	CostedPath costed_path;
-	costed_paths.header.frame_id = 'map';
+	costed_paths.header.frame_id = "map";
 	costed_paths.header.stamp = get_clock()->now();
 
 	Point current_pos = cached_odom->pose.pose.position;
@@ -107,13 +148,13 @@ void PathPublisherNode::generatePaths() {
 		RCLCPP_WARN(get_logger(), "Lane could not be located.");
 		return;
 	}
-	// RCLCPP_INFO(get_logger(), "Current lane: %i", currentLane->id);
-	odr::Line3D centerline;
+	RCLCPP_INFO(get_logger(), "Road %s, Current lane: %i", currentRoad->id.c_str(), currentLane->id);
+	/*odr::Line3D centerline;
 	// RCLCPP_INFO(get_logger(), "Getting centerline.");
 	if (currentLane->id < 0) {
-		centerline = currentLane->get_centerline_as_xy(s+1.0, refline->length, 1.0);
+		centerline = currentLane->get_centerline_as_xy(s+1.0, refline->length, 0.25);
 	} else {
-		centerline = currentLane->get_centerline_as_xy(currentLane->lane_section.lock()->s0, s-1.0, 1.0);
+		centerline = currentLane->get_centerline_as_xy(currentLane->lane_section.lock()->s0, s-1.0, 0.25);
 		// centerline = currentLane->get_centerline_as_xy(refline->length, s-1.0, 1.0);
 	}
 	// RCLCPP_INFO(get_logger(), "Got centerline.");
@@ -158,5 +199,5 @@ void PathPublisherNode::generatePaths() {
 	costed_paths.paths.push_back(costed_path);
 	
 
-	paths_pub->publish(costed_paths);
+	paths_pub->publish(costed_paths);*/
 }

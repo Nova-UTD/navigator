@@ -35,6 +35,7 @@ private:
 	std::set<std::string> onramp_ids; // Road IDs
 	std::set<std::string> loop_ids; // RoadIDs
 	std::set<std::string> all_ids;
+	voltron_msgs::msg::CostedPaths path;
 	odr::OpenDriveMap* map;
 	double path_resolution; // The sampling interval taken along a lane's centerline to form the path
 	visualization_msgs::msg::MarkerArray lane_markers;
