@@ -4,6 +4,7 @@
 # Nova 2022 - https://github.com/Nova-UTD/navigator/
 # Will Heitman - Will.Heitman@utdallas.edu
 
+from typing import List
 from voltron_msgs.msg import CostedPaths, CostedPath, PeddlePosition, SteeringPosition
 import rclpy
 from rclpy.node import Node
@@ -21,7 +22,9 @@ class UnifiedController(Node):
 
     cached_odometry = Odometry()
     cached_paths = CostedPaths()
-    pointA_idx = 10
+    a_offset = 10
+    b_offset = 4
+    pointA_idx = 40
     pointB_idx = pointA_idx+1
 
     def paths_cb(self, msg: CostedPaths):
@@ -31,22 +34,26 @@ class UnifiedController(Node):
         if len(self.cached_paths.paths)<=0:
             return
         path: CostedPath = self.cached_paths.paths[0]
-        # self.get_logger().info("Received path with {} points".format(len(path.points)))
+        self.get_logger().info("Received path with {} points".format(len(path.points)))
 
         throttle, brake, steering = (0.0, 0.0, 0.0)
 
-        if (len(path.points)<2):
-            print("Short path!")
-            steering = 0.0;
-        elif (len(path.points) < 5):
-            steering_theta = self.get_theta(path.points[0], path.points[len(path.points)-1], self.cached_odometry,
-                                            A=0.4, B=0.4, C=0.7) # Prioritize path direction over current deviation and heading
-            steering = data=steering_theta * 0.5
-            self.get_logger().info("Low-point mode")
-        elif len(path.points) > self.pointB_idx:
+        if (len(path.points)<10):
+            self.get_logger().warn("Short path!")
+            steering = 0.0
+        else:# len(path.points) > self.pointB_idx:
+            self.pointA_idx = (self.a_offset + self.closest_point(path.points, self.cached_odometry.pose.pose.position)) % len(path.points)
+            self.pointB_idx = (self.pointA_idx + self.b_offset) % len(path.points)
+            self.get_logger().info(f"point A index {self.pointA_idx}")
             steering_theta = self.get_theta(path.points[self.pointA_idx], path.points[self.pointB_idx], self.cached_odometry,
                                             A=0.2, B=0.7, C=0.4)
             steering = data=steering_theta * 0.5
+        # else:
+        #     steering_theta = self.get_theta(path.points[0], path.points[len(path.points)-1], self.cached_odometry,
+        #                                     A=0.4, B=0.4, C=0.7) # Prioritize path direction over current deviation and heading
+        #     steering = data=steering_theta * 0.5
+        #     self.get_logger().info("Low-point mode")
+        
             
 
         current_twist = self.cached_odometry.twist.twist.linear
@@ -79,6 +86,17 @@ class UnifiedController(Node):
 
     def odom_cb(self, msg: Odometry):
         self.cached_odometry = msg
+
+    def closest_point(self, path: List[Point], pos: Point) -> int:
+        min_dist: float = math.inf
+        min_index = 0
+        for i in range(len(path)):
+            pt = path[i]
+            d = (pt.x-pos.x)**2+(pt.y-pos.y)**2
+            if d < min_dist:
+                min_index = i
+                min_dist = d
+        return min_index
 
     def __init__(self):
         super().__init__('unified_controller_node')
