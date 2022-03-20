@@ -21,15 +21,14 @@ using nav_msgs::msg::Odometry;
 using std_msgs::msg::ColorRGBA;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
-using voltron_msgs::msg::CostedPath;
-using voltron_msgs::msg::CostedPaths;
+using voltron_msgs::msg::FinalPath;
 using namespace std::chrono_literals;
 
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
 	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town10/Town10HD_Opt.xodr");
 	this->declare_parameter<double>("path_resolution", 2.0);
-	paths_pub = this->create_publisher<CostedPaths>("paths", 1);
+	paths_pub = this->create_publisher<FinalPath>("paths", 1);
 	odom_sub = this->create_subscription<Odometry>("/odometry/filtered", 1, [this](Odometry::SharedPtr msg) {
 		cached_odom = msg;
 	});
@@ -60,6 +59,12 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 		2, 2, 2, 2, 2,
 		-2, -2, //-2, -2, -2
 	};
+	this->go_road_ids = std::set<std::string> {
+		"6", "5", "675", "2", "3"
+	};
+	this->stop_road_ids = std::set<std::string> {
+		"90", "735", "516", "566"
+	};
 	auto route_2_road_ids = std::vector<std::string>{
 		"3",
 		"0","10","17","7","90",
@@ -72,6 +77,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 		2, 2, 2, 2, 2,
 		-2, -2, -2, -2, -2
 	};
+	auto empty_set = std::set<std::string>{};
 
 	path_pub_timer = this->create_wall_timer(0.5s, std::bind(&PathPublisherNode::generatePaths, this));
 
@@ -83,18 +89,16 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
 	
 
-	this->route1 = generate_path(route_1_road_ids, route_1_lane_ids, map);
-	this->route2 = generate_path(route_2_road_ids, route_2_lane_ids, map);
+	this->route1 = generate_path(route_1_road_ids, route_1_lane_ids, map, stop_road_ids);
+	this->route2 = generate_path(route_2_road_ids, route_2_lane_ids, map, stop_road_ids);
+	this->route2_nonstop = generate_path(route_2_road_ids, route_2_lane_ids, map, empty_set);
 	this->path = this->route1;
 }
 
-voltron_msgs::msg::CostedPaths PathPublisherNode::generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, odr::OpenDriveMap *map)
+voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, odr::OpenDriveMap *map, std::set<std::string> &stop_roads)
 {
-	CostedPaths costed_paths;
-	costed_paths.header.frame_id = "map";
-	costed_paths.header.stamp = get_clock()->now();
-
 	std::vector<odr::Vec3D> route;
+	FinalPath costed_path;
 	double step = 0.25;
 	for (size_t i = 0; i < road_ids.size(); i++) {
 		std::string id = road_ids[i];
@@ -118,13 +122,19 @@ voltron_msgs::msg::CostedPaths PathPublisherNode::generate_path(std::vector<std:
 		}
 		odr::Line3D centerline;
 		centerline = lane->get_centerline_as_xy(lanesection->s0, lanesection->get_end(), 0.25, lane_id>0);
+		double speed = stop_roads.count(id) == 0 ? 5 : 0;
+		if (speed == 0) {
+			RCLCPP_INFO(this->get_logger(), "stop road id: %s",  id.c_str());
+		}
 		for (odr::Vec3D point : centerline) {
 			route.push_back(point);
+			costed_path.speeds.push_back(speed);
 		}
 	}
 	RCLCPP_INFO(this->get_logger(), "generated path");
 
-	CostedPath costed_path;
+	
+	size_t count = 0;
 	for (odr::Vec3D pt3d : route) {
 		// RCLCPP_INFO(get_logger(), "%f, %f", pt3d[0], pt3d[1]);
 		Point path_pt;
@@ -132,14 +142,14 @@ voltron_msgs::msg::CostedPaths PathPublisherNode::generate_path(std::vector<std:
 		path_pt.y = pt3d[1];
 		path_pt.z = pt3d[2];
 		
+		count ++;
 		costed_path.points.push_back(path_pt);
 	}
-	costed_paths.paths.push_back(costed_path);
-	return costed_paths;
+	return costed_path;
 }
 
 //shamelessly stolen from egan
-void PathPublisherNode::publish_paths_viz(CostedPath path)
+void PathPublisherNode::publish_paths_viz(FinalPath path)
 {
 	MarkerArray marker_array;
 	Marker marker;
@@ -158,9 +168,8 @@ void PathPublisherNode::publish_paths_viz(CostedPath path)
 	// Set visual display. Not sure if this is needed
 	marker.scale.x = 1;
 	marker.color.a = 1.0;
-	marker.color.r = static_cast<float>(1.0 / (1 + exp(-path.safety_cost / 5.0)));
-	marker.color.g = static_cast<float>(1.0 / (1 + exp(path.routing_cost / 2.0)));
-	marker.color.g *= marker.color.g; // make better paths more visible
+	marker.color.r = 1.0;
+	marker.color.g = 1.0;
 	marker.color.b = 0;
 
 	// Add path to array
@@ -207,17 +216,16 @@ void PathPublisherNode::generatePaths() {
     car.color.g = 1.0f;
     car.color.b = 0.0f;
     car.color.a = 1.0;
-	
+
+	auto twist = cached_odom->twist.twist.linear;
+	double speed = std::sqrt(twist.x*twist.x+twist.y*twist.y);
+
 	marker_array.markers.push_back(car);
 	viz_pub->publish(marker_array);
 
 	paths_pub->publish(this->path);
-	publish_paths_viz(this->path.paths[0]);
+	publish_paths_viz(this->path);
 	RCLCPP_INFO(this->get_logger(), "publish path");
-	CostedPaths costed_paths;
-	CostedPath costed_path;
-	costed_paths.header.frame_id = "map";
-	costed_paths.header.stamp = get_clock()->now();
 
 
 	auto currentLane = map->get_lane_from_xy_with_route(current_pos.x, current_pos.y, all_ids);
@@ -232,9 +240,17 @@ void PathPublisherNode::generatePaths() {
 
 	
 	RCLCPP_INFO(get_logger(), "Road %s, Current lane: %i", currentRoad->id.c_str(), currentLane->id);
-	if (currentRoad->id == "10") {
+	if (currentRoad->id == "10" && this->path == this->route1) {
 		RCLCPP_INFO(get_logger(), "SWITCHED PATH");
 		this->path = this->route2;
+	}
+	if (this->path == this->route2 && speed < 0.5) {
+		this->path = this->route2_nonstop; //disable the stop lane now that we have stopped.
+		RCLCPP_INFO(get_logger(), "DONE STOPPING");
+	}
+	if (this->path == this->route2_nonstop && this->go_road_ids.count(currentRoad->id) == 1) {
+		this-> path = this->route2; //we are past the stop lane, so we can enable it again
+		RCLCPP_INFO(get_logger(), "ENABLE STOPPING");
 	}
 	/*odr::Line3D centerline;
 	// RCLCPP_INFO(get_logger(), "Getting centerline.");

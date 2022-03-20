@@ -29,6 +29,8 @@
 #include <vector>
 #include <utility>
 
+#include "rclcpp/rclcpp.hpp"
+
 namespace navigator
 {
     namespace MotionPlanner
@@ -44,7 +46,7 @@ namespace navigator
             //will decide whether or not this needs to be deleted when I implement cost function on lane boundaries
             std::vector<autoware_auto_msgs::msg::TrajectoryPoint> get_center_line_points(const autoware_auto_msgs::msg::HADMapRoute &route, const lanelet::LaneletMapConstPtr &map, double resolution);
             //generates and costs a vector of candidate immedate trajectories the car could follow
-            std::shared_ptr<std::vector<SegmentedPath>> get_trajectory(const voltron_msgs::msg::FinalPath::SharedPtr ideal_path, const CarPose pose, const std::vector<CarPose>& colliders);
+            std::shared_ptr<std::vector<SegmentedPath>> get_trajectory(const rclcpp::Logger logger, const voltron_msgs::msg::FinalPath::SharedPtr ideal_path, const CarPose pose, const std::vector<CarPose>& colliders);
             //gets all potential collision events along the specified path given the objects to collide with
             std::vector<Collision> get_collisions(const SegmentedPath& path, const std::vector<CarPose>& objects) const;
             //assigns a velocity to each point in the path, respecting vehicle parameters, avoiding collisions, and limiting the max speed
@@ -57,7 +59,7 @@ namespace navigator
             //(all units are in meters, seconds, radians if not mentioned)
             const size_t points = 100; //number of points on path
             const size_t steering_speeds = 16; //number of different steering speeds to consider
-            const size_t steering_angles = 2; //number of different steering angles to consider
+            const size_t steering_angles = 1; //number of different steering angles to consider
             const double spacing = 0.25; //meters between points on path
             const double max_steering_angle = 1; //max angle the car can turn in radians
             const double max_steering_speed = 0.1; //max speed we can change the car's direction in radians/sec (ignoring speed)

@@ -159,7 +159,7 @@ std::vector<autoware_auto_msgs::msg::TrajectoryPoint> MotionPlanner::get_center_
     return line_points;
 }
 
-std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const voltron_msgs::msg::FinalPath::SharedPtr ideal_path, const CarPose pose, const std::vector<CarPose>& colliders) {
+std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const rclcpp::Logger logger, const voltron_msgs::msg::FinalPath::SharedPtr ideal_path, const CarPose pose, const std::vector<CarPose>& colliders) {
     //generates a bunch of different candidate paths for the car for the car to follow
     //if memory becomes an issue, could generate and cost the paths on demand, and recreate the lowest cost one.
     using namespace std;
@@ -205,6 +205,7 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
     }
 
     auto bounds = get_path_bounds(ideal_path, pose);
+    RCLCPP_INFO(logger, "bounds (%d,%d)", bounds.first, bounds.second);
     base.cost = cost_path(base, ideal_path, pose, bounds.first, bounds.second);
     candidates->push_back(base);
     //generate branches off the linear path. this is used to check a few possible trajectories, later picking the best one according to a cost function
@@ -214,7 +215,6 @@ std::shared_ptr<std::vector<SegmentedPath>> MotionPlanner::get_trajectory(const 
             double angle_change = -max_steering_angle+max_steering_angle*2*(static_cast<double>(s)/static_cast<double>(steering_angles));
             auto branch_points = candidates->at(0).create_branch(car_angle,angle_change,turn_speed,points);
             auto path = SegmentedPath(branch_points);
-            auto bounds = get_path_bounds(ideal_path, pose);
             path.cost = cost_path(path, ideal_path, pose, bounds.first, bounds.second);
             candidates->push_back(path);
         }
@@ -465,17 +465,21 @@ std::vector<Collision> MotionPlanner::get_collisions(const SegmentedPath& path, 
 }
 
 double MotionPlanner::cost_path(const SegmentedPath &path, const voltron_msgs::msg::FinalPath::SharedPtr ideal_path, const CarPose pose, size_t start, size_t end) const {
-    double dist = INFINITY;
-    if (start <= end) {
-        dist = 0;
-        for (size_t i = start; i < end; i++) {
-            dist += path.distance(PathPoint(ideal_path->points[i].x,ideal_path->points[i].y));
+    double dist = 0;
+    
+    /*if (start > end) {
+        //need to loop path
+        for (size_t i = start; i < ideal_path->points.size(); i++) {
+            dist += 1.0/(1+static_cast<double>(i-start))*path.distance(PathPoint(ideal_path->points[i].x,ideal_path->points[i].y));
         }
-    } else {
-        dist = 0;
-        for (size_t i = start; i > end; i--) {
-            dist += path.distance(PathPoint(ideal_path->points[i].x,ideal_path->points[i].y));
+        for (size_t i = 0; i < end; i++) {
+            dist += 1.0/(1+static_cast<double>(i))*path.distance(PathPoint(ideal_path->points[i].x,ideal_path->points[i].y));
         }
+        return dist;
+    }*/
+
+    for (size_t i = start; i < end; i++) {
+        dist += path.distance(PathPoint(ideal_path->points[i].x,ideal_path->points[i].y));
     }
     return dist;
 }
@@ -499,8 +503,20 @@ std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg:
         return std::make_pair<size_t,size_t>(0,0); //no closest point found??
     }
 
+    /*size_t end = closest;
+    auto prev = ideal_path->points[closest];
+    double acc_dist_sqr = 0;
+    while (acc_dist_sqr < horizon*horizon && end < ideal_path->points.size()) {
+        auto curr = ideal_path->points[end];
+        acc_dist_sqr = (curr.x-prev.x)*(curr.x-prev.x)+(curr.y-prev.y)*(curr.y-prev.y);
+        prev = ideal_path->points[end];
+        end++;
+    }*/
+    return std::make_pair((closest+20)%ideal_path->points.size(),(closest+40)%ideal_path->points.size());
+
+
     //find direction of car relative to ideal path (should we iterate forward or backward for distance horizon?)
-    int direction = 1;
+    /*int direction = 1;
     if (closest == ideal_path->points.size()-1) direction = -1;
     if (ideal_path->points.size() > 1) {
         //if dot product of the direction the path is going and the car heading is non-negative,
@@ -516,12 +532,7 @@ std::pair<size_t,size_t> MotionPlanner::get_path_bounds(const voltron_msgs::msg:
     double acc_dist_sqr = 0;
     size_t end = closest+direction;
     auto prev = ideal_path->points[closest];
-    while (acc_dist_sqr < horizon*horizon && end < ideal_path->points.size()) {
-        auto curr = ideal_path->points[end];
-        acc_dist_sqr = (curr.x-prev.x)*(curr.x-prev.x)+(curr.y-prev.y)*(curr.y-prev.y);
-        if (end == 0 && direction == -1) break; //avoid underflow (at bound anyway)
-        end += direction;
-    }
+    
 
-    return std::make_pair(closest,end);
+    return std::make_pair(closest,end);*/
 }

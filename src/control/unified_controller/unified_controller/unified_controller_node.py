@@ -5,7 +5,7 @@
 # Will Heitman - Will.Heitman@utdallas.edu
 
 from typing import List
-from voltron_msgs.msg import CostedPaths, CostedPath, PeddlePosition, SteeringPosition
+from voltron_msgs.msg import Trajectory, PeddlePosition, SteeringPosition
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
@@ -21,30 +21,28 @@ import collections
 class UnifiedController(Node):
 
     cached_odometry = Odometry()
-    cached_paths = CostedPaths()
-    a_offset = 10
+    cached_path = Trajectory()
+    a_offset = 40
     b_offset = 4
     pointA_idx = 40
     pointB_idx = pointA_idx+1
 
-    def paths_cb(self, msg: CostedPaths):
-        self.cached_paths = msg
+    def paths_cb(self, msg: Trajectory):
+        self.cached_path = msg
 
     def generate_commands(self):
-        if len(self.cached_paths.paths)<=0:
-            return
-        path: CostedPath = self.cached_paths.paths[0]
-        self.get_logger().info("Received path with {} points".format(len(path.points)))
+        path: Trajectory = self.cached_path
+        
 
         throttle, brake, steering = (0.0, 0.0, 0.0)
 
-        if (len(path.points)<10):
-            self.get_logger().warn("Short path!")
+        if (len(path.points) == 0):
+            self.get_logger().warn("No path recieved.")
             steering = 0.0
+            return
         else:# len(path.points) > self.pointB_idx:
             self.pointA_idx = (self.a_offset + self.closest_point(path.points, self.cached_odometry.pose.pose.position)) % len(path.points)
             self.pointB_idx = (self.pointA_idx + self.b_offset) % len(path.points)
-            self.get_logger().info(f"point A index {self.pointA_idx}")
             steering_theta = self.get_theta(path.points[self.pointA_idx], path.points[self.pointB_idx], self.cached_odometry,
                                             A=0.2, B=0.7, C=0.4)
             steering = data=steering_theta * 0.5
@@ -60,8 +58,10 @@ class UnifiedController(Node):
         current_speed = math.sqrt(
             current_twist.x ** 2 + current_twist.y ** 2
         )
-
-        desired_speed = 5.0 - 3*steering # m/s
+        self.get_logger().info("Received path with {} points".format(len(path.points)))
+        desired_speed = min(5.0 - 3*steering, path.points[self.pointA_idx].vx) # m/s
+        self.get_logger().info(f"point A index {self.pointA_idx}, desired = {desired_speed}, current = {current_speed}")
+        
 
         if (current_speed < desired_speed):
             throttle = 0.5
@@ -82,7 +82,7 @@ class UnifiedController(Node):
             data=steering
         ))
 
-        self.get_logger().info("S: {}".format(steering))
+        #self.get_logger().info("S: {}".format(steering))
 
     def odom_cb(self, msg: Odometry):
         self.cached_odometry = msg
@@ -103,8 +103,8 @@ class UnifiedController(Node):
 
         # Subscribe to our path
         self.path_sub = self.create_subscription(
-            CostedPaths,
-            '/planning/paths',
+            Trajectory,
+            '/planning/outgoing_trajectory',
             self.paths_cb,
             10
         )

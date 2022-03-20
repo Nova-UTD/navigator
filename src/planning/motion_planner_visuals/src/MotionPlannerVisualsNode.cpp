@@ -22,7 +22,7 @@ MotionPlannerVisualsNode::MotionPlannerVisualsNode(const rclcpp::NodeOptions &no
     Node("motion_planner_visuals_node", node_options)
 {
     this->visuals_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("motion_planner_visuals", 8);
-    this->trajectory_subscription = this->create_subscription<voltron_msgs::msg::Trajectories>("outgoing_trajectories", 8, bind(&MotionPlannerVisualsNode::send_message, this, std::placeholders::_1));
+    this->trajectory_subscription = this->create_subscription<voltron_msgs::msg::Trajectories>("outgoing_trajectories_viz", 8, bind(&MotionPlannerVisualsNode::send_message, this, std::placeholders::_1));
 }
 
 void MotionPlannerVisualsNode::send_message(const voltron_msgs::msg::Trajectories::SharedPtr msg) {
@@ -30,7 +30,7 @@ void MotionPlannerVisualsNode::send_message(const voltron_msgs::msg::Trajectorie
     for (size_t t = 0; t < msg->trajectories.size(); t++) {
         auto traj = msg->trajectories[t];
         auto marker = visualization_msgs::msg::Marker();
-        marker.header.stamp = this->now();
+        //marker.header.stamp = this->now();
         marker.header.frame_id = "map";
         marker.ns = "motion_planner_visuals";
         marker.action = visualization_msgs::msg::Marker::ADD;

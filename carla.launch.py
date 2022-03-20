@@ -351,6 +351,6 @@ def generate_launch_description():
         # lane_planner,
         # parking_planner,
         path_publisher,
-        # motion_planner,
-        # motion_planner_visuals
+        motion_planner,
+        motion_planner_visuals
     ])
