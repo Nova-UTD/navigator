@@ -81,11 +81,24 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
 	map = new odr::OpenDriveMap(xodr_path, true, true, false, true);
 
+	
+
+	this->route1 = generate_path(route_1_road_ids, route_1_lane_ids, map);
+	this->route2 = generate_path(route_2_road_ids, route_2_lane_ids, map);
+	this->path = this->route1;
+}
+
+voltron_msgs::msg::CostedPaths PathPublisherNode::generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, odr::OpenDriveMap *map)
+{
+	CostedPaths costed_paths;
+	costed_paths.header.frame_id = "map";
+	costed_paths.header.stamp = get_clock()->now();
+
 	std::vector<odr::Vec3D> route;
 	double step = 0.25;
 	for (size_t i = 0; i < road_ids.size(); i++) {
 		std::string id = road_ids[i];
-		int lane_id = route_1_lane_ids[i];
+		int lane_id = lane_ids[i];
 		double road_progress = 0;
 		auto road = map->roads[id];
 		//there is only one lanesection per road on this map
@@ -111,11 +124,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	}
 	RCLCPP_INFO(this->get_logger(), "generated path");
 
-	CostedPaths costed_paths;
 	CostedPath costed_path;
-	costed_paths.header.frame_id = "map";
-	costed_paths.header.stamp = get_clock()->now();
-
 	for (odr::Vec3D pt3d : route) {
 		// RCLCPP_INFO(get_logger(), "%f, %f", pt3d[0], pt3d[1]);
 		Point path_pt;
@@ -125,11 +134,8 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 		
 		costed_path.points.push_back(path_pt);
 	}
-	RCLCPP_INFO(this->get_logger(), "created path message");
 	costed_paths.paths.push_back(costed_path);
-	this->path = costed_paths;
-	RCLCPP_INFO(this->get_logger(), "pushed path");
-	publish_paths_viz(costed_path);
+	return costed_paths;
 }
 
 //shamelessly stolen from egan
@@ -182,7 +188,7 @@ void PathPublisherNode::generatePaths() {
 	}
 	Point current_pos = cached_odom->pose.pose.position;
 	MarkerArray marker_array;
-
+	//this visual doesn't work but that doesn't matter right now
 	Marker car;
 	car.header.frame_id = "map";
 	car.ns = "path_pub_viz";
@@ -206,6 +212,7 @@ void PathPublisherNode::generatePaths() {
 	viz_pub->publish(marker_array);
 
 	paths_pub->publish(this->path);
+	publish_paths_viz(this->path.paths[0]);
 	RCLCPP_INFO(this->get_logger(), "publish path");
 	CostedPaths costed_paths;
 	CostedPath costed_path;
@@ -225,6 +232,10 @@ void PathPublisherNode::generatePaths() {
 
 	
 	RCLCPP_INFO(get_logger(), "Road %s, Current lane: %i", currentRoad->id.c_str(), currentLane->id);
+	if (currentRoad->id == "10") {
+		RCLCPP_INFO(get_logger(), "SWITCHED PATH");
+		this->path = this->route2;
+	}
 	/*odr::Line3D centerline;
 	// RCLCPP_INFO(get_logger(), "Getting centerline.");
 	if (currentLane->id < 0) {
