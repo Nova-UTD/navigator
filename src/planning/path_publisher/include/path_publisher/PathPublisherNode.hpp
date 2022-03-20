@@ -26,6 +26,13 @@
 #include <voltron_msgs/msg/costed_path.hpp>
 #include <voltron_msgs/msg/costed_paths.hpp>
 
+class RouteItem {
+public:
+	RouteItem(std::string road_id, int lane_id) : road_id(road_id), lane_id(lane_id) {}
+	std::string road_id;
+	int lane_id;
+};
+
 class PathPublisherNode : public rclcpp::Node {
 public:
 	PathPublisherNode();
@@ -42,5 +49,9 @@ private:
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub;
 	nav_msgs::msg::Odometry::SharedPtr cached_odom;
     rclcpp::Publisher<voltron_msgs::msg::CostedPaths>::SharedPtr paths_pub;
+	rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr viz_pub;
     rclcpp::TimerBase::SharedPtr path_pub_timer{nullptr};
+
+	void publish_paths_viz(voltron_msgs::msg::CostedPath path);
+	//voltron_msgs::msg::CostedPath generate_path(std::vector<RouteItem> route);
 };
