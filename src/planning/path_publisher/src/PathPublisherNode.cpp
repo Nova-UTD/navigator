@@ -63,7 +63,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 		"6", "5", "675", "2", "3"
 	};
 	this->stop_road_ids = std::set<std::string> {
-		"90", "735", "516", "566"
+		"90", "735", "566"
 	};
 	auto route_2_road_ids = std::vector<std::string>{
 		"3",
@@ -225,12 +225,16 @@ void PathPublisherNode::generatePaths() {
 
 	paths_pub->publish(this->path);
 	publish_paths_viz(this->path);
-	RCLCPP_INFO(this->get_logger(), "publish path");
+	RCLCPP_INFO(this->get_logger(), "publish path, speed %.2f", speed);
 
 
 	auto currentLane = map->get_lane_from_xy_with_route(current_pos.x, current_pos.y, all_ids);
 	if (currentLane == nullptr) {
 		RCLCPP_WARN(get_logger(), "Lane could not be located.");
+		if (speed < 0.5) {
+			//we are hit a stop sign in an unkown lane, so go again
+			this->path = this->route2_nonstop;
+		}
 		return;
 	}
 	// auto currentLane = map->get_lane_from_xy(current_pos.x, current_pos.y);
@@ -248,9 +252,9 @@ void PathPublisherNode::generatePaths() {
 		this->path = this->route2_nonstop; //disable the stop lane now that we have stopped.
 		RCLCPP_INFO(get_logger(), "DONE STOPPING");
 	}
-	if (this->path == this->route2_nonstop && this->go_road_ids.count(currentRoad->id) == 1) {
+	if (this->path == this->route2_nonstop && this->go_road_ids.count(currentRoad->id) == 1 && speed > 3) {
 		this-> path = this->route2; //we are past the stop lane, so we can enable it again
-		RCLCPP_INFO(get_logger(), "ENABLE STOPPING");
+		RCLCPP_INFO(get_logger(), "ENABLE STOPPING, s=%.2f", s);
 	}
 	/*odr::Line3D centerline;
 	// RCLCPP_INFO(get_logger(), "Getting centerline.");

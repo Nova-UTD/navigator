@@ -58,9 +58,9 @@ class UnifiedController(Node):
         current_speed = math.sqrt(
             current_twist.x ** 2 + current_twist.y ** 2
         )
-        self.get_logger().info("Received path with {} points".format(len(path.points)))
+        #self.get_logger().info("Received path with {} points".format(len(path.points)))
         desired_speed = min(5.0 - 3*steering, path.points[self.pointA_idx].vx) # m/s
-        self.get_logger().info(f"point A index {self.pointA_idx}, desired = {desired_speed}, current = {current_speed}")
+        #self.get_logger().info(f"point A index {self.pointA_idx}, desired = {desired_speed}, current = {current_speed}")
         
 
         if (current_speed < desired_speed):
