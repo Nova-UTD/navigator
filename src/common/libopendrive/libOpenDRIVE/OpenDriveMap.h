@@ -23,7 +23,10 @@ public:
     RoadSet      get_roads();
 
     std::shared_ptr<odr::Lane> get_lane_from_xy(double x, double y);
+    std::shared_ptr<odr::Road> get_road_from_xy(double x, double y);
     std::shared_ptr<odr::Lane> get_lane_from_xy_with_route(double x, double y, std::set<std::string> rs);
+
+    bool road_has_signals(std::shared_ptr<const Road> road);
 
     Mesh3D          get_refline_lines(double eps) const;
     RoadNetworkMesh get_mesh(double eps) const;

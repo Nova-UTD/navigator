@@ -19,9 +19,10 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
+
 # uncomment the following section in order to fill in
 # further dependencies manually.
-# find_package(<dependency> REQUIRED)
+# find_package(libOpenDRIVE REQUIRED)
 
 ament_auto_add_library(bp_lib STATIC
   src/BehaviorPlannerNode.cpp

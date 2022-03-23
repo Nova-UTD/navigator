@@ -601,6 +601,66 @@ std::shared_ptr<odr::Lane> OpenDriveMap::get_lane_from_xy_with_route(double x, d
     return std::shared_ptr<odr::Lane>(); // No road found!
 }
 
+
+std::shared_ptr<odr::Road> OpenDriveMap::get_road_from_xy(double x, double y)
+{
+    for (auto road : get_roads()) {
+        double s = road->ref_line->match(x, y);
+        double len = road->length;
+        if (s > 0.01 && ((s - len) < -0.01)) {
+            return road;
+        } 
+    }
+}
+
+bool OpenDriveMap::road_has_signals(std::shared_ptr<const Road> road)
+{
+    // load file
+    pugi::xml_parse_result result = this->xml_doc.load_file("");
+    if (!result)
+        printf("%s\n", result.description());
+
+    pugi::xml_node odr_node = this->xml_doc.child("OpenDRIVE");
+
+    if (auto geoReference_node = odr_node.child("header").child("geoReference"))
+        this->proj4 = geoReference_node.text().as_string();
+
+    // check if/how many signals exist for road_node matching given road ID
+    size_t cnt = 0;
+
+    pugi::xml_node road_node = odr_node.find_child_by_attribute("id", road->id.c_str());
+
+    for (pugi::xml_node signals_node : road_node.child("signals"))
+    {
+        for (pugi::xml_node signal_node : signals_node.children("signal"))
+        {
+            cnt += 1;
+        }
+    }
+
+
+    // for (pugi::xml_node road_node : odr_node.children("road"))
+    // {
+    //     if(road->id == road_node.attribute("id").as_string())
+    //     {
+    //         for (pugi::xml_node signals_node : road_node.child("signals"))
+    //         {
+    //             for (pugi::xml_node signal_node : signals_node.children("signal"))
+    //             {
+    //                 cnt += 1;
+    //             }
+    //         }
+    //         break;
+    //     }
+    // }
+
+    return (cnt != 0);
+}
+
+
+
+
+
 Mesh3D OpenDriveMap::get_refline_lines(double eps) const
 {
     /* indices are pairs of vertices representing line segments */

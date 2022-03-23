@@ -15,6 +15,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 include_directories(./)
 include_directories(Thirdparty)
 
+
 add_library(OpenDrive SHARED
     Geometries/Arc.cpp
     Geometries/CubicSpline.cpp

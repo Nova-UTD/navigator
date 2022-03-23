@@ -19,6 +19,8 @@ public:
 
 private:
 
+    int tick = 0;
+
 };
 
 

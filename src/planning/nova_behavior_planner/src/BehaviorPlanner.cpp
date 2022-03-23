@@ -36,8 +36,17 @@ bool BehaviorPlanner::destination_close() {
 
 // percp
 bool BehaviorPlanner::obstacles_present() {
-    bool conditionTrue = false;
-    return conditionTrue;
+    // bool conditionTrue = false;
+    // return conditionTrue;
+
+    // tick
+    if (tick == 3) {
+        tick = 0;
+        return false;    
+    } else {
+        tick++;
+        return true;
+    }
 }
 
 // percp

@@ -8,6 +8,12 @@
 #include "nova_behavior_planner/BehaviorPlanner.hpp"
 #include "nova_behavior_planner/BehaviorStates.hpp"
 
+// libOpenDRIVE stuff
+#include "OpenDriveMap.h"
+#include "pugixml/pugixml.hpp"
+#include "Lanes.h"
+#include "Road.h"
+
 using namespace std::chrono_literals;
 using FinalPath = voltron_msgs::msg::FinalPath;
 using CostedPath = voltron_msgs::msg::CostedPath;
@@ -41,15 +47,17 @@ private:
     // var
     std::unique_ptr<BehaviorPlanner> behavior_planner;
     rclcpp::TimerBase::SharedPtr control_timer;
-    
+	odr::OpenDriveMap* odr_map;
+
     CostedPaths costed_paths;
     Odometry current_position;
     FinalPath final_path;
 
-    State current_state;    
-
+    State current_state;
+    int stopping_point_idx;
 
     // functions
+    bool path_has_stop_sign(); // TEMP WILL BE MOVED TO BP CLASS
     void send_message();
     void update_paths(CostedPaths::SharedPtr ptr);
     void update_current_position(Odometry::SharedPtr ptr);
