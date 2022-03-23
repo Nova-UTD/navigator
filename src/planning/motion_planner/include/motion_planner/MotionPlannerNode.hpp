@@ -8,48 +8,35 @@
  */
 
 /*
-    This node is the heart of the motion planner. It gathers information
-    from the path planner (and, in the future, the behavior planner and perception)
-    to plan the cars immediate trajectory.
-
-    Trajectory generation and costing is done in the MotionPlanner class.
-    
-    This node sends trajectory information in the /planning/outgoing_trajectories message
-        (Look at Trajectories.msg for format)
+    Currently, this node republishes data from the path publisher. In the future,
+    It will take in zones from the traffic planner and obstacle zoner
+    and assign speeds to the path.
 */
 
 #pragma once
 
 #include <chrono> // Time literals
-#include <string>
 #include <vector>
-#include <array>
 
 #include "rclcpp/rclcpp.hpp"
-//#include <autoware_auto_msgs/msg/vehicle_kinematic_state.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <geometry_msgs/msg/pose_stamped.hpp>
+//#include <nav_msgs/msg/odometry.hpp>
 #include "voltron_msgs/msg/trajectory.hpp"
-#include "voltron_msgs/msg/trajectories.hpp"
 #include "voltron_msgs/msg/final_path.hpp"
-#include "voltron_msgs/msg/steering_position.hpp"
-#include "std_msgs/msg/float32.hpp"
+//#include "voltron_msgs/msg/steering_position.hpp"
 
-#include "motion_planner/MotionPlanner.hpp"
-#include "motion_planner/CarPose.hpp"
+//#include "motion_planner/CarPose.hpp"
 
 using namespace std::chrono_literals;
-using namespace autoware_auto_msgs::msg;
 
 namespace navigator {
-namespace MotionPlanner {
+namespace motion_planner {
 
 // How often to publish the new trajectory message
 constexpr auto message_frequency = 250ms;
 
 class MotionPlannerNode : public rclcpp::Node {
 public:
-    MotionPlannerNode(const rclcpp::NodeOptions &node_options);
+    MotionPlannerNode();
 
 private:
     //calls MotionPlanner to get the trajectories, selects one, and sends a message containing all trajectories
@@ -57,28 +44,24 @@ private:
     void send_message();
     //subscription to behavior planner for input ideal path.
     void update_path(voltron_msgs::msg::FinalPath::SharedPtr ptr);
-    //does nothing at the moment
-    void update_perception(std_msgs::msg::Float32::SharedPtr ptr);
 
     //gets the current heading of the car
-    void odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg);
+    //void odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg);
 
-    void update_steering_angle(voltron_msgs::msg::SteeringPosition::SharedPtr ptr);
+    //void update_steering_angle(voltron_msgs::msg::SteeringPosition::SharedPtr ptr);
 
-    double quat_to_heading(double x, double y, double z, double w);
+    //double quat_to_heading(double x, double y, double z, double w);
 
     rclcpp::Publisher<voltron_msgs::msg::Trajectory>::SharedPtr trajectory_publisher;
-    rclcpp::Publisher<voltron_msgs::msg::Trajectories>::SharedPtr trajectory_viz_publisher;
     rclcpp::Subscription<voltron_msgs::msg::FinalPath>::SharedPtr path_subscription;
-    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr perception_subscription;
-    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odomtery_pose_subscription;
-    rclcpp::Subscription<voltron_msgs::msg::SteeringPosition>::SharedPtr steering_angle_subscription; //radians
+    //rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odomtery_pose_subscription;
+    //rclcpp::Subscription<voltron_msgs::msg::SteeringPosition>::SharedPtr steering_angle_subscription; //radians
     rclcpp::TimerBase::SharedPtr control_timer;
 
-    std::shared_ptr<MotionPlanner> planner;
+    //std::shared_ptr<MotionPlanner> planner;
     voltron_msgs::msg::FinalPath::SharedPtr ideal_path;
-    CarPose pose;
-    float steering_angle; //radians
+    //CarPose pose;
+    //float steering_angle; //radians
 };
 }
 }

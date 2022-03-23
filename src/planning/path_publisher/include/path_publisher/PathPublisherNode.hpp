@@ -7,7 +7,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <vector>
 #include <set>
-#include <string>
 
 // libOpenDRIVE stuff
 #include "OpenDriveMap.h"

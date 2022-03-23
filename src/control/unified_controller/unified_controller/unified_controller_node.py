@@ -46,11 +46,6 @@ class UnifiedController(Node):
             steering_theta = self.get_theta(path.points[self.pointA_idx], path.points[self.pointB_idx], self.cached_odometry,
                                             A=0.2, B=0.7, C=0.4)
             steering = data=steering_theta * 0.5
-        # else:
-        #     steering_theta = self.get_theta(path.points[0], path.points[len(path.points)-1], self.cached_odometry,
-        #                                     A=0.4, B=0.4, C=0.7) # Prioritize path direction over current deviation and heading
-        #     steering = data=steering_theta * 0.5
-        #     self.get_logger().info("Low-point mode")
         
             
 

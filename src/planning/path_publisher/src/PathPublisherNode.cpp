@@ -34,19 +34,6 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	});
 	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
 
-	// int roads[] = {20,875,21,630,3,0,10,17,7,90,6,735,5,516,4,8,1,765,2,566,3,0};
-	onramp_ids = std::set<std::string>{
-		"20","875","21","630", "3"
-	};
-	loop_ids = std::set<std::string>{
-		"3","0","10","17","7","90","6","735",
-		"5","516","4","8","1","675","2","630"
-	};
-	all_ids = std::set<std::string>{
-		"20","875","21","630","3","0","10","17","7","90","6","735",
-		"5","516","4","8","1","675","2","630"
-	};
-
 	auto route_1_road_ids = std::vector<std::string>{
 		"20","875","21","630","3",
 		"0","10","17","7","90",
@@ -103,13 +90,13 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::s
 	for (size_t i = 0; i < road_ids.size(); i++) {
 		std::string id = road_ids[i];
 		int lane_id = lane_ids[i];
-		double road_progress = 0;
 		auto road = map->roads[id];
 		//there is only one lanesection per road on this map
 		std::shared_ptr<odr::LaneSection> lanesection = *(road->get_lanesections().begin());
 		odr::LaneSet laneset = lanesection->get_lanes();
 		//RCLCPP_INFO(this->get_logger(), "There are %d lanes for road %s", laneset.size(), id.c_str());
 		std::shared_ptr<odr::Lane> lane = nullptr;
+        //loop through the laneset to find a pointer to the lane.
 		for (auto l : laneset) {
 			if (l->id == lane_id) {
 				lane = l;
@@ -120,12 +107,9 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::s
 			RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s (i=%d)", id.c_str(), i);
 			continue;
 		}
-		odr::Line3D centerline;
-		centerline = lane->get_centerline_as_xy(lanesection->s0, lanesection->get_end(), 0.25, lane_id>0);
+		odr::Line3D centerline = lane->get_centerline_as_xy(lanesection->s0, lanesection->get_end(), step, lane_id>0);
+
 		double speed = stop_roads.count(id) == 0 ? 5 : 0;
-		if (speed == 0) {
-			RCLCPP_INFO(this->get_logger(), "stop road id: %s",  id.c_str());
-		}
 		for (odr::Vec3D point : centerline) {
 			route.push_back(point);
 			costed_path.speeds.push_back(speed);
@@ -136,7 +120,6 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::s
 	
 	size_t count = 0;
 	for (odr::Vec3D pt3d : route) {
-		// RCLCPP_INFO(get_logger(), "%f, %f", pt3d[0], pt3d[1]);
 		Point path_pt;
 		path_pt.x = pt3d[0];
 		path_pt.y = pt3d[1];
@@ -179,15 +162,6 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 	viz_pub->publish(marker_array);
 }
 
-/**
- * PSEUDOCODE
- * 1. Find current lane + road ID
- * 2. If within road on onramp (moving onto loop, so road ID is not within "loop sequence"):
- * 	a. Find "s" of car on current road
- * 	b. Sample lane centerline at 1 meter intervals within current road, from "s" to end. Append points to path
- * 	c. For each remaining road in onramp seq, sample lane centerline and append points to path
- * 
- */
 
 void PathPublisherNode::generatePaths() {
 	// Wait until odometry data is available
@@ -196,32 +170,9 @@ void PathPublisherNode::generatePaths() {
 		return;
 	}
 	Point current_pos = cached_odom->pose.pose.position;
-	MarkerArray marker_array;
-	//this visual doesn't work but that doesn't matter right now
-	Marker car;
-	car.header.frame_id = "map";
-	car.ns = "path_pub_viz";
-	car.id = 0; 
-	car.type = Marker::CUBE;
-	car.action = Marker::ADD;
-
-	car.pose.position = current_pos;
-	car.pose.orientation = cached_odom->pose.pose.orientation;
-   
-    car.scale.x = 4.0;
-    car.scale.y = 2.0;
-    car.scale.z = 2.0;
-   
-    car.color.r = 0.0f;
-    car.color.g = 1.0f;
-    car.color.b = 0.0f;
-    car.color.a = 1.0;
 
 	auto twist = cached_odom->twist.twist.linear;
 	double speed = std::sqrt(twist.x*twist.x+twist.y*twist.y);
-
-	marker_array.markers.push_back(car);
-	viz_pub->publish(marker_array);
 
 	paths_pub->publish(this->path);
 	publish_paths_viz(this->path);
@@ -237,14 +188,10 @@ void PathPublisherNode::generatePaths() {
 		}
 		return;
 	}
-	// auto currentLane = map->get_lane_from_xy(current_pos.x, current_pos.y);
-	auto currentRoad = currentLane->road.lock();
-	auto refline = currentRoad->ref_line;
-	double s = refline->match(current_pos.x, current_pos.y);
-
+	auto currentRoadId = currentLane->road.lock()->id;
 	
-	RCLCPP_INFO(get_logger(), "Road %s, Current lane: %i", currentRoad->id.c_str(), currentLane->id);
-	if (currentRoad->id == "10" && this->path == this->route1) {
+	RCLCPP_INFO(get_logger(), "Road %s, Current lane: %i", currentRoadId.c_str(), currentLane->id);
+	if (currentRoadId == "10" && this->path == this->route1) {
 		RCLCPP_INFO(get_logger(), "SWITCHED PATH");
 		this->path = this->route2;
 	}
@@ -252,59 +199,8 @@ void PathPublisherNode::generatePaths() {
 		this->path = this->route2_nonstop; //disable the stop lane now that we have stopped.
 		RCLCPP_INFO(get_logger(), "DONE STOPPING");
 	}
-	if (this->path == this->route2_nonstop && this->go_road_ids.count(currentRoad->id) == 1 && speed > 3) {
+	if (this->path == this->route2_nonstop && this->go_road_ids.count(currentRoadId) == 1 && speed > 3) {
 		this-> path = this->route2; //we are past the stop lane, so we can enable it again
-		RCLCPP_INFO(get_logger(), "ENABLE STOPPING, s=%.2f", s);
+		RCLCPP_INFO(get_logger(), "ENABLE STOPPING");
 	}
-	/*odr::Line3D centerline;
-	// RCLCPP_INFO(get_logger(), "Getting centerline.");
-	if (currentLane->id < 0) {
-		centerline = currentLane->get_centerline_as_xy(s+1.0, refline->length, 0.25);
-	} else {
-		centerline = currentLane->get_centerline_as_xy(currentLane->lane_section.lock()->s0, s-1.0, 0.25);
-		// centerline = currentLane->get_centerline_as_xy(refline->length, s-1.0, 1.0);
-	}
-	// RCLCPP_INFO(get_logger(), "Got centerline.");
-	for (odr::Vec3D pt3d : centerline) {
-		// RCLCPP_INFO(get_logger(), "%f, %f", pt3d[0], pt3d[1]);
-		Point path_pt;
-		path_pt.x = pt3d[0];
-		path_pt.y = pt3d[1];
-		path_pt.z = pt3d[2];
-		
-		costed_path.points.push_back(path_pt);
-	}
-
-
-	// if (costed_path.points.size() < 10) { // If path is short, add successor lane's points
-	// 	double end_dx = (costed_path.points.at(costed_path.points.size()-1).x - costed_path.points.at(costed_path.points.size()-2).x);
-	// 	double end_dy = (costed_path.points.at(costed_path.points.size()-1).y - costed_path.points.at(costed_path.points.size()-2).y);
-	// 	double next_x = costed_path.points.at(costed_path.points.size()-1).x + end_dx;
-	// 	double next_y = costed_path.points.at(costed_path.points.size()-1).y + end_dy;
-	// 	currentLane = currentLane = map->get_lane_from_xy_with_route(next_x, next_y, all_ids);
-	// 	if (currentLane == nullptr)
-	// 		return;
-	// 	if (currentLane->id < 0) {
-	// 		RCLCPP_INFO(get_logger(), "Getting neg. centerline.");
-	// 		centerline = currentLane->get_centerline_as_xy(s+1.0, refline->length, 1.0);
-	// 	} else {
-	// 		RCLCPP_INFO(get_logger(), "Getting pos. centerline.");
-	// 		centerline = currentLane->get_centerline_as_xy(s+1.0, refline->length, 1.0);
-	// 		// centerline = currentLane->get_centerline_as_xy(refline->length, s-1.0, 1.0);
-	// 	}
-	// 	for (odr::Vec3D pt3d : centerline) {
-	// 		// RCLCPP_INFO(get_logger(), "%f, %f", pt3d[0], pt3d[1]);
-	// 		Point path_pt;
-	// 		path_pt.x = pt3d[0];
-	// 		path_pt.y = pt3d[1];
-	// 		path_pt.z = pt3d[2];
-			
-	// 		costed_path.points.push_back(path_pt);
-	// 	}
-	// }
-
-	costed_paths.paths.push_back(costed_path);
-	
-
-	paths_pub->publish(costed_paths);*/
 }
