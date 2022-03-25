@@ -35,3 +35,24 @@ boost_polygon navigator::zones_lib::to_boost_polygon(const ZoneMsg& zone) {
     boost::geometry::correct(output);
     return output;
 }
+
+boost_polygon navigator::zones_lib::to_boost_polygon(const odr::Road& road, double eps) {
+    boost_polygon output;
+    std::vector<boost_point> points;
+    std::shared_ptr<odr::LaneSection> lanesection = *(road->get_lanesections().begin());
+    odr::LaneSet laneset = lanesection->get_lanes();
+    for (auto l : laneset) {
+        //may have to reverse direction for positive id lanes
+        odr::Mesh3D mesh = l->get_mesh(lanesection->s0, lanesection->get_end(), eps, nullptr);
+        boost_polygon poly = to_boost_polygon(mesh);
+        //union
+        
+    }
+
+    for (auto p : zone.poly.points) {
+        boost::geometry::append(output.outer(), boost_point(p.x,p.y));
+    }
+    //just makes sure the points are in clockwise order
+    boost::geometry::correct(output);
+    return output;
+}
