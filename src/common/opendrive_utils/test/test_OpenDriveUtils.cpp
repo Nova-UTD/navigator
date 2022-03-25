@@ -10,7 +10,6 @@
 #include <gtest/gtest.h>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include "opendrive_utils/OpenDriveUtils.hpp"
-#include "opendrive_utils/GeometricMap.hpp"
 
 using namespace navigator::opendrive::types;
 using namespace navigator::opendrive;
@@ -74,26 +73,4 @@ TEST_F(OpenDriveUtilsSimpleTest, test_graph_lane_indentifiers)
       }
     }
   }
-}
-
-TEST_F(OpenDriveUtilsSimpleTest, test_point_to_lane){
-  LaneGraph lane_graph(map);
-
-  LaneIdentifier test_lane_id = {"12",0.0, 1};
-  double test_x = 96.67;
-  double test_y = -109.31;
-
-  LanePtr test_lane = lane_graph.get_lane(test_lane_id);
-  
-  EXPECT_TRUE(contains(test_lane, test_x, test_y, map->x_offs, map->y_offs));
-
-  GeometricMap geometric_map(map, 50);
-  std::vector<LanePtr> lanes;
-  try{
-  EXPECT_TRUE(geometric_map.containing_lanes(test_x, test_y, lanes)) << "Lanes containing point were not found.";
-  } catch(std::exception& e){
-    std::cout << "Exception: " << e.what() << std::endl;
-  }
-  ASSERT_EQ(lanes.size(), 1ul) << "Only one lane should contain test point.";
-  EXPECT_EQ(lanes[0], test_lane) << "Lane containing test point is not correct.";
 }

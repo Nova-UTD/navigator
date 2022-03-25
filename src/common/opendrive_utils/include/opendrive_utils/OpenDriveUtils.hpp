@@ -13,7 +13,6 @@
 
 #include "OpenDriveMap.h"
 #include "opendrive_utils/OpenDriveTypes.hpp"
-#include "opendrive_utils/GeometricMap.hpp"
 #include "opendrive_utils/LaneGraph.hpp"
 
 namespace navigator {
