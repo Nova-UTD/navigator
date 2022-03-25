@@ -74,7 +74,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	std::string xodr_path = this->get_parameter("xodr_path").as_string();
 	path_resolution = this->get_parameter("path_resolution").as_double();
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-	map = new odr::OpenDriveMap(xodr_path, true, true, false, true);
+	map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
 
 	
 

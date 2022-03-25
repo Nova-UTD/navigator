@@ -50,7 +50,7 @@ LidarNudgerNode::LidarNudgerNode() : Node("lidar_nudger_node") {
 	std::string xodr_path = this->get_parameter("xodr_path").as_string();
 	double draw_detail = this->get_parameter("draw_detail").as_double();
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-	odr::OpenDriveMap odr(xodr_path, true, true, false, true);
+	odr::OpenDriveMap odr(xodr_path, {true, true, true, false, true});
 
 	// Iterate through all roads->lanesections->lanes
 	// For each lane: Construct Line Strip markers for left and right bound

@@ -6,7 +6,9 @@
     #include "OpenDriveMap.h"
     #include "RefLine.h"
     #include "Road.h"
+    #include "RoadNetworkMesh.h"
     #include "Utils.hpp"
+    #include "ViewerUtils.h"
 
     #include <emscripten/bind.h>
 
@@ -143,14 +145,22 @@ EMSCRIPTEN_BINDINGS(OpenDriveMap)
         .property("roadmarks_mesh", &RoadNetworkMesh::roadmarks_mesh)
         .property("road_objects_mesh", &RoadNetworkMesh::road_objects_mesh);
 
+    emscripten::value_object<OpenDriveMapConfig>("OpenDriveMapConfig")
+        .field("with_lateralProfile", &OpenDriveMapConfig::with_lateralProfile)
+        .field("with_laneHeight", &OpenDriveMapConfig::with_laneHeight)
+        .field("with_road_objects", &OpenDriveMapConfig::with_road_objects)
+        .field("center_map", &OpenDriveMapConfig::center_map)
+        .field("abs_z_for_for_local_road_obj_outline", &OpenDriveMapConfig::abs_z_for_for_local_road_obj_outline);
+
     emscripten::class_<OpenDriveMap>("OpenDriveMap")
-        .constructor<std::string, bool, bool, bool, bool>()
-        .function("get_refline_segments", &OpenDriveMap::get_refline_lines)
-        .function("get_mesh", &OpenDriveMap::get_mesh)
+        .constructor<std::string, OpenDriveMapConfig>()
         .property("xodr_file", &OpenDriveMap::xodr_file)
         .property("roads", &OpenDriveMap::roads)
         .property("x_offs", &OpenDriveMap::x_offs)
         .property("y_offs", &OpenDriveMap::y_offs);
+
+    emscripten::function("get_road_network_mesh", &get_road_network_mesh);
+    emscripten::function("get_refline_segments", &get_refline_segments);
 }
 
 } // namespace odr

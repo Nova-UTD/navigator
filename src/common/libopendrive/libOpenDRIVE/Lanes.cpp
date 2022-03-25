@@ -3,11 +3,8 @@
 #include "Road.h"
 #include "Utils.hpp"
 
-#include <iostream>
-
 namespace odr
 {
-
 Lane::Lane(int id, bool level, std::string type) : id(id), level(level), type(type) {}
 
 Vec3D Lane::get_surface_pt(double s, double t, Vec3D* vn) const
@@ -81,7 +78,6 @@ std::set<double> Lane::approximate_border_linear(double s_start, double s_end, d
 
     return s_vals;
 }
-
 
 Line3D Lane::get_border_line(double s_start, double s_end, double eps, bool outer) const
 {

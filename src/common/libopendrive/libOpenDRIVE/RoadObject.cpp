@@ -4,8 +4,10 @@
 
 #include "earcut/earcut.hpp"
 
+#include <array>
 #include <cmath>
-#include <math.h>
+#include <cstdint>
+#include <stdexcept>
 
 namespace odr
 {
@@ -80,22 +82,22 @@ Mesh3D RoadObject::get_mesh(double eps) const
 
     /* helper functions - object repeat's attributes override object's attributes */
     auto get_t_s = [&](const RoadObjectRepeat& r, const double& p) -> double
-    { return (isnan(r.t_start) || isnan(r.t_end)) ? this->t0 : r.t_start + p * (r.t_end - r.t_start); };
+    { return (std::isnan(r.t_start) || std::isnan(r.t_end)) ? this->t0 : r.t_start + p * (r.t_end - r.t_start); };
 
     auto get_z_s = [&](const RoadObjectRepeat& r, const double& p) -> double
-    { return (isnan(r.z_offset_start) || isnan(r.z_offset_end)) ? this->z0 : r.z_offset_start + p * (r.z_offset_end - r.z_offset_start); };
+    { return (std::isnan(r.z_offset_start) || std::isnan(r.z_offset_end)) ? this->z0 : r.z_offset_start + p * (r.z_offset_end - r.z_offset_start); };
 
     auto get_height_s = [&](const RoadObjectRepeat& r, const double& p) -> double
-    { return (isnan(r.height_start) || isnan(r.height_end)) ? this->height : r.height_start + p * (r.height_end - r.height_start); };
+    { return (std::isnan(r.height_start) || std::isnan(r.height_end)) ? this->height : r.height_start + p * (r.height_end - r.height_start); };
 
     auto get_width_s = [&](const RoadObjectRepeat& r, const double& p) -> double
-    { return (isnan(r.width_start) || isnan(r.width_end)) ? this->width : r.width_start + p * (r.width_end - r.width_start); };
+    { return (std::isnan(r.width_start) || std::isnan(r.width_end)) ? this->width : r.width_start + p * (r.width_end - r.width_start); };
 
     Mesh3D road_obj_mesh;
 
     for (const RoadObjectRepeat& repeat : repeats_copy)
     {
-        const double s_start = isnan(repeat.s0) ? this->s0 : repeat.s0;
+        const double s_start = std::isnan(repeat.s0) ? this->s0 : repeat.s0;
         const double s_end = std::min(s_start + repeat.length, road_ptr->length);
 
         if (repeat.distance != 0)
@@ -194,9 +196,11 @@ Mesh3D RoadObject::get_mesh(double eps) const
             for (const RoadObjectCorner& corner : this->outline)
             {
                 Vec3D pt_top;
-                if (corner.type == RoadObjectCorner::Type::Local)
+                if (corner.type == RoadObjectCorner::Type::Local_AbsZ || corner.type == RoadObjectCorner::Type::Local_RelZ)
                 {
-                    pt_top = {corner.pt[0], corner.pt[1], corner.pt[2] - p0[2]}; // assume z value is absolute, make road relative
+                    pt_top = {corner.pt[0], corner.pt[1], corner.pt[2]};
+                    if (corner.type == RoadObjectCorner::Type::Local_AbsZ)
+                        pt_top[2] -= p0[2]; // make road relative
                     pt_top = add(pt_top, Vec3D{0, 0, corner.height});
                     pt_top = add(MatVecMultiplication(base_mat, MatVecMultiplication(rot_mat, pt_top)), p0);
                 }
@@ -214,9 +218,11 @@ Mesh3D RoadObject::get_mesh(double eps) const
         for (const RoadObjectCorner& corner : this->outline)
         {
             Vec3D pt_base;
-            if (corner.type == RoadObjectCorner::Type::Local)
+            if (corner.type == RoadObjectCorner::Type::Local_AbsZ || corner.type == RoadObjectCorner::Type::Local_RelZ)
             {
-                pt_base = {corner.pt[0], corner.pt[1], corner.pt[2] - p0[2]}; // assume z value is absolute, make road relative
+                pt_base = {corner.pt[0], corner.pt[1], corner.pt[2]};
+                if (corner.type == RoadObjectCorner::Type::Local_AbsZ)
+                    pt_base[2] -= p0[2]; // make road relative
                 pt_base = add(MatVecMultiplication(base_mat, MatVecMultiplication(rot_mat, pt_base)), p0);
             }
             else
