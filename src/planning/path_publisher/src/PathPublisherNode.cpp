@@ -24,7 +24,6 @@ using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
 using voltron_msgs::msg::FinalPath;
 using namespace std::chrono_literals;
-using navigator::opendrive::get_centerline_as_xy;
 
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
@@ -109,7 +108,7 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::s
 			RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s (i=%d)", id.c_str(), i);
 			continue;
 		}
-		odr::Line3D centerline = get_centerline_as_xy(*lane, lanesection->s0, lanesection->get_end(), step, lane_id>0);
+		odr::Line3D centerline = navigator::opendrive::get_centerline_as_xy(*lane, lanesection->s0, lanesection->get_end(), step, lane_id>0);
 
 		double speed = stop_roads.count(id) == 0 ? 5 : 0;
 		for (odr::Vec3D point : centerline) {
@@ -181,7 +180,7 @@ void PathPublisherNode::generatePaths() {
 	RCLCPP_INFO(this->get_logger(), "publish path, speed %.2f", speed);
 
 
-	auto currentLane = map->get_lane_from_xy_with_route(current_pos.x, current_pos.y, all_ids);
+	auto currentLane = navigator::opendrive::get_lane_from_xy_with_route(map, current_pos.x, current_pos.y, all_ids);
 	if (currentLane == nullptr) {
 		RCLCPP_WARN(get_logger(), "Lane could not be located.");
 		if (speed < 0.5) {

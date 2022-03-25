@@ -71,9 +71,9 @@ double navigator::opendrive::get_distance(std::shared_ptr<const odr::RefLine> li
     return dist;
 }
 
-std::shared_ptr<odr::Lane> navigator::opendrive::get_lane_from_xy(const odr::OpenDriveMap& map, double x, double y)
+std::shared_ptr<odr::Lane> navigator::opendrive::get_lane_from_xy(const odr::OpenDriveMap* map, double x, double y)
 {
-    for (auto road : map.get_roads()) {
+    for (auto road : map->get_roads()) {
         double s = road->ref_line->match(x,y);
         double len = road->length;
         if (s > 0.01 && s-len < -0.01) {
@@ -120,9 +120,9 @@ std::shared_ptr<odr::Lane> navigator::opendrive::get_lane_from_xy(const odr::Ope
     return std::shared_ptr<odr::Lane>(); // No road found!
 }
 
-std::shared_ptr<odr::Lane> navigator::opendrive::get_lane_from_xy_with_route(const odr::OpenDriveMap map, double x, double y, const std::set<std::string>& rs)
+std::shared_ptr<odr::Lane> navigator::opendrive::get_lane_from_xy_with_route(const odr::OpenDriveMap* map, double x, double y, const std::set<std::string>& rs)
 {
-    for (auto road : map.get_roads()) {
+    for (auto road : map->get_roads()) {
         double s = road->ref_line->match(x,y);
         double len = road->length;
         if (s > 0.01 && s-len < -0.01) {

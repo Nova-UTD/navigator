@@ -14,6 +14,7 @@
 using namespace std;
 
 #include "odr_visualizer/OdrVisualizerNode.hpp"
+#include "opendrive_utils/OpenDriveUtils.hpp"
 /*
 PSEUDOCODE
 
@@ -148,9 +149,9 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node") {
 	 **/
 	int lane_qty = 0;
 	int road_qty = 0;
-	auto closest_lane = odr_map->get_lane_from_xy(-117.0, 19.0);
+	auto closest_lane = navigator::opendrive::get_lane_from_xy(odr_map, -117.0, 19.0);
 	std::shared_ptr<odr::Road> closest_road = (closest_lane->lane_section.lock())->road.lock();
-	double dist = closest_road->ref_line->get_distance(-117.0, 19.0);
+	double dist = navigator::opendrive::get_distance(closest_road->ref_line, -117.0, 19.0);
 	double s = closest_road->ref_line->match(-117.0, 19.0);
 	RCLCPP_INFO(get_logger(), "%s/%i: %f, %f, %f", closest_road->id.c_str(), closest_lane->id, dist, s, closest_road->length);
 	for (auto road : odr_map->get_roads()) {
