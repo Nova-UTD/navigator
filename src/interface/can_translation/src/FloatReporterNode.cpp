@@ -55,13 +55,13 @@ void FloatReporterNode::process_frame(const voltron_msgs::msg::CanFrame::SharedP
   if(this->params.field_length_bits < 64) {
     data_int = data_int & ((1 << this->params.field_length_bits) - 1);
   }
-  
+
   double data = (double) data_int; // Do the calculation with double precision to handle large numbers
   data = data - this->params.input_min; // Scaled from 0 to 1
   data = data / (this->params.input_max - this->params.input_min);
   data = data * (this->params.output_max - this->params.output_min); // Then rescale between output_min and output_max
-  data = data + this->params.output_min; 
-  
+  data = data + this->params.output_min;
+
 
   auto message = std_msgs::msg::Float32(); // Send the message
   message.data = (float) data;
@@ -70,8 +70,8 @@ void FloatReporterNode::process_frame(const voltron_msgs::msg::CanFrame::SharedP
 
 void FloatReporterNode::init() {
   this->result_publisher = this->create_publisher<std_msgs::msg::Float32>
-    ("result_topic", 8);
+    ("can_translation_result_topic", 8);
   this->can_subscription = this->create_subscription<voltron_msgs::msg::CanFrame>
-    ("incoming_can_frames", 8,
+    ("can_translation_incoming_can_frames", 8,
      std::bind(& FloatReporterNode::process_frame, this, std::placeholders::_1));
 }
