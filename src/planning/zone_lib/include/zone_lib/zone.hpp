@@ -25,14 +25,10 @@ namespace navigator
         using ZoneMsg = voltron_msgs::msg::Zone;
 
         boost_polygon to_boost_polygon(const ZoneMsg& zone);
-        boost_polygon to_boost_polygon(const odr::Mesh3D& mesh) {
-            return navigator::opendrive::to_boost_polygon(mesh);
-        }
+        boost_polygon to_boost_polygon(const odr::Mesh3D& mesh);
         
         ZoneMsg to_zone_msg(const boost_polygon& polygon);
-        ZoneMsg to_zone_msg(const odr::Mesh3D& mesh){
-            return to_zone_msg(to_boost_polygon(mesh));
-        }
+        ZoneMsg to_zone_msg(const odr::Mesh3D& mesh);
 
     } // namespace zones
     
