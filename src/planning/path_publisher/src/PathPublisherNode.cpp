@@ -24,6 +24,7 @@ using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
 using voltron_msgs::msg::FinalPath;
 using namespace std::chrono_literals;
+using navigator::opendrive::get_centerline_as_xy;
 
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 

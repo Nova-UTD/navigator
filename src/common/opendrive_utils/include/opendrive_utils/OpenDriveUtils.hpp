@@ -20,10 +20,9 @@ namespace navigator {
   namespace opendrive{
     using namespace types;
     OpenDriveMapPtr load_map(const std::string & filename);
+    //positive: is the lane_id positive? if so, we have to iterate in the opposite direction
+    odr::Line3D get_centerline_as_xy(const odr::Lane & lane, double s_start, double s_end, double ds, bool positive);
   }
 }
 
 
-//TODO: remove this and put in utils package
-//positive: is the lane_id positive? if so, we have to iterate in the opposite direction
-odr::Line3D get_centerline_as_xy(const odr::Lane & lane, double s_start, double s_end, double ds, bool positive);
