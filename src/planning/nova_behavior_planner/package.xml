@@ -5,11 +5,9 @@
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="nikhil.narvekar.712@gmail.com">nnarvekar</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT License</license>
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>ament_cmake_auto</buildtool_depend>
-
+  <buildtool_depend>nova_auto_package</buildtool_depend>
 
   <build_depend>nav_msgs</build_depend>
   <depend>autoware_auto_msgs</depend>
@@ -17,11 +15,6 @@
   <depend>rclcpp</depend>
   <depend>libopendrive</depend>
   <depend>geometry_msgs</depend>
-
-
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
-  <test_depend>ament_lint_auto</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
