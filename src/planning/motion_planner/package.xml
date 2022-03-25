@@ -13,6 +13,7 @@
   <depend>autoware_auto_geometry</depend>
   <depend>autoware_auto_msgs</depend>
   <depend>autoware_auto_tf2</depend>  
+  <depend>boost_geometry</depend>
   <depend>had_map_utils</depend>
   <depend>motion_common</depend>
   <depend>tf2</depend>
@@ -21,6 +22,7 @@
   <depend>rclcpp</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>zone_lib</depend>
 
 
   <test_depend>voltron_test_utils</test_depend>

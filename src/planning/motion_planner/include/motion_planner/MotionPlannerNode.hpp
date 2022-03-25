@@ -22,7 +22,8 @@
 //#include <nav_msgs/msg/odometry.hpp>
 #include "voltron_msgs/msg/trajectory.hpp"
 #include "voltron_msgs/msg/final_path.hpp"
-//#include "voltron_msgs/msg/steering_position.hpp"
+#include "voltron_msgs/msg/zone.hpp"
+#include "voltron_msgs/msg/zone_array.hpp"
 
 //#include "motion_planner/CarPose.hpp"
 
@@ -44,6 +45,7 @@ private:
     void send_message();
     //subscription to behavior planner for input ideal path.
     void update_path(voltron_msgs::msg::FinalPath::SharedPtr ptr);
+    
 
     //gets the current heading of the car
     //void odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg);
@@ -51,6 +53,8 @@ private:
     //void update_steering_angle(voltron_msgs::msg::SteeringPosition::SharedPtr ptr);
 
     //double quat_to_heading(double x, double y, double z, double w);
+    
+    void smooth(voltron_msgs::msg::Trajectory &trajectory, voltron_msgs::msg::ZoneArray &zones);
 
     rclcpp::Publisher<voltron_msgs::msg::Trajectory>::SharedPtr trajectory_publisher;
     rclcpp::Subscription<voltron_msgs::msg::FinalPath>::SharedPtr path_subscription;
