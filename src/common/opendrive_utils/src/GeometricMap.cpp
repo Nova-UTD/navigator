@@ -24,26 +24,17 @@ using odr::OpenDriveMap;
 typedef boost::geometry::model::d2::point_xy<double> boost_point;
 typedef boost::geometry::model::polygon<boost_point> boost_polygon;
 
-
 /**
  * Converts a lane to a boost polygon.
  */
-boost_polygon navigator::opendrive::to_boost_polygon(const LanePtr lane){
+boost_polygon navigator::opendrive::to_boost_polygon(const odr::Mesh3D& mesh){
     boost_polygon gon;
-
-    LaneSectionPtr lane_section = lane->lane_section.lock();
-    if (!lane_section)
-        throw std::runtime_error("could not access parent lane section");
-
-    double s0 = lane_section->s0;
-    double s1 = lane_section->get_end();
-    odr::Mesh3D mesh = lane->get_mesh(s0, s1, 1);
 
     std::vector<boost_point> points;
     // Split by odd/even since mesh alternates left, right, left, right, etc.
     for (int parity : {0, 1})
     {
-        for (int i = parity; i < mesh.vertices.size(); i += 2)
+        for (size_t i = parity; i < mesh.vertices.size(); i += 2)
         {
             auto vertex = mesh.vertices[i];
             boost::geometry::append(gon.outer(),boost_point(vertex[0], vertex[1]));
@@ -55,8 +46,19 @@ boost_polygon navigator::opendrive::to_boost_polygon(const LanePtr lane){
 }
 
 bool navigator::opendrive::contains(LanePtr lane, double x, double y, double map_x_offset, double map_y_offset){
-    boost_polygon gon = to_boost_polygon(lane);
-    // world_point = lane_point + map_offset, so world_point - map_offset = lane_point
+    LaneSectionPtr lane_section = lane->lane_section.lock();
+    if (!lane_section)
+        throw std::runtime_error("could not access parent lane section");
+
+    double s0 = lane_section->s0;
+    double s1 = lane_section->get_end();
+    odr::Mesh3D mesh = lane->get_mesh(s0, s1, 1);
+
+    boost_polygon gon = to_boost_polygon(mesh);
+    return navigator::opendrive::contains(gon, x, y, map_x_offset, map_y_offset);
+}
+
+bool navigator::opendrive::contains(const boost_polygon& gon, double x, double y, double map_x_offset, double map_y_offset){
     boost_point point(x - map_x_offset, y - map_y_offset);
     return boost::geometry::within(point, gon);
 }

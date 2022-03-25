@@ -20,9 +20,23 @@ namespace navigator
   namespace opendrive
   {
     using namespace types;
-
+    typedef boost::geometry::model::d2::point_xy<double> boost_point;
+    typedef boost::geometry::model::polygon<boost_point> boost_polygon;
     /**
      * @brief Checks if a lane contains a point
+     * 
+     * x and y are in odr::OpenDriveMap coordinates.
+     * generates a mesh and polygon for the lane every call
+     * 
+     * @param lane 
+     * @param x 
+     * @param y 
+     * @return true 
+     * @return false 
+     */
+    bool contains(LanePtr lane, double x, double y, double map_x_offset, double map_y_offset);
+    /**
+     * @brief Checks if a polygon contains a point. converts coordinates
      * 
      * x and y are in odr::OpenDriveMap coordinates.
      * 
@@ -32,12 +46,11 @@ namespace navigator
      * @return true 
      * @return false 
      */
-    bool contains(LanePtr lane, double x, double y, double map_x_offset, double map_y_offset);
+    bool contains(const boost_polygon& gon, double x, double y, double map_x_offset, double map_y_offset);
 
-    typedef boost::geometry::model::d2::point_xy<double> boost_point;
-    typedef boost::geometry::model::polygon<boost_point> boost_polygon;
+    
 
-    boost_polygon to_boost_polygon(const LanePtr lane);
+    boost_polygon to_boost_polygon(const odr::Mesh3D& mesh);
 
     class GeometricMap final
     {
