@@ -13,7 +13,10 @@
   <depend>libopendrive</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>opendrive_utils</depend>
   <depend>std_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
   <depend>visualization_msgs</depend>
 
   <export>
