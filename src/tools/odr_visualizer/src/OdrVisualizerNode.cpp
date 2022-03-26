@@ -14,6 +14,7 @@
 using namespace std;
 
 #include "odr_visualizer/OdrVisualizerNode.hpp"
+#include <boost/range/adaptor/reversed.hpp>
 /*
 PSEUDOCODE
 
@@ -46,6 +47,7 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node")
 {
 	// Handle parameters
 	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town10/Town10HD_Opt.xodr");
+	this->declare_parameter<double>("draw_detail", 1.0);
 
 	// Create publishers and subscribers
 	marker_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>("/map/viz", 1);
@@ -131,7 +133,7 @@ void OdrVisualizerNode::generateMapMarkers()
 	trilist_sidewalk.color = sidewalk_color;
 
 	Marker trilist_nearby = trilist_driving;
-	trilist_nearby.ns = "lanes_sidewalk";
+	trilist_nearby.ns = "lanes_nearby";
 	trilist_nearby.color = nearby_color;
 
 	Marker line_list; // Stores borders for lane bounds, sidewalks, etc.
@@ -186,17 +188,20 @@ void OdrVisualizerNode::generateMapMarkers()
 				// RCLCPP_INFO(get_logger(), "%i", lane->id);
 				// RCLCPP_INFO(get_logger(), "%s", road->id.c_str());
 
+				auto lane_identifier = LaneIdentifier{lane->lane_section.lock()->road.lock()->id, lane->id};
+				bool lane_is_nearby = std::find(nearby_lane_ids.begin(), nearby_lane_ids.end(), lane_identifier) != nearby_lane_ids.end();
+
 				for (auto idx : indices)
 				{
 					Point p;
 					p.x = pts[idx][0];
 					p.y = pts[idx][1];
 
-					if (lane->type == "driving")
+					if (lane_is_nearby)
 					{
-						trilist_driving.points.push_back(p);
+						trilist_nearby.points.push_back(p);
 					}
-					if (lane->type == "driving")
+					else if (lane->type == "driving")
 					{
 						trilist_driving.points.push_back(p);
 					}
@@ -253,9 +258,8 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 	nearby_lane_ids.clear();
 
 	nearby_lane_polygons.header.stamp = get_clock()->now();
-	nearby_lane_polygons.header.frame_id = 'map';
+	nearby_lane_polygons.header.frame_id = "map";
 
-	RCLCPP_INFO(this->get_logger(), "Starting polygon search!");
 	TransformStamped transformStamped;
 
 	try
@@ -269,32 +273,31 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 		RCLCPP_INFO(this->get_logger(), "Could not transform map->base_link: %s", ex.what());
 		return;
 	}
-	RCLCPP_INFO(this->get_logger(), "Transform found.");
+	// RCLCPP_INFO(this->get_logger(), "Transform found.");
 
-	// Find our current lane
+	// Find nearby lanes
 	Vector3 pos = transformStamped.transform.translation;
-	navigator::opendrive::get_lane_from_xy(odr_map, pos.x, pos.y);
 	auto tic = get_clock()->now().nanoseconds();
-	auto lanes = navigator::opendrive::get_nearby_lanes(odr_map, pos.x, pos.y, 30.0);
+	auto lanes = navigator::opendrive::get_nearby_lanes(odr_map, pos.x, pos.y, 5.0);
 	auto toc = get_clock()->now().nanoseconds();
-	RCLCPP_INFO(get_logger(), "Took %i seconds", (tic - toc));
+	// RCLCPP_INFO(get_logger(), "Took %i seconds", (toc-tic));
 
 	// Code to convert each lane into a polygon.
-	// Don't get "polygon" confused with "mesh".
-	// A polygon only contains border points in a ring.
-	// A mesh is a collection of tris.
+	//		Don't get "polygon" confused with "mesh".
+	// 		A polygon only contains border points in a ring.
+	// 		A mesh is a collection of tris.
 	for (auto lane : lanes)
 	{
 		// We only care about lanes of types "driving" and "shoulder"
 		if (!(lane->type == "driving" || lane->type == "shoulder"))
-			continue;
+			continue; // Skip this lane and keep searching
 
 		double sample_res = 1.0;
-		RCLCPP_INFO(get_logger(), "Nearby lane: %i", lane->id);
+
 		Polygon pg;
 		auto lsec = lane->lane_section.lock();
 		auto outer_pts = lane->get_border_line(lsec->s0, lsec->get_end(), sample_res);
-		auto inner_pts = lane->get_border_line(lsec->get_end(), lsec->s0, sample_res); // Reverse direction from outer_pts to form a loop
+		auto inner_pts = lane->get_border_line(lsec->s0, lsec->get_end(), sample_res); // Reverse direction from outer_pts to form a loop
 		for (odr::Vec3D border_pt : outer_pts)
 		{
 			Point32 ptmsg;
@@ -302,16 +305,20 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 			ptmsg.y = border_pt[1];
 			pg.points.push_back(ptmsg);
 		}
-		for (odr::Vec3D border_pt : inner_pts)
+		for (odr::Vec3D border_pt : boost::adaptors::reverse(inner_pts))
 		{
 			Point32 ptmsg;
 			ptmsg.x = border_pt[0];
 			ptmsg.y = border_pt[1];
 			pg.points.push_back(ptmsg);
 		}
-		nearby_lane_polygons.polygons.push_back(pg);
-		ls_id = lsec->LaneIdentifier lane_id = {, ls_id, l_id};
+		// nearby_lane_polygons.polygons.push_back(pg);
+		std::string road_id = lsec->road.lock()->id;
+		auto lane_identifer = LaneIdentifier{road_id, lane->id};
+		nearby_lane_ids.push_back(lane_identifer);
+		RCLCPP_INFO(get_logger(), "R%sL%i", road_id.c_str(), lane->id);
 	}
+	RCLCPP_INFO(get_logger(), "Total nearby: %i", nearby_lane_ids.size());
 }
 
 void OdrVisualizerNode::publishMarkerArray()

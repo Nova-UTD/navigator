@@ -35,6 +35,9 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 
+// For finding elements in a vector
+#include <algorithm>
+
 // struct LaneBoostPoly {
 // 	std::string id;
 // 	typedef boost::geometry::model::polygon<point_type> poly;

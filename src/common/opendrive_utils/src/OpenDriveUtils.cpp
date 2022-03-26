@@ -100,6 +100,7 @@ odr::LaneSet navigator::opendrive::get_nearby_lanes(OpenDriveMapPtr map, double 
 
     for (auto road : map->get_roads())
     {
+        int nearby_counter = 0;
         double s = road->ref_line->match(x, y);
 
         for (auto lsec : road->get_lanesections())
@@ -109,10 +110,16 @@ odr::LaneSet navigator::opendrive::get_nearby_lanes(OpenDriveMapPtr map, double 
                 double t = lane->outer_border.get(s);
                 odr::Vec3D border_pt = lane->get_surface_pt(s, t);
 
-                if ((border_pt[0] - x < distance) & (border_pt[1] - y < distance))
+                if ((std::abs(border_pt[0] - x) < distance) & (std::abs(border_pt[1] - y) < distance))
+                {
+                    // std::printf("Nearby lane of type %s\n", lane->type.c_str());
                     result.insert(lane);
+                    nearby_counter++;
+                }
             }
         }
+        if (nearby_counter > 0)
+            std::printf("Road %s has %i nearby lanes\n", road->id.c_str(), nearby_counter);
     }
 
     return result;
