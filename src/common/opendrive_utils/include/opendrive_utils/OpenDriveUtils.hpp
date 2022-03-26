@@ -16,17 +16,22 @@
 #include "opendrive_utils/GeometricMap.hpp"
 #include "opendrive_utils/LaneGraph.hpp"
 
+#include "Lanes.h"
 #include "LaneSection.h"
 #include "Math.hpp"
 #include "Road.h"
 #include "RefLine.h"
 
 #include <string>
+#include <vector>
 
-namespace navigator {
-  namespace opendrive{
+namespace navigator
+{
+  namespace opendrive
+  {
     using namespace types;
-    OpenDriveMapPtr load_map(const std::string & filename);
+    OpenDriveMapPtr load_map(const std::string &filename);
     LanePtr get_lane_from_xy(OpenDriveMapPtr map, double x, double y);
+    odr::LaneSet get_nearby_lanes(OpenDriveMapPtr map, double x, double y, double distance);
   }
 }

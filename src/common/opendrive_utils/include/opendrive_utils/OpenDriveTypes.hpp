@@ -39,18 +39,17 @@ namespace navigator
             struct LaneIdentifier
             {
                 RoadId road;
-                LaneSectionId section;
                 LaneId lane;
 
                 bool operator==(const LaneIdentifier &o) const
                 {
-                    return road == o.road && section == o.section && lane == o.lane;
+                    return road == o.road && lane == o.lane;
                 }
 
                 bool operator<(const LaneIdentifier &o) const
                 {
-                    return road < o.road || (road == o.road && section < o.section) ||
-                           (road == o.road && section == o.section && lane < o.lane);
+                    return road < o.road || (road == o.road) ||
+                           (road == o.road && lane < o.lane);
                 }
             };
 

@@ -93,3 +93,27 @@ LanePtr navigator::opendrive::get_lane_from_xy(OpenDriveMapPtr map, double x, do
     }
     return std::shared_ptr<odr::Lane>(); // No road found!
 }
+
+odr::LaneSet navigator::opendrive::get_nearby_lanes(OpenDriveMapPtr map, double x, double y, double distance)
+{
+    odr::LaneSet result;
+
+    for (auto road : map->get_roads())
+    {
+        double s = road->ref_line->match(x, y);
+
+        for (auto lsec : road->get_lanesections())
+        {
+            for (auto lane : lsec->get_lanes())
+            {
+                double t = lane->outer_border.get(s);
+                odr::Vec3D border_pt = lane->get_surface_pt(s, t);
+
+                if ((border_pt[0] - x < distance) & (border_pt[1] - y < distance))
+                    result.insert(lane);
+            }
+        }
+    }
+
+    return result;
+}

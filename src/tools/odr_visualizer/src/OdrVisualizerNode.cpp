@@ -30,19 +30,22 @@ Every n seconds:
 */
 
 using geometry_msgs::msg::Point;
+using geometry_msgs::msg::Point32;
+using geometry_msgs::msg::Polygon;
 using geometry_msgs::msg::TransformStamped;
 using geometry_msgs::msg::Vector3;
 using nav_msgs::msg::Odometry;
+using navigator::opendrive::LaneIdentifier;
 using std_msgs::msg::ColorRGBA;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
+using voltron_msgs::msg::PolygonArray;
 using namespace std::chrono_literals;
 
 OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node")
 {
 	// Handle parameters
 	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town10/Town10HD_Opt.xodr");
-	this->declare_parameter<double>("draw_detail", 2.0);
 
 	// Create publishers and subscribers
 	marker_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>("/map/viz", 1);
@@ -53,11 +56,10 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node")
 
 	// Init timers
 	map_pub_timer = this->create_wall_timer(5s, std::bind(&OdrVisualizerNode::publishMarkerArray, this));
-	check_surrounding_road_timer = this->create_wall_timer(1s, std::bind(&OdrVisualizerNode::publishSurroundingPolygon, this));
+	check_surrounding_road_timer = this->create_wall_timer(1s, std::bind(&OdrVisualizerNode::publishNearbyLanePolygons, this));
 
 	// Read map from file, using our path param
 	std::string xodr_path = this->get_parameter("xodr_path").as_string();
-	double draw_detail = this->get_parameter("draw_detail").as_double();
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
 	odr_map = navigator::opendrive::load_map(xodr_path);
 
@@ -98,6 +100,12 @@ void OdrVisualizerNode::generateMapMarkers()
 	sidewalk_color.g = 0.91;
 	sidewalk_color.b = 0.91;
 
+	ColorRGBA nearby_color;
+	sidewalk_color.a = 1.0;
+	sidewalk_color.r = 0.00;
+	sidewalk_color.g = 0.65;
+	sidewalk_color.b = 0.65;
+
 	/**
 	 * Mesh markers (triangle lists) and line list marker
 	 **/
@@ -121,6 +129,10 @@ void OdrVisualizerNode::generateMapMarkers()
 	Marker trilist_sidewalk = trilist_driving;
 	trilist_sidewalk.ns = "lanes_sidewalk";
 	trilist_sidewalk.color = sidewalk_color;
+
+	Marker trilist_nearby = trilist_driving;
+	trilist_nearby.ns = "lanes_sidewalk";
+	trilist_nearby.color = nearby_color;
 
 	Marker line_list; // Stores borders for lane bounds, sidewalks, etc.
 	line_list.type = line_list.LINE_LIST;
@@ -179,6 +191,11 @@ void OdrVisualizerNode::generateMapMarkers()
 					Point p;
 					p.x = pts[idx][0];
 					p.y = pts[idx][1];
+
+					if (lane->type == "driving")
+					{
+						trilist_driving.points.push_back(p);
+					}
 					if (lane->type == "driving")
 					{
 						trilist_driving.points.push_back(p);
@@ -228,8 +245,16 @@ void OdrVisualizerNode::generateMapMarkers()
 	RCLCPP_INFO_ONCE(get_logger(), "%i lanes, %i roads", lane_qty, road_qty);
 }
 
-void OdrVisualizerNode::publishSurroundingPolygon()
+void OdrVisualizerNode::publishNearbyLanePolygons()
 {
+	PolygonArray nearby_lane_polygons;
+
+	// clear our cached nearby_lane_ids
+	nearby_lane_ids.clear();
+
+	nearby_lane_polygons.header.stamp = get_clock()->now();
+	nearby_lane_polygons.header.frame_id = 'map';
+
 	RCLCPP_INFO(this->get_logger(), "Starting polygon search!");
 	TransformStamped transformStamped;
 
@@ -249,6 +274,44 @@ void OdrVisualizerNode::publishSurroundingPolygon()
 	// Find our current lane
 	Vector3 pos = transformStamped.transform.translation;
 	navigator::opendrive::get_lane_from_xy(odr_map, pos.x, pos.y);
+	auto tic = get_clock()->now().nanoseconds();
+	auto lanes = navigator::opendrive::get_nearby_lanes(odr_map, pos.x, pos.y, 30.0);
+	auto toc = get_clock()->now().nanoseconds();
+	RCLCPP_INFO(get_logger(), "Took %i seconds", (tic - toc));
+
+	// Code to convert each lane into a polygon.
+	// Don't get "polygon" confused with "mesh".
+	// A polygon only contains border points in a ring.
+	// A mesh is a collection of tris.
+	for (auto lane : lanes)
+	{
+		// We only care about lanes of types "driving" and "shoulder"
+		if (!(lane->type == "driving" || lane->type == "shoulder"))
+			continue;
+
+		double sample_res = 1.0;
+		RCLCPP_INFO(get_logger(), "Nearby lane: %i", lane->id);
+		Polygon pg;
+		auto lsec = lane->lane_section.lock();
+		auto outer_pts = lane->get_border_line(lsec->s0, lsec->get_end(), sample_res);
+		auto inner_pts = lane->get_border_line(lsec->get_end(), lsec->s0, sample_res); // Reverse direction from outer_pts to form a loop
+		for (odr::Vec3D border_pt : outer_pts)
+		{
+			Point32 ptmsg;
+			ptmsg.x = border_pt[0];
+			ptmsg.y = border_pt[1];
+			pg.points.push_back(ptmsg);
+		}
+		for (odr::Vec3D border_pt : inner_pts)
+		{
+			Point32 ptmsg;
+			ptmsg.x = border_pt[0];
+			ptmsg.y = border_pt[1];
+			pg.points.push_back(ptmsg);
+		}
+		nearby_lane_polygons.polygons.push_back(pg);
+		ls_id = lsec->LaneIdentifier lane_id = {, ls_id, l_id};
+	}
 }
 
 void OdrVisualizerNode::publishMarkerArray()

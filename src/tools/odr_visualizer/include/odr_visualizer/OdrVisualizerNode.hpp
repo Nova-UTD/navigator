@@ -20,12 +20,15 @@
 
 // Message headers
 #include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/point32.hpp>
+#include <geometry_msgs/msg/polygon.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <std_msgs/msg/color_rgba.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
+#include <voltron_msgs/msg/polygon_array.hpp>
 
 // Transforms
 #include <tf2/exceptions.h>
@@ -42,13 +45,14 @@ class OdrVisualizerNode : public rclcpp::Node
 public:
 	OdrVisualizerNode();
 	void publishMarkerArray();
-	void publishSurroundingPolygon();
+	void publishNearbyLanePolygons();
 
 private:
 	void generateMapMarkers();
 
 	visualization_msgs::msg::MarkerArray lane_markers;
 	int point_count;
+	std::vector<navigator::opendrive::LaneIdentifier> nearby_lane_ids;
 	navigator::opendrive::OpenDriveMapPtr odr_map;
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub;
 	nav_msgs::msg::Odometry cached_odom_;
