@@ -91,17 +91,6 @@ def generate_launch_description():
             ("observation_republish", "/lidars/points_fused_viz"),
         ]
     )
-    icp_nudger = Node(
-        package='icp_nudger',
-        executable='icp_nudger',
-        parameters=[(path.join(param_dir,"hubble","icp_nudger.param.yaml"))],
-        remappings=[
-            ("/gps", "/gps/odom"),
-            ("/lidar", "/lidar_front/points_raw"),
-            ("/map", "/map/pcd")
-        ],
-        output='screen'
-    )
     map_odom_ukf = Node(
         package='robot_localization',
         executable='ukf_node',
@@ -327,8 +316,6 @@ def generate_launch_description():
         # LOCALIZATION
         # ndt,
         map_odom_ukf,
-        # icp_nudger,
-        # deviation_reporter,
 
         # MAPPING
         odr_viz,
@@ -351,6 +338,6 @@ def generate_launch_description():
         # lane_planner,
         # parking_planner,
         path_publisher,
-        motion_planner,
-        motion_planner_visuals
+        # motion_planner,
+        # motion_planner_visuals
     ])
