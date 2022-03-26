@@ -37,7 +37,7 @@ class UnifiedController(Node):
         throttle, brake, steering = (0.0, 0.0, 0.0)
 
         if (len(path.points) == 0):
-            self.get_logger().warn("No path recieved.")
+            # self.get_logger().warn("No path recieved.")
             steering = 0.0
             return
         else:# len(path.points) > self.pointB_idx:

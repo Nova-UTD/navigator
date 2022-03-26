@@ -649,11 +649,12 @@ class SimBridgeNode(Node):
         # Get random spawn point
         # random_spawn = self.world.get_map().get_spawn_points()[0]
         spawn_loc = carla.Location()
-        spawn_loc.x = 0.0
-        spawn_loc.y = 24.5
+        spawn_loc.x = 109.5
+        spawn_loc.y = -15.5
         spawn_loc.z = 2.0 # Start up in the air
         spawn = carla.Transform()
         spawn.location = spawn_loc
+        spawn.rotation.yaw = -90.0
         self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, spawn))
         vehicle_bp = self.blueprint_library.find(EGO_MODEL)
         self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, spawn) 

@@ -37,11 +37,8 @@ public:
 	void generatePaths();
 
 private:
-	std::set<std::string> onramp_ids; // Road IDs
-	std::set<std::string> loop_ids; // RoadIDs
-	std::set<std::string> all_ids;
-	std::set<std::string> stop_road_ids;
-	std::set<std::string> go_road_ids;
+	std::set<std::string> loop_road_ids;
+	std::set<int> loop_lane_ids;
 	
 	voltron_msgs::msg::FinalPath path;
 	odr::OpenDriveMap* map;
