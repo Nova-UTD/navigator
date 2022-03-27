@@ -63,6 +63,7 @@ GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0)  # 10 Hz
 LIDAR_PERIOD = 1/(10.0)  # 10 Hz
+SEMANTIC_LIDAR_PERIOD = 1/(2.0)  # 10 Hz
 SPEEDOMETER_PERIOD = 1/(10.0)  # 10 Hz
 STEERING_ANGLE_PERIOD = 1/(10.0)  # 10 Hz
 OBSTACLE_QTY_VEHICLE = 0  # Spawn n cars
@@ -267,6 +268,11 @@ class SimBridgeNode(Node):
         self.ego.apply_control(cmd)
 
     def sem_lidar_cb(self, data: carla.SemanticLidarMeasurement):
+
+        rand_pick = random.uniform(0.0, 1.0)
+        if (rand_pick > 0.02):
+            return
+
         # For output classes, see https://carla.readthedocs.io/en/latest/ref_sensors/#semantic-segmentation-camera
         # Roads: yellow
         # Other ground: green

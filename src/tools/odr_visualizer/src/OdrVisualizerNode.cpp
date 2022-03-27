@@ -271,7 +271,7 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 		// We only care about lanes of types "driving" and "shoulder"
 		if (!(lane->type == "driving" || lane->type == "shoulder"))
 		{
-			RCLCPP_INFO(get_logger(), "Lane %i has type %s", lane->id, lane->type.c_str());
+			// RCLCPP_INFO(get_logger(), "Lane %i has type %s", lane->id, lane->type.c_str());
 			continue; // Skip this lane and keep searching
 		}
 
@@ -299,7 +299,7 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 		std::string road_id = lsec->road.lock()->id;
 		auto lane_identifer = LaneIdentifier{road_id, lane->id};
 		nearby_lanes.push_back(lane);
-		RCLCPP_INFO(get_logger(), "R%sL%i, (%.2f,%.2f)", road_id.c_str(), lane->id, pos.x, pos.y);
+		// RCLCPP_INFO(get_logger(), "R%sL%i, (%.2f,%.2f)", road_id.c_str(), lane->id, pos.x, pos.y);
 	}
 	// RCLCPP_INFO(get_logger(), "Total nearby: %i", nearby_lane_ids.size());
 	nearby_poly_pub->publish(nearby_lane_polygons);

@@ -8,6 +8,7 @@
   <license>TODO: License declaration</license>
 
   <depend>voltron_msgs</depend>
+  <depend>ros2_numpy</depend>
 
   <export>
     <build_type>ament_python</build_type>

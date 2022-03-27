@@ -67,17 +67,34 @@ class LidarCorrectionNode(Node):
         self.nearby_lane_polys = []
 
     def poly_sub_cb(self, msg: PolygonArray):
+        self.nearby_lane_polys.clear()
         for poly_msg in msg.polygons:
             poly_msg: Polygon
             pts = []
             for pt in poly_msg.points:
                 pts.append(ShapelyPoint(pt.x, pt.y))
-            print(pts[1])
         polygon = ShapelyPolygon(pts)
-        # polygon.points.ap
+        self.nearby_lane_polys.append(polygon)
 
-    def calculate_bias(self, msg: PointCloud2):
+    def calculate_bias(self, msg: PointCloud2):  # TODO: Transform points
         self.get_logger().info("Received {} points".format(msg.width))
+        np_pts = rnp.numpify(msg)
+        outside_x = 0.0
+        outside_y = 0.0
+        outside_qty = 0
+        for pt in np_pts:
+            # print(pt)
+            sp = ShapelyPoint(pt['x'], pt['y'])
+            isOutside = False
+            for poly in self.nearby_lane_polys:
+                if not sp.within(poly):
+                    isOutside = True
+                    break
+            if isOutside:
+                outside_x += sp.x
+                outside_y += sp.y
+                outside_qty += 1
+        print("{} out of {}".format(outside_qty, msg.width))
 
 
 def main(args=None):
