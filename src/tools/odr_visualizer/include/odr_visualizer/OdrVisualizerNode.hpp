@@ -52,14 +52,15 @@ public:
 
 private:
 	void generateMapMarkers();
+	void publishNearbyLaneMarkers(std::vector<std::shared_ptr<odr::Lane>> nearby_lanes);
 
 	visualization_msgs::msg::MarkerArray lane_markers;
 	int point_count;
-	std::vector<navigator::opendrive::LaneIdentifier> nearby_lane_ids;
 	navigator::opendrive::OpenDriveMapPtr odr_map;
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub;
 	nav_msgs::msg::Odometry cached_odom_;
 	rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub;
+	rclcpp::Publisher<voltron_msgs::msg::PolygonArray>::SharedPtr nearby_poly_pub;
 	rclcpp::TimerBase::SharedPtr map_pub_timer{nullptr};
 	rclcpp::TimerBase::SharedPtr check_surrounding_road_timer{nullptr};
 

@@ -33,6 +33,6 @@ namespace navigator
     using namespace types;
     OpenDriveMapPtr load_map(const std::string &filename);
     LanePtr get_lane_from_xy(OpenDriveMapPtr map, double x, double y);
-    odr::LaneSet get_nearby_lanes(OpenDriveMapPtr map, double x, double y, double distance);
+    std::vector<std::shared_ptr<odr::Lane>> get_nearby_lanes(OpenDriveMapPtr map, double x, double y, double distance);
   }
 }

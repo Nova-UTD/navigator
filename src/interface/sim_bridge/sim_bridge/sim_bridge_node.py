@@ -55,6 +55,9 @@ import random
 CLIENT_PORT = 2000
 CLIENT_WORLD = 'Town10HD'
 EGO_AUTOPILOT_ENABLED = True
+EGO_SPAWN_X = 98.0
+EGO_SPAWN_Y = 36.0
+EGO_SPAWN_Z = 2.0
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
@@ -659,9 +662,9 @@ class SimBridgeNode(Node):
         # Get random spawn point
         # random_spawn = self.world.get_map().get_spawn_points()[0]
         spawn_loc = carla.Location()
-        spawn_loc.x = 0.0
-        spawn_loc.y = 24.5
-        spawn_loc.z = 2.0  # Start up in the air
+        spawn_loc.x = EGO_SPAWN_X  # 0.0
+        spawn_loc.y = EGO_SPAWN_Y  # 24.5
+        spawn_loc.z = EGO_SPAWN_Z  # 2.0  # Start up in the air
         spawn = carla.Transform()
         spawn.location = spawn_loc
         self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, spawn))

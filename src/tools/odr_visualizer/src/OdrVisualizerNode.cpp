@@ -48,9 +48,11 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node")
 	// Handle parameters
 	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town10/Town10HD_Opt.xodr");
 	this->declare_parameter<double>("draw_detail", 1.0);
+	this->declare_parameter<double>("nearby_search_radius", 20.0);
 
 	// Create publishers and subscribers
 	marker_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>("/map/viz", 1);
+	nearby_poly_pub = this->create_publisher<PolygonArray>("/atlas/nearby_road_polygons", 1);
 
 	// Init transform buffer and listener
 	tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
@@ -85,28 +87,22 @@ void OdrVisualizerNode::generateMapMarkers()
 	line_color.b = 0.69;
 
 	ColorRGBA driving_color;
-	driving_color.a = 1.0;
+	driving_color.a = 0.9;
 	driving_color.r = 0.22;
 	driving_color.g = 0.27;
 	driving_color.b = 0.27;
 
 	ColorRGBA shoulder_color;
-	shoulder_color.a = 1.0;
+	shoulder_color.a = 0.9;
 	shoulder_color.r = 0.71;
 	shoulder_color.g = 0.77;
 	shoulder_color.b = 0.79;
 
 	ColorRGBA sidewalk_color;
-	sidewalk_color.a = 1.0;
+	sidewalk_color.a = 0.9;
 	sidewalk_color.r = 0.89;
 	sidewalk_color.g = 0.91;
 	sidewalk_color.b = 0.91;
-
-	ColorRGBA nearby_color;
-	sidewalk_color.a = 1.0;
-	sidewalk_color.r = 0.00;
-	sidewalk_color.g = 0.65;
-	sidewalk_color.b = 0.65;
 
 	/**
 	 * Mesh markers (triangle lists) and line list marker
@@ -131,10 +127,6 @@ void OdrVisualizerNode::generateMapMarkers()
 	Marker trilist_sidewalk = trilist_driving;
 	trilist_sidewalk.ns = "lanes_sidewalk";
 	trilist_sidewalk.color = sidewalk_color;
-
-	Marker trilist_nearby = trilist_driving;
-	trilist_nearby.ns = "lanes_nearby";
-	trilist_nearby.color = nearby_color;
 
 	Marker line_list; // Stores borders for lane bounds, sidewalks, etc.
 	line_list.type = line_list.LINE_LIST;
@@ -188,20 +180,12 @@ void OdrVisualizerNode::generateMapMarkers()
 				// RCLCPP_INFO(get_logger(), "%i", lane->id);
 				// RCLCPP_INFO(get_logger(), "%s", road->id.c_str());
 
-				auto lane_identifier = LaneIdentifier{lane->lane_section.lock()->road.lock()->id, lane->id};
-				bool lane_is_nearby = std::find(nearby_lane_ids.begin(), nearby_lane_ids.end(), lane_identifier) != nearby_lane_ids.end();
-
 				for (auto idx : indices)
 				{
 					Point p;
 					p.x = pts[idx][0];
 					p.y = pts[idx][1];
-
-					if (lane_is_nearby)
-					{
-						trilist_nearby.points.push_back(p);
-					}
-					else if (lane->type == "driving")
+					if (lane->type == "driving")
 					{
 						trilist_driving.points.push_back(p);
 					}
@@ -247,18 +231,18 @@ void OdrVisualizerNode::generateMapMarkers()
 	lane_markers.markers.push_back(trilist_shoulder);
 	lane_markers.markers.push_back(trilist_sidewalk); // Triangles that form surfaces for e.g. roads
 	lane_markers.markers.push_back(line_list);		  // Borders and other lines
-	RCLCPP_INFO_ONCE(get_logger(), "%i lanes, %i roads", lane_qty, road_qty);
+	int total_pts = trilist_driving.points.size() + trilist_shoulder.points.size() + trilist_sidewalk.points.size();
+	RCLCPP_INFO_ONCE(get_logger(), "%i lanes, %i roads, %i POINTS", lane_qty, road_qty, total_pts);
 }
 
 void OdrVisualizerNode::publishNearbyLanePolygons()
 {
 	PolygonArray nearby_lane_polygons;
-
-	// clear our cached nearby_lane_ids
-	nearby_lane_ids.clear();
+	std::vector<std::shared_ptr<odr::Lane>> nearby_lanes;
 
 	nearby_lane_polygons.header.stamp = get_clock()->now();
 	nearby_lane_polygons.header.frame_id = "map";
+	double search_radius = this->get_parameter("nearby_search_radius").as_double();
 
 	TransformStamped transformStamped;
 
@@ -278,7 +262,7 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 	// Find nearby lanes
 	Vector3 pos = transformStamped.transform.translation;
 	auto tic = get_clock()->now().nanoseconds();
-	auto lanes = navigator::opendrive::get_nearby_lanes(odr_map, pos.x, pos.y, 5.0);
+	auto lanes = navigator::opendrive::get_nearby_lanes(odr_map, pos.x, pos.y, search_radius);
 	auto toc = get_clock()->now().nanoseconds();
 	// RCLCPP_INFO(get_logger(), "Took %i seconds", (toc-tic));
 
@@ -286,11 +270,15 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 	//		Don't get "polygon" confused with "mesh".
 	// 		A polygon only contains border points in a ring.
 	// 		A mesh is a collection of tris.
+	RCLCPP_INFO(get_logger(), "%i lanes BEFORE", lanes.size());
 	for (auto lane : lanes)
 	{
 		// We only care about lanes of types "driving" and "shoulder"
 		if (!(lane->type == "driving" || lane->type == "shoulder"))
+		{
+			RCLCPP_INFO(get_logger(), "Lane %i has type %s", lane->id, lane->type.c_str());
 			continue; // Skip this lane and keep searching
+		}
 
 		double sample_res = 1.0;
 
@@ -312,17 +300,67 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 			ptmsg.y = border_pt[1];
 			pg.points.push_back(ptmsg);
 		}
-		// nearby_lane_polygons.polygons.push_back(pg);
+		nearby_lane_polygons.polygons.push_back(pg);
 		std::string road_id = lsec->road.lock()->id;
 		auto lane_identifer = LaneIdentifier{road_id, lane->id};
-		nearby_lane_ids.push_back(lane_identifer);
-		RCLCPP_INFO(get_logger(), "R%sL%i", road_id.c_str(), lane->id);
+		nearby_lanes.push_back(lane);
+		RCLCPP_INFO(get_logger(), "R%sL%i, (%.2f,%.2f)", road_id.c_str(), lane->id, pos.x, pos.y);
 	}
-	RCLCPP_INFO(get_logger(), "Total nearby: %i", nearby_lane_ids.size());
+	// RCLCPP_INFO(get_logger(), "Total nearby: %i", nearby_lane_ids.size());
+	nearby_poly_pub->publish(nearby_lane_polygons);
+	publishNearbyLaneMarkers(nearby_lanes);
+	RCLCPP_INFO(get_logger(), "%i lanes AFTER", nearby_lanes.size());
 }
 
 void OdrVisualizerNode::publishMarkerArray()
 {
 	RCLCPP_INFO_ONCE(get_logger(), "Publishing %i map markers with %i lanes. This will print once.", lane_markers.markers.size(), point_count);
 	marker_pub->publish(lane_markers);
+}
+
+// This is purely for visualization. Polygons used for algorithms are handled separately.
+void OdrVisualizerNode::publishNearbyLaneMarkers(std::vector<std::shared_ptr<odr::Lane>> laneset)
+{
+	ColorRGBA nearbyColor;
+	nearbyColor.a = 0.5;
+	nearbyColor.r = 0.00;
+	nearbyColor.g = 0.65 + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 0.1;
+	nearbyColor.b = 0.65;
+
+	double draw_detail = this->get_parameter("draw_detail").as_double();
+	MarkerArray markerArray;
+	Marker nearbyLaneTrilist;
+	nearbyLaneTrilist.type = nearbyLaneTrilist.TRIANGLE_LIST;
+	nearbyLaneTrilist.header.stamp = now();
+	nearbyLaneTrilist.header.frame_id = "map";
+	nearbyLaneTrilist.ns = "lanes_nearby";
+	nearbyLaneTrilist.action = nearbyLaneTrilist.MODIFY;
+	nearbyLaneTrilist.frame_locked = true;
+	nearbyLaneTrilist.color = nearbyColor;
+	nearbyLaneTrilist.scale.x = 1.0;
+	nearbyLaneTrilist.scale.y = 1.0;
+	nearbyLaneTrilist.scale.z = 1.0;
+	nearbyLaneTrilist.pose.position.z = 0.1;
+
+	for (auto lane : laneset)
+	{
+		auto lsec = lane->lane_section.lock();
+		auto mesh = lane->get_mesh(lsec->s0, lsec->get_end(), draw_detail);
+		auto pts = mesh.vertices;	 // Points are triangle vertices
+		auto indices = mesh.indices; // Describes order of verts to make tris
+		std::shared_ptr<odr::Road> road = lane->road.lock();
+		// RCLCPP_INFO(get_logger(), "%i", lane->id);
+		// RCLCPP_INFO(get_logger(), "%s", road->id.c_str());
+
+		for (auto idx : indices)
+		{
+			Point p;
+			p.x = pts[idx][0];
+			p.y = pts[idx][1];
+			nearbyLaneTrilist.points.push_back(p);
+		}
+	}
+
+	markerArray.markers.push_back(nearbyLaneTrilist);
+	marker_pub->publish(markerArray);
 }

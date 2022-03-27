@@ -94,9 +94,9 @@ LanePtr navigator::opendrive::get_lane_from_xy(OpenDriveMapPtr map, double x, do
     return std::shared_ptr<odr::Lane>(); // No road found!
 }
 
-odr::LaneSet navigator::opendrive::get_nearby_lanes(OpenDriveMapPtr map, double x, double y, double distance)
+std::vector<std::shared_ptr<odr::Lane>> navigator::opendrive::get_nearby_lanes(OpenDriveMapPtr map, double x, double y, double distance)
 {
-    odr::LaneSet result;
+    std::vector<std::shared_ptr<odr::Lane>> result;
 
     for (auto road : map->get_roads())
     {
@@ -112,8 +112,8 @@ odr::LaneSet navigator::opendrive::get_nearby_lanes(OpenDriveMapPtr map, double 
 
                 if ((std::abs(border_pt[0] - x) < distance) & (std::abs(border_pt[1] - y) < distance))
                 {
-                    // std::printf("Nearby lane of type %s\n", lane->type.c_str());
-                    result.insert(lane);
+                    std::printf("R%sL%i added to reult\n", lane->type.c_str());
+                    result.push_back(lane);
                     nearby_counter++;
                 }
             }
@@ -121,6 +121,6 @@ odr::LaneSet navigator::opendrive::get_nearby_lanes(OpenDriveMapPtr map, double 
         if (nearby_counter > 0)
             std::printf("Road %s has %i nearby lanes\n", road->id.c_str(), nearby_counter);
     }
-
+    std::printf("Returning %i lanes\n", result.size());
     return result;
 }
