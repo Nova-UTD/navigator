@@ -53,11 +53,11 @@ import random
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
-CLIENT_WORLD = 'Town10HD'
+CLIENT_WORLD = 'Town07'
 EGO_AUTOPILOT_ENABLED = True
-EGO_SPAWN_X = 98.0
-EGO_SPAWN_Y = 36.0
-EGO_SPAWN_Z = 2.0
+EGO_SPAWN_X = 59.0
+EGO_SPAWN_Y = -60.0
+EGO_SPAWN_Z = 6.0
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)

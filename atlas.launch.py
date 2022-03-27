@@ -332,7 +332,7 @@ def generate_launch_description():
         map_odom_ukf,
 
         # MAPPING
-        # odr_viz,
+        odr_viz,
 
         # MISC
         odom_bl_link,

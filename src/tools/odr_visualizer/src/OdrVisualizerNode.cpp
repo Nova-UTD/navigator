@@ -46,7 +46,7 @@ using namespace std::chrono_literals;
 OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node")
 {
 	// Handle parameters
-	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town10/Town10HD_Opt.xodr");
+	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town07/Town07_Opt.xodr");
 	this->declare_parameter<double>("draw_detail", 1.0);
 	this->declare_parameter<double>("nearby_search_radius", 20.0);
 
@@ -151,12 +151,7 @@ void OdrVisualizerNode::generateMapMarkers()
 	 **/
 	int lane_qty = 0;
 	int road_qty = 0;
-	auto closest_lane = odr_map->get_lane_from_xy(-117.0, 19.0);
-	std::shared_ptr<odr::Road> closest_road = (closest_lane->lane_section.lock())->road.lock();
-	double dist = closest_road->ref_line->get_distance(-117.0, 19.0);
-	double s = closest_road->ref_line->match(-117.0, 19.0);
 	double draw_detail = this->get_parameter("draw_detail").as_double();
-	RCLCPP_INFO(get_logger(), "%s/%i: %f, %f, %f", closest_road->id.c_str(), closest_lane->id, dist, s, closest_road->length);
 	for (auto road : odr_map->get_roads())
 	{
 		road_qty++;
@@ -324,7 +319,7 @@ void OdrVisualizerNode::publishNearbyLaneMarkers(std::vector<std::shared_ptr<odr
 	ColorRGBA nearbyColor;
 	nearbyColor.a = 0.5;
 	nearbyColor.r = 0.00;
-	nearbyColor.g = 0.65 + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 0.1;
+	nearbyColor.g = 0.65 + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 0.2;
 	nearbyColor.b = 0.65;
 
 	double draw_detail = this->get_parameter("draw_detail").as_double();
