@@ -26,7 +26,6 @@ namespace navigator
 
         boost_polygon to_boost_polygon(const ZoneMsg& zone);
         boost_polygon to_boost_polygon(const odr::Mesh3D& mesh);
-        boost_polygon to_boost_polygon(const odr::Road& road);
         
         ZoneMsg to_zone_msg(const boost_polygon& polygon);
         ZoneMsg to_zone_msg(const odr::Mesh3D& mesh);
