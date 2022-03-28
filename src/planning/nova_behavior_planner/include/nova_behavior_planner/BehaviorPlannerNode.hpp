@@ -4,6 +4,8 @@
 #include "voltron_msgs/msg/final_path.hpp"
 #include "voltron_msgs/msg/costed_paths.hpp"
 #include "voltron_msgs/msg/costed_path.hpp"
+#include "voltron_msgs/msg/zone_array.hpp"
+#include "voltron_msgs/msg/zone.hpp"
 #include <nav_msgs/msg/odometry.hpp>
 #include "nova_behavior_planner/BehaviorPlanner.hpp"
 #include "nova_behavior_planner/BehaviorStates.hpp"
@@ -19,6 +21,8 @@ using FinalPath = voltron_msgs::msg::FinalPath;
 using CostedPath = voltron_msgs::msg::CostedPath;
 using CostedPaths = voltron_msgs::msg::CostedPaths;
 using Odometry = nav_msgs::msg::Odometry;
+using ZoneArray = voltron_msgs::msg::ZoneArray;
+using Zone = voltron_msgs::msg::Zone;
 
 
 
@@ -40,30 +44,28 @@ public:
 
 private:  
     
-    rclcpp::Publisher<FinalPath>::SharedPtr final_path_publisher;    
-    rclcpp::Subscription<CostedPaths>::SharedPtr paths_subscription;
+    rclcpp::Publisher<ZoneArray>::SharedPtr final_zone_publisher;
     rclcpp::Subscription<Odometry>::SharedPtr odometry_subscription;
 
     // var
-    std::unique_ptr<BehaviorPlanner> behavior_planner;
     rclcpp::TimerBase::SharedPtr control_timer;
 	odr::OpenDriveMap* odr_map;
 
-    CostedPaths costed_paths;
-    Odometry current_position;
-    FinalPath final_path;
-
+    ZoneArray final_zones;
+    float current_speed;
     State current_state;
-    int stopping_point_idx;
 
     // functions
-    bool path_has_stop_sign(); // TEMP WILL BE MOVED TO BP CLASS
     void send_message();
-    void update_paths(CostedPaths::SharedPtr ptr);
-    void update_current_position(Odometry::SharedPtr ptr);
+    void update_current_speed(Odometry::SharedPtr ptr);
     void update_state();
+
+    bool upcoming_stop_sign();
+    bool obstacles_present();
     bool reached_desired_velocity(float desired_velocity);
   
+    void add_stop_zone();
+
 };
 
 }

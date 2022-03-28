@@ -6,10 +6,10 @@
 
 #include <map>
 #include <memory>
+#include <set>
 
 namespace odr
 {
-struct RoadGeometry;
 
 struct RefLine
 {
@@ -25,7 +25,6 @@ struct RefLine
     Vec3D  get_grad(double s) const;
     Line3D get_line(double s_start, double s_end, double eps) const;
     double match(double x, double y) const;
-    double get_distance(double x, double y) const;
 
     std::set<double> approximate_linear(double eps, double s_start, double s_end) const;
 

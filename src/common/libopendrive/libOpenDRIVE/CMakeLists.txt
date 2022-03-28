@@ -15,7 +15,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 include_directories(./)
 include_directories(Thirdparty)
 
-
 add_library(OpenDrive SHARED
     Geometries/Arc.cpp
     Geometries/CubicSpline.cpp
@@ -31,14 +30,19 @@ add_library(OpenDrive SHARED
     RefLine.cpp
     Road.cpp
     RoadMark.cpp
-    RoadNetworkMesh.cpp
     RoadObject.cpp
+    RoutingGraph.cpp
     Thirdparty/pugixml/pugixml.cpp
 )
 
 if(EMSCRIPTEN)
     set(CMAKE_EXECUTABLE_SUFFIX ".js")
-    add_executable(ModuleOpenDrive Embind.cpp)
+    add_executable(ModuleOpenDrive
+        Embind.cpp
+        Viewer/RoadNetworkMesh.cpp 
+        Viewer/ViewerUtils.cpp
+    )
+    target_include_directories(ModuleOpenDrive PUBLIC Viewer)
     target_link_libraries(ModuleOpenDrive OpenDrive)
     set_target_properties(ModuleOpenDrive PROPERTIES LINK_FLAGS "\
         --bind \

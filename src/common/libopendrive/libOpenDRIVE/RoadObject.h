@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Math.hpp"
 #include "Mesh.h"
 #include "Utils.hpp"
 #include "XmlNode.h"
 
 #include <memory>
 #include <set>
+#include <string>
 #include <vector>
 
 namespace odr
@@ -31,7 +33,8 @@ struct RoadObjectCorner : public XmlNode
 {
     enum class Type
     {
-        Local,
+        Local_RelZ, // z relative to road’s reference line
+        Local_AbsZ, // absolute z value
         Road
     };
 

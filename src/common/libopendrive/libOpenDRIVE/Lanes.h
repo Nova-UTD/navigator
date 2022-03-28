@@ -4,6 +4,7 @@
 #include "Math.hpp"
 #include "Mesh.h"
 #include "RoadMark.h"
+#include "Utils.hpp"
 #include "XmlNode.h"
 
 #include <map>
@@ -36,7 +37,6 @@ struct Lane : public XmlNode, public std::enable_shared_from_this<Lane>
     Mesh3D                                 get_roadmark_mesh(std::shared_ptr<const RoadMark> roadmark, double eps) const;
 
     std::set<double> approximate_border_linear(double s_start, double s_end, double eps, bool outer = true) const;
-    Line3D get_centerline_as_xy(double s_start, double s_end, double eps, bool outer = true) const;
 
     int  id = 0;
     bool level = false;

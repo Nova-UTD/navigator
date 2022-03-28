@@ -15,6 +15,7 @@
   <depend>nav_msgs</depend>
   <depend>std_msgs</depend>
   <depend>visualization_msgs</depend>
+  <depend>opendrive_utils</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

@@ -3,32 +3,8 @@
 #include "Road.h"
 #include "Utils.hpp"
 
-#include <iostream>
-
 namespace odr
 {
-
-//TODO: remove this and put in utils package
-//positive: is the lane_id positive? if so, we have to iterate in the opposite direction
-Line3D Lane::get_centerline_as_xy(double s_start, double s_end, double ds, bool positive) const
-{
-    Line3D result;
-    if (positive) {
-        for (double s = s_end-ds; s >= s_start; s -= ds) {
-            double t = (outer_border.get(s) + inner_border.get(s))/2;
-            Vec3D pt = get_surface_pt(s,t);
-            result.push_back(pt);
-        }
-    } else {
-        for (double s = s_start; s < s_end; s += ds) {
-            double t = (outer_border.get(s) + inner_border.get(s))/2;
-            Vec3D pt = get_surface_pt(s,t);
-            result.push_back(pt);
-        }
-    }
-    return result;
-}
-
 Lane::Lane(int id, bool level, std::string type) : id(id), level(level), type(type) {}
 
 Vec3D Lane::get_surface_pt(double s, double t, Vec3D* vn) const
@@ -102,7 +78,6 @@ std::set<double> Lane::approximate_border_linear(double s_start, double s_end, d
 
     return s_vals;
 }
-
 
 Line3D Lane::get_border_line(double s_start, double s_end, double eps, bool outer) const
 {

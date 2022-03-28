@@ -4,7 +4,10 @@
 #include "Utils.hpp"
 
 #include <functional>
+#include <stdexcept>
+#include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace odr
 {
@@ -64,33 +67,12 @@ Vec3D RefLine::get_grad(double s) const
 
 double RefLine::match(double x, double y) const
 {
-    // Given s, find (x, y) of s, then find distance from s to the input point
     std::function<double(double)> f_dist = [&](const double s)
     {
         const Vec3D pt = this->get_xyz(s);
         return euclDistance(Vec2D{pt[0], pt[1]}, {x, y});
     };
-    // This is an iterative search method that stops when the matched point is < 0.01 meters = 1 cm
-    // It finds the minimum of a function, in this case f_dist, the above distance function,
-    // from a start s=0 to s=length, and returns the "s" closest to given (x,y)
     return golden_section_search<double>(f_dist, 0.0, length, 1e-2);
-}
-
-double RefLine::get_distance(double x, double y) const
-{
-    // Given s, find (x, y) of s, then find distance from s to the input point
-    double dist;
-    std::function<double(double)> f_dist = [&](const double s)
-    {
-        const Vec3D pt = this->get_xyz(s);
-        dist = euclDistance(Vec2D{pt[0], pt[1]}, {x, y});
-        return dist;
-    };
-    // This is an iterative search method that stops when the matched point is < 0.01 meters = 1 cm
-    // It finds the minimum of a function, in this case f_dist, the above distance function,
-    // from a start s=0 to s=length, and returns the "s" closest to given (x,y)
-    double s = golden_section_search<double>(f_dist, 0.0, length, 1e-2);
-    return dist;
 }
 
 Line3D RefLine::get_line(double s_start, double s_end, double eps) const

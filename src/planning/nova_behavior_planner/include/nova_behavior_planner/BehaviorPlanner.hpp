@@ -10,15 +10,13 @@ public:
     BehaviorPlanner();
     ~BehaviorPlanner();
 
+    // checks for upcoming intersection for now
     bool upcoming_stop_sign();
-    bool upcoming_yield_sign();
-    bool upcoming_speedbump();
-    bool destination_close();
+
+    // for now, ticks until perception data ready to be consumed
     bool obstacles_present();
-    bool immediate_collision();
 
 private:
-
     int tick = 0;
 
 };
