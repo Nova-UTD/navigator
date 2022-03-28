@@ -15,7 +15,7 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 
   // xml parsing
   std::string xodr_path = this->get_parameter("xodr_path").as_string();
-  odr_map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
+  odr_map = new odr::OpenDriveMap(xodr_path, true, true, false, true);
 
   this->control_timer = this->create_wall_timer
     (message_frequency, std::bind(&BehaviorPlannerNode::send_message, this));
@@ -25,12 +25,22 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
   this->odometry_subscription = this->create_subscription
     <Odometry>("/carla/odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
 
+  this->path_subscription = this->create_subscription
+    <FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
+
+  make_zones();
+  
 }
 
 BehaviorPlannerNode::~BehaviorPlannerNode() {}
 
+void BehaviorPlannerNode::update_current_path(FinalPath::SharedPtr ptr) {
+  this->current_path = *ptr;
+}
 
 void BehaviorPlannerNode::update_current_speed(Odometry::SharedPtr ptr) {
+  this->current_position_x = ptr->pose.pose.position.x;
+  this->current_position_y = ptr->pose.pose.position.y;
   tf2::Vector3 vector_velocity(ptr->twist.twist.linear.x, ptr->twist.twist.linear.y, ptr->twist.twist.linear.z);
   this->current_speed = std::sqrt(vector_velocity.dot(vector_velocity));
 }
@@ -40,14 +50,13 @@ void BehaviorPlannerNode::send_message() {
   // update state based on conditions
   update_state();
 
+  // in case extra behavior needed
   switch(current_state) {
     case LANEKEEPING:
       break;
     case STOPPING:
-      add_stop_zone();
       break;
     case STOPPED:
-      add_stop_zone();
       break;
   }
 
@@ -74,33 +83,28 @@ void BehaviorPlannerNode::update_state() {
   }
 }
 
-
-// there is an intersection so we find where to add a zone
-// and add that zone to zone array
-void BehaviorPlannerNode::add_stop_zone() {
-
-}
-
-
-// checks if intersection ahead, adds zone for intersection to array if needed
+// if path has stop sign, then create zone for it
 bool BehaviorPlannerNode::upcoming_stop_sign() {
   
-  std::shared_ptr<odr::Road> prev_road;
-  // for(size_t i = 0; i < final_path.points.size(); i++) {
-  //   std::shared_ptr<odr::Road> road = odr_map->get_road_from_xy(final_path.points[i].x, final_path.points[i].y);
+  zones_made = false;
+
+  size_t m = 3; // temp horizon distance
+  for(size_t i = 0; i < current_path.points.size() - m; i++) {
     
-  //   // same pointers
-  //   if (prev_road == road) {
-  //     continue;
-  //   }
+    // get road from xy points
+    double current_x = current_path.points[i].x;
+    double current_y = current_path.points[i].y;
+    std::shared_ptr<odr::Road> road = odr_map->get_road_from_xy(x, y);
 
-  //   // xml parse to tell if road has a signal
-  //   if(odr_map->road_has_signals(road)) {
-  //     stopping_point_idx = i;
-  //   }
-  // }
+    if (road->junction != "-1") {
+      zones_made = true;
+      // pass junction ID for generate_zone function in opendrive_utils
+      // final_zones.push_back(generate_zone(road->junction));
+    }
+  }
 
-  return true;
+  return zones_made;
+
 }
 
 // no perception data so just returning false for now
