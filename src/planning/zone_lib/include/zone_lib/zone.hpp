@@ -10,7 +10,6 @@
 
 #include "voltron_msgs/msg/zone.hpp"
 #include "Mesh.h"
-#include "opendrive_utils/GeometricMap.hpp"
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
