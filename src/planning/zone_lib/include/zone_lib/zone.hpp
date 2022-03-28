@@ -10,6 +10,7 @@
 
 #include "voltron_msgs/msg/zone.hpp"
 #include "Mesh.h"
+#include "opendrive_utils/GeometricMap.hpp"
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
@@ -24,12 +25,10 @@ namespace navigator
         using ZoneMsg = voltron_msgs::msg::Zone;
 
         boost_polygon to_boost_polygon(const ZoneMsg& zone);
-        boost_polygon to_boost_polygon(odr::Mesh3D mesh);
+        boost_polygon to_boost_polygon(const odr::Mesh3D& mesh);
         
         ZoneMsg to_zone_msg(const boost_polygon& polygon);
-        ZoneMsg to_zone_msg(const odr::Mesh3D& mesh){
-            return to_zone_msg(to_boost_polygon(mesh));
-        }
+        ZoneMsg to_zone_msg(const odr::Mesh3D& mesh);
 
     } // namespace zones
     
