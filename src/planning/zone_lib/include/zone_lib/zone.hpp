@@ -9,7 +9,13 @@
 #pragma once
 
 #include "voltron_msgs/msg/zone.hpp"
+
+//libopendrive
 #include "Mesh.h"
+#include "Junction.h"
+#include "OpenDriveMap.h"
+#include "Road.h"
+
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
@@ -28,6 +34,8 @@ namespace navigator
         
         ZoneMsg to_zone_msg(const boost_polygon& polygon);
         ZoneMsg to_zone_msg(const odr::Mesh3D& mesh);
+        //need map to look up roads
+        ZoneMsg to_zone_msg(const odr::Junction& junction, const odr::OpenDriveMap& map);
 
     } // namespace zones
     
