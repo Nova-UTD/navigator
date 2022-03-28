@@ -280,7 +280,7 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 		Polygon pg;
 		auto lsec = lane->lane_section.lock();
 		auto outer_pts = lane->get_border_line(lsec->s0, lsec->get_end(), sample_res);
-		auto inner_pts = lane->get_border_line(lsec->s0, lsec->get_end(), sample_res); // Reverse direction from outer_pts to form a loop
+		auto inner_pts = lane->get_border_line(lsec->s0, lsec->get_end(), sample_res, false); // Reverse direction from outer_pts to form a loop
 		for (odr::Vec3D border_pt : outer_pts)
 		{
 			Point32 ptmsg;

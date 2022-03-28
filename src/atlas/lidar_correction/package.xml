@@ -9,6 +9,7 @@
 
   <depend>voltron_msgs</depend>
   <depend>ros2_numpy</depend>
+  <depend>visualization_msgs</depend>
 
   <export>
     <build_type>ament_python</build_type>
