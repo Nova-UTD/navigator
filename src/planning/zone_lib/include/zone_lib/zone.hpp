@@ -22,6 +22,7 @@
 
 typedef boost::geometry::model::d2::point_xy<double> boost_point;
 typedef boost::geometry::model::polygon<boost_point> boost_polygon;
+using PointMsg = geometry_msgs::msg::Point32;
 
 namespace navigator
 {
@@ -37,6 +38,10 @@ namespace navigator
         
         //need map to look up roads
         ZoneMsg to_zone_msg(odr::Junction& junction, odr::OpenDriveMap& map);
+
+        // helper function to calculate point
+        std::vector<PointMsg> calculate_corner_points(odr::LaneSection& lanesection, double s_val);
+
 
     } // namespace zones
     
