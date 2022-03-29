@@ -94,12 +94,12 @@ bool BehaviorPlannerNode::upcoming_stop_sign() {
     // get road from xy points
     double current_x = current_path.points[i].x;
     double current_y = current_path.points[i].y;
-    std::shared_ptr<odr::Road> road = odr_map->get_road_from_xy(x, y);
+    std::shared_ptr<odr::Road> road = navigator::opendrive::get_road_from_xy(odr_map, x, y);
 
     if (road->junction != "-1") {
       zones_made = true;
-      // pass junction ID for generate_zone function in opendrive_utils
-      // final_zones.push_back(generate_zone(road->junction));
+      Zone zone = navigator::zones_lib::to_zone_msg(odr_map->junctions[road->junction]);
+      final_zones.push_back(zone);
     }
   }
 

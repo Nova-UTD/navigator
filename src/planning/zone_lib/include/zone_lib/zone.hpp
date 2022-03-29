@@ -34,8 +34,9 @@ namespace navigator
         
         ZoneMsg to_zone_msg(const boost_polygon& polygon);
         ZoneMsg to_zone_msg(const odr::Mesh3D& mesh);
+        
         //need map to look up roads
-        ZoneMsg to_zone_msg(const odr::Junction& junction, const odr::OpenDriveMap& map);
+        ZoneMsg to_zone_msg(odr::Junction& junction, odr::OpenDriveMap& map);
 
     } // namespace zones
     

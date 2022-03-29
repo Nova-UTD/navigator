@@ -32,9 +32,6 @@ public:
 
     RoutingGraph get_routing_graph() const;
 
-    std::shared_ptr<odr::Road> get_road_from_xy(double x, double y);
-
-
     const std::string  xodr_file = "";
     std::string        proj4 = "";
     pugi::xml_document xml_doc;

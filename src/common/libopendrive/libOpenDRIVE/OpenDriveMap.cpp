@@ -560,20 +560,6 @@ RoadSet OpenDriveMap::get_roads()
     return roads;
 }
 
-
-std::shared_ptr<odr::Road> OpenDriveMap::get_road_from_xy(double x, double y)
-{
-    for (auto road : get_roads()) {
-        double s = road->ref_line->match(x, y);
-        double len = road->length;
-        if (s > 0.01 && ((s - len) < -0.01)) {
-            return road;
-        } 
-    }
-}
-
-
-
 RoutingGraph OpenDriveMap::get_routing_graph() const
 {
     RoutingGraph routing_graph;
