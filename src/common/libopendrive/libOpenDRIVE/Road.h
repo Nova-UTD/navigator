@@ -2,7 +2,6 @@
 
 #include "Geometries/CubicSpline.h"
 #include "LaneSection.h"
-#include "Lanes.h"
 #include "Math.hpp"
 #include "RoadObject.h"
 #include "Utils.hpp"
@@ -11,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <vector>
 
 namespace odr
@@ -34,22 +34,36 @@ struct Crossfall : public CubicSpline
 
 struct RoadLink : public XmlNode
 {
-    std::string elementId;
-    std::string elementType;
-    std::string contactPoint;
+    enum class ContactPoint
+    {
+        None,
+        Start,
+        End
+    };
+
+    enum class Type
+    {
+        None,
+        Road,
+        Junction
+    };
+
+    std::string  id = "";
+    Type         type = Type::None;
+    ContactPoint contact_point = ContactPoint::None;
 };
 
 struct RoadNeighbor : public XmlNode
 {
-    std::string elementId;
-    std::string side;
-    std::string direction;
+    std::string id = "";
+    std::string side = "";
+    std::string direction = "";
 };
 
 struct SpeedRecord : public XmlNode
 {
-    std::string max;
-    std::string unit;
+    std::string max = "";
+    std::string unit = "";
 };
 
 class Road : public XmlNode, public std::enable_shared_from_this<Road>

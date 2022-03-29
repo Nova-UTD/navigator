@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>motion_planner</name>
+  <version>0.0.1</version>
+  <description>Motion Planner</description>
+  <maintainer email="jim3moore@gmail.com">Jim Moore</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>nova_auto_package</buildtool_depend>
+
+  <depend>autoware_auto_common</depend>
+  <depend>autoware_auto_geometry</depend>
+  <depend>autoware_auto_msgs</depend>
+  <depend>autoware_auto_tf2</depend>  
+  <depend>boost_geometry</depend>
+  <depend>had_map_utils</depend>
+  <depend>motion_common</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>voltron_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>zone_lib</depend>
+
+
+  <test_depend>voltron_test_utils</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

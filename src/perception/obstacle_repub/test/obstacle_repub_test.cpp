@@ -82,7 +82,7 @@ TEST_F(ObstacleRepubTest, zedMsgRepub){
     ASSERT_EQ(nova_obstacle.confidence, 0.86f);
 
     // some value checks
-    ASSERT_EQ(nova_obstacle.bounding_box.position.x, 1.5);
+    ASSERT_EQ(nova_obstacle.bounding_box.center.position.x, 1.5);
     ASSERT_EQ(nova_obstacle.velocity.y, -1.5);
     ASSERT_EQ(nova_obstacle.bounding_box.size.z, 3.0);
     ASSERT_EQ(nova_obstacle.bounding_box.corners[3].y, -1.0); 
