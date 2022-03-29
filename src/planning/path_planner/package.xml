@@ -2,26 +2,33 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>path_planner</name>
-  <version>0.0.1</version>
-  <description>path_planner</description>
-  <maintainer email="jim3moore@gmail.com">Jim Moore</maintainer>
-  <license>MIT</license>
+  <version>0.0.0</version>
+  <description>Lane-level space path generation and costing</description>
+  <maintainer email="egan.johson@utdallas.edu">ejohnson</maintainer>
+  <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_auto_cmake</buildtool_depend>
 
-  <depend>autoware_auto_common</depend>
-  <depend>autoware_auto_geometry</depend>
-  <depend>autoware_auto_msgs</depend>
-  <depend>autoware_auto_tf2</depend>  
-  <depend>had_map_utils</depend>
-  <depend>motion_common</depend>
+  <depend>lanelet2_core</depend>
+  <depend>lanelet2_io</depend>
+  <depend>lanelet2_projection</depend>
+  <depend>lanelet2_traffic_rules</depend>
+  <depend>lanelet2_routing</depend>  <depend>had_map_utils</depend>
   <depend>tf2</depend>
+  <depend>tf2_geometry_msgs</depend>
   <depend>tf2_ros</depend>
+  <depend>time_utils</depend>
+  <depend>motion_common</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_action</depend>
+  <depend>rclcpp_components</depend>
+  <depend>std_msgs</depend>
+  <depend>voltron_msgs</depend>
+  <depend>autoware_auto_msgs</depend>
+  <depend>geometry_msgs</depend>
 
-  <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
-  <test_depend>voltron_test_utils</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

@@ -1,55 +1,37 @@
-#
-# Package:   path_planner
-# Filename:  CMakeLists.txt
-# Author:    Jim Moore
-# Email:     jim3moore@gmail.com
-# Copyright: 2021, Nova UTD
-# License:   MIT License
-#
 cmake_minimum_required(VERSION 3.5)
-
 project(path_planner)
 
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
-endif()
-
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
-
-# dependencies
+# find dependencies
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-# Build a library from our source files. This is just a convenience
-# mechanism to prevent having to explicitly list all files for every
-# executable.
-ament_auto_add_library(path_planner_lib STATIC
+# build
+set(PATH_PLANNER_LIB path_planner)
+ament_auto_add_library(${PATH_PLANNER_LIB} SHARED
+  include/path_planner/path_planner.hpp
+  include/path_planner/path_planner_node.hpp
   src/path_planner.cpp
-  src/parameterized_spline.cpp
-  src/map_utils.cpp
-  include/path_planner/spline.hpp
-  include/path_planner/lane_points.hpp
+  src/path_planner_node.cpp
 )
-target_include_directories(path_planner_lib PUBLIC include)
+#autoware_set_compile_options(${PATH_PLANNER_LIB})
 
+set(PATH_PLANNER_NODE_EXE ${PATH_PLANNER_LIB}_exe)
+rclcpp_components_register_node(${PATH_PLANNER_LIB}
+  PLUGIN "navigator::path_planner::PathPlannerNode"
+  EXECUTABLE ${PATH_PLANNER_NODE_EXE}
+)
 
 if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)   # General test dependency
-  ament_lint_auto_find_test_dependencies() # Find any test dependencies declared in package.xml
-
-  ament_add_gtest(tests
-    test/test_path_planner.cpp
-    test/test_parameterized_spline.cpp)
-
-  ament_target_dependencies(tests
-    autoware_auto_common autoware_auto_geometry
-    autoware_auto_msgs
-    had_map_utils)
-
-  target_link_libraries(tests path_planner_lib gtest_main)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # uncomment the line when a copyright and license is not present in all source files
+  set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # uncomment the line when this package is not in a git repo
+  #set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
 endif()
 
-# ament package generation and installing
-ament_auto_package()
+ament_auto_package(
+  INSTALL_TO_SHARE
+)

@@ -20,23 +20,12 @@ def generate_launch_description():
     map_name = "grandloop"
 
     # CONTROL
-    steering_controller = Node(
-        package='vt_steering_controller',
-        executable='controller_exe',
-        name='controller_exe',
-        namespace='control'
+    unified_controller = Node(
+        package='unified_controller',
+        executable='unified_controller_node'
     )
 
     # INTERFACE
-    vehicle_bridge = Node(
-        package='vt_vehicle_bridge',
-        executable='svl_bridge_exe',
-    )
-
-    svl_bridge = Node(
-        executable='lgsvl_bridge',
-    )
-
     epas_reporter = Node(
         package='epas_translator',
         executable='reporter',
@@ -102,28 +91,27 @@ def generate_launch_description():
             ("observation_republish", "/lidars/points_fused_viz"),
         ]
     )
-    icp_nudger = Node(
-        package='icp_nudger',
-        executable='icp_nudger',
-        parameters=[(path.join(param_dir,"hubble","icp_nudger.param.yaml"))],
-        remappings=[
-            ("/gps", "/gps/odom"),
-            ("/lidar", "/lidar_front/points_raw"),
-            ("/map", "/map/pcd")
-        ],
-        output='screen'
-    )
-    robot_localization = Node(
+    map_odom_ukf = Node(
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=[(path.join(param_dir,"hubble","robot_localization.param.yaml"))],
+        parameters=[(path.join(param_dir,"atlas","map_odom.param.yaml"))],
         remappings=[
-            ("/odom0", "/gps/odom"),
-            ("/odom1", "/zed2i/zed_node/odom"),
-            ("/imu0", "/zed2i/zed_node/imu/data_raw")
+            ("/odom0", "/gnss/odom"),
+            ("/imu0", "/imu_primary/data"),
+            ("/twist0", "/can/speedometer_twist")
         ]
     )
+
+    # odom_bl_ukf = Node(
+    #     package='robot_localization',
+    #     executable='ukf_node',
+    #     name='localization_map_odom',
+    #     parameters=[(path.join(param_dir,"atlas","odom_bl.param.yaml"))],
+    #     remappings=[
+    #         ("/imu0", "/imu_primary/data")
+    #     ]
+    # )
 
     # MAPPING
     lanelet_server = Node(
@@ -136,7 +124,11 @@ def generate_launch_description():
 
     odr_viz = Node(
         package='odr_visualizer',
-        executable='visualizer'
+        executable='visualizer',
+        parameters=[
+            (path.join(param_dir,"mapping","odr.param.yaml"))
+        ],
+        output='screen'
     )
 
     # lanelet_visualizer = Node(
@@ -157,7 +149,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0','0','0','0','0','0.0','1.0','odom','base_link'
+            '0.0','0.0','0.0','0.0','0.0','0.0','1.0','odom','base_link'
         ]
     )
 
@@ -216,24 +208,55 @@ def generate_launch_description():
                     ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')]
     )
     
-    path_planner = Node(
-        package='behavior_planner_nodes',
-        name='behavior_planner_node',
-        namespace='planning',
-        executable='behavior_planner_node_exe',
+    # path_planner = Node(
+    #     package='behavior_planner_nodes',
+    #     name='behavior_planner_node',
+    #     namespace='planning',
+    #     executable='behavior_planner_node_exe',
+    #     parameters=[
+    #         (path.join(param_dir,"planning","path_planner.param.yaml"))
+    #     ],
+    #     output='screen',
+    #     remappings=[
+    #         ('HAD_Map_Service', '/had_maps/HAD_Map_Service'),
+    #         ('vehicle_state', '/vehicle/vehicle_kinematic_state'),
+    #         ('route', 'global_path'),
+    #         ('gear_report', '/vehicle/gear'),
+    #         ('vehicle_state_command', '/vehicle/state_command')
+    #     ]
+    # )
+
+    path_publisher = Node(
+        package='path_publisher',
+        executable='publisher',
         parameters=[
-            (path.join(param_dir,"planning","path_planner.param.yaml"))
+            (path.join(param_dir,"planning","path_publisher.param.yaml"))
         ],
+        namespace='planning',
+        output='screen',
+        respawn=True
+    )
+
+    motion_planner = Node(
+        package='motion_planner',
+        name='motion_planner_node',
+        namespace='planning',
+        executable='motion_planner_exe',
         output='screen',
         remappings=[
-            ('HAD_Map_Service', '/had_maps/HAD_Map_Service'),
-            ('vehicle_state', '/vehicle/vehicle_kinematic_state'),
-            ('route', 'global_path'),
-            ('gear_report', '/vehicle/gear'),
-            ('vehicle_state_command', '/vehicle/state_command')
+            ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
         ]
     )
-    
+    motion_planner_visuals = Node(
+        package='motion_planner_visuals',
+        name='motion_planner_visuals_node',
+        namespace='planning',
+        executable='motion_planner_visuals_exe',
+        output='screen',
+        remappings = [
+            ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
+        ]
+    )
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -280,7 +303,7 @@ def generate_launch_description():
     
     return LaunchDescription([
         # CONTROL
-        # steering_controller,
+        unified_controller,
 
         # INTERFACE
         # can,
@@ -288,15 +311,11 @@ def generate_launch_description():
         # epas_controller,
         # epas_reporter,
         # gnss,
-        svl_bridge,
-        # vehicle_bridge,
         # speedometer_reporter,
 
         # LOCALIZATION
         # ndt,
-        # robot_localization,
-        # icp_nudger,
-        # deviation_reporter,
+        map_odom_ukf,
 
         # MAPPING
         odr_viz,
@@ -304,7 +323,7 @@ def generate_launch_description():
         # MISC
         odom_bl_link,
         urdf_publisher,
-        # visuals,
+        visuals,
 
         # PERCEPTION
         # lidar_driver_front,
@@ -318,4 +337,7 @@ def generate_launch_description():
         # path_planner,
         # lane_planner,
         # parking_planner,
+        path_publisher,
+        # motion_planner,
+        # motion_planner_visuals
     ])

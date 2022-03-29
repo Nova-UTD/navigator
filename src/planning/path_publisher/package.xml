@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>path_publisher</name>
+  <version>0.0.1</version>
+  <description>Package for reading a .xodr file and publishing a MarkerArray message</description>
+  <maintainer email="will.heitman@utdallas.edu">Will Heitman</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>nova_auto_package</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>libopendrive</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>voltron_msgs</depend>
+  <depend>opendrive_utils</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

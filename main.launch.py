@@ -37,14 +37,6 @@ def generate_launch_description():
 #    )
 
     # INTERFACE
-#    vehicle_bridge = Node(
-#        package='vt_vehicle_bridge',
-#        executable='svl_bridge_exe',
-#    )
-
-    svl_bridge = Node(
-        executable='lgsvl_bridge',
-    )
 
     epas_reporter = Node(
         package='epas_translator',
@@ -216,23 +208,40 @@ def generate_launch_description():
     )
 
     path_planner = Node(
-        package='behavior_planner_nodes',
-        name='behavior_planner_node',
+        package='path_planner',
+        name='path_planner_node',
         namespace='planning',
-        executable='behavior_planner_node_exe',
-        parameters=[
-            (path.join(param_dir,"planning","path_planner.param.yaml"))
-        ],
+        executable='path_planner_exe',
         output='screen',
         remappings=[
-            ('HAD_Map_Service', '/had_maps/HAD_Map_Service'),
-            ('vehicle_state', '/vehicle/vehicle_kinematic_state'),
-            ('route', 'global_path'),
-            ('gear_report', '/vehicle/gear'),
-            ('vehicle_state_command', '/vehicle/state_command')
+            ('HAD_Map_Client', '/had_maps/HAD_Map_Service'),
+            ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state'),
+            ('route_costs', '/planning/route_costs'),
+            ('paths','paths'),
         ]
     )
 
+    motion_planner = Node(
+        package='motion_planner',
+        name='motion_planner_node',
+        namespace='planning',
+        executable='motion_planner_exe',
+        output='screen',
+        remappings=[
+            ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
+        ]
+    )
+    motion_planner_visuals = Node(
+        package='motion_planner_visuals',
+        name='motion_planner_visuals_node',
+        namespace='planning',
+        executable='motion_planner_visuals_exe',
+        output='screen',
+        remappings = [
+            ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
+        ]
+    )
+    
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -287,7 +296,6 @@ def generate_launch_description():
         # epas_reporter,
 
         interface_bridge,
-        svl_bridge,
         # vehicle_bridge,
         # speedometer_reporter,
 
@@ -315,8 +323,10 @@ def generate_launch_description():
         curb_detector,
 
         # PLANNING
-        # route_planner,
-        # path_planner,
-        # lane_planner,
+        route_planner,
+        path_planner,
+        lane_planner,
+        motion_planner,
+        motion_planner_visuals,
         # parking_planner,
     ])

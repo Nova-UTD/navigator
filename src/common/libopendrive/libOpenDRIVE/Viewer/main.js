@@ -17,7 +17,6 @@ var spotlight_paused = false;
 const COLORS = {
     road : 1.0,
     roadmark : 1.0,
-    road_object : 0.9,
     lane_outline : 0xae52d4,
     roadmark_outline : 0xffffff,
     ref_line : 0x69f0ae,
@@ -111,11 +110,6 @@ const st_material = new THREE.ShaderMaterial({
 const roadmarks_material = new THREE.MeshBasicMaterial({
     vertexColors : THREE.VertexColors,
 });
-const road_objects_material = new THREE.MeshBasicMaterial({
-    vertexColors : THREE.VertexColors,
-    side : THREE.DoubleSide,
-    wireframe : true,
-});
 
 /* load WASM + odr map */
 libOpenDrive().then(Module => {
@@ -141,7 +135,14 @@ function loadFile(file_text, clear_map)
     ModuleOpenDrive['FS_createDataFile'](".", "data.xodr", file_text, true, true);
     if (OpenDriveMap)
         OpenDriveMap.delete();
-    OpenDriveMap = new ModuleOpenDrive.OpenDriveMap("./data.xodr", PARAMS.lateralProfile, PARAMS.laneHeight, true, false);
+    odr_map_config = {
+        with_lateralProfile : PARAMS.lateralProfile,
+        with_laneHeight : PARAMS.laneHeight,
+        with_road_objects : false,
+        center_map : true,
+        abs_z_for_for_local_road_obj_outline : true
+    };
+    OpenDriveMap = new ModuleOpenDrive.OpenDriveMap("./data.xodr", odr_map_config);
     loadOdrMap(clear_map);
 }
 
@@ -158,7 +159,7 @@ function loadOdrMap(clear_map = true, fit_view = true)
     const t0 = performance.now();
     if (clear_map) {
         road_network_mesh.userData.odr_road_network_mesh.delete();
-        scene.remove(road_network_mesh, roadmarks_mesh, road_objects_mesh, refline_lines, lane_outline_lines, roadmark_outline_lines, ground_grid);
+        scene.remove(road_network_mesh, roadmarks_mesh, refline_lines, lane_outline_lines, roadmark_outline_lines, ground_grid);
         lane_picking_scene.remove(...lane_picking_scene.children);
         roadmark_picking_scene.remove(...roadmark_picking_scene.children);
         xyz_scene.remove(...xyz_scene.children);
@@ -169,7 +170,7 @@ function loadOdrMap(clear_map = true, fit_view = true)
 
     /* reflines */
     const reflines_geom = new THREE.BufferGeometry();
-    const odr_refline_segments = OpenDriveMap.get_refline_segments(parseFloat(PARAMS.resolution));
+    const odr_refline_segments = ModuleOpenDrive.get_refline_segments(OpenDriveMap, parseFloat(PARAMS.resolution));
     reflines_geom.setAttribute('position', new THREE.Float32BufferAttribute(getStdVecEntries(odr_refline_segments.vertices).flat(), 3));
     reflines_geom.setIndex(getStdVecEntries(odr_refline_segments.indices, true));
     refline_lines = new THREE.LineSegments(reflines_geom, refline_material);
@@ -180,7 +181,7 @@ function loadOdrMap(clear_map = true, fit_view = true)
     scene.add(refline_lines);
 
     /* road network geometry */
-    const odr_road_network_mesh = OpenDriveMap.get_mesh(parseFloat(PARAMS.resolution));
+    const odr_road_network_mesh = ModuleOpenDrive.get_road_network_mesh(OpenDriveMap, parseFloat(PARAMS.resolution));
     const odr_lanes_mesh = odr_road_network_mesh.lanes_mesh;
     const road_network_geom = get_geometry(odr_lanes_mesh);
     road_network_geom.attributes.color.array.fill(COLORS.road);
@@ -243,26 +244,6 @@ function loadOdrMap(clear_map = true, fit_view = true)
     const roadmark_picking_mesh = new THREE.Mesh(roadmarks_geom, id_material);
     roadmark_picking_mesh.matrixAutoUpdate = false;
     roadmark_picking_scene.add(roadmark_picking_mesh);
-
-    /* road objects geometry */
-    const odr_road_objects_mesh = odr_road_network_mesh.road_objects_mesh;
-    const road_objects_geom = get_geometry(odr_road_objects_mesh);
-    road_objects_geom.attributes.color.array.fill(COLORS.road_object);
-    for (const [vert_start_idx, _] of getStdMapEntries(odr_road_objects_mesh.road_object_start_indices)) {
-        const vert_idx_interval = odr_roadmarks_mesh.get_idx_interval_roadmark(vert_start_idx);
-        const vert_count = vert_idx_interval[1] - vert_idx_interval[0];
-        const vert_start_idx_encoded = encodeUInt32(vert_start_idx);
-        const attr_arr = new Float32Array(vert_count * 4);
-        for (let i = 0; i < vert_count; i++)
-            attr_arr.set(vert_start_idx_encoded, i * 4);
-        roadmarks_geom.attributes.id.array.set(attr_arr, vert_idx_interval[0] * 4);
-    }
-    disposable_objs.push(road_objects_geom);
-
-    /* road objects mesh */
-    road_objects_mesh = new THREE.Mesh(road_objects_geom, road_objects_material);
-    road_objects_mesh.matrixAutoUpdate = false;
-    scene.add(road_objects_mesh);
 
     /* lane outline */
     const lane_outlines_geom = new THREE.BufferGeometry();

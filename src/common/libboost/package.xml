@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>libboost</name>
+  <version>0.0.0</version>
+  <description>Makes Boost behave as a colcon package</description>
+  <maintainer email="joshmackwilliams@protonmail.com">Joshua Williams</maintainer>
+  <license>MIT License</license>
+
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
