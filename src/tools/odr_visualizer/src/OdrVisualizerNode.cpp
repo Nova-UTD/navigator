@@ -257,16 +257,12 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 
 	// Find nearby lanes
 	Vector3 pos = transformStamped.transform.translation;
-	auto tic = get_clock()->now().nanoseconds();
 	auto lanes = navigator::opendrive::get_nearby_lanes(odr_map, pos.x, pos.y, search_radius);
-	auto toc = get_clock()->now().nanoseconds();
-	// RCLCPP_INFO(get_logger(), "Took %i seconds", (toc-tic));
 
 	// Code to convert each lane into a polygon.
 	//		Don't get "polygon" confused with "mesh".
 	// 		A polygon only contains border points in a ring.
 	// 		A mesh is a collection of tris.
-	RCLCPP_INFO(get_logger(), "%i lanes BEFORE", lanes.size());
 	for (auto lane : lanes)
 	{
 		// We only care about lanes of types "driving" and "shoulder"
@@ -305,7 +301,6 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 	// RCLCPP_INFO(get_logger(), "Total nearby: %i", nearby_lane_ids.size());
 	nearby_poly_pub->publish(nearby_lane_polygons);
 	publishNearbyLaneMarkers(nearby_lanes);
-	RCLCPP_INFO(get_logger(), "%i lanes AFTER", nearby_lanes.size());
 }
 
 void OdrVisualizerNode::publishMarkerArray()
