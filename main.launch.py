@@ -70,7 +70,7 @@ def generate_launch_description():
 
     # steering_pid
     can = Node(
-        package='voltron_can',
+        package='can_interface',
         executable='interface',
         parameters=[(path.join(param_dir,"interface","can_interface.param.yaml"))],
         remappings=[
@@ -241,7 +241,7 @@ def generate_launch_description():
             ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
         ]
     )
-    
+
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',

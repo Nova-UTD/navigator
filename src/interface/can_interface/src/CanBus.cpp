@@ -1,9 +1,9 @@
 /*
- * Package:   voltron_can
- * Filename:  ConcreteCanBus.cpp
+ * Package:   can_interface
+ * Filename:  CanBus.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
- * Copyright: 2021, Voltron UTD
+ * Copyright: 2022, Nova UTD
  * License:   MIT License
  */
 
@@ -19,27 +19,27 @@
 
 #include <iostream> // Temporary, used for debugging
 
-#include "voltron_can/ConcreteCanBus.hpp" // Obviously, we need the class header
-#include "voltron_can/CanFrame.hpp" // Object-oriented
+#include "can_interface/CanBus.hpp" // Obviously, we need the class header
+#include "can_interface/CanFrame.hpp" // Object-oriented
 
-using namespace Voltron::Can;
+using namespace navigator::can_interface;
 
 // Alias the OS's close() function
 inline void close_socket(int socket) {
   close(socket);
 }
 
-ConcreteCanBus::ConcreteCanBus() {
+CanBus::CanBus() {
   this->raw_socket = -1;
 }
 
-ConcreteCanBus::ConcreteCanBus(const std::string & interface_name) {
+CanBus::CanBus(const std::string & interface_name) {
   this->raw_socket = -1;
   this->open(interface_name);
 }
 
 // Try to connect to the given interface name
-void ConcreteCanBus::open(const std::string & interface_name) {
+void CanBus::open(const std::string & interface_name) {
   this->interface_name = interface_name;
   // Set up the socket
   this->raw_socket = socket(PF_CAN, SOCK_RAW, CAN_RAW);
@@ -50,7 +50,7 @@ void ConcreteCanBus::open(const std::string & interface_name) {
 			       std::to_string(errno));
     }
   }
-    
+
   // Connect the socket to the interface
   ifreq interface;
   strcpy(interface.ifr_name, interface_name.c_str());
@@ -77,25 +77,25 @@ void ConcreteCanBus::open(const std::string & interface_name) {
   }
 }
 
-void ConcreteCanBus::close() {
+void CanBus::close() {
   if(this->is_open()) {
     close_socket(this->raw_socket);
     this->raw_socket = -1;
   }
 }
 
-bool ConcreteCanBus::is_open() {
+bool CanBus::is_open() {
   return this->raw_socket > 0;
 }
 
 // If the socket was open, close it
-ConcreteCanBus::~ConcreteCanBus() {
+CanBus::~CanBus() {
   if(this->is_open()) {
     this->close();
   }
 }
 
-bool ConcreteCanBus::is_frame_ready() {
+bool CanBus::is_frame_ready() {
   // Put the socket into a set, which is required by select()
   fd_set socket_set;
   FD_ZERO(&socket_set);
@@ -110,7 +110,7 @@ bool ConcreteCanBus::is_frame_ready() {
   return select_result != 0; // Zero indicates timeout / not ready
 }
 
-std::unique_ptr<CanFrame> ConcreteCanBus::read_frame() {
+std::unique_ptr<CanFrame> CanBus::read_frame() {
   // Read a frame
   struct can_frame frame;
   int n_bytes = read(this->raw_socket, &frame, sizeof(struct can_frame));
@@ -123,7 +123,7 @@ std::unique_ptr<CanFrame> ConcreteCanBus::read_frame() {
   return std::make_unique<CanFrame>(frame);
 }
 
-void ConcreteCanBus::write_frame(const CanFrame & frame) {
+void CanBus::write_frame(const CanFrame & frame) {
   int n_bytes = write(this->raw_socket, &(*frame.to_system_frame()), sizeof(struct can_frame));
   if(n_bytes < 1) {
     switch(errno) {

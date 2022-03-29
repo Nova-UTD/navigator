@@ -1,9 +1,9 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  can_exceptions.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
- * Copyright: 2021, Voltron UTD
+ * Copyright: 2022, Nova UTD
  * License:   MIT License
  */
 

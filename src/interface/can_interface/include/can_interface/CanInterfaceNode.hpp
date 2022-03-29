@@ -1,9 +1,9 @@
 /*
- * Package:   volron_can
+ * Package:   can_interface
  * Filename:  CanInterfaceNode.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
- * Copyright: 2021, Voltron UTD
+ * Copyright: 2022, Nova UTD
  * License:   MIT License
  */
 
@@ -16,8 +16,8 @@
 #include "voltron_msgs/msg/can_frame.hpp"
 #include "CanBus.hpp"
 
-namespace Voltron {
-namespace Can {
+namespace navigator {
+namespace can_interface {
 
 class CanInterfaceNode : public rclcpp::Node {
 public:
@@ -29,8 +29,8 @@ private:
   void check_incoming_messages();
   void receive_frame();
 
-  
-  std::unique_ptr<Voltron::Can::CanBus> can_bus;
+
+  std::unique_ptr<navigator::can_interface::CanBus> can_bus;
   rclcpp::TimerBase::SharedPtr incoming_message_timer;
   rclcpp::Publisher<voltron_msgs::msg::CanFrame>::SharedPtr incoming_message_publisher;
   rclcpp::Subscription<voltron_msgs::msg::CanFrame>::SharedPtr outgoing_message_subscription;

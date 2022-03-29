@@ -1,9 +1,9 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  test_can_bus.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
- * Copyright: 2021, Voltron UTD
+ * Copyright: 2022, Nova UTD
  * License:   MIT License
  */
 
@@ -14,20 +14,20 @@
 #include <gtest/gtest.h> // Testing framework
 #include <memory> // std::unique_ptr
 
-#include "voltron_can/ConcreteCanBus.hpp" // The class we are testing, obviously
-#include "voltron_can/CanFrame.hpp" // Needed to interact with CanBus
+#include "can_interface/CanBus.hpp" // The class we are testing, obviously
+#include "can_interface/CanFrame.hpp" // Needed to interact with CanBus
 
-using namespace Voltron::Can;
+using namespace navigator::can_interface;
 
 TEST(TestCanBus, test_intiializes) {
-  ConcreteCanBus my_bus("vcan0"); // If this passes, the test succeeds
+  CanBus my_bus("vcan0"); // If this passes, the test succeeds
 }
 
 // Just testing for the general ability of these busses to communicate
 // with each other
 TEST(TestCanBus, test_communication) {
-  ConcreteCanBus bus1("vcan0");
-  ConcreteCanBus bus2("vcan0");
+  CanBus bus1("vcan0");
+  CanBus bus2("vcan0");
   ASSERT_FALSE(bus1.is_frame_ready());
   ASSERT_FALSE(bus2.is_frame_ready());
   CanFrame my_frame(0x292, 0x1234567890123456u);

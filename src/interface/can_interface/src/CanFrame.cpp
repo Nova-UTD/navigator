@@ -1,9 +1,9 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  CanFrame.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
- * Copyright: 2021, Voltron UTD
+ * Copyright: 2022, Nova UTD
  * License:   MIT License
  */
 
@@ -11,9 +11,9 @@
 
 #include <linux/can.h>
 
-#include "voltron_can/CanFrame.hpp"
+#include "can_interface/CanFrame.hpp"
 
-using namespace Voltron::Can;
+using namespace navigator::can_interface;
 
 CanFrame::CanFrame(CanFrame::identifier_t identifier, CanFrame::data_t data) {
   this->identifier = identifier;
