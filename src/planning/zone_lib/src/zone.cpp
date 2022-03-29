@@ -72,12 +72,12 @@ ZoneMsg navigator::zones_lib::to_zone_msg(odr::Junction& junction, odr::OpenDriv
         double s_val = 0.0;
 
         // successor is junction, s is length of road
-        if (incoming_road->successor.type == RoadLink::Type::Junction && incoming_road->successor.id == junction.id) {
+        if (incoming_road->successor.type == odr::RoadLink::Type::Junction && incoming_road->successor.id == junction.id) {
             s_val = incoming_road->length;
         }
         
         // since only 1 lanesection in XODR map, all lanes in 1 section
-        std::shared_ptr<odr::LaneSection> lanesection = *(road->get_lanesections().begin());
+        std::shared_ptr<odr::LaneSection> lanesection = *(incoming_road->get_lanesections().begin());
         
         // lanesection map may not be in order, so find driving lanes with highest/lowest IDs
         std::shared_ptr<odr::Lane> leftmost_lane;
@@ -86,31 +86,31 @@ ZoneMsg navigator::zones_lib::to_zone_msg(odr::Junction& junction, odr::OpenDriv
         int right_id = 100;
 
         for (auto const& [lane_id, lane] : lanesection->id_to_lane) {
-            if (lane.type == "driving" && lane.id > left_id) {
-                leftmost_lane = *(lane);
-                left_id = lane.id;
-            } else if (lane.type == "driving" && lane.id < right_id) {
-                rightmost_lane = *(lane);
-                right_id = lane.id;
+            if (lane->type == "driving" && lane->id > left_id) {
+                leftmost_lane = lane;
+                left_id = lane->id;
+            } else if (lane->type == "driving" && lane->id < right_id) {
+                rightmost_lane = lane;
+                right_id = lane->id;
             }
         }
 
         // get t vals
-        double left_t = leftmost_lane.outer_border.get(s_val);
-        double right_t = rightmost_lane.outer_border.get(s_val);
+        double left_t = leftmost_lane->outer_border.get(s_val);
+        double right_t = rightmost_lane->outer_border.get(s_val);
         
         // get x,y of each corner 
-        Vec3D left_pt = leftmost_lane.get_surface_pt(s, left_t);
-        Vec3D right_pt = rightmost_lane.get_surface_pt(s, right_t);
+        odr::Vec3D left_pt = leftmost_lane->get_surface_pt(s_val, left_t);
+        odr::Vec3D right_pt = rightmost_lane->get_surface_pt(s_val, right_t);
 
         PointMsg left_corner;
-        left_corner.x = left_pt.x;
-        left_corner.y = left_pt.y;
+        left_corner.x = left_pt[0];
+        left_corner.y = left_pt[1];
         msg_points.push_back(left_corner);
 
         PointMsg right_corner;
-        right_corner.x = right_pt.x;
-        right_corner.y = right_pt.y;
+        right_corner.x = right_pt[0];
+        right_corner.y = right_pt[1];
         msg_points.push_back(right_corner);
         
         // reorient point ???

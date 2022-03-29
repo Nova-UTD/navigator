@@ -15,7 +15,7 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 
   // xml parsing
   std::string xodr_path = this->get_parameter("xodr_path").as_string();
-  odr_map = new odr::OpenDriveMap(xodr_path, true, true, false, true);
+  odr_map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
 
   this->control_timer = this->create_wall_timer
     (message_frequency, std::bind(&BehaviorPlannerNode::send_message, this));
@@ -27,8 +27,6 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 
   this->path_subscription = this->create_subscription
     <FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
-
-  make_zones();
   
 }
 
@@ -86,7 +84,7 @@ void BehaviorPlannerNode::update_state() {
 // if path has stop sign, then create zone for it
 bool BehaviorPlannerNode::upcoming_stop_sign() {
   
-  zones_made = false;
+  bool zones_made = false;
 
   size_t m = 3; // temp horizon distance
   for(size_t i = 0; i < current_path.points.size() - m; i++) {
@@ -94,12 +92,12 @@ bool BehaviorPlannerNode::upcoming_stop_sign() {
     // get road from xy points
     double current_x = current_path.points[i].x;
     double current_y = current_path.points[i].y;
-    std::shared_ptr<odr::Road> road = navigator::opendrive::get_road_from_xy(odr_map, x, y);
+    std::shared_ptr<const odr::Road> road = navigator::opendrive::get_road_from_xy(odr_map, current_x, current_y);
 
     if (road->junction != "-1") {
       zones_made = true;
-      Zone zone = navigator::zones_lib::to_zone_msg(odr_map->junctions[road->junction]);
-      final_zones.push_back(zone);
+      Zone zone = navigator::zones_lib::to_zone_msg(*odr_map->junctions[road->junction], *odr_map);
+      final_zones.zones.push_back(zone);
     }
   }
 

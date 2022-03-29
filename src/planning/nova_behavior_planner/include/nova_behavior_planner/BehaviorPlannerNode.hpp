@@ -16,6 +16,8 @@
 #include "Lanes.h"
 #include "Road.h"
 #include "Junction.h"
+#include "opendrive_utils/OpenDriveUtils.hpp"
+#include "zone_lib/zone.hpp"
 
 using namespace std::chrono_literals;
 using FinalPath = voltron_msgs::msg::FinalPath;
