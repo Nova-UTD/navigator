@@ -28,6 +28,7 @@ namespace navigator
     namespace zones_lib
     {
         using ZoneMsg = voltron_msgs::msg::Zone;
+        using PointMsg = geometry_msgs::msg::Point32;
 
         boost_polygon to_boost_polygon(const ZoneMsg& zone);
         boost_polygon to_boost_polygon(const odr::Mesh3D& mesh);
@@ -38,6 +39,12 @@ namespace navigator
         //need map to look up roads
         ZoneMsg to_zone_msg(odr::Junction& junction, odr::OpenDriveMap& map);
 
+        class ClockwiseComparator {
+        public:
+            double mean_x, mean_y;
+            ClockwiseComparator(double mean_x, double mean_y) : mean_x(mean_x), mean_y(mean_y) {}
+            bool operator()(const PointMsg& a, const PointMsg& b) const;
+        };
     } // namespace zones
     
 } // namespace navigator
