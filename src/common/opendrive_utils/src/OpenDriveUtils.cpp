@@ -80,6 +80,7 @@ std::shared_ptr<const odr::Road> navigator::opendrive::get_road_from_xy(const od
             return road;
         } 
     }
+    return nullptr;
 }
 
 std::shared_ptr<odr::Lane> navigator::opendrive::get_lane_from_xy(const odr::OpenDriveMap* map, double x, double y)
