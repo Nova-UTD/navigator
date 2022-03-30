@@ -142,6 +142,20 @@ class SimBridgeNode(Node):
 
         return img_msg
 
+    def get_semantic_image(self, carla_image: carla.Image, encoding: str = 'bgra8'):
+        """
+        Function to transform the received carla camera data into a ROS image message
+        """
+        carla_image_data_array = np.ndarray(
+            shape=(carla_image.height, carla_image.width, 4),
+            dtype=np.uint8, buffer=carla_image.raw_data)
+        img_msg = self.cv_bridge.cv2_to_imgmsg(
+            carla_image_data_array, encoding=encoding)
+        img_msg.header.stamp = self.get_clock().now().to_msg()
+        img_msg.header.frame_id = '/base_link'
+
+        return img_msg
+
     def birds_eye_cam_cb(self, data: carla.Image):
         img_msg = self.get_color_image(data)
         self.birds_eye_cam_pub.publish(img_msg)
@@ -181,6 +195,10 @@ class SimBridgeNode(Node):
     def front_depth_cb(self, data: carla.Image):
         img_msg = self.get_depth_image(data)
         self.front_depth_pub.publish(img_msg)
+
+    def front_semantic_cam_cb(self, data: carla.Image):
+        img_msg = self.get_semantic_image(data)
+        self.front_semantic_cam_pub.publish(img_msg)
 
     def gnss_cb(self, data: carla.GnssMeasurement):
         msg = Odometry()
@@ -500,6 +518,12 @@ class SimBridgeNode(Node):
             10
         )
 
+        self.front_semantic_cam_pub = self.create_publisher(
+            Image,
+            '/camera_front/semantic',
+            10
+        )
+
         self.front_lidar_pub = self.create_publisher(
             PointCloud2,
             '/lidar_front/points_raw',
@@ -761,6 +785,15 @@ class SimBridgeNode(Node):
         self.front_depth = self.world.spawn_actor(
             front_depth_bp, relative_transform, attach_to=self.ego)
         self.front_depth.listen(self.front_depth_cb)
+        
+        # Attach front semantic camera
+        front_semantic_bp = self.blueprint_library.find('sensor.camera.semantic_segmentation')
+        front_semantic_bp.set_attribute('sensor_tick', str(0.1))
+        relative_transform = carla.Transform(carla.Location(
+            x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
+        self.front_semantic = self.world.spawn_actor(
+            front_semantic_bp, relative_transform, attach_to=self.ego)
+        self.front_semantic.listen(self.front_semantic_cam_cb)
 
         # Attach front camera's IMU
         primary_imu_bp = self.blueprint_library.find('sensor.other.imu')
