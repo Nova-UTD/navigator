@@ -53,40 +53,42 @@ boost_polygon navigator::zones_lib::to_boost_polygon(const ZoneMsg& zone) {
 }
 
 
-std::vector<PointMsg> navigator::zones_lib::calculate_corner_points(odr::LaneSection& lanesection, double s_val) {
+std::vector<PointMsg> navigator::zones_lib::calculate_corner_points(rclcpp::Logger logger, std::shared_ptr<odr::LaneSection> lanesection, double s_val) {
 
     std::shared_ptr<odr::Lane> leftmost_lane;
     std::shared_ptr<odr::Lane> rightmost_lane;
     int left_id = -100;
     int right_id = 100;
-
-    for (auto const& [lane_id, lane] : lanesection.id_to_lane) {
+    for (auto const& [lane_id, lane] : lanesection->id_to_lane) {
         if (lane->type == "driving" && lane->id > left_id) {
             leftmost_lane = lane;
             left_id = lane->id;
-        } else if (lane->type == "driving" && lane->id < right_id) {
+        } 
+        if (lane->type == "driving" && lane->id < right_id) {
             rightmost_lane = lane;
             right_id = lane->id;
         }
     }
-
-    // get t vals
-    double left_t = leftmost_lane->outer_border.get(s_val);
-    double right_t = rightmost_lane->outer_border.get(s_val);
+    std::vector<PointMsg> points;
+    // get t vals, then x,y
+    //not sure why these are null sometimes...
+    if (leftmost_lane != nullptr) {
+        double left_t = leftmost_lane->outer_border.get(s_val);
+        odr::Vec3D left_pt = leftmost_lane->get_surface_pt(s_val, left_t);
+        PointMsg left_corner;
+        left_corner.x = left_pt[0];
+        left_corner.y = left_pt[1];
+        points.push_back(left_corner);
+    }
+    if (rightmost_lane != nullptr) {
+        double right_t = rightmost_lane->outer_border.get(s_val);
+        odr::Vec3D right_pt = rightmost_lane->get_surface_pt(s_val, right_t);
+        PointMsg right_corner;
+        right_corner.x = right_pt[0];
+        right_corner.y = right_pt[1];
+        points.push_back(right_corner);
+    }
     
-    // get x,y of each corner 
-    odr::Vec3D left_pt = leftmost_lane->get_surface_pt(s_val, left_t);
-    odr::Vec3D right_pt = rightmost_lane->get_surface_pt(s_val, right_t);
-
-    PointMsg left_corner;
-    left_corner.x = left_pt[0];
-    left_corner.y = left_pt[1];
-
-    PointMsg right_corner;
-    right_corner.x = right_pt[0];
-    right_corner.y = right_pt[1];
-
-    std::vector<PointMsg> points{left_corner, right_corner};
     return points;
 }
 
@@ -100,25 +102,24 @@ std::vector<PointMsg> navigator::zones_lib::calculate_corner_points(odr::LaneSec
         * add points to msg_points
 
 */
-ZoneMsg navigator::zones_lib::to_zone_msg(odr::Junction& junction, odr::OpenDriveMap& map) {
+ZoneMsg navigator::zones_lib::to_zone_msg(rclcpp::Logger logger, std::shared_ptr<odr::Junction> junction, odr::OpenDriveMap *map) {
     
     std::vector<PointMsg> msg_points;
-
-    for (auto const& [connection_id, junction_connection] : junction.connections) {
+    for (auto const& [connection_id, junction_connection] : junction->connections) {
 
         // get connecting road and its lanesection (assuming only 1)
-        std::shared_ptr<odr::Road> connecting_road = map.roads[junction_connection.connecting_road];
+        std::shared_ptr<odr::Road> connecting_road = map->roads[junction_connection.connecting_road];
         std::shared_ptr<odr::LaneSection> lanesection = *(connecting_road->get_lanesections().begin());
 
         // get corners for start and end of lanesection
-        std::vector<PointMsg> points_start = calculate_corner_points(*lanesection, 0);
-        std::vector<PointMsg> points_end = calculate_corner_points(*lanesection, connecting_road->length);
-
-        msg_points.push_back(points_start[0]);
-        msg_points.push_back(points_start[1]);
-        msg_points.push_back(points_end[0]);
-        msg_points.push_back(points_end[1]);
-        
+        std::vector<PointMsg> points_start = calculate_corner_points(logger, lanesection, 0);
+        std::vector<PointMsg> points_end = calculate_corner_points(logger, lanesection, connecting_road->length);
+        for (auto pt : points_start) {
+            msg_points.push_back(pt);
+        }
+        for (auto pt : points_end) {
+            msg_points.push_back(pt);
+        }
     }
 
     // reorient point, sort by angle clockwise about the centroid

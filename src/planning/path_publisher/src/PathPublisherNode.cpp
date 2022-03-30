@@ -183,7 +183,7 @@ void PathPublisherNode::generatePaths() {
 	}
 	auto currentRoadId = currentLane->road.lock()->id;
 	
-	RCLCPP_INFO(get_logger(), "Road %s, Current lane: %i", currentRoadId.c_str(), currentLane->id);
+	RCLCPP_INFO(get_logger(), "(%.2f, %.2f) Road %s, Current lane: %i", current_pos.x, current_pos.y, currentRoadId.c_str(), currentLane->id);
 	if (currentRoadId == "10" && this->path == this->route1) {
 		RCLCPP_INFO(get_logger(), "SWITCHED PATH");
 		this->path = this->route2;

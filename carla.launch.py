@@ -258,6 +258,19 @@ def generate_launch_description():
             ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
         ]
     )
+    behavior_planner = Node(
+        package='nova_behavior_planner',
+        name='behavior_planner',
+        namespace='planning',
+        executable='BehaviorPlannerLaunch',
+        output='screen',
+        parameters=[
+            (path.join(param_dir,"planning","path_publisher.param.yaml"))
+        ],
+        remappings=[
+            
+        ]
+    )
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -340,6 +353,7 @@ def generate_launch_description():
         # path_planner,
         # lane_planner,
         # parking_planner,
+        behavior_planner,
         path_publisher,
         motion_planner
     ])

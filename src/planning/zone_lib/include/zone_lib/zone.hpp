@@ -20,6 +20,8 @@
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
 
+#include "rclcpp/rclcpp.hpp"
+
 typedef boost::geometry::model::d2::point_xy<double> boost_point;
 typedef boost::geometry::model::polygon<boost_point> boost_polygon;
 using PointMsg = geometry_msgs::msg::Point32;
@@ -38,10 +40,10 @@ namespace navigator
         ZoneMsg to_zone_msg(const odr::Mesh3D& mesh);
         
         //need map to look up roads
-        ZoneMsg to_zone_msg(odr::Junction& junction, odr::OpenDriveMap& map);
+        ZoneMsg to_zone_msg(rclcpp::Logger logger, std::shared_ptr<odr::Junction> junction, odr::OpenDriveMap *map);
 
         // helper function to calculate point
-        std::vector<PointMsg> calculate_corner_points(odr::LaneSection& lanesection, double s_val);
+        std::vector<PointMsg> calculate_corner_points(rclcpp::Logger logger, std::shared_ptr<odr::LaneSection> lanesection, double s_val);
 
         class ClockwiseComparator {
         public:

@@ -13,6 +13,7 @@
   <depend>libopendrive</depend>
   <depend>opendrive_utils</depend>
   <depend>voltron_msgs</depend>
+  <depend>rclcpp</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

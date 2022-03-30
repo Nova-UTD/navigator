@@ -57,7 +57,7 @@ private:
 	odr::OpenDriveMap* odr_map;
 
     ZoneArray final_zones;
-    FinalPath current_path;
+    FinalPath::SharedPtr current_path;
     float current_speed;
     float current_position_x;
     float current_position_y;
