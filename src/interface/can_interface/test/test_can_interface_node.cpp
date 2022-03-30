@@ -1,9 +1,9 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  test_interface.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
- * Copyright: 2021, Voltron UTD
+ * Copyright: 2022, Nova UTD
  * License:   MIT License
  */
 
@@ -18,13 +18,12 @@
 #include "voltron_test_utils/TestPublisher.hpp"
 #include "voltron_test_utils/TestSubscriber.hpp"
 #include "voltron_msgs/msg/can_frame.hpp"
-#include "voltron_can/ConcreteCanBus.hpp"
-#include "voltron_can/CanBus.hpp"
-#include "voltron_can/CanFrame.hpp"
+#include "can_interface/CanBus.hpp"
+#include "can_interface/CanFrame.hpp"
 
-#include "voltron_can/CanInterfaceNode.hpp" // The class we are testing
+#include "can_interface/CanInterfaceNode.hpp" // The class we are testing
 
-using namespace Voltron::Can;
+using namespace navigator::can_interface;
 using namespace Voltron::TestUtils;
 
 class TestCanInterfaceNode : public ::testing::Test {
@@ -32,11 +31,11 @@ protected:
   void SetUp() override {
     rclcpp::init(0, nullptr);
     interface_node = std::make_shared<CanInterfaceNode>("vcan0");
-    can_bus = std::make_unique<ConcreteCanBus>("vcan0");
+    can_bus = std::make_unique<CanBus>("vcan0");
     can_publisher = std::make_unique<TestPublisher<
-      voltron_msgs::msg::CanFrame>>("outgoing_can_frames_vcan0");
+      voltron_msgs::msg::CanFrame>>("can_interface_outgoing_can_frames");
     can_subscriber = std::make_unique<TestSubscriber<
-      voltron_msgs::msg::CanFrame>>("incoming_can_frames_vcan0");
+      voltron_msgs::msg::CanFrame>>("can_interface_incoming_can_frames");
   }
 
   void TearDown() override {
@@ -54,7 +53,7 @@ TEST_F(TestCanInterfaceNode, test_initializes) {
 }
 
 TEST_F(TestCanInterfaceNode, test_incoming_frame) {
-  auto frame = Voltron::Can::CanFrame(0x123, 0x12345678);
+  auto frame = navigator::can_interface::CanFrame(0x123, 0x12345678);
   this->can_bus->write_frame(frame);
   usleep(20000); // 20ms, enough that we should receive frames on next spin
   rclcpp::spin_some(this->interface_node);

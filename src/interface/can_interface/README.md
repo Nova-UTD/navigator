@@ -1,4 +1,4 @@
-# voltron_can
+# can_interface
 
 Provides a ROS node that allows CAN messages to be sent and received
 as messages on ROS topics. The custom library used internally to
@@ -12,13 +12,13 @@ interact with the CAN bus is also available.
   interface with the CAN bus.
 
 - No echo - Messages being sent are published on a different topic
-  than messages being recieved. This means that messages we send will
+  than messages being received. This means that messages we send will
   not be "echoed" back to us by the CAN interface. This is why we need
   our own wrapper library rather than Autoware's wrapper - Autoware
   separates the sender code from the receiver code in such a way that
   we would have to hear echoes.
 
-- Multiple interfaces - This node obivously needs to be provided with
+- Multiple interfaces - This node obviously needs to be provided with
   an interface name (e.g., "can0"). It then names the used topics
   based on that interface ("outgoing_can_messages_<interface_name>"
   and "incoming_can_messages_<interface_name>"). This means that we
@@ -26,13 +26,13 @@ interact with the CAN bus is also available.
   without them interfering with one another.
 
 - Error handling - This node includes procedures to deal with errors
-  that arise during operation. These may include re-initizalizing the
+  that arise during operation. These may include re-initializing the
   CAN bus, contacting a safety node, waiting and retrying, etc. (not
   yet implemented!)
 
 ## API Features
 
-- Object-oriented interface - CAN busses are instantiated as objects
+- Object-oriented interface - CAN buses are instantiated as objects
   and therefore come with all of the nice features of C++ objects. The
   bus is automatically closed on object destruction.
 
@@ -53,4 +53,3 @@ interact with the CAN bus is also available.
   virtual CAN bus named "vcan0" available on your system. Otherwise,
   the provided tests will fail. It's also worth noting that the tests
   may fail if the bus is noisy when the tests are run.
-

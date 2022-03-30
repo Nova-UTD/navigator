@@ -1,9 +1,9 @@
 /*
- * Package:   voltron_can
+ * Package:   can_interface
  * Filename:  test_can_frame.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
- * Copyright: 2021, Voltron UTD
+ * Copyright: 2022, Nova UTD
  * License:   MIT License
  */
 
@@ -13,9 +13,9 @@
 #include <linux/can.h> // struct can_frame
 #include <memory> // std::unique_ptr
 
-#include "voltron_can/CanFrame.hpp"
+#include "can_interface/CanFrame.hpp"
 
-using namespace Voltron::Can;
+using namespace navigator::can_interface;
 
 // Test the direct constructor
 TEST(TestCanFrame, initialize_from_data) {
