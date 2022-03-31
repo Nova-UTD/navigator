@@ -63,7 +63,7 @@ GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0)  # 10 Hz
 LIDAR_PERIOD = 1/(10.0)  # 10 Hz
-SEMANTIC_LIDAR_PERIOD = 1/(2.0)  # 10 Hz
+# SEMANTIC_LIDAR_PERIOD = 1/(2.0)  # 10 Hz
 SPEEDOMETER_PERIOD = 1/(10.0)  # 10 Hz
 STEERING_ANGLE_PERIOD = 1/(10.0)  # 10 Hz
 OBSTACLE_QTY_VEHICLE = 0  # Spawn n cars
@@ -77,12 +77,12 @@ MAP_ORIGIN_LON = 0.0  # degrees
 M_TO_DEG = 9e-6  # APPROXIMATE! WSH.
 
 # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
-GNSS_ALT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG*0.3
-GNSS_ALT_SDEV = 0.5*M_TO_DEG*0.3
-GNSS_LAT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG*0.3
-GNSS_LAT_SDEV = 0.5*M_TO_DEG*0.3
-GNSS_LON_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG*0.3
-GNSS_LON_SDEV = 0.5*M_TO_DEG*0.3
+GNSS_ALT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
+GNSS_ALT_SDEV = 2.0*M_TO_DEG
+GNSS_LAT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
+GNSS_LAT_SDEV = 2.0*M_TO_DEG
+GNSS_LON_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
+GNSS_LON_SDEV = 2.0*M_TO_DEG
 
 # Publish a true map->base_link transform. Disable this if
 # another localization algorithm (ukf, ndt, etc.) is running! WSH.
@@ -218,14 +218,14 @@ class SimBridgeNode(Node):
         twist_linear.z = ego_vel.z
         msg.twist.twist.linear = twist_linear
 
-        accuracy = 1.0  # Meters, s.t. pos.x = n +/- accuracy
+        sdev = 4.0  # Meters, s.t. pos.x = n +/- accuracy
 
-        posewithcov.covariance = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        posewithcov.covariance = [sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, sdev, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, sdev, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, sdev, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, sdev, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, 0.0, sdev]
 
         msg.pose = posewithcov
 

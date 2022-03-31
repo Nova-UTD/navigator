@@ -69,6 +69,9 @@ class LidarCorrectionNode(Node):
         self.poly_viz_pub = self.create_publisher(
             MarkerArray, '/atlas/poly_viz', 10
         )
+        self.arrow_viz_pub = self.create_publisher(
+            Marker, '/atlas/correction_arrow', 10
+        )
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -180,7 +183,7 @@ class LidarCorrectionNode(Node):
 
         transl = self.map_bl_tf.transform.translation
         yaw = 2*math.acos(self.map_bl_tf.transform.rotation.z)
-        print(yaw*180/math.pi)
+        # print(yaw*180/math.pi)
 
         # for point in self.road_boundary.exterior.coords:
         #     tfed_pts.append(ShapelyPoint(
@@ -211,8 +214,40 @@ class LidarCorrectionNode(Node):
                 outside_qty += 1
                 outside_x += sp.x
                 outside_y += sp.y
-        if outside_qty > 0:
-            print("{} of {}".format(outside_qty, msg.width))
+        if outside_qty <= 0:
+            return
+        outside_x /= outside_qty
+        outside_y /= outside_qty
+        # print("{} of {}".format(outside_qty, msg.width))
+        if outside_y < 0:
+            print("LEFT {}".format(abs(outside_y)))
+        else:
+            print("RIGHT {}".format(abs(outside_y)))
+        self.publish_correction_arrow(-1*outside_x, -1*outside_y)
+
+    def publish_correction_arrow(self, arrow_x, arrow_y):
+        viz_msg = Marker()
+        viz_msg.color = ColorRGBA(
+            r=1.0, g=0.0, b=0.0, a=1.0
+        )
+        viz_msg.header.frame_id = 'base_link'
+        viz_msg.type = Marker.ARROW
+        viz_msg.header.stamp = self.get_clock().now().to_msg()
+        viz_msg.scale.x = 0.3
+        viz_msg.frame_locked = True
+        viz_msg.ns = 'correction_arrow'
+        viz_msg.scale.x = 0.3
+        viz_msg.scale.y = 0.6
+        viz_msg.points.append(Point(
+            x=0.0,
+            y=0.0
+        ))
+        viz_msg.points.append(Point(
+            x=arrow_x,
+            y=arrow_y
+        ))
+
+        self.arrow_viz_pub.publish(viz_msg)
 
 
 def main(args=None):
