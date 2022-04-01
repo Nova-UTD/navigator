@@ -69,7 +69,7 @@ private:
     void update_current_path(FinalPath::SharedPtr ptr);
     void update_state();
 
-    bool upcoming_stop_sign();
+    bool upcoming_intersection();
     bool obstacles_present();
     bool reached_desired_velocity(float desired_velocity);
   

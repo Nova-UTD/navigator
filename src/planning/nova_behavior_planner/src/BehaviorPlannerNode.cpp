@@ -3,6 +3,7 @@
 #include <memory>
 #include <iostream>
 #include <tf2/utils.h>
+#include <cmath>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -59,6 +60,8 @@ void BehaviorPlannerNode::send_message() {
       break;
     case STOPPED:
       break;
+    case IN_INTERSECTION:
+      break;
   }
 
   final_zone_publisher->publish(this->final_zones);
@@ -68,7 +71,7 @@ void BehaviorPlannerNode::update_state() {
   switch(current_state) {
     case LANEKEEPING:
       RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
-      if (upcoming_stop_sign()) {
+      if (upcoming_intersection()) {
         current_state = STOPPING;
       }
       break;
@@ -84,23 +87,42 @@ void BehaviorPlannerNode::update_state() {
         current_state = LANEKEEPING;
       }
       break;
+    case IN_INTERSECTION:
+      RCLCPP_INFO(this->get_logger(), "current state: IN_INTERSECTION");
+      // if (!in_zone()) {
+      // }
   }
 }
 
-// if path has stop sign, then create zone for it
-bool BehaviorPlannerNode::upcoming_stop_sign() {
+// if path has intersection, then create zone for it
+bool BehaviorPlannerNode::upcoming_intersection() {
   bool zones_made = false;
 
-  size_t m = 3; // temp horizon distance
-  for(size_t i = 0; i < current_path->points.size() - m; i++) {
+  // find point on path closest to current location
+  size_t closest_pt_idx = 0;
+  float min_distance = -1;
+  for (size_t i = 0; i < current_path->points.size(); i++) {
+    float distance = pow(current_path->points[i].x - current_position_x, 2);
+    distance += pow(current_path->points[i].y - current_position_y, 2); 
+    if (min_distance == -1 || distance < min_distance) {
+      min_distance = distance;
+      closest_pt_idx = i;
+    }
+  }
+
+  // each path-point spaced 25 cm apart, doing 200 pts gives us total coverage of 
+  // 5000 cm or 50 meters
+  size_t horizon_dist = 200;
+  for(size_t i = closest_pt_idx; i < closest_pt_idx + horizon_dist; i++) {
     
-    // get road from xy points
-    std::shared_ptr<const odr::Road> road = navigator::opendrive::get_road_from_xy(odr_map, this->current_position_x, this->current_position_y);
+    // get road that current path point is in
+    std::shared_ptr<const odr::Road> road = navigator::opendrive::get_road_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
     if (road == nullptr) {
         RCLCPP_INFO(this->get_logger(), "(%f, %f): no road found for behavior planner", this->current_position_x, this->current_position_y);
         return false;
     }
     
+    // check if road is a junction
     auto junction = road->junction;
     if (junction != "-1") {
       RCLCPP_INFO(this->get_logger(), "in junction " + junction);
@@ -111,7 +133,6 @@ bool BehaviorPlannerNode::upcoming_stop_sign() {
   }
 
   return zones_made;
-
 }
 
 // no perception data so just returning false for now
