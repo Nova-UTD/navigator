@@ -71,7 +71,12 @@ class VizSubscriber(Node):
         line_strip.scale.x = 0.5 # Meters wide.
         line_strip.scale.y = 0.5
         line_strip.scale.z = 0.5
-        line_strip.points = msg.zones[0].poly.points
+        #convert Point32 into Point
+        for pt32 in msg.zones[0].poly.points:
+            pt = Point()
+            pt.x = pt32.x
+            pt.y = pt32.y
+            line_strip.points.add(pt)
         self.zone_viz_pub.publish(line_strip)
 
 def main(args=None):
