@@ -148,10 +148,7 @@ std::vector<std::shared_ptr<odr::Lane>> navigator::opendrive::get_nearby_lanes(O
                 }
             }
         }
-        if (nearby_counter > 0)
-            std::printf("Road %s has %i nearby lanes\n", road->id.c_str(), nearby_counter);
     }
-    std::printf("Returning %i lanes\n", result.size());
     return result;
 }
 

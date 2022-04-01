@@ -46,8 +46,9 @@ import numpy as np
 import ros2_numpy as rnp
 from rclpy.node import Node
 import rclpy
-import carla
 import sys
+sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
+import carla
 import random
 
 # GLOBAL CONSTANTS
