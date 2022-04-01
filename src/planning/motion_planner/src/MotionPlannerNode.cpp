@@ -137,7 +137,7 @@ void MotionPlannerNode::smooth(Trajectory& trajectory, ZoneArray &zones, double 
           speed_end = std::min(speed_end, (double)z.max_speed);
       }
         if(boost::geometry::within(seg_begin, zgon)){
-          speed_end = std::min(speed_end, (double)z.max_speed);
+          speed_begin = std::min(speed_begin, (double)z.max_speed);
       }
 
       boost::geometry::model::linestring<boost_point> segment{{seg_begin, seg_end}};
@@ -152,7 +152,9 @@ void MotionPlannerNode::smooth(Trajectory& trajectory, ZoneArray &zones, double 
           tp.x = ip.x();
           tp.y = ip.y();
           tp.vx = std::min({(double) z.max_speed, speed_end, speed_begin});
-          t_points.insert(seg_end_it, tp);
+          if(tp != (*seg_end_it) && tp != (*seg_begin_it)){
+            t_points.insert(seg_end_it, tp);
+          }
         }
       }
     }
@@ -182,8 +184,8 @@ void MotionPlannerNode::smooth(Trajectory& trajectory, ZoneArray &zones, double 
     double dy = (*seg_end).y - (*seg_start).y; 
     double dist = sqrt(dx*dx + dy*dy);
 
-    double end_speed = (*seg_start).vx;
-    double max_start_speed = std::sqrt(-2*max_decel*dist+end_speed*end_speed);
+    double end_speed = (*seg_end).vx;
+    double max_start_speed = std::sqrt(2*max_decel*dist+end_speed*end_speed);
     (*seg_start).vx = std::min((*seg_start).vx, max_start_speed);
   }
 }

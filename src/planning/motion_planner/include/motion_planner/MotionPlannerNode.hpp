@@ -39,6 +39,9 @@ class MotionPlannerNode : public rclcpp::Node {
 public:
     MotionPlannerNode();
 
+    static void smooth(voltron_msgs::msg::Trajectory& trajectory, voltron_msgs::msg::ZoneArray &zones,
+        double max_accel, double max_decell, double result_horizon = 100);
+
 private:
     //calls MotionPlanner to get the trajectories, selects one, and sends a message containing all trajectories
     //in the future, this will only send the selected trajectory. but sending all is useful for testing
@@ -53,9 +56,6 @@ private:
     //void update_steering_angle(voltron_msgs::msg::SteeringPosition::SharedPtr ptr);
 
     //double quat_to_heading(double x, double y, double z, double w);
-    
-    void smooth(voltron_msgs::msg::Trajectory& trajectory, voltron_msgs::msg::ZoneArray &zones,
-        double max_accel, double max_decell, double result_horizon = 100);
 
     rclcpp::Publisher<voltron_msgs::msg::Trajectory>::SharedPtr trajectory_publisher;
     rclcpp::Subscription<voltron_msgs::msg::FinalPath>::SharedPtr path_subscription;
