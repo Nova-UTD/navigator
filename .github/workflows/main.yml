@@ -3,7 +3,7 @@ name: Build and Test
 
 on:
   pull_request:
-    branches: [ ]
+    branches: [ main, dev ]
 
   # Allows manual starting of the workflow
   workflow_dispatch:
@@ -24,4 +24,4 @@ jobs:
         run: sudo docker build . -t navigator
 
       - name: Run Tests
-        run: sudo docker run navigator bash -c ". /opt/ros/foxy/setup.bash && . install/setup.bash && colcon test --retest-until-pass 8 --packages-skip manual_control \$(echo \$(ros2 pkg list | grep _nodes)) voltron_can vt_steering_controller vt_vehicle_bridge vt_viz ne_raptor_interface && colcon test-result --verbose"
+        run: sudo docker run navigator bash -c ". /opt/ros/foxy/setup.bash && . install/setup.bash && colcon test --retest-until-pass 8 --packages-skip manual_control \$(echo \$(ros2 pkg list | grep _nodes)) can_interface vt_steering_controller vt_vehicle_bridge vt_viz ne_raptor_interface && colcon test-result --verbose"

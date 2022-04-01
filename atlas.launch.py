@@ -11,11 +11,12 @@ from launch_ros.actions import Node
 
 from ament_index_python import get_package_share_directory
 
+
 def generate_launch_description():
 
     launch_path = path.realpath(__file__)
     launch_dir = path.dirname(launch_path)
-    param_dir = path.join(launch_dir,"param")
+    param_dir = path.join(launch_dir, "param")
     interface = "vcan0"
     map_name = "grandloop"
 
@@ -29,7 +30,8 @@ def generate_launch_description():
     epas_reporter = Node(
         package='epas_translator',
         executable='reporter',
-        parameters=[(path.join(param_dir,"interface","epas_reporter.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "interface", "epas_reporter.param.yaml"))],
         remappings=[
             ("incoming_can_frames", "incoming_can_frames"),
             ("real_steering_angle", "real_steering_angle")
@@ -39,7 +41,8 @@ def generate_launch_description():
     epas_controller = Node(
         package='voltron_epas_steering',
         executable='controller',
-        parameters=[(path.join(param_dir,"interface","epas_controller.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "interface", "epas_controller.param.yaml"))],
         remappings=[
             ("steering_power", "steering_power"),
             ("outgoing_can_frames", "outgoing_can_frames")
@@ -49,18 +52,20 @@ def generate_launch_description():
     speedometer_reporter = Node(
         package='can_translation',
         executable='float_reporter',
-        parameters=[(path.join(param_dir,"interface","speedometer_reporter.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "interface", "speedometer_reporter.param.yaml"))],
         remappings=[
             ("incoming_can_frames", "incoming_can_frames_can1"),
             ("result_topic", "vehicle_speedometer")
         ]
     )
-    
+
     # steering_pid
     can = Node(
-        package='voltron_can',
+        package='can_interface',
         executable='interface',
-        parameters=[(path.join(param_dir,"interface","can_interface.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "interface", "can_interface.param.yaml"))],
         remappings=[
         ],
         arguments=[interface]
@@ -85,7 +90,8 @@ def generate_launch_description():
         executable='p2d_ndt_localizer_exe',
         namespace='localization',
         name='p2d_ndt_localizer_node',
-        parameters=[(path.join(param_dir,"localization","ndt_localizer.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "localization", "ndt_localizer.param.yaml"))],
         remappings=[
             ("points_in", "/lidars/points_fused_downsampled"),
             ("observation_republish", "/lidars/points_fused_viz"),
@@ -95,7 +101,7 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=[(path.join(param_dir,"atlas","map_odom.param.yaml"))],
+        parameters=[(path.join(param_dir, "atlas", "map_odom.param.yaml"))],
         remappings=[
             ("/odom0", "/gnss/odom"),
             ("/imu0", "/imu_primary/data"),
@@ -119,14 +125,15 @@ def generate_launch_description():
         executable='lanelet2_map_provider_exe',
         namespace='had_maps',
         name='lanelet2_map_provider_node',
-        parameters=[(path.join(launch_dir, "data", "maps", map_name, "lanelet_server.param.yaml"))]
+        parameters=[(path.join(launch_dir, "data", "maps",
+                               map_name, "lanelet_server.param.yaml"))]
     )
 
     odr_viz = Node(
         package='odr_visualizer',
         executable='visualizer',
         parameters=[
-            (path.join(param_dir,"mapping","odr.param.yaml"))
+            (path.join(param_dir, "mapping", "odr.param.yaml"))
         ],
         output='screen'
     )
@@ -141,7 +148,8 @@ def generate_launch_description():
     pcd_loader = Node(
         package='map_publishers',
         executable='pcd_loader',
-        parameters=[(path.join(launch_dir, "data", "maps", map_name, "map.param.yaml"))]
+        parameters=[
+            (path.join(launch_dir, "data", "maps", map_name, "map.param.yaml"))]
     )
 
     # MISC
@@ -149,7 +157,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0.0','0.0','0.0','0.0','0.0','0.0','1.0','odom','base_link'
+            '0.0', '0.0', '0.0', '0.0', '0.0', '0.0', '1.0', 'odom', 'base_link'
         ]
     )
 
@@ -158,7 +166,7 @@ def generate_launch_description():
         executable='robot_state_publisher',
         arguments=[path.join(launch_dir, "data", "voltron.urdf")]
     )
-    
+
     visuals = Node(
         package='vt_viz',
         name='vt_viz_node',
@@ -170,32 +178,36 @@ def generate_launch_description():
         package='velodyne_driver',
         executable='velodyne_driver_node',
         namespace='lidar_front',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_front.param.yaml"))]
+        parameters=[(path.join(launch_dir, "param", "perception",
+                               "lidar_driver_front.param.yaml"))]
     )
     lidar_pointcloud_front = Node(
         package='velodyne_pointcloud',
         executable='velodyne_convert_node',
         namespace='lidar_front',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_front.param.yaml"))]
+        parameters=[(path.join(launch_dir, "param", "perception",
+                               "lidar_pointcloud_front.param.yaml"))]
     )
     lidar_driver_rear = Node(
         package='velodyne_driver',
         executable='velodyne_driver_node',
         namespace='lidar_rear',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_rear.param.yaml"))]
+        parameters=[
+            (path.join(launch_dir, "param", "perception", "lidar_driver_rear.param.yaml"))]
     )
     lidar_pointcloud_rear = Node(
         package='velodyne_pointcloud',
         executable='velodyne_convert_node',
         namespace='lidar_rear',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_rear.param.yaml"))]
+        parameters=[(path.join(launch_dir, "param", "perception",
+                               "lidar_pointcloud_rear.param.yaml"))]
     )
 
     curb_detector = Node(
         package='curb_detection',
         executable='curb_detector'
     )
-    
+
     # PLANNING
     route_planner = Node(
         package='lanelet2_global_planner_nodes',
@@ -207,7 +219,6 @@ def generate_launch_description():
                     ('ndt_pose', '/localization/ndt_pose'),
                     ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')]
     )
-    
     # path_planner = Node(
     #     package='behavior_planner_nodes',
     #     name='behavior_planner_node',
@@ -230,7 +241,7 @@ def generate_launch_description():
         package='path_publisher',
         executable='publisher',
         parameters=[
-            (path.join(param_dir,"planning","path_publisher.param.yaml"))
+            (path.join(param_dir, "planning", "path_publisher.param.yaml"))
         ],
         namespace='planning',
         output='screen',
@@ -241,23 +252,20 @@ def generate_launch_description():
         package='motion_planner',
         name='motion_planner_node',
         namespace='planning',
-        executable='motion_planner',
+        executable='motion_planner_exe',
         output='screen',
         remappings=[
             ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
         ]
     )
-    behavior_planner = Node(
-        package='nova_behavior_planner',
-        name='behavior_planner',
+    motion_planner_visuals = Node(
+        package='motion_planner_visuals',
+        name='motion_planner_visuals_node',
         namespace='planning',
-        executable='BehaviorPlannerLaunch',
+        executable='motion_planner_visuals_exe',
         output='screen',
-        parameters=[
-            (path.join(param_dir,"planning","path_publisher.param.yaml"))
-        ],
         remappings=[
-            
+            ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
         ]
     )
     lane_planner = Node(
@@ -265,7 +273,8 @@ def generate_launch_description():
         name='lane_planner_node',
         namespace='planning',
         executable='lane_planner_node_exe',
-        parameters=[(path.join(param_dir,"planning","lane_planner.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "planning", "lane_planner.param.yaml"))],
         remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
     )
     parking_planner = Node(
@@ -273,7 +282,8 @@ def generate_launch_description():
         name='parking_planner_node',
         namespace='planning',
         executable='parking_planner_node_exe',
-        parameters=[(path.join(param_dir,"planning","parking_planner.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "planning", "parking_planner.param.yaml"))],
         remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
     )
 
@@ -297,16 +307,16 @@ def generate_launch_description():
             ('nova_obstacle_array', '/obstacles/array')
         ]
     )
-    
+
     # VIZ
     lanelet_visualizer = Node(
         package='map_publishers',
         executable='lanelet_loader'
     )
-    
+
     return LaunchDescription([
         # CONTROL
-        unified_controller,
+        # unified_controller,
 
         # INTERFACE
         # can,
@@ -340,7 +350,7 @@ def generate_launch_description():
         # path_planner,
         # lane_planner,
         # parking_planner,
-        behavior_planner,
-        path_publisher,
-        motion_planner
+        # path_publisher,
+        # motion_planner,
+        # motion_planner_visuals
     ])

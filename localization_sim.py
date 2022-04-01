@@ -136,7 +136,7 @@ def generate_launch_description():
         executable='robot_state_publisher',
         arguments=[path.join(launch_dir, "data", "voltron.urdf")]
     )
-    
+
     visuals = Node(
         package='vt_viz',
         name='vt_viz_node',
@@ -159,7 +159,7 @@ def generate_launch_description():
         parameters=[(path.join(param_dir,"perception","lidar_rear.param.yaml"))],
         remappings=[("topic", "points_raw")],
         arguments=["--model", "vlp16"])
-    
+
     lidar_front_filter = Node(
         package="point_cloud_filter_transform_nodes",
         executable="point_cloud_filter_transform_node_exe",
@@ -183,7 +183,7 @@ def generate_launch_description():
         parameters=[(path.join(param_dir,"perception","lidar_fusion.param.yaml"))],
         remappings=[
             ("output_topic", "points_fused"),
-            ("input_topic1", "/lidar_front/points_filtered"), 
+            ("input_topic1", "/lidar_front/points_filtered"),
             ("input_topic2", "/lidar_rear/points_filtered")
         ]
     )
@@ -198,7 +198,7 @@ def generate_launch_description():
             ("points_downsampled", "points_fused_downsampled")
         ],
     )
-    
+
     # PLANNING
     route_planner = Node(
         package='lanelet2_global_planner_nodes',
@@ -210,7 +210,7 @@ def generate_launch_description():
                     ('ndt_pose', '/localization/ndt_pose'),
                     ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')]
     )
-    
+
     path_planner = Node(
         package='behavior_planner_nodes',
         name='behavior_planner_node',

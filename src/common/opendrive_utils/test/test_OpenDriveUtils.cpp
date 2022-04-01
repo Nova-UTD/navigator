@@ -68,7 +68,7 @@ TEST_F(OpenDriveUtilsSimpleTest, test_graph_lane_indentifiers)
       for (LanePtr l : ls->get_lanes())
       {
         LaneId l_id = l->id;
-        LaneIdentifier lane_id = {r_id, ls_id, l_id};
+        LaneIdentifier lane_id = {r_id, l_id};
         EXPECT_EQ(lane_graph.get_lane(lane_id), l) << "LaneGraph did not return the correct lane.";
       }
     }
