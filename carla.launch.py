@@ -303,7 +303,6 @@ def generate_launch_description():
         package='map_publishers',
         executable='lanelet_loader'
     )
-    
     return LaunchDescription([
         # CONTROL
         unified_controller,

@@ -26,47 +26,13 @@ class NovaVizNode(Node):
 
     def __init__(self):
         super().__init__('nova_viz_node')
-        self.costed_paths_sub = self.create_subscription(CostedPaths, '/planning/paths', self.paths_cb, 10)
-        self.path_viz_pub = self.create_publisher(Marker, '/viz/path', 10)
+        #self.costed_paths_sub = self.create_subscription(CostedPaths, '/planning/paths', self.paths_cb, 10)
+        #self.path_viz_pub = self.create_publisher(Marker, '/viz/path', 10)
 
-        self.zones_pub = self.create_publisher(ZoneArray, '/zones', 10)
         self.zones_viz_pub = self.create_publisher(MarkerArray, '/viz/zones', 10)
-        self.zones_sub = self.create_subscription(ZoneArray, '/zones', self.zones_cb, 10)
+        self.zones_sub = self.create_subscription(ZoneArray, '/planning/zone_array', self.zones_cb, 10)
 
-        self.zone_pub_timer = self.create_timer(1.0, self.publish_test_zones)
-
-    def publish_test_zones(self):
-        zone = Zone()
-        poly = Polygon()
-
-        pt = Point32()
-        pt.x = -10.0
-        pt.y = -10.0
-        zone.poly.points.append(pt)
-        pt = Point32()
-        pt.x = -10.0
-        pt.y = 10.0
-        zone.poly.points.append(pt)
-        pt = Point32()
-        pt.x = 10.0
-        pt.y = 10.0
-        zone.poly.points.append(pt)
-        pt = Point32()
-        pt.x = 10.0
-        pt.y = -10.0
-        zone.poly.points.append(pt)
-
-        self.get_logger().info("PUBLISHING: "+str(zone.poly.points))
-
-        zone.max_speed = 0.0
-        zone.cost = 0.0
-
-        zone_arr = ZoneArray()
-        zone_arr.zones.append(zone)
-        zone_arr.header.stamp = self.get_clock().now().to_msg()
-        zone_arr.header.frame_id = 'map'
-
-        self.zones_pub.publish(zone_arr)
+        #self.zone_pub_timer = self.create_timer(1.0, self.publish_test_zones)
 
     def paths_cb(self, msg: CostedPaths):
         # self.get_logger().info("Received {} paths".format(len(msg.paths)))

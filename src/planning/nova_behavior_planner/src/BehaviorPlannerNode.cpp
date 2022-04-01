@@ -61,7 +61,6 @@ void BehaviorPlannerNode::send_message() {
     case IN_INTERSECTION:
       break;
   }
-
   final_zone_publisher->publish(this->final_zones);
 }
 
@@ -114,16 +113,18 @@ bool BehaviorPlannerNode::upcoming_intersection() {
   for(size_t i = closest_pt_idx; i < closest_pt_idx + horizon_dist; i++) {
     
     // get road that current path point is in
-    std::shared_ptr<const odr::Road> road = navigator::opendrive::get_road_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
-    if (road == nullptr) {
+    auto lane = navigator::opendrive::get_lane_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
+    //std::shared_ptr<const odr::Road> road = navigator::opendrive::get_road_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
+    if (lane == nullptr) {
         RCLCPP_INFO(this->get_logger(), "(%f, %f): no road found for behavior planner", this->current_position_x, this->current_position_y);
         return false;
     }
     
     // check if road is a junction
-    auto junction = road->junction;
+    auto junction = lane->road.lock()->junction;
+    auto id = lane->road.lock()->id;
     if (junction != "-1") {
-      RCLCPP_INFO(this->get_logger(), "in junction " + junction);
+      RCLCPP_INFO(this->get_logger(), "in junction " + junction + " for road " + id);
       zones_made = true;
       Zone zone = navigator::zones_lib::to_zone_msg(this->get_logger(), odr_map->junctions[junction], odr_map);
       final_zones.zones.push_back(zone);

@@ -36,6 +36,7 @@ namespace navigator
     double get_distance(std::shared_ptr<const odr::RefLine> line, double x, double y);
     std::shared_ptr<const odr::Road> get_road_from_xy(const odr::OpenDriveMap* map, double x, double y);
     LanePtr get_lane_from_xy(OpenDriveMapPtr map, double x, double y);
+    LanePtr get_lane_from_xy(odr::OpenDriveMap* map, double x, double y);
     LanePtr get_lane_from_xy_with_route(const odr::OpenDriveMap* map, double x, double y, const std::set<std::string>& rs);
     OpenDriveMapPtr load_map(const std::string &filename);
     

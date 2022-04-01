@@ -54,7 +54,7 @@ private:
 
     // var
     rclcpp::TimerBase::SharedPtr control_timer;
-	odr::OpenDriveMap* odr_map;
+	odr::OpenDriveMap *odr_map;
 
     ZoneArray final_zones;
     FinalPath::SharedPtr current_path;

@@ -18,7 +18,7 @@ from rclpy.node import Node
 from std_msgs.msg import String, Header, ColorRGBA
 from geometry_msgs.msg import PoseStamped, Point
 from nav_msgs.msg import Path
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 from voltron_msgs.msg import CostedPaths, CostedPath, ZoneArray, Zone
 import math
 
@@ -26,10 +26,10 @@ class VizSubscriber(Node):
 
     def __init__(self):
         super().__init__('viz_subscriber')
-        self.costed_paths_sub = self.create_subscription(CostedPaths, '/planning/paths', self.paths_cb, 10)
-        self.zone_sub = self.create_subscription(ZoneArray, '/planning/zone_array', self.zone_cb, 10)
-        self.path_viz_pub = self.create_publisher(Marker, '/viz/path', 10)
-        self.zone_viz_pub = self.create_publisher(Marker, '/viz/zone', 10)
+        #self.costed_paths_sub = self.create_subscription(CostedPaths, '/planning/paths', self.paths_cb, 10)
+        #self.path_viz_pub = self.create_publisher(Marker, '/viz/path', 10)
+        self.zones_viz_pub = self.create_publisher(MarkerArray, '/viz/zones', 10)
+        self.zones_sub = self.create_subscription(ZoneArray, '/planning/zone_array', self.zones_cb, 10)
 
     def paths_cb(self, msg: CostedPaths):
         # self.get_logger().info("Received {} paths".format(len(msg.paths)))
@@ -50,6 +50,39 @@ class VizSubscriber(Node):
         line_strip.frame_locked = True
         line_strip.points = msg.paths[0].points
         self.path_viz_pub.publish(line_strip)
+    def zones_cb(self, msg: ZoneArray):
+        
+        marker_array = MarkerArray()
+        
+        for idx, zone in enumerate(msg.zones):
+            zone_marker = Marker()
+            zone_marker.header.frame_id = "map";
+            zone_marker.id = idx
+            zone_marker.ns = 'zones'
+            zone_marker.frame_locked = True
+            zone_marker.type = zone_marker.LINE_STRIP
+            zone_marker.scale.x = 2.0
+            zone_marker.scale.y = 2.0
+            zone_marker.scale.z = 2.0
+
+            zone_color = ColorRGBA()
+            zone_color.a = 1.0
+            zone_color.r = 1.0
+            zone_color.g = 0.0
+            zone_color.b = 0.0
+            zone_marker.color = zone_color
+
+            points = []
+            for point32 in zone.poly.points:
+                pt = Point()
+                pt.x = point32.x
+                pt.y = point32.y
+                pt.z = point32.z
+                points.append(pt)
+            zone_marker.points = points
+            zone_marker.points.append(points[0]) # Complete the loop
+            marker_array.markers.append(zone_marker)
+        self.zones_viz_pub.publish(marker_array)
 
 def main(args=None):
     rclpy.init(args=args)

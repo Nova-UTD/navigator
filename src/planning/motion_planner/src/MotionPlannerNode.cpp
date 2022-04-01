@@ -39,7 +39,6 @@ void MotionPlannerNode::send_message() {
         RCLCPP_WARN(this->get_logger(), "motion planner has no input path, skipping...");
         return;
     }
-    RCLCPP_WARN(this->get_logger(), "ideal path has %d points", ideal_path->points.size());
     auto tmp = voltron_msgs::msg::Trajectory();
     for (size_t i = 0; i < ideal_path->points.size(); i++) {
       auto t = voltron_msgs::msg::TrajectoryPoint();
