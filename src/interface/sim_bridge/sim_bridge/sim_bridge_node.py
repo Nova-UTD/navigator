@@ -50,6 +50,8 @@ import carla
 import sys
 import random
 
+import cv2
+
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
@@ -149,8 +151,19 @@ class SimBridgeNode(Node):
         carla_image_data_array = np.ndarray(
             shape=(carla_image.height, carla_image.width, 4),
             dtype=np.uint8, buffer=carla_image.raw_data)
+        masked_img_array = np.copy(carla_image_data_array)
+        masked_img_array[:, :][masked_img_array[:, :, 2] == 7] = [
+            255, 255, 255, 255]
+
+        fromCorners = np.float32(
+            [[608, 366], [0, 580], [943, 580], [657, 367]])
+        toCorners = np.float32(
+            [[320, -400], [320, 720], [960, 720], [960, -400]])
+        warp_matrix = cv2.getPerspectiveTransform(fromCorners, toCorners)
+        res = cv2.warpPerspective(masked_img_array, warp_matrix, (1280, 720))
+
         img_msg = self.cv_bridge.cv2_to_imgmsg(
-            carla_image_data_array, encoding=encoding)
+            res, encoding=encoding)
         img_msg.header.stamp = self.get_clock().now().to_msg()
         img_msg.header.frame_id = '/base_link'
 
@@ -236,7 +249,7 @@ class SimBridgeNode(Node):
         twist_linear.z = ego_vel.z
         msg.twist.twist.linear = twist_linear
 
-        sdev = 4.0  # Meters, s.t. pos.x = n +/- accuracy
+        sdev = 500.0  # Meters, s.t. pos.x = n +/- accuracy
 
         posewithcov.covariance = [sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
                                   0.0, sdev, 0.0, 0.0, 0.0, 0.0,
@@ -771,6 +784,10 @@ class SimBridgeNode(Node):
         # Attach front rgb camera
         front_rgb_bp = self.blueprint_library.find('sensor.camera.rgb')
         front_rgb_bp.set_attribute('sensor_tick', str(0.1))
+        front_rgb_bp.set_attribute('image_size_x', str(1280))
+        front_rgb_bp.set_attribute('image_size_y', str(720))
+        # Horizontal FOV of ZED2i@720 is 100.6
+        front_rgb_bp.set_attribute('fov', str(100.6))
         relative_transform = carla.Transform(carla.Location(
             x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
         self.front_rgb = self.world.spawn_actor(
@@ -780,15 +797,24 @@ class SimBridgeNode(Node):
         # Attach front depth camera
         front_depth_bp = self.blueprint_library.find('sensor.camera.depth')
         front_depth_bp.set_attribute('sensor_tick', str(0.1))
+        front_depth_bp.set_attribute('image_size_x', str(1280))
+        front_depth_bp.set_attribute('image_size_y', str(720))
+        # Horizontal FOV of ZED2i@720 is 100.6
+        front_depth_bp.set_attribute('fov', str(100.6))
         relative_transform = carla.Transform(carla.Location(
             x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
         self.front_depth = self.world.spawn_actor(
             front_depth_bp, relative_transform, attach_to=self.ego)
         self.front_depth.listen(self.front_depth_cb)
-        
+
         # Attach front semantic camera
-        front_semantic_bp = self.blueprint_library.find('sensor.camera.semantic_segmentation')
+        front_semantic_bp = self.blueprint_library.find(
+            'sensor.camera.semantic_segmentation')
         front_semantic_bp.set_attribute('sensor_tick', str(0.1))
+        front_semantic_bp.set_attribute('image_size_x', str(1280))
+        front_semantic_bp.set_attribute('image_size_y', str(720))
+        # Horizontal FOV of ZED2i@720 is 100.6
+        front_semantic_bp.set_attribute('fov', str(100.6))
         relative_transform = carla.Transform(carla.Location(
             x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
         self.front_semantic = self.world.spawn_actor(
