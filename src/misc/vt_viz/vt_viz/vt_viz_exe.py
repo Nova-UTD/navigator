@@ -50,34 +50,6 @@ class VizSubscriber(Node):
         line_strip.frame_locked = True
         line_strip.points = msg.paths[0].points
         self.path_viz_pub.publish(line_strip)
-    
-    def zone_cb(self, msg: ZoneArray):
-        self.get_logger().info("Received {} zones".format(len(msg.zones)))
-        if len(msg.zones) == 0:
-            return
-        line_strip = Marker()
-        line_strip.header.frame_id = 'map'
-        line_strip.header.stamp = self.get_clock().now().to_msg()
-        line_strip.action = Marker.MODIFY
-        line_strip.type = Marker.LINE_STRIP
-        line_strip.ns = 'zones'
-        line_strip.color = ColorRGBA(
-            r = 0.0,
-            g = 1.0,
-            b = 0.0,
-            a = 1.0
-        )
-        line_strip.pose.position.z = 0.6 # Offset from road surface
-        line_strip.scale.x = 0.5 # Meters wide.
-        line_strip.scale.y = 0.5
-        line_strip.scale.z = 0.5
-        #convert Point32 into Point
-        for pt32 in msg.zones[0].poly.points:
-            pt = Point()
-            pt.x = pt32.x
-            pt.y = pt32.y
-            line_strip.points.add(pt)
-        self.zone_viz_pub.publish(line_strip)
 
 def main(args=None):
     rclpy.init(args=args)

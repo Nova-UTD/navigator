@@ -55,10 +55,11 @@ import random
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
 CLIENT_WORLD = 'Town07'
-EGO_AUTOPILOT_ENABLED = True
-EGO_SPAWN_X = 59.0
-EGO_SPAWN_Y = -60.0
-EGO_SPAWN_Z = 6.0
+EGO_AUTOPILOT_ENABLED = False
+EGO_SPAWN_X = -180
+EGO_SPAWN_Y = -163
+EGO_SPAWN_Z = 20.0
+EGO_SPAWN_YAW = 90
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
@@ -672,8 +673,13 @@ class SimBridgeNode(Node):
         spawn_loc.x = EGO_SPAWN_X  # 0.0
         spawn_loc.y = EGO_SPAWN_Y  # 24.5
         spawn_loc.z = EGO_SPAWN_Z  # 2.0  # Start up in the air
+        spawn_rot = carla.Rotation()
+        spawn_rot.pitch = 0
+        spawn_rot.roll = 0
+        spawn_rot.yaw = EGO_SPAWN_YAW
         spawn = carla.Transform()
         spawn.location = spawn_loc
+        spawn.rotation = spawn_rot
         self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, spawn))
         vehicle_bp = self.blueprint_library.find(EGO_MODEL)
         self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, spawn)

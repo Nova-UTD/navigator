@@ -27,57 +27,38 @@ using namespace std::chrono_literals;
 
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
-	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town10/Town10HD_Opt.xodr");
-	this->declare_parameter<double>("path_resolution", 2.0);
+	std::string xodr_path = "data/maps/town07/Town07_Opt.xodr";
 	paths_pub = this->create_publisher<FinalPath>("paths", 1);
 	odom_sub = this->create_subscription<Odometry>("/odometry/filtered", 1, [this](Odometry::SharedPtr msg) {
 		cached_odom = msg;
 	});
 	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
-
+    
 	auto route_1_road_ids = std::vector<std::string>{
-		"20","875","21","630","3",
-		"0","10","17","7","90",
-		"6","735","5","516","4",
-		"8","1"//,"675","2","566"
+		"21","39","57","584","7","693","6","509","5","4",
+        "686","601","34","532","35","359","40","634","50","10","9","976",
+        "36","210","46","436","59","168","60","464","61","559","62",
+        "352","24","467","20","920",
 	};
 	auto route_1_lane_ids = std::vector<int> {
-		-1, -1, -1, -1, -2,
-		-2, -2, -2, 2, 2,
-		2, 2, 2, 2, 2,
-		-2, -2, //-2, -2, -2
-	};
-	auto route_2_road_ids = std::vector<std::string>{
-		"3",
-		"0","10","17","7","90",
-		"6","735","5","516","4",
-		"8","1","675","2","566"
-	};
-	auto route_2_lane_ids = std::vector<int> {
-		-2,
-		-2, -2, -2, 2, 2,
-		2, 2, 2, 2, 2,
-		-2, -2, -2, -2, -2
+		-1,-1,-1,-1,1,1,1,1,1,1,
+        1,-1,-1,-1,-1,-1,1,1,-3,-3,-3,-1,
+        -1,-1,1,1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,
 	};
 
     for (auto s : route_1_road_ids) {
         all_ids.insert(s);
     }
-    for (auto s : route_2_road_ids) {
-        all_ids.insert(s);
-    }
 	path_pub_timer = this->create_wall_timer(0.5s, std::bind(&PathPublisherNode::generatePaths, this));
 
 	// Read map from file, using our path param
-	std::string xodr_path = this->get_parameter("xodr_path").as_string();
-	path_resolution = this->get_parameter("path_resolution").as_double();
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
 	map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
 
 	
 
 	this->route1 = generate_path(route_1_road_ids, route_1_lane_ids, map);
-	this->route2 = generate_path(route_2_road_ids, route_2_lane_ids, map);
 	this->path = this->route1;
 }
 
@@ -184,8 +165,8 @@ void PathPublisherNode::generatePaths() {
 	auto currentRoadId = currentLane->road.lock()->id;
 	
 	RCLCPP_INFO(get_logger(), "(%.2f, %.2f) Road %s, Current lane: %i", current_pos.x, current_pos.y, currentRoadId.c_str(), currentLane->id);
-	if (currentRoadId == "10" && this->path == this->route1) {
-		RCLCPP_INFO(get_logger(), "SWITCHED PATH");
-		this->path = this->route2;
-	}
+	//if (currentRoadId == "10" && this->path == this->route1) {
+	//	RCLCPP_INFO(get_logger(), "SWITCHED PATH");
+	//	this->path = this->route2;
+	//}
 }
