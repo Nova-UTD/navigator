@@ -69,16 +69,16 @@ TEST_F(SimplePathTest, test_zone_boundary){
 
     Trajectory traj1(trajectory);
     MotionPlannerNode::smooth(traj1, zone_array, 1.0, 1.0);
-    EXPECT_EQ(traj1.points.size(), 12);
-    EXPECT_EQ(traj1.points[5].x, 4.5);
-    EXPECT_EQ(traj1.points[5].y, 0.0);
-    EXPECT_EQ(traj1.points[5].vx, 0.0);
-    EXPECT_EQ(traj1.points[6].x, 5.0);
-    EXPECT_EQ(traj1.points[6].y, 0.0);
-    EXPECT_EQ(traj1.points[6].vx, 0.0);
-    EXPECT_EQ(traj1.points[7].x, 5.5);
-    EXPECT_EQ(traj1.points[7].y, 0.0);
-    EXPECT_EQ(traj1.points[7].vx, 0.0);
+    EXPECT_EQ(traj1.points.size(), 12ul);
+    EXPECT_NEAR(traj1.points[5].x, 4.5, 0.00001);
+    EXPECT_NEAR(traj1.points[5].y, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[5].vx, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[6].x, 5.0, 0.00001);
+    EXPECT_NEAR(traj1.points[6].y, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[6].vx, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[7].x, 5.5, 0.00001);
+    EXPECT_NEAR(traj1.points[7].y, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[7].vx, 0.0, 0.00001);
 
     for (TrajectoryPoint point : traj1.points){
         std::cout << "(" <<point.x << ", " << point.y << ", " << point.vx << ")" << std::endl;
@@ -90,17 +90,17 @@ TEST_F(SimplePathTest, test_zone_boundary){
 
     Trajectory traj2(trajectory);
     MotionPlannerNode::smooth(traj2, zone_array, 0.25, 0.25);
-    EXPECT_EQ(traj1.points.size(), 12);
+    EXPECT_EQ(traj2.points.size(), 12ul);
     // Same in-zone behavior as above
-    EXPECT_EQ(traj1.points[5].x, 4.5);
-    EXPECT_EQ(traj1.points[5].y, 0.0);
-    EXPECT_EQ(traj1.points[5].vx, 0.0);
-    EXPECT_EQ(traj1.points[6].x, 5.0);
-    EXPECT_EQ(traj1.points[6].y, 0.0);
-    EXPECT_EQ(traj1.points[6].vx, 0.0);
-    EXPECT_EQ(traj1.points[7].x, 5.5);
-    EXPECT_EQ(traj1.points[7].y, 0.0);
-    EXPECT_EQ(traj1.points[7].vx, 0.0);
+    EXPECT_NEAR(traj2.points[5].x, 4.5, 0.00001);
+    EXPECT_NEAR(traj2.points[5].y, 0.0, 0.00001);
+    EXPECT_NEAR(traj2.points[5].vx, 0.0, 0.00001);
+    EXPECT_NEAR(traj2.points[6].x, 5.0, 0.00001);
+    EXPECT_NEAR(traj2.points[6].y, 0.0, 0.00001);
+    EXPECT_NEAR(traj2.points[6].vx, 0.0, 0.00001);
+    EXPECT_NEAR(traj2.points[7].x, 5.5, 0.00001);
+    EXPECT_NEAR(traj2.points[7].y, 0.0, 0.00001);
+    EXPECT_NEAR(traj2.points[7].vx, 0.0, 0.00001);
     // lower speeds approaching the zone boundary
     EXPECT_EQ(traj2.points[4].vx, 0.5);
     EXPECT_EQ(traj2.points[8].vx, 0.5);
@@ -133,16 +133,16 @@ TEST_F(SimplePathTest, test_duplicate_zones){
 
     Trajectory traj1(trajectory);
     MotionPlannerNode::smooth(traj1, zone_array, 1.0, 1.0);
-    EXPECT_EQ(traj1.points.size(), 12);
-    EXPECT_EQ(traj1.points[5].x, 4.5);
-    EXPECT_EQ(traj1.points[5].y, 0.0);
-    EXPECT_EQ(traj1.points[5].vx, 0.0);
-    EXPECT_EQ(traj1.points[6].x, 5.0);
-    EXPECT_EQ(traj1.points[6].y, 0.0);
-    EXPECT_EQ(traj1.points[6].vx, 0.0);
-    EXPECT_EQ(traj1.points[7].x, 5.5);
-    EXPECT_EQ(traj1.points[7].y, 0.0);
-    EXPECT_EQ(traj1.points[7].vx, 0.0);
+    EXPECT_EQ(traj1.points.size(), 12ul);
+    EXPECT_NEAR(traj1.points[5].x, 4.5, 0.00001);
+    EXPECT_NEAR(traj1.points[5].y, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[5].vx, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[6].x, 5.0, 0.00001);
+    EXPECT_NEAR(traj1.points[6].y, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[6].vx, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[7].x, 5.5, 0.00001);
+    EXPECT_NEAR(traj1.points[7].y, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[7].vx, 0.0, 0.00001);
 
     for (TrajectoryPoint point : traj1.points){
         std::cout << "(" <<point.x << ", " << point.y << ", " << point.vx << ")" << std::endl;
@@ -155,7 +155,7 @@ TEST_F(SimplePathTest, test_long_path){
     // A 7.0 meter path with 1 meters between each point
     // should have 8 points.
     MotionPlannerNode::smooth(traj1, zone_array, 1.0, 1.0, 7.0);
-    EXPECT_EQ(traj1.points.size(), 8);
+    EXPECT_EQ(traj1.points.size(), 8ul);
 }
 
 TEST_F(SimplePathTest, test_multiple_zones){
@@ -192,27 +192,27 @@ TEST_F(SimplePathTest, test_multiple_zones){
 
     Trajectory traj1(trajectory);
     MotionPlannerNode::smooth(traj1, zone_array, 1.0, 1.0);
-    EXPECT_EQ(traj1.points.size(), 14);
+    EXPECT_EQ(traj1.points.size(), 14ul);
     // Check points are in the right place
-    EXPECT_EQ(traj1.points[3].x, 3.0);
-    EXPECT_EQ(traj1.points[4].x, 3.5);
-    EXPECT_EQ(traj1.points[5].x, 4.0);
-    EXPECT_EQ(traj1.points[6].x, 4.5);
-    EXPECT_EQ(traj1.points[7].x, 5.0);
-    EXPECT_EQ(traj1.points[8].x, 5.5);
-    EXPECT_EQ(traj1.points[9].x, 6.0);
-    EXPECT_EQ(traj1.points[10].x, 6.5);
-    EXPECT_EQ(traj1.points[11].x, 7.0);
+    EXPECT_NEAR(traj1.points[3].x, 3.0, 0.00001);
+    EXPECT_NEAR(traj1.points[4].x, 3.5, 0.00001);
+    EXPECT_NEAR(traj1.points[5].x, 4.0, 0.00001);
+    EXPECT_NEAR(traj1.points[6].x, 4.5, 0.00001);
+    EXPECT_NEAR(traj1.points[7].x, 5.0, 0.00001);
+    EXPECT_NEAR(traj1.points[8].x, 5.5, 0.00001);
+    EXPECT_NEAR(traj1.points[9].x, 6.0, 0.00001);
+    EXPECT_NEAR(traj1.points[10].x, 6.5, 0.00001);
+    EXPECT_NEAR(traj1.points[11].x, 7.0, 0.00001);
     // Check speeds are correct
-    EXPECT_EQ(traj1.points[3].vx, 1.0);
-    EXPECT_EQ(traj1.points[4].vx, 0.1);
-    EXPECT_EQ(traj1.points[5].vx, 0.1);
-    EXPECT_EQ(traj1.points[6].vx, 0.0);
-    EXPECT_EQ(traj1.points[7].vx, 0.0);
-    EXPECT_EQ(traj1.points[8].vx, 0.0);
-    EXPECT_EQ(traj1.points[9].vx, 0.1)
-    EXPECT_EQ(traj1.points[10].vx, 0.1);
-    EXPECT_EQ(traj1.points[11].vx, 1.0);
+    EXPECT_NEAR(traj1.points[3].vx, 1.0, 0.00001);
+    EXPECT_NEAR(traj1.points[4].vx, 0.1, 0.00001);
+    EXPECT_NEAR(traj1.points[5].vx, 0.1, 0.00001);
+    EXPECT_NEAR(traj1.points[6].vx, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[7].vx, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[8].vx, 0.0, 0.00001);
+    EXPECT_NEAR(traj1.points[9].vx, 0.1, 0.00001);
+    EXPECT_NEAR(traj1.points[10].vx, 0.1, 0.00001);
+    EXPECT_NEAR(traj1.points[11].vx, 1.0, 0.00001);
 
     for (TrajectoryPoint point : traj1.points){
         std::cout << "(" <<point.x << ", " << point.y << ", " << point.vx << ")" << std::endl;
