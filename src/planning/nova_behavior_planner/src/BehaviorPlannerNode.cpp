@@ -11,12 +11,10 @@ using std::placeholders::_1;
 using namespace Nova::BehaviorPlanner;
 
 BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {  
-  this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town10/Town10HD_Opt.xodr");
-  this->declare_parameter<double>("path_resolution", 2.0);
+  std::string xodr_path = "data/maps/town07/Town07_Opt.xodr";
   this->current_state = LANEKEEPING;
 
   // xml parsing
-  std::string xodr_path = this->get_parameter("xodr_path").as_string();
   RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
   this->odr_map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
 
