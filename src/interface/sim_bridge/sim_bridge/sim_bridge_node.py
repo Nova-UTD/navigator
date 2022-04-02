@@ -80,11 +80,11 @@ M_TO_DEG = 9e-6  # APPROXIMATE! WSH.
 
 # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
 GNSS_ALT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
-GNSS_ALT_SDEV = 2.0*M_TO_DEG
+GNSS_ALT_SDEV = 0.3*M_TO_DEG
 GNSS_LAT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
-GNSS_LAT_SDEV = 2.0*M_TO_DEG
+GNSS_LAT_SDEV = 0.3*M_TO_DEG
 GNSS_LON_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
-GNSS_LON_SDEV = 2.0*M_TO_DEG
+GNSS_LON_SDEV = 0.3*M_TO_DEG
 
 # Publish a true map->base_link transform. Disable this if
 # another localization algorithm (ukf, ndt, etc.) is running! WSH.
@@ -153,17 +153,26 @@ class SimBridgeNode(Node):
             dtype=np.uint8, buffer=carla_image.raw_data)
         masked_img_array = np.copy(carla_image_data_array)
         masked_img_array[:, :][masked_img_array[:, :, 2] == 7] = [
-            255, 255, 255, 255]
+            128, 63, 127, 255]
 
-        fromCorners = np.float32(
-            [[608, 366], [0, 580], [943, 580], [657, 367]])
-        toCorners = np.float32(
-            [[320, -400], [320, 720], [960, 720], [960, -400]])
-        warp_matrix = cv2.getPerspectiveTransform(fromCorners, toCorners)
-        res = cv2.warpPerspective(masked_img_array, warp_matrix, (1280, 720))
+        masked_img_array[:, :][masked_img_array[:, :, 2] == 6] = [
+            157, 234, 50, 255]
+
+        masked_img_array[:, :][masked_img_array[:, :, 2] == 8] = [
+            244, 35, 232, 255]
+
+        masked_img_array[:, :][masked_img_array[:, :, 2] == 22] = [
+            145, 170, 100, 255]
+
+        # fromCorners = np.float32(
+        #     [[608, 366], [0, 580], [943, 580], [657, 367]])
+        # toCorners = np.float32(
+        #     [[320, -400], [320, 720], [960, 720], [960, -400]])
+        # warp_matrix = cv2.getPerspectiveTransform(fromCorners, toCorners)
+        # res = cv2.warpPerspective(masked_img_array, warp_matrix, (1280, 720))
 
         img_msg = self.cv_bridge.cv2_to_imgmsg(
-            res, encoding=encoding)
+            masked_img_array, encoding=encoding)
         img_msg.header.stamp = self.get_clock().now().to_msg()
         img_msg.header.frame_id = '/base_link'
 

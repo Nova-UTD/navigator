@@ -24,6 +24,7 @@ Todos:
 
 '''
 
+from turtle import Shape
 from scipy import rand
 from sensor_msgs.msg import PointCloud2
 from scipy.spatial.transform import Rotation as R
@@ -169,48 +170,75 @@ class LidarCorrectionNode(Node):
         self.road_boundary = big_ole_polygon.simplify(
             0.2, preserve_topology=False)  # Done! "Save" result
 
-    def calculate_bias(self, msg: PointCloud2):  # TODO: Transform points
-        if self.road_boundary is None:
-            return
-        try:
-            self.map_bl_tf = self.tf_buffer.lookup_transform(
-                'base_link', 'map', rclpy.time.Time(seconds=0, nanoseconds=0))
-        except TransformException as ex:
-            self.get_logger().info(
-                f'Could not transform map to base_link: {ex}')
-
-        tfed_pts = []
-
-        transl = self.map_bl_tf.transform.translation
-        yaw = 2*math.acos(self.map_bl_tf.transform.rotation.z)
-        # print(yaw*180/math.pi)
-
-        # for point in self.road_boundary.exterior.coords:
-        #     tfed_pts.append(ShapelyPoint(
-        #         [
-        #             point[0] + transl.x,
-        #             point[1] + transl.y
-        #         ]
-        #     ))
+    def transform_road(self, poly: ShapelyPolygon):
+        quat = [
+            self.map_bl_tf.transform.rotation.x,
+            self.map_bl_tf.transform.rotation.y,
+            self.map_bl_tf.transform.rotation.z,
+            self.map_bl_tf.transform.rotation.w
+        ]
         yaw = 2*math.asin(self.map_bl_tf.transform.rotation.z)
         x_off = self.map_bl_tf.transform.translation.x
         y_off = self.map_bl_tf.transform.translation.y
-        road_bound_tfed = affinity.affine_transform(self.road_boundary, [
+
+        road_bound_tfed = affinity.affine_transform(poly, [
             math.cos(yaw), -1 *
             math.sin(yaw), math.sin(yaw), math.cos(yaw), x_off, y_off
         ])
 
-        # self.get_logger().info("Received {} points".format(msg.width))
-        np_pts = rnp.numpify(msg)
+        viz_msg = Marker()
+        viz_msg.color = ColorRGBA(
+            r=0.0, g=1.0, b=0.2, a=1.0
+        )
+        viz_msg.header.frame_id = 'base_link'
+        viz_msg.type = Marker.LINE_STRIP
+        viz_msg.id = 45
+        viz_msg.header.stamp = self.get_clock().now().to_msg()
+        viz_msg.scale.x = 0.3
+        viz_msg.frame_locked = True
+        viz_msg.ns = 'nearby_poly_merged_tf'
+        viz_msg.scale.x = 0.3
 
-        inside_qty = 0
+        for pt in road_bound_tfed.exterior.coords:
+            viz_msg.points.append(Point(
+                x=pt[0], y=pt[1]
+            ))
+        viz_msgs = MarkerArray()
+        viz_msgs.markers.append(viz_msg)
+
+        # Form a PolygonStamped for viz
+
+        # print(big_ole_polygon.boundary)
+        self.poly_viz_pub.publish(viz_msgs)
+
+        return road_bound_tfed
+
+    def calculate_bias(self, msg: PointCloud2):
+        # Is our HD map data available? If not, skip.
+        if self.road_boundary is None:
+            return
+
+        pts_array = rnp.numpify(msg)
+        road_poly = ShapelyPolygon()
+
+        # Find our map->base_link transform
+        try:
+            # Destination map is listed first in args
+            self.map_bl_tf = self.tf_buffer.lookup_transform(
+                'base_link', 'map', rclpy.time.Time(seconds=0, nanoseconds=0))
+            road_poly = self.transform_road(self.road_boundary)
+        except TransformException as ex:
+            self.get_logger().info(
+                f'Could not transform map to base_link: {ex}')
+            return
+
         outside_qty = 0
         outside_x = 0.0
         outside_y = 0.0
 
-        for pt in np_pts:
+        for pt in pts_array:
             sp = ShapelyPoint(pt['x'], pt['y'])
-            if not sp.within(road_bound_tfed):
+            if not sp.within(road_poly):
                 outside_qty += 1
                 outside_x += sp.x
                 outside_y += sp.y

@@ -203,9 +203,9 @@ def generate_launch_description():
                                "lidar_pointcloud_rear.param.yaml"))]
     )
 
-    curb_detector = Node(
-        package='curb_detection',
-        executable='curb_detector'
+    semseg = Node(
+        package='ddrnet_inference',
+        executable='ddrnet_inference_node'
     )
 
     # PLANNING
@@ -344,7 +344,7 @@ def generate_launch_description():
         # lidar_pointcloud_front,
         # lidar_driver_rear,
         # lidar_pointcloud_rear,
-        # curb_detector,
+        semseg,
 
         # PLANNING
         # route_planner,

@@ -62,7 +62,12 @@ class DDRNetInferenceNode(Node):
         self.sync.registerCallback(self.rgbd_cb)
         self.road_pcd_pub = self.create_publisher(
             PointCloud2,
-            '/segmentation/road_pcd',
+            '/lidar/semantic/road',
+            10
+        )
+        self.segmap_image_pub = self.create_publisher(
+            Image,
+            '/camera_front/seg',
             10
         )
 
@@ -156,7 +161,11 @@ class DDRNetInferenceNode(Node):
         road_pcd_msg.header.stamp = self.get_clock().now().to_msg()
         self.road_pcd_pub.publish(road_pcd_msg)
 
-        # road_image_msg = rnp.msgify(Image, seg_map)
+        seg_map_colored = self.decode_segmap(seg_map)
+        road_image_msg = rnp.msgify(Image, seg_map_colored, 'rgb8')
+        road_image_msg.header.stamp = self.get_clock().now().to_msg()
+        road_image_msg.header.frame_id = 'zed2_left_camera_optical_frame'
+        self.segmap_image_pub.publish(road_image_msg)
 
 
 def main(args=None):
