@@ -4,6 +4,7 @@
 #include <iostream>
 #include <tf2/utils.h>
 #include <cmath>
+#include <unordered_set>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -69,7 +70,7 @@ void BehaviorPlannerNode::update_state() {
     case LANEKEEPING:
       RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
       if (upcoming_intersection()) {
-        current_state = STOPPING;
+        //current_state = STOPPING;
       }
       break;
     case STOPPING:
@@ -94,7 +95,8 @@ void BehaviorPlannerNode::update_state() {
 // if path has intersection, then create zone for it
 bool BehaviorPlannerNode::upcoming_intersection() {
   bool zones_made = false;
-
+  std::unordered_set<std::string> junctions;
+  final_zones.zones.clear();
   // find point on path closest to current location
   size_t closest_pt_idx = 0;
   float min_distance = -1;
@@ -107,26 +109,30 @@ bool BehaviorPlannerNode::upcoming_intersection() {
     }
   }
 
-  // each path-point spaced 25 cm apart, doing 200 pts gives us total coverage of 
-  // 5000 cm or 50 meters
-  size_t horizon_dist = 200;
-  for(size_t i = closest_pt_idx; i < closest_pt_idx + horizon_dist; i++) {
-    
+  // each path-point spaced 25 cm apart, doing 400 pts gives us total coverage of 
+  // 10000 cm or 100 meters
+  size_t horizon_dist = 400;
+  for(size_t offset = 0; offset < horizon_dist; offset++) {
+    size_t i = (offset + closest_pt_idx) % current_path->points.size();
     // get road that current path point is in
     auto lane = navigator::opendrive::get_lane_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
     //std::shared_ptr<const odr::Road> road = navigator::opendrive::get_road_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
     if (lane == nullptr) {
         RCLCPP_INFO(this->get_logger(), "(%f, %f): no road found for behavior planner", this->current_position_x, this->current_position_y);
-        return false;
+        continue;
     }
     
     // check if road is a junction
     auto junction = lane->road.lock()->junction;
     auto id = lane->road.lock()->id;
     if (junction != "-1") {
-      RCLCPP_INFO(this->get_logger(), "in junction " + junction + " for road " + id);
+      if (junctions.find(junction) != junctions.end()) {
+          continue; //already seen this junction
+      }
+      RCLCPP_INFO(this->get_logger(), "in junction " + junction + " for road " + id + " zones: %d", final_zones.zones.size());
+      junctions.insert(junction);
       zones_made = true;
-      Zone zone = navigator::zones_lib::to_zone_msg(this->get_logger(), odr_map->junctions[junction], odr_map);
+      Zone zone = navigator::zones_lib::to_zone_msg(odr_map->junctions[junction], odr_map);
       final_zones.zones.push_back(zone);
     }
   }

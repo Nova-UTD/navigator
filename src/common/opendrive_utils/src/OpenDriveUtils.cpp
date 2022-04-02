@@ -89,18 +89,12 @@ LanePtr navigator::opendrive::get_lane_from_xy(OpenDriveMapPtr map, double x, do
             auto lane = lsec->get_lane(s, t);
             if (abs(lane_pt[0] - x) > 0.1 || abs(lane_pt[1] - y) > 0.1)
             {
-                std::cout << "FAR:  dx: " << lane_pt[0] - x << ", dy: " << abs(lane_pt[1] - y) << std::endl;
                 t *= -1;
 
                 lane_pt = lane_match->get_surface_pt(s, t);
                 if (abs(lane_pt[0] - x) > 0.1 || abs(lane_pt[1] - y) > 0.1)
                 {
-                    std::cout << "FAIL: dx: " << lane_pt[0] - x << ", dy: " << abs(lane_pt[1] - y) << std::endl;
                     continue; // Trying other side failed, so we're on the wrong road. Keep searchng.
-                }
-                else
-                {
-                    std::cout << "FIX:  dx: " << lane_pt[0] - x << ", dy: " << abs(lane_pt[1] - y) << std::endl;
                 }
             }
 
@@ -117,7 +111,6 @@ LanePtr navigator::opendrive::get_lane_from_xy(OpenDriveMapPtr map, double x, do
                 if (t > outer_border_t || t < inner_border_t)
                     continue;
             }
-            std::cout << "OK:   (" << outer_border_t << " < " << t << " > " << inner_border_t << ") dx: " << lane_pt[0] - x << ", dy: " << abs(lane_pt[1] - y) << std::endl;
 
             return lane;
         }
@@ -153,18 +146,12 @@ LanePtr navigator::opendrive::get_lane_from_xy(odr::OpenDriveMap* map, double x,
             auto lane = lsec->get_lane(s, t);
             if (abs(lane_pt[0] - x) > 0.1 || abs(lane_pt[1] - y) > 0.1)
             {
-                std::cout << "FAR:  dx: " << lane_pt[0] - x << ", dy: " << abs(lane_pt[1] - y) << std::endl;
                 t *= -1;
 
                 lane_pt = lane_match->get_surface_pt(s, t);
                 if (abs(lane_pt[0] - x) > 0.1 || abs(lane_pt[1] - y) > 0.1)
                 {
-                    std::cout << "FAIL: dx: " << lane_pt[0] - x << ", dy: " << abs(lane_pt[1] - y) << std::endl;
                     continue; // Trying other side failed, so we're on the wrong road. Keep searchng.
-                }
-                else
-                {
-                    std::cout << "FIX:  dx: " << lane_pt[0] - x << ", dy: " << abs(lane_pt[1] - y) << std::endl;
                 }
             }
 
@@ -181,12 +168,11 @@ LanePtr navigator::opendrive::get_lane_from_xy(odr::OpenDriveMap* map, double x,
                 if (t > outer_border_t || t < inner_border_t)
                     continue;
             }
-            std::cout << "OK:   (" << outer_border_t << " < " << t << " > " << inner_border_t << ") dx: " << lane_pt[0] - x << ", dy: " << abs(lane_pt[1] - y) << std::endl;
 
             return lane;
         }
     }
-    return std::shared_ptr<odr::Lane>(); // No road found!
+    return nullptr; // No road found!
 }
 
 std::vector<std::shared_ptr<odr::Lane>> navigator::opendrive::get_nearby_lanes(OpenDriveMapPtr map, double x, double y, double distance)

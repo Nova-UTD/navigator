@@ -53,7 +53,7 @@ boost_polygon navigator::zones_lib::to_boost_polygon(const ZoneMsg& zone) {
 }
 
 
-std::vector<PointMsg> navigator::zones_lib::calculate_corner_points(rclcpp::Logger logger, std::shared_ptr<odr::LaneSection> lanesection, double s_val) {
+std::vector<PointMsg> navigator::zones_lib::calculate_corner_points(std::shared_ptr<odr::LaneSection> lanesection, double s_val) {
 
     std::shared_ptr<odr::Lane> leftmost_lane;
     std::shared_ptr<odr::Lane> rightmost_lane;
@@ -102,7 +102,7 @@ std::vector<PointMsg> navigator::zones_lib::calculate_corner_points(rclcpp::Logg
         * add points to msg_points
 
 */
-ZoneMsg navigator::zones_lib::to_zone_msg(rclcpp::Logger logger, std::shared_ptr<odr::Junction> junction, odr::OpenDriveMap *map) {
+ZoneMsg navigator::zones_lib::to_zone_msg(std::shared_ptr<odr::Junction> junction, odr::OpenDriveMap *map) {
     
     std::vector<PointMsg> msg_points;
     for (auto const& [connection_id, junction_connection] : junction->connections) {
@@ -112,8 +112,8 @@ ZoneMsg navigator::zones_lib::to_zone_msg(rclcpp::Logger logger, std::shared_ptr
         std::shared_ptr<odr::LaneSection> lanesection = *(connecting_road->get_lanesections().begin());
 
         // get corners for start and end of lanesection
-        std::vector<PointMsg> points_start = calculate_corner_points(logger, lanesection, 0);
-        std::vector<PointMsg> points_end = calculate_corner_points(logger, lanesection, connecting_road->length);
+        std::vector<PointMsg> points_start = calculate_corner_points(lanesection, 0);
+        std::vector<PointMsg> points_end = calculate_corner_points(lanesection, connecting_road->length);
         for (auto pt : points_start) {
             msg_points.push_back(pt);
         }

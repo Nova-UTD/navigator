@@ -40,10 +40,10 @@ namespace navigator
         ZoneMsg to_zone_msg(const odr::Mesh3D& mesh);
         
         //need map to look up roads
-        ZoneMsg to_zone_msg(rclcpp::Logger logger, std::shared_ptr<odr::Junction> junction, odr::OpenDriveMap *map);
+        ZoneMsg to_zone_msg(std::shared_ptr<odr::Junction> junction, odr::OpenDriveMap *map);
 
         // helper function to calculate point
-        std::vector<PointMsg> calculate_corner_points(rclcpp::Logger logger, std::shared_ptr<odr::LaneSection> lanesection, double s_val);
+        std::vector<PointMsg> calculate_corner_points(std::shared_ptr<odr::LaneSection> lanesection, double s_val);
 
         class ClockwiseComparator {
         public:
