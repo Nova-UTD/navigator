@@ -89,6 +89,7 @@ GNSS_LON_SDEV = 0.3*M_TO_DEG
 # Publish a true map->base_link transform. Disable this if
 # another localization algorithm (ukf, ndt, etc.) is running! WSH.
 PULBISH_MAP_BL_TRANSFORM = False
+PUBLISH_GROUND_TRUTH_SEMANTIC_LIDAR = False
 
 sys.path.append(
     '/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
@@ -357,7 +358,8 @@ class SimBridgeNode(Node):
         lidar_data = lidar_data[lidar_data['intensity'] == 7.0]
         msg = rnp.msgify(PointCloud2, lidar_data)
         msg.header = header
-        self.sem_road_lidar_pub.publish(msg)
+        if PUBLISH_GROUND_TRUTH_SEMANTIC_LIDAR:
+            self.sem_road_lidar_pub.publish(msg)
 
         # for detection in data:
         #     self.get_logger().info("{}".format(detection))
