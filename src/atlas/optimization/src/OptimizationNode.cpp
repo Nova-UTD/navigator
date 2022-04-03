@@ -46,6 +46,11 @@ using namespace std::chrono_literals;
 
 OptimizationNode::OptimizationNode() : Node("optimization_node")
 {
+	gtsam::ISAM2Params isam_params;
+	isam_params.factorization = gtsam::ISAM2Params::CHOLESKY;
+	isam_params.relinearizeSkip = 10;
+	isam = gtsam::ISAM2(isam_params);
+
 	// Create publishers and subscribers
 	gnss_sub_ = this->create_subscription<Odometry>("/sensors/gnss/odom", 10,
 													[this](Odometry::SharedPtr msg)

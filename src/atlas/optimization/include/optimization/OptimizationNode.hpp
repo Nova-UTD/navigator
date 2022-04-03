@@ -28,7 +28,16 @@
 #include <algorithm>
 
 // GTSAM
+#include <gtsam/inference/Symbol.h>
+#include <gtsam/navigation/CombinedImuFactor.h>
+#include <gtsam/navigation/GPSFactor.h>
 #include <gtsam/navigation/ImuFactor.h>
+#include <gtsam/nonlinear/ISAM2.h>
+#include <gtsam/nonlinear/ISAM2Params.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/slam/PriorFactor.h>
+#include <gtsam/slam/dataset.h>
 
 class OptimizationNode : public rclcpp::Node
 {
@@ -55,7 +64,10 @@ private:
 
 	double imu_integrated_dx = 0.0;
 	double imu_integrated_dy = 0.0;
+	std::shared_ptr<gtsam::PreintegratedImuMeasurements> current_summarized_measurement = nullptr;
 
 	std::shared_ptr<tf2_ros::TransformListener> transform_listener_{nullptr};
 	std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+
+	gtsam::ISAM2 isam;
 };
