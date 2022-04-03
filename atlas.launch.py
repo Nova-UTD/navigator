@@ -105,7 +105,8 @@ def generate_launch_description():
         remappings=[
             ("/odom0", "/gnss/odom"),
             ("/imu0", "/imu_primary/data"),
-            ("/twist0", "/can/speedometer_twist")
+            ("/twist0", "/can/speedometer_twist"),
+            ("/pose0", "/atlas/corrected_pose")
         ]
     )
 

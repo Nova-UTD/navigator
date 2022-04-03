@@ -281,9 +281,19 @@ class LidarCorrectionNode(Node):
         # TODO: Add our corrected rotation
         result_pose.pose.pose.orientation = self.bl_map_tf.transform.rotation
         og_transl = self.bl_map_tf.transform.translation
-        result_pose.pose.pose.position.x = og_transl.x + x_off
-        result_pose.pose.pose.position.y = og_transl.y + x_off
+        result_pose.pose.pose.position.x = og_transl.x + min(x_off, 0.5)
+        result_pose.pose.pose.position.y = og_transl.y + min(y_off, 0.5)
         result_pose.pose.pose.position.z = og_transl.z
+
+        sdev = 500.0  # Meters, s.t. pos.x = n +/- accuracy
+
+        result_pose.pose.covariance = [sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, sdev, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, 0.0, sdev, 0.0, 0.0, 0.0,
+                                       0.0, 0.0, 0.0, sdev, 0.0, 0.0,
+                                       0.0, 0.0, 0.0, 0.0, sdev, 0.0,
+                                       0.0, 0.0, 0.0, 0.0, 0.0, sdev]
+
         self.result_odom_pub.publish(result_pose)
 
         end = time.time()

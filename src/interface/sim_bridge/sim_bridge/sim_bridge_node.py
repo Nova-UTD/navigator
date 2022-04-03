@@ -259,7 +259,7 @@ class SimBridgeNode(Node):
         twist_linear.z = ego_vel.z
         msg.twist.twist.linear = twist_linear
 
-        sdev = 500.0  # Meters, s.t. pos.x = n +/- accuracy
+        sdev = 10.0  # Meters, s.t. pos.x = n +/- accuracy
 
         posewithcov.covariance = [sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
                                   0.0, sdev, 0.0, 0.0, 0.0, 0.0,
