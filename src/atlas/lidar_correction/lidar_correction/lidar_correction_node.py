@@ -165,55 +165,55 @@ class LidarCorrectionNode(Node):
 
     def preprocessPoints(self, pts):
         # Filter out faraway points
-        pts = pts[pts['x'] <= 20.0]
+        pts = pts[np.logical_and(pts['x'] <= 20.0, abs(pts['y'] < 10))]
 
-        # Find our base_link->map transform
-        try:
-            # Destination map is listed first in args
-            self.bl_map_tf = self.tf_buffer.lookup_transform(
-                'map', 'base_link', rclpy.time.Time(seconds=0, nanoseconds=0))
-        except TransformException as ex:
-            self.get_logger().info(
-                f'Could not transform map to base_link: {ex}')
-            return
+        # # Find our base_link->map transform
+        # try:
+        #     # Destination map is listed first in args
+        #     self.bl_map_tf = self.tf_buffer.lookup_transform(
+        #         'map', 'base_link', rclpy.time.Time(seconds=0, nanoseconds=0))
+        # except TransformException as ex:
+        #     self.get_logger().info(
+        #         f'Could not transform map to base_link: {ex}')
+        #     return
 
-        translation = self.bl_map_tf.transform.translation
-        # pts['x'] += translation.x
-        # pts['y'] += translation.y
-        # pts['z'] += translation.z
-        # self.get_logger().info("{}".format(translation.z))
+        # translation = self.bl_map_tf.transform.translation
+        # # pts['x'] += translation.x
+        # # pts['y'] += translation.y
+        # # pts['z'] += translation.z
+        # # self.get_logger().info("{}".format(translation.z))
 
-        # Rotate all points to base_link
-        # TODO: Remove or rework; rotations are computationally costly!
-        quat = [
-            self.bl_map_tf.transform.rotation.x,
-            self.bl_map_tf.transform.rotation.y,
-            self.bl_map_tf.transform.rotation.z,
-            self.bl_map_tf.transform.rotation.w
-        ]
-        r = R.from_quat(quat)
-        # xyz = np.transpose(np.array([npcloud['x'], npcloud['y'], npcloud['z']]))
+        # # Rotate all points to base_link
+        # # TODO: Remove or rework; rotations are computationally costly!
+        # quat = [
+        #     self.bl_map_tf.transform.rotation.x,
+        #     self.bl_map_tf.transform.rotation.y,
+        #     self.bl_map_tf.transform.rotation.z,
+        #     self.bl_map_tf.transform.rotation.w
+        # ]
+        # r = R.from_quat(quat)
+        # # xyz = np.transpose(np.array([npcloud['x'], npcloud['y'], npcloud['z']]))
 
-        # pts = r.apply(xyz)
+        # # pts = r.apply(xyz)
 
-        xyz = np.array(
-            [pts['x'].flatten(), pts['y'].flatten(), pts['z'].flatten()])
-        # print(xyz)
-        # print("----")
+        # xyz = np.array(
+        #     [pts['x'].flatten(), pts['y'].flatten(), pts['z'].flatten()])
+        # # print(xyz)
+        # # print("----")
 
-        xyz = np.transpose(xyz)
+        # xyz = np.transpose(xyz)
 
-        xyz = r.apply(xyz)
-        xyz = np.transpose(xyz)
-        xyz[0] += translation.x
-        xyz[1] += translation.y
-        xyz[2] += translation.z
-        pts['x'] = np.array(xyz[0]).T
-        pts['y'] = np.array(xyz[1]).T
-        pts['z'] = np.array(xyz[2]).T
+        # xyz = r.apply(xyz)
+        # xyz = np.transpose(xyz)
+        # xyz[0] += translation.x
+        # xyz[1] += translation.y
+        # xyz[2] += translation.z
+        # pts['x'] = np.array(xyz[0]).T
+        # pts['y'] = np.array(xyz[1]).T
+        # pts['z'] = np.array(xyz[2]).T
 
         pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, pts)
-        pcd_msg.header.frame_id = 'map'
+        pcd_msg.header.frame_id = 'base_link'
         pcd_msg.header.stamp = self.get_clock().now().to_msg()
 
         self.pcd_debug_pub.publish(pcd_msg)

@@ -57,9 +57,9 @@ import cv2
 CLIENT_PORT = 2000
 CLIENT_WORLD = 'Town07'
 EGO_AUTOPILOT_ENABLED = True
-EGO_SPAWN_X = 59.0
-EGO_SPAWN_Y = -60.0
-EGO_SPAWN_Z = 6.0
+EGO_SPAWN_X = -89.5
+EGO_SPAWN_Y = -162.6
+EGO_SPAWN_Z = 2.0
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)

@@ -134,8 +134,8 @@ class DDRNetInferenceNode(Node):
         # post-processing
         seg_map = torch.argmax(seg_map.squeeze(), dim=0).detach().cpu().numpy()
         road_image = np.zeros(shape=seg_map.shape, dtype=np.uint8)
-        # for all classified pixels that are road (0), mark them as white (255)
-        road_image[seg_map == 0] = 255
+        # for all classified pixels that are road (0) or sidewalk (1), mark them as white (255)
+        road_image[np.logical_or(seg_map == 0, seg_map == 1)] = 255
 
         # project image into 3-D space, don't worry about details
         xx, yy = np.meshgrid(np.arange(0, image_size_x),
