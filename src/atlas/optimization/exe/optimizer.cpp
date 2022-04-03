@@ -1,4 +1,4 @@
-#include "optimization/OptimizationNode.hpp"
+#include "OptimizationNode.hpp"
 
 int main(int argc, char *argv[])
 {

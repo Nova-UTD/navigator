@@ -9,6 +9,10 @@
 
   <buildtool_depend>nova_auto_package</buildtool_depend>
 
+  <depend>eigen</depend>
+  <depend>Eigen</depend>
+  <depend>tf2_eigen</depend>
+  <depend>gtsam</depend>
   <depend>rclcpp</depend>
   <depend>libopendrive</depend>
   <depend>geometry_msgs</depend>

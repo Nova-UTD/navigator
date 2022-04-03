@@ -336,7 +336,7 @@ def generate_launch_description():
 
         # LOCALIZATION
         # ndt,
-        map_odom_ukf,
+        # map_odom_ukf,
 
         # MAPPING
         odr_viz,

@@ -16,6 +16,22 @@ project(${directory_name})
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
+find_package(GTSAM REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(rclcpp REQUIRED)
 
-find_package(nova_auto_package REQUIRED)
-nova_auto_package()
+include_directories(
+  include/optimization
+)
+
+add_library(optimization_node src/OptimizationNode.cpp)
+ament_target_dependencies(optimization_node 
+  GTSAM
+  Eigen3
+  rclcpp
+  voltron_msgs
+)
+
+add_executable(optimizer exe/optimizer src/OptimizationNode.cpp)
+ament_target_dependencies(optimizer voltron_msgs rclcpp nav_msgs GTSAM)
+target_link_libraries(optimizer gtsam)

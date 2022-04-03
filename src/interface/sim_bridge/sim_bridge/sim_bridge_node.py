@@ -278,7 +278,7 @@ class SimBridgeNode(Node):
 
         self.gnss_pub.publish(msg)
 
-    def primary_imu_cb(self, data: carla.IMUMeasurement):
+    def zed_imu_cb(self, data: carla.IMUMeasurement):
         imu_msg = Imu()
 
         imu_msg.header.stamp = self.get_clock().now().to_msg()
@@ -298,7 +298,7 @@ class SimBridgeNode(Node):
         #                                           0.0, 0.1, 0.0,
         #                                           0.0, 0.0, 0.1]
 
-        self.primary_imu_pub.publish(imu_msg)
+        self.zed_imu_pub.publish(imu_msg)
 
     def process_command(self):
         cmd = carla.VehicleControl()
@@ -574,7 +574,7 @@ class SimBridgeNode(Node):
 
         self.gnss_pub = self.create_publisher(
             Odometry,
-            '/gnss/odom',
+            '/sensors/gnss/odom',
             10
         )
 
@@ -590,21 +590,21 @@ class SimBridgeNode(Node):
             10
         )
 
-        self.primary_imu_pub = self.create_publisher(
+        self.zed_imu_pub = self.create_publisher(
             Imu,
-            '/imu_primary/data',
+            '/sensors/zed/imu',
             10
         )
 
         self.speedometer_pub = self.create_publisher(
             TwistWithCovarianceStamped,
-            '/can/speedometer_twist',
+            '/sensors/speedometer/twist',
             10
         )
 
         self.steering_angle_pub = self.create_publisher(
             SteeringPosition,
-            '/can/steering_angle',
+            '/sensors/steering_angle',
             10
         )
 
@@ -840,21 +840,21 @@ class SimBridgeNode(Node):
         self.front_semantic.listen(self.front_semantic_cam_cb)
 
         # Attach front camera's IMU
-        primary_imu_bp = self.blueprint_library.find('sensor.other.imu')
-        primary_imu_bp.set_attribute('sensor_tick', str(0.025))
-        primary_imu_bp.set_attribute('noise_accel_stddev_x', str(0.2))
-        primary_imu_bp.set_attribute('noise_accel_stddev_y', str(0.2))
-        primary_imu_bp.set_attribute('noise_accel_stddev_z', str(0.2))
-        primary_imu_bp.set_attribute('noise_gyro_stddev_x', str(0.03))
-        primary_imu_bp.set_attribute('noise_gyro_stddev_y', str(0.03))
-        primary_imu_bp.set_attribute('noise_gyro_stddev_z', str(0.03))
-        primary_imu_bp.set_attribute('sensor_tick', str(0.025))
+        zed_imu_bp = self.blueprint_library.find('sensor.other.imu')
+        zed_imu_bp.set_attribute('sensor_tick', str(0.025))
+        zed_imu_bp.set_attribute('noise_accel_stddev_x', str(0.2))
+        zed_imu_bp.set_attribute('noise_accel_stddev_y', str(0.2))
+        zed_imu_bp.set_attribute('noise_accel_stddev_z', str(0.2))
+        zed_imu_bp.set_attribute('noise_gyro_stddev_x', str(0.03))
+        zed_imu_bp.set_attribute('noise_gyro_stddev_y', str(0.03))
+        zed_imu_bp.set_attribute('noise_gyro_stddev_z', str(0.03))
+        zed_imu_bp.set_attribute('sensor_tick', str(0.025))
         # TODO: Add covariance. WSH.
         relative_transform = carla.Transform(carla.Location(
             x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
-        self.primary_imu = self.world.spawn_actor(
-            primary_imu_bp, relative_transform, attach_to=self.ego)
-        self.primary_imu.listen(self.primary_imu_cb)
+        self.zed_imu = self.world.spawn_actor(
+            zed_imu_bp, relative_transform, attach_to=self.ego)
+        self.zed_imu.listen(self.zed_imu_cb)
 
 
 def main(args=None):
