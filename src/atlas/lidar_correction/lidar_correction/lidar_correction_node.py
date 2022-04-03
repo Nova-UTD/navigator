@@ -148,6 +148,9 @@ class LidarCorrectionNode(Node):
         # viz_msg.id =
         viz_msg.scale.x = 0.3
 
+        if not isinstance(big_ole_polygon, ShapelyPolygon):
+            return
+
         for pt in big_ole_polygon.exterior.coords:
             viz_msg.points.append(Point(
                 x=pt[0], y=pt[1]
@@ -159,12 +162,6 @@ class LidarCorrectionNode(Node):
         self.poly_viz_pub.publish(viz_msgs)
         self.road_boundary = big_ole_polygon.simplify(
             0.2, preserve_topology=False)  # Done! "Save" result
-
-    def icp(pts, poly: ShapelyPolygon):
-        num_iterations = self.get_parameter('iteration_count').value
-        # for i in range(num_iterations):
-
-        # https://stackoverflow.com/questions/20120384/iterative-closest-point-icp-implementation-on-python
 
     def preprocessPoints(self, pts):
         # Filter out faraway points
@@ -285,7 +282,7 @@ class LidarCorrectionNode(Node):
         result_pose.pose.pose.position.y = og_transl.y + min(y_off, 0.5)
         result_pose.pose.pose.position.z = og_transl.z
 
-        sdev = 500.0  # Meters, s.t. pos.x = n +/- accuracy
+        sdev = 100.0  # Meters, s.t. pos.x = n +/- accuracy
 
         result_pose.pose.covariance = [sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
                                        0.0, sdev, 0.0, 0.0, 0.0, 0.0,
