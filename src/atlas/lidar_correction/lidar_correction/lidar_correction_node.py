@@ -59,6 +59,7 @@ from shapely import affinity
 
 # For ICP
 import cv2
+from shapely.ops import nearest_points
 
 
 class LidarCorrectionNode(Node):
@@ -226,6 +227,27 @@ class LidarCorrectionNode(Node):
         src_original = rnp.numpify(msg)
 
         src_3d = self.preprocessPoints(src_original)
+        # print(src_3d)
+        # These include points inside the road boundary, which aren't useful to us
+        src_all = np.array([src_3d['x'], src_3d['y']]).T[0]
+        # print(src_all)
+        # print("---")
+
+        inside_count = 0
+        dst_pts = []
+        src_pts = []
+        for pt in src_all:
+            shapely_pt = ShapelyPoint(pt)
+            if shapely_pt.within(self.road_boundary):
+                inside_count += 1
+            else:
+                p1, p2 = nearest_points(self.road_boundary, shapely_pt)
+                # print(p1.distance(shapely_pt))
+                dst_pts.append([p1.x, p1.y])
+                src_pts.append(pt)
+        dst = np.array(dst_pts)  # Closest points along road boundary
+        src = np.array(src_pts)  # All points outside road boundary
+        # print(f"Of {len(src)}, {inside_count/len(src)*100}%")
 
         # print(f"TF: {Tf}")
         # print(src)
