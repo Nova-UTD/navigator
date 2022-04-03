@@ -174,6 +174,12 @@ def generate_launch_description():
         executable='vt_viz_exe',
     )
 
+    deviation_monitor = Node(
+        package='deviation_monitor',
+        executable='deviation_monitor_node',
+        output='screen'
+    )
+
     # PERCEPTION
     lidar_driver_front = Node(
         package='velodyne_driver',
@@ -339,6 +345,7 @@ def generate_launch_description():
         odom_bl_link,
         urdf_publisher,
         visuals,
+        # deviation_monitor,
 
         # PERCEPTION
         # lidar_driver_front,

@@ -25,6 +25,8 @@ Todos:
 '''
 
 from turtle import Shape
+from cv2 import mean
+from pygame import K_PAGEDOWN
 from scipy import rand
 from sensor_msgs.msg import PointCloud2
 from scipy.spatial.transform import Rotation as R
@@ -155,7 +157,7 @@ class LidarCorrectionNode(Node):
             viz_msg.points.append(Point(
                 x=pt[0], y=pt[1]
             ))
-        viz_msgs.markers.append(viz_msg)
+        # viz_msgs.markers.append(viz_msg)
 
         # Form a PolygonStamped for viz
 
@@ -165,7 +167,8 @@ class LidarCorrectionNode(Node):
 
     def preprocessPoints(self, pts):
         # Filter out faraway points
-        pts = pts[np.logical_and(pts['x'] <= 20.0, abs(pts['y'] < 10))]
+        pts = pts[np.logical_and(pts['x'] <= 20.0, abs(pts['y'] < 5))]
+        pts = pts[::4]
 
         # # Find our base_link->map transform
         # try:
@@ -223,9 +226,51 @@ class LidarCorrectionNode(Node):
     def calculate_bias(self, msg: PointCloud2):
         start = time.time()
 
+        road_bound = self.road_boundary
+
+        try:
+            # Destination map is listed first in args
+            self.bl_map_tf = self.tf_buffer.lookup_transform(
+                'base_link', 'map', rclpy.time.Time(seconds=0, nanoseconds=0))
+        except TransformException as ex:
+            self.get_logger().info(
+                f'Could not transform map to base_link: {ex}')
+            return
+
         # Is our HD map data available? If not, skip.
         if self.road_boundary is None:
             return
+        else:  # Transform road boundary to base_link (car's reference frame)
+            yaw = 2*math.asin(self.bl_map_tf.transform.rotation.z)
+            x_offset = self.bl_map_tf.transform.translation.x
+            y_offset = self.bl_map_tf.transform.translation.y
+            tf_matrix = np.array(
+                [math.cos(yaw), -1*math.sin(yaw), math.sin(yaw),
+                 math.cos(yaw), x_offset, y_offset]
+            )
+            road_bound = affinity.affine_transform(road_bound, tf_matrix)
+
+        viz_msg = Marker()
+        viz_msg.header.stamp = self.get_clock().now().to_msg()
+        viz_msg.header.frame_id = 'base_link'  # TODO: Update this after transform
+        viz_msg.type = Marker.LINE_STRIP
+        viz_msg.color = ColorRGBA(
+            r=0.0, g=0.5, b=1.0, a=1.0
+        )
+        viz_msg.frame_locked = True
+        viz_msg.ns = 'nearby_poly_merged'
+
+        viz_msg.scale.x = 1.0
+        if not isinstance(road_bound, ShapelyPolygon):
+            return
+
+        for pt in road_bound.exterior.coords:
+            viz_msg.points.append(Point(
+                x=pt[0], y=pt[1]
+            ))
+        viz_msgs = MarkerArray()
+        viz_msgs.markers.append(viz_msg)
+        self.poly_viz_pub.publish(viz_msgs)
 
         src_original = rnp.numpify(msg)
 
@@ -235,54 +280,52 @@ class LidarCorrectionNode(Node):
         # print(src_3d)
         # These include points inside the road boundary, which aren't useful to us
         src_all = np.array([src_3d['x'], src_3d['y']]).T
+        # print(src_all)
         if src_all.shape[1] != 2:
             return
         # print(src_all)
         # print("---")
 
-        inside_count = 0
-        dst_pts = []
-        src_pts = []
-        for pt in src_all:
-            shapely_pt = ShapelyPoint(pt)
-            if shapely_pt.within(self.road_boundary):
-                inside_count += 1
-            else:
-                p1, p2 = nearest_points(self.road_boundary, shapely_pt)
-                # print(p1.distance(shapely_pt))
-                if p1.distance(shapely_pt) < 2.0:
-                    dst_pts.append([p1.x, p1.y])
-                    src_pts.append(pt)
-        dst = np.array(dst_pts)  # Closest points along road boundary
-        src = np.array(src_pts)  # All points outside road boundary
-        if len(src) > 0:
-
-            if inside_count/len(src_all) > 0.95:
-                print("All clear.")
-                return
-
-        if src.shape[0] < 1:
+        if len(road_bound.exterior.coords) < 4:
             return
 
-        T, distances, i = self.icp(src, dst)
-        x_off = T[0, 2]
-        y_off = T[1, 2]
-        print("Move {:.2f} right, {:.2f} forward".format(y_off, x_off))
-        print("Of {}, {:.1f}%".format(
-            len(src_all), inside_count/len(src_all)*100))
-        self.publish_correction_arrow(T[0, 2], T[1, 2])
+        outside_count = 0
+        mean_y = 0
+        for pt in src_all:
+            shapely_pt = ShapelyPoint(pt)
+            if not shapely_pt.within(road_bound):
+                p1, p2 = nearest_points(road_bound, shapely_pt)
+                # print(p1.distance(shapely_pt))
+                if p1.distance(shapely_pt) < 2.0:
+                    outside_count += 1
+                    mean_y += p1.y
+        if outside_count < 1:
+            return
+
+        # T, distances, i = self.icp(src, dst)
+        mean_y /= outside_count
+
+        # x_off = np.array(src_pts).mean
+        # y_off = T[1, 2]
+        # print("Move {:.2f} left, {:.2f} forward".format(y_off, x_off))
+        # print("Of {}, {:.1f}%".format(
+        #     len(src_all), inside_count/len(src_all)*100))
+        # self.publish_correction_arrow(T[0, 2], T[1, 2])
+
+        if abs(mean_y) < 2:
+            return
+
+        Kp = 10*(outside_count/len(src_all))
 
         result_pose = PoseWithCovarianceStamped()
         result_pose.header.stamp = self.get_clock().now().to_msg()
-        result_pose.header.frame_id = 'map'
+        result_pose.header.frame_id = 'base_link'
         # TODO: Add our corrected rotation
         result_pose.pose.pose.orientation = self.bl_map_tf.transform.rotation
         og_transl = self.bl_map_tf.transform.translation
-        result_pose.pose.pose.position.x = og_transl.x + min(x_off, 0.5)
-        result_pose.pose.pose.position.y = og_transl.y + min(y_off, 0.5)
-        result_pose.pose.pose.position.z = og_transl.z
+        result_pose.pose.pose.position.y = -1*mean_y*Kp
 
-        sdev = 100.0  # Meters, s.t. pos.x = n +/- accuracy
+        sdev = 30.0  # Meters, s.t. pos.x = n +/- accuracy
 
         result_pose.pose.covariance = [sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
                                        0.0, sdev, 0.0, 0.0, 0.0, 0.0,
@@ -290,6 +333,12 @@ class LidarCorrectionNode(Node):
                                        0.0, 0.0, 0.0, sdev, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, sdev, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, sdev]
+
+        if mean_y > 0:
+            print("MOVE RIGHT {:.1f}, K:{:.2f}".format(abs(mean_y*Kp), Kp))
+        else:
+            print("MOVE LEFT {:.1f}, K:{:.2f}".format(
+                abs(mean_y*Kp), K_PAGEDOWN))
 
         self.result_odom_pub.publish(result_pose)
 

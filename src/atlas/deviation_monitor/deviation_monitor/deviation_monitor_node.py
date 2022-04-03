@@ -87,7 +87,7 @@ class DeviationMonitorNode(Node):
         self.bl_map_tf = TransformStamped()
         self.true_odom = Odometry()
         self.errors = []
-        self.error_history = 250
+        self.error_history = 500
 
     def true_odom_cb(self, msg: Odometry):
         # print("True OD received")

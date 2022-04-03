@@ -57,9 +57,14 @@ import cv2
 CLIENT_PORT = 2000
 CLIENT_WORLD = 'Town07'
 EGO_AUTOPILOT_ENABLED = True
+# EGO_SPAWN_X = 59.0
+# EGO_SPAWN_Y = -60.0
+# EGO_SPAWN_Z = 6.0
+# EGO_SPAWN_YAW = 0.0
 EGO_SPAWN_X = -89.5
 EGO_SPAWN_Y = -162.6
 EGO_SPAWN_Z = 2.0
+EGO_SPAWN_YAW = 180.0
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
@@ -79,12 +84,12 @@ MAP_ORIGIN_LON = 0.0  # degrees
 M_TO_DEG = 9e-6  # APPROXIMATE! WSH.
 
 # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
-GNSS_ALT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
-GNSS_ALT_SDEV = 0.3*M_TO_DEG
-GNSS_LAT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
-GNSS_LAT_SDEV = 0.3*M_TO_DEG
-GNSS_LON_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
-GNSS_LON_SDEV = 0.3*M_TO_DEG
+GNSS_ALT_BIAS = 2.0*M_TO_DEG
+GNSS_ALT_SDEV = 0.1*M_TO_DEG
+GNSS_LAT_BIAS = 2.0*M_TO_DEG
+GNSS_LAT_SDEV = 0.1*M_TO_DEG
+GNSS_LON_BIAS = 2.0*M_TO_DEG
+GNSS_LON_SDEV = 0.1*M_TO_DEG
 
 # Publish a true map->base_link transform. Disable this if
 # another localization algorithm (ukf, ndt, etc.) is running! WSH.
@@ -259,14 +264,15 @@ class SimBridgeNode(Node):
         twist_linear.z = ego_vel.z
         msg.twist.twist.linear = twist_linear
 
-        sdev = 10.0  # Meters, s.t. pos.x = n +/- accuracy
+        linear_sdev = 8.0
+        angular_sdev = 1.0
 
-        posewithcov.covariance = [sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, sdev, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, sdev, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, sdev, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, sdev, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 0.0, sdev]
+        posewithcov.covariance = [linear_sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, linear_sdev, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, linear_sdev, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, angular_sdev, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, angular_sdev, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, 0.0, angular_sdev]
 
         msg.pose = posewithcov
 
@@ -721,6 +727,7 @@ class SimBridgeNode(Node):
         spawn_loc.z = EGO_SPAWN_Z  # 2.0  # Start up in the air
         spawn = carla.Transform()
         spawn.location = spawn_loc
+        spawn.rotation.yaw = EGO_SPAWN_YAW
         self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, spawn))
         vehicle_bp = self.blueprint_library.find(EGO_MODEL)
         self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, spawn)
@@ -835,12 +842,12 @@ class SimBridgeNode(Node):
         # Attach front camera's IMU
         primary_imu_bp = self.blueprint_library.find('sensor.other.imu')
         primary_imu_bp.set_attribute('sensor_tick', str(0.025))
-        # primary_imu_bp.set_attribute('noise_accel_stddev_x', str(0.2))
-        # primary_imu_bp.set_attribute('noise_accel_stddev_y', str(0.2))
-        # primary_imu_bp.set_attribute('noise_accel_stddev_z', str(0.2))
-        # primary_imu_bp.set_attribute('noise_gyro_stddev_x', str(0.03))
-        # primary_imu_bp.set_attribute('noise_gyro_stddev_y', str(0.03))
-        # primary_imu_bp.set_attribute('noise_gyro_stddev_z', str(0.03))
+        primary_imu_bp.set_attribute('noise_accel_stddev_x', str(0.2))
+        primary_imu_bp.set_attribute('noise_accel_stddev_y', str(0.2))
+        primary_imu_bp.set_attribute('noise_accel_stddev_z', str(0.2))
+        primary_imu_bp.set_attribute('noise_gyro_stddev_x', str(0.03))
+        primary_imu_bp.set_attribute('noise_gyro_stddev_y', str(0.03))
+        primary_imu_bp.set_attribute('noise_gyro_stddev_z', str(0.03))
         primary_imu_bp.set_attribute('sensor_tick', str(0.025))
         # TODO: Add covariance. WSH.
         relative_transform = carla.Transform(carla.Location(
