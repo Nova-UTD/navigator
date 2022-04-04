@@ -105,7 +105,8 @@ def generate_launch_description():
         remappings=[
             ("/odom0", "/gnss/odom"),
             ("/imu0", "/imu_primary/data"),
-            ("/twist0", "/can/speedometer_twist")
+            ("/twist0", "/can/speedometer_twist"),
+            ("/pose0", "/atlas/corrected_pose")
         ]
     )
 
@@ -173,6 +174,12 @@ def generate_launch_description():
         executable='vt_viz_exe',
     )
 
+    deviation_monitor = Node(
+        package='deviation_monitor',
+        executable='deviation_monitor_node',
+        output='screen'
+    )
+
     # PERCEPTION
     lidar_driver_front = Node(
         package='velodyne_driver',
@@ -203,9 +210,9 @@ def generate_launch_description():
                                "lidar_pointcloud_rear.param.yaml"))]
     )
 
-    curb_detector = Node(
-        package='curb_detection',
-        executable='curb_detector'
+    semseg = Node(
+        package='ddrnet_inference',
+        executable='ddrnet_inference_node'
     )
 
     # PLANNING
@@ -329,7 +336,7 @@ def generate_launch_description():
 
         # LOCALIZATION
         # ndt,
-        map_odom_ukf,
+        # map_odom_ukf,
 
         # MAPPING
         odr_viz,
@@ -338,13 +345,14 @@ def generate_launch_description():
         odom_bl_link,
         urdf_publisher,
         visuals,
+        # deviation_monitor,
 
         # PERCEPTION
         # lidar_driver_front,
         # lidar_pointcloud_front,
         # lidar_driver_rear,
         # lidar_pointcloud_rear,
-        # curb_detector,
+        semseg,
 
         # PLANNING
         # route_planner,

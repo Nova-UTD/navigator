@@ -265,8 +265,7 @@ void OdrVisualizerNode::publishNearbyLanePolygons()
 	// 		A mesh is a collection of tris.
 	for (auto lane : lanes)
 	{
-		// We only care about lanes of types "driving" and "shoulder"
-		if (!(lane->type == "driving" || lane->type == "shoulder"))
+		if (!(lane->type == "driving" || lane->type == "shoulder" || lane->type == "none" || lane->type == "sidewalk" || lane->type == "parking"))
 		{
 			// RCLCPP_INFO(get_logger(), "Lane %i has type %s", lane->id, lane->type.c_str());
 			continue; // Skip this lane and keep searching

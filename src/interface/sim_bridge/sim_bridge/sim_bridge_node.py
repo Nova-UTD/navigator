@@ -59,9 +59,14 @@ import cv2
 CLIENT_PORT = 2000
 CLIENT_WORLD = 'Town07'
 EGO_AUTOPILOT_ENABLED = True
-EGO_SPAWN_X = 59.0
-EGO_SPAWN_Y = -60.0
-EGO_SPAWN_Z = 6.0
+# EGO_SPAWN_X = 59.0
+# EGO_SPAWN_Y = -60.0
+# EGO_SPAWN_Z = 6.0
+# EGO_SPAWN_YAW = 0.0
+EGO_SPAWN_X = -89.5
+EGO_SPAWN_Y = -162.6
+EGO_SPAWN_Z = 2.0
+EGO_SPAWN_YAW = 180.0
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
@@ -81,16 +86,17 @@ MAP_ORIGIN_LON = 0.0  # degrees
 M_TO_DEG = 9e-6  # APPROXIMATE! WSH.
 
 # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
-GNSS_ALT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
-GNSS_ALT_SDEV = 2.0*M_TO_DEG
-GNSS_LAT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
-GNSS_LAT_SDEV = 2.0*M_TO_DEG
-GNSS_LON_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG
-GNSS_LON_SDEV = 2.0*M_TO_DEG
+GNSS_ALT_BIAS = 2.0*M_TO_DEG
+GNSS_ALT_SDEV = 0.1*M_TO_DEG
+GNSS_LAT_BIAS = 2.0*M_TO_DEG
+GNSS_LAT_SDEV = 0.1*M_TO_DEG
+GNSS_LON_BIAS = 2.0*M_TO_DEG
+GNSS_LON_SDEV = 0.1*M_TO_DEG
 
 # Publish a true map->base_link transform. Disable this if
 # another localization algorithm (ukf, ndt, etc.) is running! WSH.
 PULBISH_MAP_BL_TRANSFORM = False
+PUBLISH_GROUND_TRUTH_SEMANTIC_LIDAR = False
 
 sys.path.append(
     '/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
@@ -155,17 +161,26 @@ class SimBridgeNode(Node):
             dtype=np.uint8, buffer=carla_image.raw_data)
         masked_img_array = np.copy(carla_image_data_array)
         masked_img_array[:, :][masked_img_array[:, :, 2] == 7] = [
-            255, 255, 255, 255]
+            128, 63, 127, 255]
 
-        fromCorners = np.float32(
-            [[608, 366], [0, 580], [943, 580], [657, 367]])
-        toCorners = np.float32(
-            [[320, -400], [320, 720], [960, 720], [960, -400]])
-        warp_matrix = cv2.getPerspectiveTransform(fromCorners, toCorners)
-        res = cv2.warpPerspective(masked_img_array, warp_matrix, (1280, 720))
+        masked_img_array[:, :][masked_img_array[:, :, 2] == 6] = [
+            157, 234, 50, 255]
+
+        masked_img_array[:, :][masked_img_array[:, :, 2] == 8] = [
+            244, 35, 232, 255]
+
+        masked_img_array[:, :][masked_img_array[:, :, 2] == 22] = [
+            145, 170, 100, 255]
+
+        # fromCorners = np.float32(
+        #     [[608, 366], [0, 580], [943, 580], [657, 367]])
+        # toCorners = np.float32(
+        #     [[320, -400], [320, 720], [960, 720], [960, -400]])
+        # warp_matrix = cv2.getPerspectiveTransform(fromCorners, toCorners)
+        # res = cv2.warpPerspective(masked_img_array, warp_matrix, (1280, 720))
 
         img_msg = self.cv_bridge.cv2_to_imgmsg(
-            res, encoding=encoding)
+            masked_img_array, encoding=encoding)
         img_msg.header.stamp = self.get_clock().now().to_msg()
         img_msg.header.frame_id = '/base_link'
 
@@ -251,20 +266,21 @@ class SimBridgeNode(Node):
         twist_linear.z = ego_vel.z
         msg.twist.twist.linear = twist_linear
 
-        sdev = 500.0  # Meters, s.t. pos.x = n +/- accuracy
+        linear_sdev = 8.0
+        angular_sdev = 1.0
 
-        posewithcov.covariance = [sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, sdev, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, sdev, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, sdev, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, sdev, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 0.0, sdev]
+        posewithcov.covariance = [linear_sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, linear_sdev, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, linear_sdev, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, angular_sdev, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, angular_sdev, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, 0.0, angular_sdev]
 
         msg.pose = posewithcov
 
         self.gnss_pub.publish(msg)
 
-    def primary_imu_cb(self, data: carla.IMUMeasurement):
+    def zed_imu_cb(self, data: carla.IMUMeasurement):
         imu_msg = Imu()
 
         imu_msg.header.stamp = self.get_clock().now().to_msg()
@@ -284,7 +300,7 @@ class SimBridgeNode(Node):
         #                                           0.0, 0.1, 0.0,
         #                                           0.0, 0.0, 0.1]
 
-        self.primary_imu_pub.publish(imu_msg)
+        self.zed_imu_pub.publish(imu_msg)
 
     def process_command(self):
         cmd = carla.VehicleControl()
@@ -350,7 +366,8 @@ class SimBridgeNode(Node):
         lidar_data = lidar_data[lidar_data['intensity'] == 7.0]
         msg = rnp.msgify(PointCloud2, lidar_data)
         msg.header = header
-        self.sem_road_lidar_pub.publish(msg)
+        if PUBLISH_GROUND_TRUTH_SEMANTIC_LIDAR:
+            self.sem_road_lidar_pub.publish(msg)
 
         # for detection in data:
         #     self.get_logger().info("{}".format(detection))
@@ -559,7 +576,7 @@ class SimBridgeNode(Node):
 
         self.gnss_pub = self.create_publisher(
             Odometry,
-            '/gnss/odom',
+            '/sensors/gnss/odom',
             10
         )
 
@@ -575,21 +592,21 @@ class SimBridgeNode(Node):
             10
         )
 
-        self.primary_imu_pub = self.create_publisher(
+        self.zed_imu_pub = self.create_publisher(
             Imu,
-            '/imu_primary/data',
+            '/sensors/zed/imu',
             10
         )
 
         self.speedometer_pub = self.create_publisher(
             TwistWithCovarianceStamped,
-            '/can/speedometer_twist',
+            '/sensors/speedometer/twist',
             10
         )
 
         self.steering_angle_pub = self.create_publisher(
             SteeringPosition,
-            '/can/steering_angle',
+            '/sensors/steering_angle',
             10
         )
 
@@ -712,6 +729,7 @@ class SimBridgeNode(Node):
         spawn_loc.z = EGO_SPAWN_Z  # 2.0  # Start up in the air
         spawn = carla.Transform()
         spawn.location = spawn_loc
+        spawn.rotation.yaw = EGO_SPAWN_YAW
         self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, spawn))
         vehicle_bp = self.blueprint_library.find(EGO_MODEL)
         self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, spawn)
@@ -824,21 +842,21 @@ class SimBridgeNode(Node):
         self.front_semantic.listen(self.front_semantic_cam_cb)
 
         # Attach front camera's IMU
-        primary_imu_bp = self.blueprint_library.find('sensor.other.imu')
-        primary_imu_bp.set_attribute('sensor_tick', str(0.025))
-        # primary_imu_bp.set_attribute('noise_accel_stddev_x', str(0.2))
-        # primary_imu_bp.set_attribute('noise_accel_stddev_y', str(0.2))
-        # primary_imu_bp.set_attribute('noise_accel_stddev_z', str(0.2))
-        # primary_imu_bp.set_attribute('noise_gyro_stddev_x', str(0.03))
-        # primary_imu_bp.set_attribute('noise_gyro_stddev_y', str(0.03))
-        # primary_imu_bp.set_attribute('noise_gyro_stddev_z', str(0.03))
-        primary_imu_bp.set_attribute('sensor_tick', str(0.025))
+        zed_imu_bp = self.blueprint_library.find('sensor.other.imu')
+        zed_imu_bp.set_attribute('sensor_tick', str(0.025))
+        zed_imu_bp.set_attribute('noise_accel_stddev_x', str(0.2))
+        zed_imu_bp.set_attribute('noise_accel_stddev_y', str(0.2))
+        zed_imu_bp.set_attribute('noise_accel_stddev_z', str(0.2))
+        zed_imu_bp.set_attribute('noise_gyro_stddev_x', str(0.03))
+        zed_imu_bp.set_attribute('noise_gyro_stddev_y', str(0.03))
+        zed_imu_bp.set_attribute('noise_gyro_stddev_z', str(0.03))
+        zed_imu_bp.set_attribute('sensor_tick', str(0.025))
         # TODO: Add covariance. WSH.
         relative_transform = carla.Transform(carla.Location(
             x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
-        self.primary_imu = self.world.spawn_actor(
-            primary_imu_bp, relative_transform, attach_to=self.ego)
-        self.primary_imu.listen(self.primary_imu_cb)
+        self.zed_imu = self.world.spawn_actor(
+            zed_imu_bp, relative_transform, attach_to=self.ego)
+        self.zed_imu.listen(self.zed_imu_cb)
 
 
 def main(args=None):
