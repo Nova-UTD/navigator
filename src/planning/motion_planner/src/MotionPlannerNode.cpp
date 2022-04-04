@@ -18,6 +18,9 @@
 #include "voltron_msgs/msg/zone.hpp"
 #include "zone_lib/zone.hpp"
 
+#include <list>
+#include <algorithm>
+
 const double max_accel = 1.0;
 const double max_decel = 1.0;
 
@@ -56,11 +59,13 @@ void MotionPlannerNode::send_message() {
       t.vx = ideal_path->speeds[i];
       tmp.points.push_back(t);
     }
-    if (zones != nullptr && odometry != nullptr) {
-        smooth(tmp, *zones, max_accel, max_decel);
-    } else {
-        RCLCPP_WARN(this->get_logger(), "null zones");
+    RCLCPP_WARN(this->get_logger(), "A size: %d", tmp.points.size());
+    if(zones != nullptr){
+      limit_to_zones(tmp, *zones);
     }
+    RCLCPP_WARN(this->get_logger(), "B size: %d", tmp.points.size());
+    smooth(tmp, max_accel, max_decel);
+    RCLCPP_WARN(this->get_logger(), "C size: %d", tmp.points.size());
     trajectory_publisher->publish(tmp);
     RCLCPP_WARN(this->get_logger(), "published path of size %d", tmp.points.size());
     return;
@@ -94,52 +99,37 @@ double MotionPlannerNode::quat_to_heading(double x, double y, double z, double w
 }*/
 
 /**
- * @brief Smooths path velocities to achievable trapezoidal profiles and incorperates zone speed limits
+ * @brief Limits the speed of a trajectory to the mininmum speed of a zone.
  * 
- * Requires a trajectory to have more than 1 point to smooth.
+ * Creates points at the boundary of each zone to ensure the speed limit is
+ * recognized for the whole zone. Does not smooth speeds to ensure a physically
+ * viable trajectory.
  * 
- * @param trajectory - Trajectory to smooth
- * @param zones - Zones to set limiting speeds
- * @param max_accel - Maximum accelration, sets the up slope of the trapezoidal profile. m/s^2
- * @param max_decel - Maximum decelleration, sets the down-slope of a trapezoidal profile. 
- *    Certain unacheivable trajectories may result in this being exceeded. m/s^2
- * @param result_horizon - How many meters ahead to smooth the trajectory for. meters
+ * Operates in-place: trajectory will be modified.
+ * 
+ * @param trajectory 
+ * @param zones 
  */
-void MotionPlannerNode::smooth(Trajectory& trajectory, ZoneArray &zones, double max_accel,
-  double max_decel, double result_horizon){
+void MotionPlannerNode::limit_to_zones(Trajectory& trajectory, ZoneArray& zones){
+    if(zones.zones.size() < 1u) return;
+    if(trajectory.points.size() < 1u) return;
 
-    if(trajectory.points.size() < 2) return;
-  // For every segment (between points) in the trajectory, test against each zone to see if we
-  // should add in a zone entry or exit point to the trajectory.
-  
-  // Build an linked list copy of the trajectory, since we will be inserting/removing points
-  // from the middle frequently.
-  size_t closest_pt_idx = 0;
-  float min_distance = -1;
-  for (size_t i = 0; i < trajectory.points.size(); i++) {
-    float distance = pow(trajectory.points[i].x - odometry->pose.pose.position.x, 2);
-    distance += pow(trajectory.points[i].y - odometry->pose.pose.position.y, 2); 
-    if (min_distance == -1 || distance < min_distance) {
-      min_distance = distance;
-      closest_pt_idx = i;
-    }
-  }
-  std::list<TrajectoryPoint> t_points;
-  t_points.push_back(trajectory.points[0]);
-  double dist_traversed = 0;
-  for (size_t i = closest_pt_idx; i < trajectory.points.size() && dist_traversed < result_horizon; i++) {
-    TrajectoryPoint tp = trajectory.points[i];
-    t_points.push_back(tp);
+    // Copy into a list since we will be inserting multiple
+    // points into the middle
+    std::list<TrajectoryPoint> t_points;
+    std::copy(trajectory.points.begin(), trajectory.points.end(), std::back_inserter(t_points));
 
-    TrajectoryPoint tp_prev = trajectory.points[i-1];
-
-    // Ignore arclength for this approximation, looking further will not hurt
-    double dx = tp.x - tp_prev.x;
-    double dy = tp.y - tp_prev.y;
-    dist_traversed += std::sqrt(dy*dy + dx*dx);
-  }
-  for(Zone z : zones.zones){
+    for(Zone z : zones.zones){
     boost_polygon zgon = to_boost_polygon(z);
+    // Calculate first point specially, since for a trajectory with 1 point the loop code
+    // will never be reached.
+    boost_point first_point{(*t_points.begin()).x, (*t_points.begin()).y};
+    if(boost::geometry::within(first_point, zgon)){
+      (*t_points.begin()).vx = std::min((*t_points.begin()).vx, (double)z.max_speed);
+    }
+
+    // Iterate through each line segment, checking if the endpoint falls in any zones
+    // and if the segment intersects with the border of any zones
     for(auto seg_end_it = std::next(t_points.begin()); seg_end_it != t_points.end(); seg_end_it++){
       auto seg_begin_it = std::prev(seg_end_it);
 
@@ -151,9 +141,6 @@ void MotionPlannerNode::smooth(Trajectory& trajectory, ZoneArray &zones, double 
 
       if(boost::geometry::within(seg_end, zgon)){
           speed_end = std::min(speed_end, (double)z.max_speed);
-      }
-        if(boost::geometry::within(seg_begin, zgon)){
-          speed_begin = std::min(speed_begin, (double)z.max_speed);
       }
 
       boost::geometry::model::linestring<boost_point> segment{{seg_begin, seg_end}};
@@ -176,31 +163,49 @@ void MotionPlannerNode::smooth(Trajectory& trajectory, ZoneArray &zones, double 
     }
   }
 
+  // Copy results back into trajectory
+  trajectory.points.clear();
+  std::copy(t_points.begin(), t_points.end(), std::back_inserter(trajectory.points));
+}
+
+/**
+ * @brief Smooths path velocities to achievable trapezoidal profiles
+ * 
+ * Requires a trajectory to have more than 1 point for smoothing to occur.
+ * 
+ * @param trajectory - Trajectory to smooth
+ * @param max_accel - Maximum accelration, sets the up slope of the trapezoidal profile. m/s^2
+ * @param max_decel - Maximum decelleration, sets the down-slope of a trapezoidal profile. 
+ *    Certain unacheivable (short) trajectories may result in this being exceeded. m/s^2
+ */
+void MotionPlannerNode::smooth(Trajectory& trajectory, double max_accel, double max_decel){
+
+  if(trajectory.points.size() < 2u) return;
+
   // Do a forward iteration of the list to rebuild the trajectory
   // and enforce acceleration profile. Uses physics formula for max speeds
-  trajectory.points.clear();
-  trajectory.points.push_back(*t_points.begin());
-  for(auto seg_start = t_points.begin(), seg_end = std::next(t_points.begin());
-    seg_end != t_points.end(); seg_start++, seg_end++){
-    double dx = (*seg_end).x - (*seg_start).x; 
-    double dy = (*seg_end).y - (*seg_start).y; 
+  for(int i = 0; i < trajectory.points.size()-1; i++){
+    TrajectoryPoint &seg_end = trajectory.points[i+1];
+    TrajectoryPoint &seg_begin = trajectory.points[i];
+    double dx = seg_end.x - seg_begin.x; 
+    double dy = seg_end.y - seg_begin.y; 
     double dist = sqrt(dx*dx + dy*dy);
 
-    double start_speed = (*seg_start).vx;
+    double start_speed = seg_begin.vx;
     double max_end_speed = std::sqrt(2*max_accel*dist+start_speed*start_speed);
-    (*seg_end).vx = std::min((*seg_end).vx, max_end_speed);
-    trajectory.points.push_back(*seg_end);
+    seg_end.vx = std::min(seg_end.vx, max_end_speed);
   }
   // Backward iteration of the list to enforce deceleration profile
-  for(auto seg_start = std::prev(trajectory.points.end(),2), seg_end = std::prev(trajectory.points.end(),1);
-    seg_end != trajectory.points.begin(); seg_start--, seg_end--){
+  for(int i = trajectory.points.size()-1; i > 0; i--){
+    TrajectoryPoint &seg_end = trajectory.points[i];
+    TrajectoryPoint &seg_begin = trajectory.points[i-1];
 
-    double dx = (*seg_end).x - (*seg_start).x; 
-    double dy = (*seg_end).y - (*seg_start).y; 
+    double dx = seg_end.x - seg_begin.x; 
+    double dy = seg_end.y - seg_begin.y; 
     double dist = sqrt(dx*dx + dy*dy);
 
-    double end_speed = (*seg_end).vx;
+    double end_speed = seg_end.vx;
     double max_start_speed = std::sqrt(2*max_decel*dist+end_speed*end_speed);
-    (*seg_start).vx = std::min((*seg_start).vx, max_start_speed);
+    seg_begin.vx = std::min(seg_begin.vx, max_start_speed);
   }
 }

@@ -37,8 +37,8 @@ class MotionPlannerNode : public rclcpp::Node {
 public:
     MotionPlannerNode();
 
-    void smooth(voltron_msgs::msg::Trajectory& trajectory, voltron_msgs::msg::ZoneArray &zones,
-        double max_accel, double max_decell, double result_horizon = 100);
+    void smooth(voltron_msgs::msg::Trajectory& trajectory, double max_accel, double max_decel);
+    void limit_to_zones(voltron_msgs::msg::Trajectory& trajectory, voltron_msgs::msg::ZoneArray& zones);
 
 private:
     //calls MotionPlanner to get the trajectories, selects one, and sends a message containing all trajectories
