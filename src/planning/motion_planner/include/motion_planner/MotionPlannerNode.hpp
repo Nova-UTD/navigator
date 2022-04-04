@@ -19,13 +19,11 @@
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-//#include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include "voltron_msgs/msg/trajectory.hpp"
 #include "voltron_msgs/msg/final_path.hpp"
 #include "voltron_msgs/msg/zone.hpp"
 #include "voltron_msgs/msg/zone_array.hpp"
-
-//#include "motion_planner/CarPose.hpp"
 
 using namespace std::chrono_literals;
 
@@ -39,7 +37,7 @@ class MotionPlannerNode : public rclcpp::Node {
 public:
     MotionPlannerNode();
 
-    static void smooth(voltron_msgs::msg::Trajectory& trajectory, voltron_msgs::msg::ZoneArray &zones,
+    void smooth(voltron_msgs::msg::Trajectory& trajectory, voltron_msgs::msg::ZoneArray &zones,
         double max_accel, double max_decell, double result_horizon = 100);
 
 private:
@@ -52,7 +50,7 @@ private:
     void update_zones(voltron_msgs::msg::ZoneArray::SharedPtr ptr);
 
     //gets the current heading of the car
-    //void odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg);
+    void odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg);
 
     //void update_steering_angle(voltron_msgs::msg::SteeringPosition::SharedPtr ptr);
 
@@ -62,14 +60,14 @@ private:
     rclcpp::Subscription<voltron_msgs::msg::FinalPath>::SharedPtr path_subscription;
     rclcpp::Subscription<voltron_msgs::msg::ZoneArray>::SharedPtr zone_subscription;
 
-    //rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odomtery_pose_subscription;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odomtery_pose_subscription;
     //rclcpp::Subscription<voltron_msgs::msg::SteeringPosition>::SharedPtr steering_angle_subscription; //radians
     rclcpp::TimerBase::SharedPtr control_timer;
 
     //std::shared_ptr<MotionPlanner> planner;
     voltron_msgs::msg::FinalPath::SharedPtr ideal_path;
     voltron_msgs::msg::ZoneArray::SharedPtr zones;
-    //CarPose pose;
+    nav_msgs::msg::Odometry::SharedPtr odometry;
     //float steering_angle; //radians
 };
 }

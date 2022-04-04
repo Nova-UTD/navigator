@@ -19,40 +19,19 @@ from std_msgs.msg import String, Header, ColorRGBA
 from geometry_msgs.msg import PoseStamped, Polygon, Point32, Point
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker, MarkerArray
-from voltron_msgs.msg import CostedPaths, CostedPath, Zone, ZoneArray
+from voltron_msgs.msg import CostedPaths, CostedPath, Zone, ZoneArray, Trajectory
 import math
 
 class NovaVizNode(Node):
 
     def __init__(self):
         super().__init__('nova_viz_node')
-        #self.costed_paths_sub = self.create_subscription(CostedPaths, '/planning/paths', self.paths_cb, 10)
-        #self.path_viz_pub = self.create_publisher(Marker, '/viz/path', 10)
+        self.get_logger().info("woo")
+        self.trajectory_sub = self.create_subscription(Trajectory, '/planning/outgoing_trajectory', self.motion_paths_cb, 10)
 
         self.zones_viz_pub = self.create_publisher(MarkerArray, '/viz/zones', 10)
+        self.trajectory_viz_pub = self.create_publisher(MarkerArray, '/viz/trajectory', 10)
         self.zones_sub = self.create_subscription(ZoneArray, '/planning/zone_array', self.zones_cb, 10)
-
-        #self.zone_pub_timer = self.create_timer(1.0, self.publish_test_zones)
-
-    def paths_cb(self, msg: CostedPaths):
-        # self.get_logger().info("Received {} paths".format(len(msg.paths)))
-        line_strip = Marker()
-        line_strip.header.frame_id = 'map'
-        line_strip.header.stamp = self.get_clock().now().to_msg()
-        line_strip.action = Marker.MODIFY
-        line_strip.type = Marker.LINE_STRIP
-        line_strip.ns = 'paths'
-        line_strip.color = ColorRGBA(
-            r = 0.0,
-            g = 1.0,
-            b = 0.0,
-            a = 1.0
-        )
-        line_strip.pose.position.z = 0.6 # Offset from road surface
-        line_strip.scale.x = 0.5 # Meters wide.
-        line_strip.frame_locked = True
-        line_strip.points = msg.paths[0].points
-        self.path_viz_pub.publish(line_strip)
 
     def zones_cb(self, msg: ZoneArray):
         self.get_logger().info("Received {} zones".format(len(msg.zones)))

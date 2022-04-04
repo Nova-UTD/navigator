@@ -68,7 +68,7 @@ void BehaviorPlannerNode::send_message() {
 void BehaviorPlannerNode::update_state() {
   switch(current_state) {
     case LANEKEEPING:
-      RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
+      //RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
       if (upcoming_intersection()) {
         //current_state = STOPPING;
       }
@@ -118,7 +118,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
     auto lane = navigator::opendrive::get_lane_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
     //std::shared_ptr<const odr::Road> road = navigator::opendrive::get_road_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
     if (lane == nullptr) {
-        RCLCPP_INFO(this->get_logger(), "(%f, %f): no road found for behavior planner", this->current_position_x, this->current_position_y);
+        //RCLCPP_INFO(this->get_logger(), "(%f, %f): no road found for behavior planner", this->current_position_x, this->current_position_y);
         continue;
     }
     
@@ -129,7 +129,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
       if (junctions.find(junction) != junctions.end()) {
           continue; //already seen this junction
       }
-      RCLCPP_INFO(this->get_logger(), "in junction " + junction + " for road " + id + " zones: %d", final_zones.zones.size());
+      //RCLCPP_INFO(this->get_logger(), "in junction " + junction + " for road " + id + " zones: %d", final_zones.zones.size());
       junctions.insert(junction);
       zones_made = true;
       Zone zone = navigator::zones_lib::to_zone_msg(odr_map->junctions[junction], odr_map);

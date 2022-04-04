@@ -19,7 +19,7 @@ from std_msgs.msg import String, Header, ColorRGBA
 from geometry_msgs.msg import PoseStamped, Point
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker, MarkerArray
-from voltron_msgs.msg import CostedPaths, CostedPath, ZoneArray, Zone
+from voltron_msgs.msg import CostedPaths, CostedPath, ZoneArray, Zone, Trajectory
 import math
 
 class VizSubscriber(Node):
@@ -28,11 +28,13 @@ class VizSubscriber(Node):
         super().__init__('viz_subscriber')
         #self.costed_paths_sub = self.create_subscription(CostedPaths, '/planning/paths', self.paths_cb, 10)
         #self.path_viz_pub = self.create_publisher(Marker, '/viz/path', 10)
-        self.zones_viz_pub = self.create_publisher(MarkerArray, '/viz/zones', 10)
+        self.trajectory_sub = self.create_subscription(Trajectory, '/planning/outgoing_trajectory', self.motion_paths_cb, 10)
         self.zones_sub = self.create_subscription(ZoneArray, '/planning/zone_array', self.zones_cb, 10)
+        self.zones_viz_pub = self.create_publisher(MarkerArray, '/viz/zones', 10)
+        self.trajectory_viz_pub = self.create_publisher(Marker, '/viz/trajectory', 10)
 
-    def paths_cb(self, msg: CostedPaths):
-        # self.get_logger().info("Received {} paths".format(len(msg.paths)))
+    def motion_paths_cb(self, msg: Trajectory):
+        self.get_logger().info("Received {} points".format(len(msg.points)))
         line_strip = Marker()
         line_strip.header.frame_id = 'map'
         line_strip.header.stamp = self.get_clock().now().to_msg()
@@ -40,16 +42,24 @@ class VizSubscriber(Node):
         line_strip.type = Marker.LINE_STRIP
         line_strip.ns = 'paths'
         line_strip.color = ColorRGBA(
-            r = 0.0,
+            r = 0.5,
             g = 1.0,
-            b = 0.0,
+            b = 0.7,
             a = 1.0
         )
         line_strip.pose.position.z = 0.6 # Offset from road surface
         line_strip.scale.x = 0.5 # Meters wide.
+        line_strip.scale.y = 0.5
+        line_strip.scale.z = 0.5
         line_strip.frame_locked = True
-        line_strip.points = msg.paths[0].points
-        self.path_viz_pub.publish(line_strip)
+        for pt in msg.points:
+            out_point = Point()
+            out_point.x = pt.x
+            out_point.y = pt.y
+            out_point.z = pt.vx*2
+            line_strip.points.append(out_point)
+        self.trajectory_viz_pub.publish(line_strip)
+
     def zones_cb(self, msg: ZoneArray):
         
         marker_array = MarkerArray()

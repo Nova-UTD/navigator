@@ -33,8 +33,8 @@ MotionPlannerNode::MotionPlannerNode() : Node("motion_planner_node")
 {
     trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectory>("outgoing_trajectory", 8);
     path_subscription = this->create_subscription<voltron_msgs::msg::FinalPath>("/planning/paths", 10, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
-    zone_subscription = this->create_subscription<ZoneArray>("/planning/zones", 10, bind(&MotionPlannerNode::update_zones, this, std::placeholders::_1));
-    //odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
+    zone_subscription = this->create_subscription<ZoneArray>("/planning/zone_array", 10, bind(&MotionPlannerNode::update_zones, this, std::placeholders::_1));
+    odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
     //current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
     //steering_angle_subscription = this->create_subscription<voltron_msgs::msg::SteeringPosition>("/can/steering_angle", 8, bind(&MotionPlannerNode::update_steering_angle, this, std::placeholders::_1));
     control_timer = this->create_wall_timer(message_frequency, bind(&MotionPlannerNode::send_message, this));
@@ -56,8 +56,13 @@ void MotionPlannerNode::send_message() {
       t.vx = ideal_path->speeds[i];
       tmp.points.push_back(t);
     }
-    smooth(tmp, *zones, max_accel, max_decel);
+    if (zones != nullptr && odometry != nullptr) {
+        smooth(tmp, *zones, max_accel, max_decel);
+    } else {
+        RCLCPP_WARN(this->get_logger(), "null zones");
+    }
     trajectory_publisher->publish(tmp);
+    RCLCPP_WARN(this->get_logger(), "published path of size %d", tmp.points.size());
     return;
 }
 
@@ -75,15 +80,11 @@ void MotionPlannerNode::update_zones(voltron_msgs::msg::ZoneArray::SharedPtr ptr
 /*void MotionPlannerNode::update_steering_angle(voltron_msgs::msg::SteeringPosition::SharedPtr ptr) {
   steering_angle = ptr->data; //radians
 }
-
+*/
 void MotionPlannerNode::odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg) {
-  pose.heading = quat_to_heading(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
-  pose.x = msg->pose.pose.position.x;
-  pose.y = msg->pose.pose.position.y;
-  pose.xv = msg->twist.twist.linear.x;
-  pose.yv = msg->twist.twist.linear.y;
+    odometry = msg;
 }
-
+/*
 //radians
 double MotionPlannerNode::quat_to_heading(double x, double y, double z, double w) {
   //z component of euler angles
@@ -108,16 +109,25 @@ void MotionPlannerNode::smooth(Trajectory& trajectory, ZoneArray &zones, double 
   double max_decel, double result_horizon){
 
     if(trajectory.points.size() < 2) return;
-
   // For every segment (between points) in the trajectory, test against each zone to see if we
   // should add in a zone entry or exit point to the trajectory.
   
   // Build an linked list copy of the trajectory, since we will be inserting/removing points
   // from the middle frequently.
+  size_t closest_pt_idx = 0;
+  float min_distance = -1;
+  for (size_t i = 0; i < trajectory.points.size(); i++) {
+    float distance = pow(trajectory.points[i].x - odometry->pose.pose.position.x, 2);
+    distance += pow(trajectory.points[i].y - odometry->pose.pose.position.y, 2); 
+    if (min_distance == -1 || distance < min_distance) {
+      min_distance = distance;
+      closest_pt_idx = i;
+    }
+  }
   std::list<TrajectoryPoint> t_points;
   t_points.push_back(trajectory.points[0]);
   double dist_traversed = 0;
-  for (size_t i = 1; i < trajectory.points.size() && dist_traversed < result_horizon; i++) {
+  for (size_t i = closest_pt_idx; i < trajectory.points.size() && dist_traversed < result_horizon; i++) {
     TrajectoryPoint tp = trajectory.points[i];
     t_points.push_back(tp);
 
@@ -128,10 +138,8 @@ void MotionPlannerNode::smooth(Trajectory& trajectory, ZoneArray &zones, double 
     double dy = tp.y - tp_prev.y;
     dist_traversed += std::sqrt(dy*dy + dx*dx);
   }
-
   for(Zone z : zones.zones){
     boost_polygon zgon = to_boost_polygon(z);
-
     for(auto seg_end_it = std::next(t_points.begin()); seg_end_it != t_points.end(); seg_end_it++){
       auto seg_begin_it = std::prev(seg_end_it);
 
@@ -183,7 +191,6 @@ void MotionPlannerNode::smooth(Trajectory& trajectory, ZoneArray &zones, double 
     (*seg_end).vx = std::min((*seg_end).vx, max_end_speed);
     trajectory.points.push_back(*seg_end);
   }
-
   // Backward iteration of the list to enforce deceleration profile
   for(auto seg_start = std::prev(trajectory.points.end(),2), seg_end = std::prev(trajectory.points.end(),1);
     seg_end != trajectory.points.begin(); seg_start--, seg_end--){
