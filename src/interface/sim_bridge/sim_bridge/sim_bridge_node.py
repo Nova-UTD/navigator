@@ -53,7 +53,7 @@ import random
 
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
-CLIENT_PORT = 3555
+CLIENT_PORT = 2000
 CLIENT_WORLD = 'Town07'
 EGO_AUTOPILOT_ENABLED = False
 EGO_SPAWN_X = -180
