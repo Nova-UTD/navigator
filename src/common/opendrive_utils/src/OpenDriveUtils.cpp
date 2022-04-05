@@ -21,16 +21,15 @@ using namespace navigator::opendrive;
  * @param filename
  * @return std::shared_ptr<MapInfo>
  */
-odr::OpenDriveMap* navigator::opendrive::load_map(const std::string &filename)
+std::shared_ptr<MapInfo> navigator::opendrive::load_map(const std::string &filename)
 {
-    odr::OpenDriveMap *map = new odr::OpenDriveMap(filename, odr::OpenDriveMapConfig{true, true, true, false, true});
-    return map;
-    // std::unordered_map<std::string, std::vector<Signal>> signals;
-    // // Potential map validation and correction here.
-    // std::shared_ptr<MapInfo> info = std::make_shared<MapInfo>();
-    // info->signals = signals;
-    // info->map = map;
-    // return info;
+    OpenDriveMapPtr map = std::make_shared<odr::OpenDriveMap>(filename, odr::OpenDriveMapConfig{true, true, true, false, true});
+    std::unordered_map<std::string, std::vector<Signal>> signals;
+    // Potential map validation and correction here.
+    std::shared_ptr<MapInfo> info = std::make_shared<MapInfo>();
+    info->signals = signals;
+    info->map = map;
+    return info;
 }
 
 double navigator::opendrive::get_distance(std::shared_ptr<const odr::RefLine> line, double x, double y)

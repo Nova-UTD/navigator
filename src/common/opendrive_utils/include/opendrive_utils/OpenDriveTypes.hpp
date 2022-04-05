@@ -18,7 +18,7 @@ namespace navigator
     {
         namespace types
         {
-            using OpenDriveMapPtr = odr::OpenDriveMap*;
+            using OpenDriveMapPtr = std::shared_ptr<odr::OpenDriveMap>;
             using RoadPtr = std::shared_ptr<odr::Road>;
             using LaneSectionPtr = std::shared_ptr<odr::LaneSection>;
             using LanePtr = std::shared_ptr<odr::Lane>;

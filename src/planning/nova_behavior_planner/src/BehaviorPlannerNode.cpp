@@ -18,7 +18,7 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
   // xml parsing
   RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
   //this->map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
-  this->map = navigator::opendrive::load_map(xodr_path);//->map;
+  this->map = navigator::opendrive::load_map(xodr_path)->map;
 
   this->control_timer = this->create_wall_timer
     (message_frequency, std::bind(&BehaviorPlannerNode::send_message, this));
