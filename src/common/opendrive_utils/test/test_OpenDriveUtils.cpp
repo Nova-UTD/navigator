@@ -35,7 +35,7 @@ public:
         ament_index_cpp::get_package_share_directory("opendrive_utils");
 
     map_file_path = root_folder + map_file_path;
-    map = load_map(map_file_path);
+    map = load_map(map_file_path);//->map;
   }
 };
 

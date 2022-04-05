@@ -17,7 +17,8 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 
   // xml parsing
   RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-  this->odr_map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
+  //this->map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
+  this->map = navigator::opendrive::load_map(xodr_path);//->map;
 
   this->control_timer = this->create_wall_timer
     (message_frequency, std::bind(&BehaviorPlannerNode::send_message, this));
@@ -96,7 +97,7 @@ void BehaviorPlannerNode::update_state() {
 bool BehaviorPlannerNode::upcoming_intersection() {
   bool zones_made = false;
   std::unordered_set<std::string> junctions;
-  final_zones.zones.clear();
+  //final_zones.zones.clear();
   // find point on path closest to current location
   size_t closest_pt_idx = 0;
   float min_distance = -1;
@@ -115,8 +116,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
   for(size_t offset = 0; offset < horizon_dist; offset++) {
     size_t i = (offset + closest_pt_idx) % current_path->points.size();
     // get road that current path point is in
-    auto lane = navigator::opendrive::get_lane_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
-    //std::shared_ptr<const odr::Road> road = navigator::opendrive::get_road_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
+    auto lane = navigator::opendrive::get_lane_from_xy(map, current_path->points[i].x, current_path->points[i].y);
     if (lane == nullptr) {
         //RCLCPP_INFO(this->get_logger(), "(%f, %f): no road found for behavior planner", this->current_position_x, this->current_position_y);
         continue;
@@ -132,8 +132,8 @@ bool BehaviorPlannerNode::upcoming_intersection() {
       //RCLCPP_INFO(this->get_logger(), "in junction " + junction + " for road " + id + " zones: %d", final_zones.zones.size());
       junctions.insert(junction);
       zones_made = true;
-      Zone zone = navigator::zones_lib::to_zone_msg(odr_map->junctions[junction], odr_map);
-      final_zones.zones.push_back(zone);
+      //Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
+      //final_zones.zones.push_back(zone);
     }
   }
 

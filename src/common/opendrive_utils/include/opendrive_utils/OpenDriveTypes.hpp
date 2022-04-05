@@ -10,6 +10,7 @@
 #pragma once
 
 #include "OpenDriveMap.h"
+#include <unordered_map>
 
 namespace navigator
 {
@@ -17,7 +18,7 @@ namespace navigator
     {
         namespace types
         {
-            using OpenDriveMapPtr = std::shared_ptr<odr::OpenDriveMap>;
+            using OpenDriveMapPtr = odr::OpenDriveMap*;
             using RoadPtr = std::shared_ptr<odr::Road>;
             using LaneSectionPtr = std::shared_ptr<odr::LaneSection>;
             using LanePtr = std::shared_ptr<odr::Lane>;
@@ -62,6 +63,29 @@ namespace navigator
                 // Predecessor and successor guarenteed to be in correct driving direction.
                 std::vector<LaneIdentifier> predecessors;
                 std::vector<LaneIdentifier> successors;
+            };
+
+            //not parsed by libopendrive, so we add them ourselves
+            struct Signal
+            {
+                std::string id;
+                //"205" for yield
+                //"206" for stop
+                //should be replaced by enum
+                std::string type;
+                std::string name;
+                //relative to road
+                double s;
+                double t;
+                //does the signal change? ex: traffic lights = true, stop signs = false
+                bool dynamic;
+            };
+            //stores the libopendrive map, as well as the other information they don't parse that we need (ex: singals)
+            struct MapInfo
+            {
+                OpenDriveMapPtr map;
+                //key is road id, value is list of all signals on that road
+                std::unordered_map<std::string, std::vector<Signal>> signals;
             };
         }
     }

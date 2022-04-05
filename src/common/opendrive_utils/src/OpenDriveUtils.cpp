@@ -16,18 +16,21 @@ using namespace navigator::opendrive;
  * @brief loads an Opendrive map from a file name.
  *
  * Currently only calls on the OpenDriveMap constructor,
- * but may eventually include map validation and correction.
+ * and parses additional information (like signals)
  *
  * @param filename
- * @return std::shared_ptr<odr::OpenDriveMap>
+ * @return std::shared_ptr<MapInfo>
  */
-OpenDriveMapPtr navigator::opendrive::load_map(const std::string &filename)
+odr::OpenDriveMap* navigator::opendrive::load_map(const std::string &filename)
 {
-    OpenDriveMapPtr map = std::make_shared<odr::OpenDriveMap>(filename, odr::OpenDriveMapConfig{true, true, true, false, true});
-
-    // Potential map validation and correction here.
-
+    odr::OpenDriveMap *map = new odr::OpenDriveMap(filename, odr::OpenDriveMapConfig{true, true, true, false, true});
     return map;
+    // std::unordered_map<std::string, std::vector<Signal>> signals;
+    // // Potential map validation and correction here.
+    // std::shared_ptr<MapInfo> info = std::make_shared<MapInfo>();
+    // info->signals = signals;
+    // info->map = map;
+    // return info;
 }
 
 double navigator::opendrive::get_distance(std::shared_ptr<const odr::RefLine> line, double x, double y)
@@ -49,76 +52,7 @@ double navigator::opendrive::get_distance(std::shared_ptr<const odr::RefLine> li
     return dist;
 }
 
-std::shared_ptr<const odr::Road> navigator::opendrive::get_road_from_xy(const odr::OpenDriveMap* map, double x, double y)
-{
-    for (auto road : map->get_roads()) {
-        double s = road->ref_line->match(x, y);
-        double len = road->length;
-        if (s > 0.01 && ((s - len) < -0.01)) {
-            return road;
-        } 
-    }
-    return nullptr;
-}
-
 LanePtr navigator::opendrive::get_lane_from_xy(OpenDriveMapPtr map, double x, double y)
-{
-    for (auto road : map->get_roads())
-    {
-        double s = road->ref_line->match(x, y);
-        double len = road->length;
-        if (s > 0.01 && s - len < -0.01)
-        {
-            double t = get_distance(road->ref_line, x, y);
-            auto lsec = std::shared_ptr<odr::LaneSection>();
-            for (auto s_lsec : road->s_to_lanesection)
-            { // Find the closest lane section
-                if (s_lsec.first > s)
-                    break;
-                lsec = s_lsec.second;
-            }
-
-            if (abs(t) > 10) // Too far from road center... This can't be right.
-                continue;
-
-            // Find out which side we're on (negative or positive)
-            std::shared_ptr<odr::Lane> lane_match = lsec->get_lane(s, t);
-            auto lane_pt = lane_match->get_surface_pt(s, t);
-
-            // Are we within the lane? If not, try the other side of the road.
-            auto lane = lsec->get_lane(s, t);
-            if (abs(lane_pt[0] - x) > 0.1 || abs(lane_pt[1] - y) > 0.1)
-            {
-                t *= -1;
-
-                lane_pt = lane_match->get_surface_pt(s, t);
-                if (abs(lane_pt[0] - x) > 0.1 || abs(lane_pt[1] - y) > 0.1)
-                {
-                    continue; // Trying other side failed, so we're on the wrong road. Keep searchng.
-                }
-            }
-
-            lane = lsec->get_lane(s, t);
-            double outer_border_t = lane->outer_border.get(s);
-            double inner_border_t = lane->inner_border.get(s);
-            if (lane->id < 0)
-            {
-                if (t < outer_border_t || t > inner_border_t)
-                    continue; // Not within lane border
-            }
-            else
-            { // Positive lane IDs
-                if (t > outer_border_t || t < inner_border_t)
-                    continue;
-            }
-
-            return lane;
-        }
-    }
-    return std::shared_ptr<odr::Lane>(); // No road found!
-}
-
-LanePtr navigator::opendrive::get_lane_from_xy(odr::OpenDriveMap* map, double x, double y)
 {
     for (auto road : map->get_roads())
     {
@@ -227,7 +161,7 @@ odr::Line3D navigator::opendrive::get_centerline_as_xy(const odr::Lane &lane, do
     return result;
 }
 
-LanePtr navigator::opendrive::get_lane_from_xy_with_route(const odr::OpenDriveMap *map, double x, double y, const std::set<std::string> &rs)
+LanePtr navigator::opendrive::get_lane_from_xy_with_route(OpenDriveMapPtr map, double x, double y, const std::set<std::string> &rs)
 {
     for (auto road : map->get_roads())
     {
