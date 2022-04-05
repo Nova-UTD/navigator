@@ -32,17 +32,19 @@ FUNCTIONALITY
 const int MAX_HISTORY = 100;
 const auto UPDATE_PERIOD = 0.5s; // seconds
 
-using geometry_msgs::msg::Point;
+// using geometry_msgs::msg::Point;
 using geometry_msgs::msg::Point32;
 using geometry_msgs::msg::Polygon;
 using geometry_msgs::msg::TransformStamped;
-using geometry_msgs::msg::Vector3;
 using nav_msgs::msg::Odometry;
 using sensor_msgs::msg::Imu;
 using std_msgs::msg::ColorRGBA;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
 using namespace std::chrono_literals;
+using symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
+using symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
+using symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
 
 OptimizationNode::OptimizationNode() : Node("optimization_node")
 {
@@ -61,10 +63,21 @@ OptimizationNode::OptimizationNode() : Node("optimization_node")
 
 	optimization_timer_ = this->create_wall_timer(
 		UPDATE_PERIOD, std::bind(&OptimizationNode::doOptimization, this));
+
+	current_key_idx = 0; // Tracks the key of the current node to be inserted
+
+	noise_model_gps = noiseModel::Diagonal::Precisions(
+		(Vector6() << Vector3::Constant(0), Vector3::Constant(1.0 / 0.07))
+			.finished());
 }
 
 void OptimizationNode::handleGNSS(Odometry::SharedPtr msg)
 {
+	gnss_cached_ = msg;
+
+	// GPSFactor gps_factor = GPSFactor(1, Point3)
+	// auto gps_pose =
+	//       Pose3(current_pose_global.rotation(), gps_measurements[i].position);
 }
 
 void OptimizationNode::handleIMU(Imu::SharedPtr msg)
@@ -92,4 +105,37 @@ void OptimizationNode::handleIMU(Imu::SharedPtr msg)
 void OptimizationNode::doOptimization()
 {
 	RCLCPP_INFO(get_logger(), "OPTIMIZING");
+
+	auto current_pose_key = X(current_key_idx);
+	auto current_vel_key = V(current_key_idx);
+	auto current_bias_key = B(current_key_idx);
+
+	// Try to add GNSS factor
+	auto gnss_time = rclcpp::Time(gnss_cached_->header.stamp.sec, gnss_cached_->header.stamp.nanosec);
+	auto now = get_clock()->now();
+	if ((now - gnss_time) > 0.5s)
+	{
+		geometry_msgs::msg::Point gps_pos = gnss_cached_->pose.pose.position;
+		geometry_msgs::msg::Quaternion gps_q = gnss_cached_->pose.pose.orientation;
+		Point3 pos = Point3(gps_pos.x, gps_pos.y, gps_pos.z);
+		Rot3 rot = Rot3(gps_q.w, gps_q.x, gps_q.y, gps_q.z); // https://gtsam.org/doxygen/a03336.html
+		Pose3 gps_pose = Pose3(rot, pos);					 // https://gtsam.org/doxygen/a03288.html
+
+		factors.emplace_shared<PriorFactor<Pose3>>(
+			current_pose_key, gps_pose, noise_model_gps);
+		values.insert(current_pose_key, gps_pose);
+	}
+	else
+	{
+		RCLCPP_WARN(get_logger(), "GNSS value is stale, skipping.");
+	}
+
+	// Add initial values for velocity and bias based on the previous
+	// estimates
+	// values.insert(current_vel_key, current_velocity);
+	// values.insert(current_bias_key, current_bias);
+
+	isam.update(factors, values);
+
+	current_key_idx++;
 }

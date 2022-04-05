@@ -39,6 +39,8 @@
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/dataset.h>
 
+using namespace gtsam;
+
 class OptimizationNode : public rclcpp::Node
 {
 public:
@@ -69,5 +71,10 @@ private:
 	std::shared_ptr<tf2_ros::TransformListener> transform_listener_{nullptr};
 	std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 
-	gtsam::ISAM2 isam;
+	ISAM2 isam;
+	NonlinearFactorGraph factors;
+	Values values; // values storing the initial estimates of new nodes in
+				   // the factor graph
+	int current_key_idx;
+	noiseModel::Diagonal::shared_ptr noise_model_gps;
 };
