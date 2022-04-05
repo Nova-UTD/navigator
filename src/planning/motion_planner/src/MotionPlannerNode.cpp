@@ -59,15 +59,11 @@ void MotionPlannerNode::send_message() {
       t.vx = ideal_path->speeds[i];
       tmp.points.push_back(t);
     }
-    RCLCPP_WARN(this->get_logger(), "A size: %d", tmp.points.size());
     if(zones != nullptr){
       limit_to_zones(tmp, *zones);
     }
-    RCLCPP_WARN(this->get_logger(), "B size: %d", tmp.points.size());
     smooth(tmp, max_accel, max_decel);
-    RCLCPP_WARN(this->get_logger(), "C size: %d", tmp.points.size());
     trajectory_publisher->publish(tmp);
-    RCLCPP_WARN(this->get_logger(), "published path of size %d", tmp.points.size());
     return;
 }
 
