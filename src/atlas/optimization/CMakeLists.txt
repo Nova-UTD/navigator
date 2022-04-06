@@ -35,3 +35,10 @@ ament_target_dependencies(optimization_node
 add_executable(optimizer exe/optimizer src/OptimizationNode.cpp)
 ament_target_dependencies(optimizer voltron_msgs rclcpp nav_msgs GTSAM)
 target_link_libraries(optimizer gtsam)
+
+install(
+  TARGETS optimizer
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+ament_package()

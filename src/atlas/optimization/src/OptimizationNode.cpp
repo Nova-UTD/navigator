@@ -1,3 +1,15 @@
+/**
+ * @file OptimizationNode.cpp
+ * @author Will Heitman
+ * @brief ISAM2-based state estimator, based on GTSAM.
+ * @version 0.1
+ * @date 2022-04-05
+ *
+ * @copyright Nova at UT Dallas (c) 2022
+ *
+ * Inspired by: https://github.com/borglab/gtsam/blob/develop/examples/IMUKittiExampleGPS.cpp
+ */
+
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -66,9 +78,30 @@ OptimizationNode::OptimizationNode() : Node("optimization_node")
 
 	current_key_idx = 0; // Tracks the key of the current node to be inserted
 
+	current_bias = imuBias::ConstantBias(); // Init bias at zero
+
 	noise_model_gps = noiseModel::Diagonal::Precisions(
 		(Vector6() << Vector3::Constant(0), Vector3::Constant(1.0 / 0.07))
 			.finished());
+
+	// Set IMU preintegration parameters
+	Matrix33 measured_acc_cov =
+		I_3x3 * pow(0.01, 2);
+	Matrix33 measured_omega_cov =
+		I_3x3 * pow(0.01, 2); // TODO: Fix these temporary sdevs!! WSH.
+	// error committed in integrating position from velocities
+	Matrix33 integration_error_cov =
+		I_3x3 * pow(0.01, 2);
+
+	imu_params = PreintegratedImuMeasurements::Params::MakeSharedU(9.8);
+	auto w_coriolis = Vector3::Zero(); // zero vector
+	imu_params->accelerometerCovariance =
+		measured_acc_cov; // acc white noise in continuous
+	imu_params->integrationCovariance =
+		integration_error_cov; // integration uncertainty continuous
+	imu_params->gyroscopeCovariance =
+		measured_omega_cov; // gyro white noise in continuous
+	imu_params->omegaCoriolis = w_coriolis;
 }
 
 void OptimizationNode::handleGNSS(Odometry::SharedPtr msg)
@@ -85,34 +118,27 @@ void OptimizationNode::handleIMU(Imu::SharedPtr msg)
 	// RCLCPP_INFO(get_logger(), "Received IMU");
 
 	// We won't have a cache if the node has just started
-	if (imu_cached_ == nullptr)
-	{
-		RCLCPP_INFO(get_logger(), "No cached IMU. Setting now.");
-		imu_cached_ = msg;
-		return;
-	}
-	else
-	{
-		auto tic = rclcpp::Time(msg->header.stamp.sec, msg->header.stamp.nanosec);
-		auto toc = rclcpp::Time(imu_cached_->header.stamp.sec, imu_cached_->header.stamp.nanosec);
-		double dt = (tic - toc).nanoseconds();
-		// RCLCPP_INFO(get_logger(), "%.2f ms", dt / 1e6);
-
-		imu_cached_ = msg;
-	}
+	queued_imu_measurements.push_back(msg);
 }
 
 void OptimizationNode::doOptimization()
 {
-	RCLCPP_INFO(get_logger(), "OPTIMIZING");
+	RCLCPP_INFO(get_logger(), "HELLO");
 
 	auto current_pose_key = X(current_key_idx);
 	auto current_vel_key = V(current_key_idx);
 	auto current_bias_key = B(current_key_idx);
 
+	if (gnss_cached_ == nullptr)
+	{
+		RCLCPP_WARN(get_logger(), "No cached GNSS is available. Skipping optimization.");
+		return;
+	}
+
 	// Try to add GNSS factor
 	auto gnss_time = rclcpp::Time(gnss_cached_->header.stamp.sec, gnss_cached_->header.stamp.nanosec);
-	auto now = get_clock()->now();
+	auto now = rclcpp::Time(get_clock()->now().seconds(), get_clock()->now().nanoseconds());
+
 	if ((now - gnss_time) > 0.5s)
 	{
 		geometry_msgs::msg::Point gps_pos = gnss_cached_->pose.pose.position;
@@ -130,12 +156,65 @@ void OptimizationNode::doOptimization()
 		RCLCPP_WARN(get_logger(), "GNSS value is stale, skipping.");
 	}
 
+	current_summarized_measurement =
+		std::make_shared<PreintegratedImuMeasurements>(imu_params,
+													   current_bias);
+
+	// Loop through stored IMU frames, starting with the second frame.
+	// This is because we need to extract dt.
+
+	if (current_key_idx < 1)
+	{
+		current_key_idx++;
+		return;
+	}
+	auto previous_pose_key = X(current_key_idx - 1);
+	auto previous_vel_key = V(current_key_idx - 1);
+	auto previous_bias_key = B(current_key_idx - 1);
+	for (int i = 1; i < queued_imu_measurements.size(); i++)
+	{
+		auto msg = queued_imu_measurements.at(i);
+
+		auto acc = Vector3(
+			msg->linear_acceleration.x,
+			msg->linear_acceleration.y,
+			msg->linear_acceleration.z);
+
+		auto angular_vel = Vector3(
+			msg->angular_velocity.x,
+			msg->angular_velocity.y,
+			msg->angular_velocity.z);
+
+		auto prev_msg = queued_imu_measurements.at(i - 1);
+		RCLCPP_INFO(get_logger(), "Prev IMU: %f", msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9);
+		RCLCPP_INFO(get_logger(), "New IMU: %f", prev_msg->header.stamp.sec + prev_msg->header.stamp.nanosec * 1e-9);
+		double dt = ((msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9) - (prev_msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9));
+
+		current_summarized_measurement->integrateMeasurement(acc, angular_vel, dt);
+	}
+
+	// factors.emplace_shared<ImuFactor>(
+	// 	previous_pose_key, previous_vel_key, current_pose_key,
+	// 	current_vel_key, previous_bias_key, *current_summarized_measurement);
+
 	// Add initial values for velocity and bias based on the previous
 	// estimates
 	// values.insert(current_vel_key, current_velocity);
 	// values.insert(current_bias_key, current_bias);
 
-	isam.update(factors, values);
+	if (factors.size() > 10)
+	{
+		isam.update(factors, values);
+		RCLCPP_INFO(get_logger(), "ISAM matured, updating...");
+		Values result = isam.calculateEstimate();
+		queued_imu_measurements.clear();
+		factors.resize(0);
+		values.clear();
+	}
+	else
+	{
+		RCLCPP_INFO(get_logger(), "ISAM size is now %i", isam.size());
+	}
 
 	current_key_idx++;
 }

@@ -39,6 +39,9 @@
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/dataset.h>
 
+// Misc.
+#include <vector>
+
 using namespace gtsam;
 
 class OptimizationNode : public rclcpp::Node
@@ -67,6 +70,7 @@ private:
 	double imu_integrated_dx = 0.0;
 	double imu_integrated_dy = 0.0;
 	std::shared_ptr<gtsam::PreintegratedImuMeasurements> current_summarized_measurement = nullptr;
+	std::vector<sensor_msgs::msg::Imu::SharedPtr> queued_imu_measurements;
 
 	std::shared_ptr<tf2_ros::TransformListener> transform_listener_{nullptr};
 	std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -76,5 +80,12 @@ private:
 	Values values; // values storing the initial estimates of new nodes in
 				   // the factor graph
 	int current_key_idx;
+
+	geometry_msgs::msg::Pose current_pose;
+	geometry_msgs::msg::Twist current_vel;
+	imuBias::ConstantBias current_bias;
+
 	noiseModel::Diagonal::shared_ptr noise_model_gps;
+
+	boost::shared_ptr<PreintegratedImuMeasurements::Params> imu_params;
 };
