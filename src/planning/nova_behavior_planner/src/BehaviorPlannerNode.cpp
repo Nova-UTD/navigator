@@ -17,8 +17,16 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 
   // xml parsing
   RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-  //this->map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
-  this->map = navigator::opendrive::load_map(xodr_path)->map;
+  std::shared_ptr<navigator::opendrive::MapInfo> map_info = navigator::opendrive::load_map(xodr_path);
+  this->map = map_info->map;
+
+  RCLCPP_INFO(this->get_logger(), "SIGNALS!!!%d", map_info->signals.size());
+  for (const auto& [road_id, signals] : map_info->signals) {
+      RCLCPP_INFO(this->get_logger(), "signals for road %s", road_id.c_str());
+      for (const auto& signal : signals) {
+          RCLCPP_INFO(this->get_logger(), "\tid:%s, type:%s, name:%s, s:%.2f, t:%.2f, dynamic:%s", signal.id.c_str(), signal.type.c_str(), signal.name.c_str(), signal.s, signal.t, signal.dynamic.c_str());
+      }
+  }
 
   this->control_timer = this->create_wall_timer
     (message_frequency, std::bind(&BehaviorPlannerNode::send_message, this));

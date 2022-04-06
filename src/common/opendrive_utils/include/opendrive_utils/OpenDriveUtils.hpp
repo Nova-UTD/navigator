@@ -40,5 +40,7 @@ namespace navigator
     std::shared_ptr<MapInfo> load_map(const std::string &filename);
     
     std::vector<std::shared_ptr<odr::Lane>> get_nearby_lanes(OpenDriveMapPtr map, double x, double y, double distance);
+
+    void parse_signals(std::unordered_map<std::string, std::vector<Signal>>& dst, const std::string &filename);
   }
 }

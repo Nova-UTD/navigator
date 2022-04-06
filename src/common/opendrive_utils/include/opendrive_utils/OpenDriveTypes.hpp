@@ -77,8 +77,8 @@ namespace navigator
                 //relative to road
                 double s;
                 double t;
-                //does the signal change? ex: traffic lights = true, stop signs = false
-                bool dynamic;
+                //does the signal change? ex: traffic lights = yes, stop signs = no
+                std::string dynamic;
             };
             //stores the libopendrive map, as well as the other information they don't parse that we need (ex: singals)
             struct MapInfo

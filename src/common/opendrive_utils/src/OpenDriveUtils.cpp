@@ -9,6 +9,7 @@
 
 #include "opendrive_utils/OpenDriveUtils.hpp"
 #include <iostream>
+#include "pugixml/pugixml.hpp"
 
 using namespace navigator::opendrive;
 
@@ -25,11 +26,39 @@ std::shared_ptr<MapInfo> navigator::opendrive::load_map(const std::string &filen
 {
     OpenDriveMapPtr map = std::make_shared<odr::OpenDriveMap>(filename, odr::OpenDriveMapConfig{true, true, true, false, true});
     std::unordered_map<std::string, std::vector<Signal>> signals;
+    parse_signals(signals, filename);
     // Potential map validation and correction here.
     std::shared_ptr<MapInfo> info = std::make_shared<MapInfo>();
     info->signals = signals;
     info->map = map;
     return info;
+}
+
+void navigator::opendrive::parse_signals(std::unordered_map<std::string, std::vector<Signal>>& dst, const std::string &filename) {
+    pugi::xml_document xml_doc;
+    pugi::xml_parse_result result = xml_doc.load_file(filename.c_str());
+    if (!result)
+        printf("%s\n", result.description());
+    pugi::xml_node odr_node = xml_doc.child("OpenDRIVE");
+    for (pugi::xml_node road_node : odr_node.children("road"))
+    {
+        std::string road_id = road_node.attribute("id").as_string();
+        std::vector<Signal> signals;
+        pugi::xml_node signals_node = road_node.child("signals");
+        for (pugi::xml_node signal_node : signals_node.children("signal")) {
+            Signal signal;
+            signal.id = signal_node.attribute("id").as_string();
+            signal.type = signal_node.attribute("type").as_string();
+            signal.name = signal_node.attribute("name").as_string();
+            signal.s = std::stod(signal_node.attribute("s").as_string());
+            signal.t = std::stod(signal_node.attribute("t").as_string());
+            signal.dynamic = signal_node.attribute("dynamic").as_string();
+            signals.push_back(signal);
+        }
+        if (signals.size() > 0)
+            dst[road_id] = signals;
+    }
+    
 }
 
 double navigator::opendrive::get_distance(std::shared_ptr<const odr::RefLine> line, double x, double y)
