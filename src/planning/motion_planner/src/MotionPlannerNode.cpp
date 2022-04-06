@@ -47,7 +47,7 @@ MotionPlannerNode::MotionPlannerNode() : Node("motion_planner_node")
 
 void MotionPlannerNode::send_message() {
     if (ideal_path == nullptr) {
-        RCLCPP_WARN(this->get_logger(), "motion planner has no input path, skipping...");
+        // RCLCPP_WARN(this->get_logger(), "motion planner has no input path, skipping...");
         return;
     }
     auto tmp = voltron_msgs::msg::Trajectory();
@@ -67,7 +67,7 @@ void MotionPlannerNode::send_message() {
     smooth(tmp, max_accel, max_decel);
     RCLCPP_WARN(this->get_logger(), "C size: %d", tmp.points.size());
     trajectory_publisher->publish(tmp);
-    RCLCPP_WARN(this->get_logger(), "published path of size %d", tmp.points.size());
+    // RCLCPP_WARN(this->get_logger(), "published path of size %d", tmp.points.size());
     return;
 }
 

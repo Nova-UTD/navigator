@@ -51,7 +51,6 @@ private:
     rclcpp::Subscription<Odometry>::SharedPtr odometry_subscription;
     rclcpp::Subscription<FinalPath>::SharedPtr path_subscription;
 
-
     // var
     rclcpp::TimerBase::SharedPtr control_timer;
 	odr::OpenDriveMap *odr_map;
@@ -63,6 +62,9 @@ private:
     float current_position_y;
     State current_state;
 
+    bool reached_zone = false;
+    int tick = 0;
+
     // functions
     void send_message();
     void update_current_speed(Odometry::SharedPtr ptr);
@@ -70,6 +72,7 @@ private:
     void update_state();
 
     bool upcoming_intersection();
+    bool in_zone();
     bool obstacles_present();
     bool reached_desired_velocity(float desired_velocity);
   

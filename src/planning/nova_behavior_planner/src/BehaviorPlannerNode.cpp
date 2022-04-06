@@ -6,6 +6,11 @@
 #include <cmath>
 #include <unordered_set>
 
+#include <boost/geometry/algorithms/within.hpp> 
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+#include <boost/geometry/algorithms/assign.hpp>
+
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
@@ -47,30 +52,19 @@ void BehaviorPlannerNode::update_current_speed(Odometry::SharedPtr ptr) {
 
 void BehaviorPlannerNode::send_message() {
   if (this->current_path == nullptr) return;
-  // update state based on conditions
   
+  // empty zone array and update state
   update_state();
 
-  // in case extra behavior needed
-  switch(current_state) {
-    case LANEKEEPING:
-      break;
-    case STOPPING:
-      break;
-    case STOPPED:
-      break;
-    case IN_INTERSECTION:
-      break;
-  }
   final_zone_publisher->publish(this->final_zones);
 }
 
 void BehaviorPlannerNode::update_state() {
   switch(current_state) {
     case LANEKEEPING:
-      //RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
-      if (upcoming_intersection()) {
-        //current_state = STOPPING;
+      RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
+      if(upcoming_intersection()) {
+        current_state = STOPPING;
       }
       break;
     case STOPPING:
@@ -81,15 +75,58 @@ void BehaviorPlannerNode::update_state() {
       break;
     case STOPPED:
       RCLCPP_INFO(this->get_logger(), "current state: STOPPED");
-      if (!obstacles_present()) {
-        current_state = LANEKEEPING;
+      if (true) {
+        if (final_zones.zones.size()) {
+          final_zones.zones[0].max_speed = SLOW_SPEED;
+        }
+        current_state = IN_INTERSECTION;
       }
       break;
     case IN_INTERSECTION:
       RCLCPP_INFO(this->get_logger(), "current state: IN_INTERSECTION");
-      // if (!in_zone()) {
-      // }
+      RCLCPP_INFO(this->get_logger(), "array size" + std::to_string(final_zones.zones.size()));
+
+      if(in_zone()) {
+        reached_zone = true;
+      }
+
+      if (reached_zone) {
+        if (!in_zone()) {
+        RCLCPP_INFO(this->get_logger(), "OUT OF ZONE");
+        // final_zones = {};
+        current_state = TEMP;
+        }
+      }
+      break;
+    case TEMP:
+      RCLCPP_INFO(this->get_logger(), "TEMP STATE TEMP STATE TEMP STATE");
+      break;
   }
+}
+
+
+// used to determine if car is currently inside zone's polygon
+bool BehaviorPlannerNode::in_zone() {
+
+  if (!final_zones.zones.size()) {
+    RCLCPP_INFO(this->get_logger(), "ERROR: IN_INTERSECTION state but no zones");
+    return false;
+  }
+
+  // check if current position is in zone polygon
+  typedef boost::geometry::model::d2::point_xy<double> point_type;
+  typedef boost::geometry::model::polygon<point_type> polygon_type;
+  
+  polygon_type poly;
+  point_type p(current_position_x, current_position_y);
+
+  std::vector<point_type> points;
+  for(auto point : final_zones.zones[0].poly.points) {
+    points.push_back(point_type(point.x, point.y));
+  }
+
+  boost::geometry::assign_points(poly, points);
+  return boost::geometry::within(p, poly);
 }
 
 // if path has intersection, then create zone for it
@@ -134,6 +171,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
       zones_made = true;
       Zone zone = navigator::zones_lib::to_zone_msg(odr_map->junctions[junction], odr_map);
       final_zones.zones.push_back(zone);
+      // break;
     }
   }
 
@@ -146,5 +184,18 @@ bool BehaviorPlannerNode::obstacles_present() {
 }
 
 bool BehaviorPlannerNode::reached_desired_velocity(float desired_velocity) {
-  return desired_velocity >= current_speed;
+
+  tick += 1;
+  float value = (int)(current_speed * 100);
+  value /= 100;
+
+  RCLCPP_INFO(this->get_logger(), "SPEED" + std::to_string(value));
+
+  if (tick >= 10 && desired_velocity >= value) {
+    tick = 0;
+    return true;
+  } else {
+    return false;
+  }
+
 }
