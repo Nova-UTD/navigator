@@ -46,7 +46,16 @@ public:
     ~BehaviorPlannerNode();
 
 private:  
+    enum class SignalType {
+        //order from least restrictive to most restrictive
+        None=0,
+        Yield=1,
+        Stop=2,
+    };
     
+    static constexpr double YIELD_SPEED = 2;
+    static constexpr double STOP_SPEED = 0;
+
     rclcpp::Publisher<ZoneArray>::SharedPtr final_zone_publisher;
     rclcpp::Subscription<Odometry>::SharedPtr odometry_subscription;
     rclcpp::Subscription<FinalPath>::SharedPtr path_subscription;
@@ -75,6 +84,9 @@ private:
     bool reached_desired_velocity(float desired_velocity);
   
     void add_stop_zone();
+    SignalType classify_signal(const navigator::opendrive::Signal& signal);
+
+
 
 };
 

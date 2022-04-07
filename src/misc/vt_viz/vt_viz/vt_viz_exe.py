@@ -14,6 +14,7 @@
 
 import rclpy
 from rclpy.node import Node
+from rclpy.duration import Duration
 
 from std_msgs.msg import String, Header, ColorRGBA
 from geometry_msgs.msg import PoseStamped, Point
@@ -74,11 +75,12 @@ class VizSubscriber(Node):
             zone_marker.scale.x = 2.0
             zone_marker.scale.y = 2.0
             zone_marker.scale.z = 2.0
+            zone_marker.lifetime = Duration(seconds=0.2).to_msg()
 
             zone_color = ColorRGBA()
             zone_color.a = 1.0
             zone_color.r = 1.0
-            zone_color.g = 0.0
+            zone_color.g = 1.0-math.exp(-zone.max_speed/5);
             zone_color.b = 0.0
             zone_marker.color = zone_color
 

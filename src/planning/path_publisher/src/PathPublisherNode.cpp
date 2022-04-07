@@ -120,6 +120,7 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 	marker.header.frame_id = "map";
 	// marker.header.stamp = this->now();
 	marker.ns = "path_pub_viz";
+    marker.frame_locked = true;
 	marker.id = 1;
 
 	// Add data contents

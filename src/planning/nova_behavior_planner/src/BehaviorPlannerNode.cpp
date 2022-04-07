@@ -124,7 +124,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
   // each path-point spaced 25 cm apart, doing 400 pts gives us total coverage of 
   // 10000 cm or 100 meters
   size_t horizon_dist = 400;
-  bool signal_found = false;
+  SignalType current_signal = SignalType::None;
   for(size_t offset = 0; offset < horizon_dist; offset++) {
     size_t i = (offset + closest_pt_idx) % current_path->points.size();
     // get road that current path point is in
@@ -139,28 +139,42 @@ bool BehaviorPlannerNode::upcoming_intersection() {
     // check if road is a junction
     auto junction = lane->road.lock()->junction;
     auto id = lane->road.lock()->id;
-    if (!signal_found) {
-      //we are not yet under the effect of a signal, so look for one.
+    if (current_signal != SignalType::Stop) {
+      //stop is the most restrictive, so if we aren't already under the effect of it, keep looking
       //get all signals on this road
       auto signals = map_info->signals.find(id);
-         if (signals == map_info->signals.end()) {
-           continue; //no signal to stop for
-      }
-      double s = lane->road.lock()->ref_line->match(x, y);
-      for(const Signal& signal : signals->second) {
-       //check if signal applies to this point
-       if (navigator::opendrive::signal_applies(signal, s, id, lane->id)) {
-         signal_found = true;
-         break;
-       }
+      if (signals != map_info->signals.end()) {
+        double s = lane->road.lock()->ref_line->match(x, y);
+        for(const Signal& signal : signals->second) {
+          //check if signal applies to this point
+          if (navigator::opendrive::signal_applies(signal, s, id, lane->id)) {
+            auto new_sig = classify_signal(signal);
+            if (new_sig > current_signal) {
+                //overwrite current signal because the new one is more restrictive
+                current_signal = new_sig;
+            }
+          }
+        }
       }
     }
-    if (signal_found && junction != "-1" && seen_junctions.find(junction) == seen_junctions.end()) {
+    if (current_signal != SignalType::None && junction != "-1" && seen_junctions.find(junction) == seen_junctions.end()) {
         //we are under the effect of a signal and in a junction that we haven't seen before
         //make a zone for this junction:
         seen_junctions.insert(junction);
         zones_made = true;
         Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
+        switch(current_signal) {
+            case SignalType::Yield:
+                zone.max_speed = YIELD_SPEED;
+                break;
+            case SignalType::Stop:
+                zone.max_speed = STOP_SPEED;
+                break;
+            default:
+                zone.max_speed = 0;
+                RCLCPP_WARN(this->get_logger(), "unknown signal type %d", (int)current_signal);
+                break;
+        }
         final_zones.zones.push_back(zone);
     }
   }
@@ -175,4 +189,14 @@ bool BehaviorPlannerNode::obstacles_present() {
 
 bool BehaviorPlannerNode::reached_desired_velocity(float desired_velocity) {
   return desired_velocity >= current_speed;
+}
+
+BehaviorPlannerNode::SignalType BehaviorPlannerNode::classify_signal(const navigator::opendrive::Signal& signal) {
+    if (signal.type == "206") {
+        return SignalType::Stop;
+    }
+    if (signal.type == "205") {
+        return SignalType::Yield;
+    }
+    return SignalType::None;
 }
