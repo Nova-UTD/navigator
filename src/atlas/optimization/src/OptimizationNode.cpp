@@ -41,60 +41,103 @@ FUNCTIONALITY
 
 */
 
-const int MAX_HISTORY = 100;
-const auto UPDATE_PERIOD = 0.5s; // seconds
-
-// using geometry_msgs::msg::Point;
-using geometry_msgs::msg::Point32;
-using geometry_msgs::msg::Polygon;
-using geometry_msgs::msg::TransformStamped;
 using nav_msgs::msg::Odometry;
 using sensor_msgs::msg::Imu;
-using std_msgs::msg::ColorRGBA;
-using visualization_msgs::msg::Marker;
-using visualization_msgs::msg::MarkerArray;
-using namespace std::chrono_literals;
 using symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 using symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
 
+using namespace std;
+using namespace gtsam;
+
+// Before we begin the example, we must create a custom unary factor to implement a
+// "GPS-like" functionality. Because standard GPS measurements provide information
+// only on the position, and not on the orientation, we cannot use a simple prior to
+// properly model this measurement.
+//
+// The factor will be a unary factor, affect only a single system variable. It will
+// also use a standard Gaussian noise model. Hence, we will derive our new factor from
+// the NoiseModelFactor1.
+#include <gtsam/nonlinear/NonlinearFactor.h>
+
+class UnaryFactor : public NoiseModelFactor1<Pose2>
+{
+	// The factor will hold a measurement consisting of an (X,Y) location
+	// We could this with a Point2 but here we just use two doubles
+	double mx_, my_;
+
+public:
+	/// shorthand for a smart pointer to a factor
+	typedef boost::shared_ptr<UnaryFactor> shared_ptr;
+
+	// The constructor requires the variable key, the (X, Y) measurement value, and the noise model
+	UnaryFactor(Key j, double x, double y, const SharedNoiseModel &model) : NoiseModelFactor1<Pose2>(model, j), mx_(x), my_(y) {}
+
+	~UnaryFactor() override {}
+
+	// Using the NoiseModelFactor1 base class there are two functions that must be overridden.
+	// The first is the 'evaluateError' function. This function implements the desired measurement
+	// function, returning a vector of errors when evaluated at the provided variable value. It
+	// must also calculate the Jacobians for this measurement function, if requested.
+	Vector evaluateError(const Pose2 &q, boost::optional<Matrix &> H = boost::none) const override
+	{
+		// The measurement function for a GPS-like measurement h(q) which predicts the measurement (m) is h(q) = q, q = [qx qy qtheta]
+		// The error is then simply calculated as E(q) = h(q) - m:
+		// error_x = q.x - mx
+		// error_y = q.y - my
+		// Node's orientation reflects in the Jacobian, in tangent space this is equal to the right-hand rule rotation matrix
+		// H =  [ cos(q.theta)  -sin(q.theta) 0 ]
+		//      [ sin(q.theta)   cos(q.theta) 0 ]
+		const Rot2 &R = q.rotation();
+		if (H)
+			(*H) = (gtsam::Matrix(2, 3) << R.c(), -R.s(), 0.0, R.s(), R.c(), 0.0).finished();
+		return (Vector(2) << q.x() - mx_, q.y() - my_).finished();
+	}
+
+	// The second is a 'clone' function that allows the factor to be copied. Under most
+	// circumstances, the following code that employs the default copy constructor should
+	// work fine.
+	gtsam::NonlinearFactor::shared_ptr clone() const override
+	{
+		return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+			gtsam::NonlinearFactor::shared_ptr(new UnaryFactor(*this)));
+	}
+
+	// Additionally, we encourage you the use of unit testing your custom factors,
+	// (as all GTSAM factors are), in which you would need an equals and print, to satisfy the
+	// GTSAM_CONCEPT_TESTABLE_INST(T) defined in Testable.h, but these are not needed below.
+}; // UnaryFactor
+
 OptimizationNode::OptimizationNode() : Node("optimization_node")
 {
-	gtsam::ISAM2Params isam_params;
-	isam_params.factorization = gtsam::ISAM2Params::CHOLESKY;
-	isam_params.relinearizeSkip = 10;
-	isam = gtsam::ISAM2(isam_params);
-
 	// Create publishers and subscribers
-	gnss_sub_ = this->create_subscription<Odometry>("/sensors/gnss/odom", 10,
-													[this](Odometry::SharedPtr msg)
-													{ handleGNSS(msg); });
-	imu_sub_ = this->create_subscription<Imu>("/sensors/zed/imu", 10,
-											  [this](Imu::SharedPtr msg)
-											  { handleIMU(msg); });
+	gnss_sub_ = this->create_subscription<nav_msgs::msg::Odometry>("/sensors/gnss/odom", 10,
+																   [this](nav_msgs::msg::Odometry::SharedPtr msg)
+																   { handleGNSS(msg); });
+	imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>("/sensors/zed/imu", 10,
+																[this](sensor_msgs::msg::Imu::SharedPtr msg)
+																{ handleIMU(msg); });
 
 	optimization_timer_ = this->create_wall_timer(
-		UPDATE_PERIOD, std::bind(&OptimizationNode::doOptimization, this));
+		0.5s, std::bind(&OptimizationNode::doOptimization, this));
 
-	current_key_idx = 0; // Tracks the key of the current node to be inserted
+	isam_params.factorization = ISAM2Params::CHOLESKY;
+	isam_params.relinearizeSkip = 10;
 
-	current_bias = imuBias::ConstantBias(); // Init bias at zero
-
-	noise_model_gps = noiseModel::Diagonal::Precisions(
-		(Vector6() << Vector3::Constant(0), Vector3::Constant(1.0 / 0.07))
-			.finished());
+	isam_optimizer = boost::make_shared<ISAM2>();
 
 	// Set IMU preintegration parameters
-	Matrix33 measured_acc_cov =
-		I_3x3 * pow(0.01, 2);
+	double g = 9.8;
+	auto w_coriolis = Vector3::Zero(); // zero vector
+	Matrix33 measured_acc_cov =		   // TODO: Fix these vals!
+		I_3x3 * pow(0.1, 2);
 	Matrix33 measured_omega_cov =
-		I_3x3 * pow(0.01, 2); // TODO: Fix these temporary sdevs!! WSH.
+		I_3x3 * pow(0.1, 2);
 	// error committed in integrating position from velocities
 	Matrix33 integration_error_cov =
-		I_3x3 * pow(0.01, 2);
+		I_3x3 * pow(0.1, 2);
 
-	imu_params = PreintegratedImuMeasurements::Params::MakeSharedU(9.8);
-	auto w_coriolis = Vector3::Zero(); // zero vector
+	auto imu_params = PreintegratedImuMeasurements::Params::MakeSharedU(g);
 	imu_params->accelerometerCovariance =
 		measured_acc_cov; // acc white noise in continuous
 	imu_params->integrationCovariance =
@@ -102,141 +145,108 @@ OptimizationNode::OptimizationNode() : Node("optimization_node")
 	imu_params->gyroscopeCovariance =
 		measured_omega_cov; // gyro white noise in continuous
 	imu_params->omegaCoriolis = w_coriolis;
+
+	imu_bias = imuBias::ConstantBias(); // init with zero bias
+
+	preintegrated_imu =
+		boost::make_shared<PreintegratedImuMeasurements>(imu_params,
+														 imu_bias);
+
+	prev_imu_t = get_clock()->now().seconds() + get_clock()->now().nanoseconds() * 1e-9;
 }
 
 void OptimizationNode::handleGNSS(Odometry::SharedPtr msg)
 {
-	gnss_cached_ = msg;
+	RCLCPP_INFO(get_logger(), "Received GNSS");
+	// 1. Create a factor graph container and add factors to it
 
-	// GPSFactor gps_factor = GPSFactor(1, Point3)
-	// auto gps_pose =
-	//       Pose3(current_pose_global.rotation(), gps_measurements[i].position);
+	// 2a. Add odometry factors
+	// For simplicity, we will use the same noise model for each odometry factor
+	if (node_idx > 1)
+	{
+		auto odometryNoise = noiseModel::Diagonal::Sigmas(Vector3(0.2, 0.2, 0.1));
+		// Create odometry (Between) factors between consecutive poses
+		graph.emplace_shared<ImuFactor>(node_idx - 1, node_idx - 1,
+										node_idx, node_idx, node_idx - 1,
+										*preintegrated_imu);
+	}
+
+	// 2b. Add "GPS-like" measurements
+	// We will use our custom UnaryFactor for this.
+	auto unaryNoise =
+		noiseModel::Diagonal::Sigmas(Vector2(0.1, 0.1)); // 10cm std on x,y
+	auto pos = msg->pose.pose.position;
+	graph.emplace_shared<UnaryFactor>(node_idx, pos.x, pos.y, unaryNoise);
+	graph.print("\nFactor Graph:\n"); // print
+
+	// 3. Create the data structure to hold the initialEstimate estimate to the solution
+	// For illustrative purposes, these have been deliberately set to incorrect values
+	Values initialEstimate;
+	initialEstimate.insert(node_idx, Pose2(pos.x, pos.y, pos.z));
+	initialEstimate.print("\nInitial Estimate:\n"); // print
+
+	if (node_idx < 5)
+	{
+		RCLCPP_INFO(get_logger(), "Node immature, skipping");
+		node_idx++;
+		return;
+	}
+
+	// 4. Optimize using Levenberg-Marquardt optimization. The optimizer
+	// accepts an optional set of configuration parameters, controlling
+	// things like convergence criteria, the type of linear system solver
+	// to use, and the amount of information displayed during optimization.
+	// Here we will use the default set of parameters.  See the
+	// documentation for the full set of parameters.
+	isam_optimizer->update(graph, initialEstimate);
+
+	// Reset our graph and values
+	graph.resize(0);
+	preintegrated_imu->resetIntegration();
+	node_idx++;
+
+	Values result = isam_optimizer->calculateEstimate();
+	result.print("Final Result:\n");
+
+	// 5. Calculate and print marginal covariances for all variables
+	Marginals marginals(graph, result);
+	cout << "x1 covariance:\n"
+		 << marginals.marginalCovariance(1) << endl;
+	cout << "x2 covariance:\n"
+		 << marginals.marginalCovariance(2) << endl;
+	cout << "x3 covariance:\n"
+		 << marginals.marginalCovariance(3) << endl;
 }
 
 void OptimizationNode::handleIMU(Imu::SharedPtr msg)
 {
-	// RCLCPP_INFO(get_logger(), "Received IMU");
+	// find dt
+	double new_t = (msg->header.stamp.sec +
+					msg->header.stamp.nanosec * 1e-9); // Seconds
+	double dt = new_t - prev_imu_t;
+	prev_imu_t = new_t;
 
-	// We won't have a cache if the node has just started
-	queued_imu_measurements.push_back(msg);
+	if (dt <= 0)
+	{
+		RCLCPP_WARN(get_logger(), "IMU dt was <= 0, skipping");
+		return;
+	}
+
+	// Integrate measurement
+	auto acc = Vector3(
+		msg->linear_acceleration.x,
+		msg->linear_acceleration.y,
+		msg->linear_acceleration.z);
+
+	auto gyro = Vector3(
+		msg->angular_velocity.x,
+		msg->angular_velocity.y,
+		msg->angular_velocity.z);
+
+	preintegrated_imu->integrateMeasurement(
+		acc, gyro, dt);
 }
 
 void OptimizationNode::doOptimization()
 {
-	RCLCPP_INFO(get_logger(), "HELLO");
-
-	auto current_pose_key = X(current_key_idx);
-	auto current_vel_key = V(current_key_idx);
-	auto current_bias_key = B(current_key_idx);
-
-	if (gnss_cached_ == nullptr)
-	{
-		RCLCPP_WARN(get_logger(), "No cached GNSS is available. Skipping optimization.");
-		return;
-	}
-
-	if (!gps_added)
-	{
-	}
-
-	// Try to add GNSS factor
-	auto gnss_time = rclcpp::Time(gnss_cached_->header.stamp.sec, gnss_cached_->header.stamp.nanosec);
-	auto now = rclcpp::Time(get_clock()->now().seconds(), get_clock()->now().nanoseconds());
-
-	if ((now - gnss_time) > 0.5s)
-	{
-		geometry_msgs::msg::Point gps_pos = gnss_cached_->pose.pose.position;
-		geometry_msgs::msg::Quaternion gps_q = gnss_cached_->pose.pose.orientation;
-		Point3 pos = Point3(gps_pos.x, gps_pos.y, gps_pos.z);
-		Rot3 rot = Rot3(gps_q.w, gps_q.x, gps_q.y, gps_q.z); // https://gtsam.org/doxygen/a03336.html
-		Pose3 gps_pose = Pose3(rot, pos);					 // https://gtsam.org/doxygen/a03288.html
-
-		factors.emplace_shared<PriorFactor<Pose3>>(
-			current_pose_key, gps_pose, noise_model_gps);
-		values.insert(current_pose_key, gps_pose);
-	}
-	else
-	{
-		RCLCPP_WARN(get_logger(), "GNSS value is stale, skipping.");
-	}
-
-	current_summarized_measurement =
-		std::make_shared<PreintegratedImuMeasurements>(imu_params,
-													   current_bias);
-
-	// Loop through stored IMU frames, starting with the second frame.
-	// This is because we need to extract dt.
-
-	if (current_key_idx < 1)
-	{
-		current_key_idx++;
-		return;
-	}
-
-	/**
-	 * Process IMU measurements into factors
-	 */
-	auto previous_pose_key = X(current_key_idx - 1);
-	auto previous_vel_key = V(current_key_idx - 1);
-	auto previous_bias_key = B(current_key_idx - 1);
-	for (int i = 1; i < queued_imu_measurements.size(); i++)
-	{
-		auto msg = queued_imu_measurements.at(i);
-
-		auto acc = Vector3(
-			msg->linear_acceleration.x,
-			msg->linear_acceleration.y,
-			msg->linear_acceleration.z);
-
-		auto angular_vel = Vector3(
-			msg->angular_velocity.x,
-			msg->angular_velocity.y,
-			msg->angular_velocity.z);
-
-		auto prev_msg = queued_imu_measurements.at(i - 1);
-		RCLCPP_INFO(get_logger(), "dt: %f", ((msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9) - (prev_msg->header.stamp.sec + prev_msg->header.stamp.nanosec * 1e-9)));
-		double dt = ((msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9) - (prev_msg->header.stamp.sec + prev_msg->header.stamp.nanosec * 1e-9));
-
-		current_summarized_measurement->integrateMeasurement(acc, angular_vel, dt);
-	}
-
-	factors.emplace_shared<ImuFactor>(
-		previous_pose_key, previous_vel_key, current_pose_key,
-		current_vel_key, previous_bias_key, *current_summarized_measurement);
-
-	// Bias evolution as given in the IMU metadata
-	auto sigma_between_b = noiseModel::Diagonal::Sigmas(
-		(Vector6() << Vector3::Constant(
-			 0.1), // TODO: Fix these two sigma values!
-		 Vector3::Constant(0.1))
-			.finished());
-	factors.emplace_shared<BetweenFactor<imuBias::ConstantBias>>(
-		previous_bias_key, current_bias_key, imuBias::ConstantBias(),
-		sigma_between_b);
-
-	// Add initial values for velocity and bias based on the previous
-	// estimates
-	values.insert(current_vel_key, current_vel);
-	values.insert(current_bias_key, current_bias);
-
-	if (factors.size() > 10)
-	{
-		isam.update(factors, values);
-		RCLCPP_INFO(get_logger(), "ISAM matured, updating...");
-
-		queued_imu_measurements.clear();
-		factors.resize(0);
-		values.clear();
-
-		Values result = isam.calculateEstimate();
-		current_pose = result.at<Pose3>(current_pose_key);
-		current_vel = result.at<Vector3>(current_vel_key);
-		current_bias = result.at<imuBias::ConstantBias>(current_bias_key);
-	}
-	else
-	{
-		RCLCPP_INFO(get_logger(), "ISAM size is now %i", isam.size());
-	}
-
-	current_key_idx++;
 }
