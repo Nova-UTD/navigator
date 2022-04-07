@@ -17,7 +17,7 @@
 #include "Road.h"
 #include "Junction.h"
 #include "opendrive_utils/OpenDriveUtils.hpp"
-//#include "zone_lib/zone.hpp"
+#include "zone_lib/zone.hpp"
 
 using namespace std::chrono_literals;
 using FinalPath = voltron_msgs::msg::FinalPath;
@@ -55,7 +55,7 @@ private:
     // var
     rclcpp::TimerBase::SharedPtr control_timer;
 	navigator::opendrive::types::OpenDriveMapPtr map;
-    //std::shared_ptr<navigator::opendrive::types::MapInfo> map;
+    std::shared_ptr<navigator::opendrive::types::MapInfo> map_info;
 
     ZoneArray final_zones;
     FinalPath::SharedPtr current_path;

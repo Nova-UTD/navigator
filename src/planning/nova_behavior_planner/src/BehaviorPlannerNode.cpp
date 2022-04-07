@@ -19,12 +19,14 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
   RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
   std::shared_ptr<navigator::opendrive::MapInfo> map_info = navigator::opendrive::load_map(xodr_path);
   this->map = map_info->map;
+  this->map_info = map_info;
 
   RCLCPP_INFO(this->get_logger(), "SIGNALS!!!%d", map_info->signals.size());
   for (const auto& [road_id, signals] : map_info->signals) {
       RCLCPP_INFO(this->get_logger(), "signals for road %s", road_id.c_str());
       for (const auto& signal : signals) {
-          RCLCPP_INFO(this->get_logger(), "\tid:%s, type:%s, name:%s, s:%.2f, t:%.2f, dynamic:%s", signal.id.c_str(), signal.type.c_str(), signal.name.c_str(), signal.s, signal.t, signal.dynamic.c_str());
+          RCLCPP_INFO(this->get_logger(), "\tid:%s, type:%s, name:%s, s:%.2f, t:%.2f, dynamic:%s, orientation: %s", 
+            signal.id.c_str(), signal.type.c_str(), signal.name.c_str(), signal.s, signal.t, signal.dynamic.c_str(), signal.orientation.c_str());
       }
   }
 
@@ -103,9 +105,10 @@ void BehaviorPlannerNode::update_state() {
 
 // if path has intersection, then create zone for it
 bool BehaviorPlannerNode::upcoming_intersection() {
+  using navigator::opendrive::Signal;
   bool zones_made = false;
-  std::unordered_set<std::string> junctions;
-  //final_zones.zones.clear();
+  std::unordered_set<std::string> seen_junctions;
+  final_zones.zones.clear();
   // find point on path closest to current location
   size_t closest_pt_idx = 0;
   float min_distance = -1;
@@ -121,10 +124,13 @@ bool BehaviorPlannerNode::upcoming_intersection() {
   // each path-point spaced 25 cm apart, doing 400 pts gives us total coverage of 
   // 10000 cm or 100 meters
   size_t horizon_dist = 400;
+  bool signal_found = false;
   for(size_t offset = 0; offset < horizon_dist; offset++) {
     size_t i = (offset + closest_pt_idx) % current_path->points.size();
     // get road that current path point is in
-    auto lane = navigator::opendrive::get_lane_from_xy(map, current_path->points[i].x, current_path->points[i].y);
+    double x = current_path->points[i].x;
+    double y = current_path->points[i].y;
+    auto lane = navigator::opendrive::get_lane_from_xy(map, x, y);
     if (lane == nullptr) {
         //RCLCPP_INFO(this->get_logger(), "(%f, %f): no road found for behavior planner", this->current_position_x, this->current_position_y);
         continue;
@@ -133,15 +139,29 @@ bool BehaviorPlannerNode::upcoming_intersection() {
     // check if road is a junction
     auto junction = lane->road.lock()->junction;
     auto id = lane->road.lock()->id;
-    if (junction != "-1") {
-      if (junctions.find(junction) != junctions.end()) {
-          continue; //already seen this junction
+    if (!signal_found) {
+      //we are not yet under the effect of a signal, so look for one.
+      //get all signals on this road
+      auto signals = map_info->signals.find(id);
+         if (signals == map_info->signals.end()) {
+           continue; //no signal to stop for
       }
-      //RCLCPP_INFO(this->get_logger(), "in junction " + junction + " for road " + id + " zones: %d", final_zones.zones.size());
-      junctions.insert(junction);
-      zones_made = true;
-      //Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
-      //final_zones.zones.push_back(zone);
+      double s = lane->road.lock()->ref_line->match(x, y);
+      for(const Signal& signal : signals->second) {
+       //check if signal applies to this point
+       if (navigator::opendrive::signal_applies(signal, s, id, lane->id)) {
+         signal_found = true;
+         break;
+       }
+      }
+    }
+    if (signal_found && junction != "-1" && seen_junctions.find(junction) == seen_junctions.end()) {
+        //we are under the effect of a signal and in a junction that we haven't seen before
+        //make a zone for this junction:
+        seen_junctions.insert(junction);
+        zones_made = true;
+        Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
+        final_zones.zones.push_back(zone);
     }
   }
 

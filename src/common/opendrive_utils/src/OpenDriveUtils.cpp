@@ -53,6 +53,8 @@ void navigator::opendrive::parse_signals(std::unordered_map<std::string, std::ve
             signal.s = std::stod(signal_node.attribute("s").as_string());
             signal.t = std::stod(signal_node.attribute("t").as_string());
             signal.dynamic = signal_node.attribute("dynamic").as_string();
+            signal.orientation = signal_node.attribute("orientation").as_string();
+            signal.road = road_id;
             signals.push_back(signal);
         }
         if (signals.size() > 0)
@@ -162,6 +164,29 @@ std::vector<std::shared_ptr<odr::Lane>> navigator::opendrive::get_nearby_lanes(O
         }
     }
     return result;
+}
+
+bool navigator::opendrive::signal_applies(const Signal& signal, double s, const std::string& my_road_id, int my_lane_id)
+{
+    //checking if road id matches is important to not only to make sure we are on the same road as the sign,
+    //but also to make sure orientation matches (- on sign = negative lane id)
+    if (signal.road != my_road_id) {
+        return false; //signal is not on this road
+    }
+    //each signal has an s value that determines where on the road it is, which the path point should be close enough to,
+    //and an orientation (relative to road, so matches lane id). we should be traveling in the same orientation
+    constexpr double s_tolerance = 1;
+    if (abs(signal.s - s) > s_tolerance) {
+        return false; //too far from signal
+    }
+    //check orientation
+    if (signal.orientation == "none" 
+        || (signal.orientation == "+" && my_lane_id > 0)
+        || (signal.orientation == "-" && my_lane_id < 0)) {
+        //we are going the correct way
+        return true;
+    }
+    return false;
 }
 
 // positive: is the lane_id positive? if so, we have to iterate in the opposite direction

@@ -38,6 +38,7 @@ namespace navigator
     LanePtr get_lane_from_xy(OpenDriveMapPtr map, double x, double y);
     LanePtr get_lane_from_xy_with_route(OpenDriveMapPtr map, double x, double y, const std::set<std::string>& rs);
     std::shared_ptr<MapInfo> load_map(const std::string &filename);
+    bool signal_applies(const Signal& signal, double s, const std::string& my_road_id, int my_lane_id);
     
     std::vector<std::shared_ptr<odr::Lane>> get_nearby_lanes(OpenDriveMapPtr map, double x, double y, double distance);
 

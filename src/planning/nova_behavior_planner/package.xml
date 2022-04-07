@@ -19,8 +19,7 @@
   <depend>tf2_ros</depend>
   <depend>visualization_msgs</depend>
   <depend>voltron_msgs</depend>
-
-  <!--<depend>zone_lib</depend>-->
+  <depend>zone_lib</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

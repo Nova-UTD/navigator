@@ -79,6 +79,10 @@ namespace navigator
                 double t;
                 //does the signal change? ex: traffic lights = yes, stop signs = no
                 std::string dynamic;
+                //"+" applies to traffic going in positive direction, "-" for negative direction, "none" for both
+                std::string orientation;
+                //id of parent road
+                std::string road;
             };
             //stores the libopendrive map, as well as the other information they don't parse that we need (ex: singals)
             struct MapInfo
