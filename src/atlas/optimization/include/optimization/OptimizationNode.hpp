@@ -81,9 +81,11 @@ private:
 				   // the factor graph
 	int current_key_idx;
 
-	geometry_msgs::msg::Pose current_pose;
-	geometry_msgs::msg::Twist current_vel;
+	Pose3 current_pose;
+	Vector3 current_vel;
 	imuBias::ConstantBias current_bias;
+
+	bool gps_added = false;
 
 	noiseModel::Diagonal::shared_ptr noise_model_gps;
 

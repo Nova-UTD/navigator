@@ -135,6 +135,10 @@ void OptimizationNode::doOptimization()
 		return;
 	}
 
+	if (!gps_added)
+	{
+	}
+
 	// Try to add GNSS factor
 	auto gnss_time = rclcpp::Time(gnss_cached_->header.stamp.sec, gnss_cached_->header.stamp.nanosec);
 	auto now = rclcpp::Time(get_clock()->now().seconds(), get_clock()->now().nanoseconds());
@@ -168,6 +172,10 @@ void OptimizationNode::doOptimization()
 		current_key_idx++;
 		return;
 	}
+
+	/**
+	 * Process IMU measurements into factors
+	 */
 	auto previous_pose_key = X(current_key_idx - 1);
 	auto previous_vel_key = V(current_key_idx - 1);
 	auto previous_bias_key = B(current_key_idx - 1);
@@ -186,30 +194,44 @@ void OptimizationNode::doOptimization()
 			msg->angular_velocity.z);
 
 		auto prev_msg = queued_imu_measurements.at(i - 1);
-		RCLCPP_INFO(get_logger(), "Prev IMU: %f", msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9);
-		RCLCPP_INFO(get_logger(), "New IMU: %f", prev_msg->header.stamp.sec + prev_msg->header.stamp.nanosec * 1e-9);
-		double dt = ((msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9) - (prev_msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9));
+		RCLCPP_INFO(get_logger(), "dt: %f", ((msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9) - (prev_msg->header.stamp.sec + prev_msg->header.stamp.nanosec * 1e-9)));
+		double dt = ((msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9) - (prev_msg->header.stamp.sec + prev_msg->header.stamp.nanosec * 1e-9));
 
 		current_summarized_measurement->integrateMeasurement(acc, angular_vel, dt);
 	}
 
-	// factors.emplace_shared<ImuFactor>(
-	// 	previous_pose_key, previous_vel_key, current_pose_key,
-	// 	current_vel_key, previous_bias_key, *current_summarized_measurement);
+	factors.emplace_shared<ImuFactor>(
+		previous_pose_key, previous_vel_key, current_pose_key,
+		current_vel_key, previous_bias_key, *current_summarized_measurement);
+
+	// Bias evolution as given in the IMU metadata
+	auto sigma_between_b = noiseModel::Diagonal::Sigmas(
+		(Vector6() << Vector3::Constant(
+			 0.1), // TODO: Fix these two sigma values!
+		 Vector3::Constant(0.1))
+			.finished());
+	factors.emplace_shared<BetweenFactor<imuBias::ConstantBias>>(
+		previous_bias_key, current_bias_key, imuBias::ConstantBias(),
+		sigma_between_b);
 
 	// Add initial values for velocity and bias based on the previous
 	// estimates
-	// values.insert(current_vel_key, current_velocity);
-	// values.insert(current_bias_key, current_bias);
+	values.insert(current_vel_key, current_vel);
+	values.insert(current_bias_key, current_bias);
 
 	if (factors.size() > 10)
 	{
 		isam.update(factors, values);
 		RCLCPP_INFO(get_logger(), "ISAM matured, updating...");
-		Values result = isam.calculateEstimate();
+
 		queued_imu_measurements.clear();
 		factors.resize(0);
 		values.clear();
+
+		Values result = isam.calculateEstimate();
+		current_pose = result.at<Pose3>(current_pose_key);
+		current_vel = result.at<Vector3>(current_vel_key);
+		current_bias = result.at<imuBias::ConstantBias>(current_bias_key);
 	}
 	else
 	{
