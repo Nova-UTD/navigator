@@ -6,6 +6,8 @@
 #include "voltron_msgs/msg/costed_path.hpp"
 #include "voltron_msgs/msg/zone_array.hpp"
 #include "voltron_msgs/msg/zone.hpp"
+#include "voltron_msgs/msg/obstacle3_d_array.hpp"
+#include "voltron_msgs/msg/obstacle3_d.hpp"
 #include <nav_msgs/msg/odometry.hpp>
 #include "nova_behavior_planner/BehaviorPlanner.hpp"
 #include "nova_behavior_planner/BehaviorStates.hpp"
@@ -27,6 +29,9 @@ using Odometry = nav_msgs::msg::Odometry;
 using ZoneArray = voltron_msgs::msg::ZoneArray;
 using Zone = voltron_msgs::msg::Zone;
 
+// temp perception
+using Obstacles = voltron_msgs::msg::Obstacle3DArray;
+using Obstacle = voltron_msgs::msg::Obstacle3D;
 
 
 namespace Nova {
@@ -56,8 +61,11 @@ private:
     rclcpp::Publisher<ZoneArray>::SharedPtr final_zone_publisher;
     rclcpp::Subscription<Odometry>::SharedPtr odometry_subscription;
     rclcpp::Subscription<FinalPath>::SharedPtr path_subscription;
+    rclcpp::Subscription<Obstacles>::SharedPtr obstacles_subscription;
+    
     rclcpp::TimerBase::SharedPtr control_timer;
     FinalPath::SharedPtr current_path;
+    Obstacles::SharedPtr current_obstacles;
     ZoneArray final_zones;
 
     // odr
@@ -80,11 +88,12 @@ private:
     void send_message();
     void update_current_speed(Odometry::SharedPtr ptr);
     void update_current_path(FinalPath::SharedPtr ptr);
+    void update_current_obstacles(Obstacles::SharedPtr ptr);
     void update_state();
 
     // transition functions
     bool upcoming_intersection();
-    bool in_zone();
+    bool in_zone(float x, float y);
     bool obstacles_present();
     bool is_stopped();  
     void add_stop_zone();
