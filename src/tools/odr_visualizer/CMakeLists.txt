@@ -14,8 +14,5 @@ cmake_minimum_required(VERSION 3.5)
 get_filename_component(directory_name ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 project(${directory_name})
 
-find_package(ament_cmake_auto REQUIRED)
-ament_auto_find_build_dependencies()
-
 find_package(nova_auto_package REQUIRED)
 nova_auto_package()

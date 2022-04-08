@@ -102,7 +102,7 @@ std::vector<PointMsg> navigator::zones_lib::calculate_corner_points(std::shared_
         * add points to msg_points
 
 */
-ZoneMsg navigator::zones_lib::to_zone_msg(std::shared_ptr<odr::Junction> junction, odr::OpenDriveMap *map) {
+ZoneMsg navigator::zones_lib::to_zone_msg(std::shared_ptr<odr::Junction> junction, navigator::opendrive::types::OpenDriveMapPtr map) {
     
     std::vector<PointMsg> msg_points;
     for (auto const& [connection_id, junction_connection] : junction->connections) {

@@ -19,10 +19,14 @@ using namespace Nova::BehaviorPlanner;
 BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {  
   std::string xodr_path = "data/maps/town07/Town07_Opt.xodr";
   this->current_state = LANEKEEPING;
+  this->reached_zone = false;
+  this->stop_ticks = 0;
 
   // xml parsing
   RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-  this->odr_map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
+  std::shared_ptr<navigator::opendrive::MapInfo> map_info = navigator::opendrive::load_map(xodr_path);
+  this->map = map_info->map;
+  this->map_info = map_info;
 
   this->control_timer = this->create_wall_timer
     (message_frequency, std::bind(&BehaviorPlannerNode::send_message, this));
@@ -34,7 +38,6 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 
   this->path_subscription = this->create_subscription
     <FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
-  
 }
 
 BehaviorPlannerNode::~BehaviorPlannerNode() {}
@@ -44,72 +47,74 @@ void BehaviorPlannerNode::update_current_path(FinalPath::SharedPtr ptr) {
 }
 
 void BehaviorPlannerNode::update_current_speed(Odometry::SharedPtr ptr) {
+  // save current position into prev position and update value
+  this->prev_position_x = this->current_position_x;
+  this->prev_position_y = this->current_position_y;
   this->current_position_x = ptr->pose.pose.position.x;
   this->current_position_y = ptr->pose.pose.position.y;
-  tf2::Vector3 vector_velocity(ptr->twist.twist.linear.x, ptr->twist.twist.linear.y, ptr->twist.twist.linear.z);
+
+  // calculate linear velocity (Z-axis eliminated due to unnecessary noise)
+  tf2::Vector3 vector_velocity(ptr->twist.twist.linear.x, ptr->twist.twist.linear.y, 0.0);
   this->current_speed = std::sqrt(vector_velocity.dot(vector_velocity));
 }
 
 void BehaviorPlannerNode::send_message() {
   if (this->current_path == nullptr) return;
-  
-  // empty zone array and update state
   update_state();
-
+  RCLCPP_INFO(this->get_logger(), std::to_string(final_zones.zones.size()));
   final_zone_publisher->publish(this->final_zones);
 }
+
 
 void BehaviorPlannerNode::update_state() {
   switch(current_state) {
     case LANEKEEPING:
       RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
-      if(upcoming_intersection()) {
+      
+      if (upcoming_intersection()) {
         current_state = STOPPING;
       }
       break;
     case STOPPING:
       RCLCPP_INFO(this->get_logger(), "current state: STOPPING");
-      if (reached_desired_velocity(STOP_SPEED)) {
+      
+      if (is_stopped()) stop_ticks += 1;
+      if (stop_ticks >= 20) {
         current_state = STOPPED;
       }
       break;
     case STOPPED:
       RCLCPP_INFO(this->get_logger(), "current state: STOPPED");
-      if (true) {
+      
+      if (!obstacles_present()) {
         if (final_zones.zones.size()) {
-          final_zones.zones[0].max_speed = SLOW_SPEED;
+          final_zones.zones[0].max_speed = YIELD_SPEED;
         }
-        current_state = IN_INTERSECTION;
+        current_state = IN_JUNCTION;
       }
       break;
-    case IN_INTERSECTION:
-      RCLCPP_INFO(this->get_logger(), "current state: IN_INTERSECTION");
-      RCLCPP_INFO(this->get_logger(), "array size" + std::to_string(final_zones.zones.size()));
+    case IN_JUNCTION:
+      RCLCPP_INFO(this->get_logger(), "current state: IN_JUNCTION");
 
-      if(in_zone()) {
-        reached_zone = true;
-      }
+      // to account for gap between car & zone
+      if (in_zone()) reached_zone = true;
 
       if (reached_zone) {
         if (!in_zone()) {
-        RCLCPP_INFO(this->get_logger(), "OUT OF ZONE");
-        // final_zones = {};
-        current_state = TEMP;
+          reached_zone = false;
+          final_zones.zones.clear();
+          current_state = LANEKEEPING;
         }
       }
-      break;
-    case TEMP:
-      RCLCPP_INFO(this->get_logger(), "TEMP STATE TEMP STATE TEMP STATE");
       break;
   }
 }
 
 
-// used to determine if car is currently inside zone's polygon
 bool BehaviorPlannerNode::in_zone() {
 
   if (!final_zones.zones.size()) {
-    RCLCPP_INFO(this->get_logger(), "ERROR: IN_INTERSECTION state but no zones");
+    RCLCPP_INFO(this->get_logger(), "ERROR: in junction but no zones");
     return false;
   }
 
@@ -129,10 +134,11 @@ bool BehaviorPlannerNode::in_zone() {
   return boost::geometry::within(p, poly);
 }
 
-// if path has intersection, then create zone for it
 bool BehaviorPlannerNode::upcoming_intersection() {
+
+  using navigator::opendrive::Signal;
   bool zones_made = false;
-  std::unordered_set<std::string> junctions;
+  std::unordered_set<std::string> seen_junctions;
   final_zones.zones.clear();
   // find point on path closest to current location
   size_t closest_pt_idx = 0;
@@ -149,11 +155,13 @@ bool BehaviorPlannerNode::upcoming_intersection() {
   // each path-point spaced 25 cm apart, doing 400 pts gives us total coverage of 
   // 10000 cm or 100 meters
   size_t horizon_dist = 400;
+  SignalType current_signal = SignalType::None;
   for(size_t offset = 0; offset < horizon_dist; offset++) {
     size_t i = (offset + closest_pt_idx) % current_path->points.size();
     // get road that current path point is in
-    auto lane = navigator::opendrive::get_lane_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
-    //std::shared_ptr<const odr::Road> road = navigator::opendrive::get_road_from_xy(odr_map, current_path->points[i].x, current_path->points[i].y);
+    double x = current_path->points[i].x;
+    double y = current_path->points[i].y;
+    auto lane = navigator::opendrive::get_lane_from_xy(map, x, y);
     if (lane == nullptr) {
         //RCLCPP_INFO(this->get_logger(), "(%f, %f): no road found for behavior planner", this->current_position_x, this->current_position_y);
         continue;
@@ -162,16 +170,43 @@ bool BehaviorPlannerNode::upcoming_intersection() {
     // check if road is a junction
     auto junction = lane->road.lock()->junction;
     auto id = lane->road.lock()->id;
-    if (junction != "-1") {
-      if (junctions.find(junction) != junctions.end()) {
-          continue; //already seen this junction
+    if (current_signal != SignalType::Stop) {
+      //stop is the most restrictive, so if we aren't already under the effect of it, keep looking
+      //get all signals on this road
+      auto signals = map_info->signals.find(id);
+      if (signals != map_info->signals.end()) {
+        double s = lane->road.lock()->ref_line->match(x, y);
+        for(const Signal& signal : signals->second) {
+          //check if signal applies to this point
+          if (navigator::opendrive::signal_applies(signal, s, id, lane->id)) {
+            auto new_sig = classify_signal(signal);
+            if (new_sig > current_signal) {
+                //overwrite current signal because the new one is more restrictive
+                current_signal = new_sig;
+            }
+          }
+        }
       }
-      //RCLCPP_INFO(this->get_logger(), "in junction " + junction + " for road " + id + " zones: %d", final_zones.zones.size());
-      junctions.insert(junction);
-      zones_made = true;
-      Zone zone = navigator::zones_lib::to_zone_msg(odr_map->junctions[junction], odr_map);
-      final_zones.zones.push_back(zone);
-      // break;
+    }
+    if (current_signal != SignalType::None && junction != "-1" && seen_junctions.find(junction) == seen_junctions.end()) {
+        //we are under the effect of a signal and in a junction that we haven't seen before
+        //make a zone for this junction:
+        seen_junctions.insert(junction);
+        zones_made = true;
+        Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
+        switch(current_signal) {
+            case SignalType::Yield:
+                zone.max_speed = YIELD_SPEED;
+                break;
+            case SignalType::Stop:
+                zone.max_speed = STOP_SPEED;
+                break;
+            default:
+                zone.max_speed = 0;
+                RCLCPP_WARN(this->get_logger(), "unknown signal type %d", (int)current_signal);
+                break;
+        }
+        final_zones.zones.push_back(zone);
     }
   }
 
@@ -183,19 +218,18 @@ bool BehaviorPlannerNode::obstacles_present() {
   return false;
 }
 
-bool BehaviorPlannerNode::reached_desired_velocity(float desired_velocity) {
+bool BehaviorPlannerNode::is_stopped() {
+  float speed_dif = std::abs(STOP_SPEED - current_speed);
+  float position_dif = std::abs(prev_position_x - current_position_x) + std::abs(prev_position_y - current_position_y);
+  return (speed_dif < 0.01 && position_dif < 0.01);
+}
 
-  tick += 1;
-  float value = (int)(current_speed * 100);
-  value /= 100;
-
-  RCLCPP_INFO(this->get_logger(), "SPEED" + std::to_string(value));
-
-  if (tick >= 10 && desired_velocity >= value) {
-    tick = 0;
-    return true;
-  } else {
-    return false;
-  }
-
+BehaviorPlannerNode::SignalType BehaviorPlannerNode::classify_signal(const navigator::opendrive::Signal& signal) {
+    if (signal.type == "206") {
+        return SignalType::Stop;
+    }
+    if (signal.type == "205") {
+        return SignalType::Stop; //return SignalType::Yield;
+    }
+    return SignalType::None;
 }

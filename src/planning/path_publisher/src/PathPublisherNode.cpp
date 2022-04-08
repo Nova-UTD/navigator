@@ -54,7 +54,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
 	// Read map from file, using our path param
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-	map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
+	map = navigator::opendrive::load_map(xodr_path)->map;
 
 	
 
@@ -62,7 +62,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	this->path = this->route1;
 }
 
-voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, odr::OpenDriveMap *map)
+voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, navigator::opendrive::OpenDriveMapPtr map)
 {
 	std::vector<odr::Vec3D> route;
 	FinalPath costed_path;
@@ -120,6 +120,7 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 	marker.header.frame_id = "map";
 	// marker.header.stamp = this->now();
 	marker.ns = "path_pub_viz";
+    marker.frame_locked = true;
 	marker.id = 1;
 
 	// Add data contents

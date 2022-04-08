@@ -32,11 +32,10 @@ using Zone = voltron_msgs::msg::Zone;
 namespace Nova {
 namespace BehaviorPlanner {
 
-constexpr auto message_frequency = 100ms; // will change
+constexpr auto message_frequency = 100ms;
 constexpr float STOP_SPEED = 0.0;
 constexpr float YIELD_SPEED = 5.0;
-constexpr float SLOW_SPEED = 10.0;
-constexpr float SPEED_LIMIT = 20.0;
+constexpr float SPEED_LIMIT = 10.0;
 
 
 class BehaviorPlannerNode : public rclcpp::Node {
@@ -46,37 +45,50 @@ public:
     ~BehaviorPlannerNode();
 
 private:  
-    
+    enum class SignalType {
+        //order from least restrictive to most restrictive
+        None=0,
+        Yield=1,
+        Stop=2,
+    };
+
+    // pub/sub
     rclcpp::Publisher<ZoneArray>::SharedPtr final_zone_publisher;
     rclcpp::Subscription<Odometry>::SharedPtr odometry_subscription;
     rclcpp::Subscription<FinalPath>::SharedPtr path_subscription;
-
-    // var
     rclcpp::TimerBase::SharedPtr control_timer;
-	odr::OpenDriveMap *odr_map;
-
-    ZoneArray final_zones;
     FinalPath::SharedPtr current_path;
+    ZoneArray final_zones;
+
+    // odr
+	navigator::opendrive::types::OpenDriveMapPtr map;
+    std::shared_ptr<navigator::opendrive::types::MapInfo> map_info;
+
+    // stopping variables
     float current_speed;
     float current_position_x;
+    float prev_position_x;
     float current_position_y;
+    float prev_position_y;
+    
+    // state variables
     State current_state;
+    bool reached_zone;
+    int stop_ticks;
 
-    bool reached_zone = false;
-    int tick = 0;
-
-    // functions
+    // pub/sub functions
     void send_message();
     void update_current_speed(Odometry::SharedPtr ptr);
     void update_current_path(FinalPath::SharedPtr ptr);
     void update_state();
 
+    // transition functions
     bool upcoming_intersection();
     bool in_zone();
     bool obstacles_present();
-    bool reached_desired_velocity(float desired_velocity);
-  
+    bool is_stopped();  
     void add_stop_zone();
+    SignalType classify_signal(const navigator::opendrive::Signal& signal);
 
 };
 

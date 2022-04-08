@@ -16,6 +16,8 @@
 #include "OpenDriveMap.h"
 #include "Road.h"
 
+#include "opendrive_utils/OpenDriveUtils.hpp"
+
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
@@ -40,7 +42,7 @@ namespace navigator
         ZoneMsg to_zone_msg(const odr::Mesh3D& mesh);
         
         //need map to look up roads
-        ZoneMsg to_zone_msg(std::shared_ptr<odr::Junction> junction, odr::OpenDriveMap *map);
+        ZoneMsg to_zone_msg(std::shared_ptr<odr::Junction> junction, navigator::opendrive::types::OpenDriveMapPtr map);
 
         // helper function to calculate point
         std::vector<PointMsg> calculate_corner_points(std::shared_ptr<odr::LaneSection> lanesection, double s_val);
