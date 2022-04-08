@@ -61,7 +61,6 @@ void BehaviorPlannerNode::update_current_speed(Odometry::SharedPtr ptr) {
 void BehaviorPlannerNode::send_message() {
   if (this->current_path == nullptr) return;
   update_state();
-  RCLCPP_INFO(this->get_logger(), std::to_string(final_zones.zones.size()));
   final_zone_publisher->publish(this->final_zones);
 }
 
@@ -80,6 +79,7 @@ void BehaviorPlannerNode::update_state() {
       
       if (is_stopped()) stop_ticks += 1;
       if (stop_ticks >= 20) {
+        stop_ticks = 0;
         current_state = STOPPED;
       }
       break;
@@ -102,7 +102,7 @@ void BehaviorPlannerNode::update_state() {
       if (reached_zone) {
         if (!in_zone()) {
           reached_zone = false;
-          final_zones.zones.clear();
+          // final_zones.zones.clear();
           current_state = LANEKEEPING;
         }
       }
@@ -196,7 +196,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
         Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
         switch(current_signal) {
             case SignalType::Yield:
-                zone.max_speed = YIELD_SPEED;
+                zone.max_speed = STOP_SPEED;
                 break;
             case SignalType::Stop:
                 zone.max_speed = STOP_SPEED;
@@ -229,7 +229,7 @@ BehaviorPlannerNode::SignalType BehaviorPlannerNode::classify_signal(const navig
         return SignalType::Stop;
     }
     if (signal.type == "205") {
-        return SignalType::Stop; //return SignalType::Yield;
+        return SignalType::Yield;
     }
     return SignalType::None;
 }
