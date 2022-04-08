@@ -260,6 +260,13 @@ def generate_launch_description():
             
         ]
     )
+    obstacle_zoner = Node(
+        package='obstacle_zoner',
+        name='obstacle_zoner',
+        namespace='planning',
+        executable='ObstacleZonerLaunch',
+        output='screen',
+    )
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -339,6 +346,7 @@ def generate_launch_description():
         # path_planner,
         # lane_planner,
         # parking_planner,
+        obstacle_zoner,
         behavior_planner,
         path_publisher,
         motion_planner
