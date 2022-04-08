@@ -22,6 +22,7 @@
 #include <algorithm>
 
 const double max_accel = 1.0;
+const double max_lat_accel = 0.6;
 const double max_decel = 1.0;
 
 using namespace navigator::motion_planner;
@@ -31,6 +32,11 @@ using ZoneArray = voltron_msgs::msg::ZoneArray;
 using Zone = voltron_msgs::msg::Zone;
 using voltron_msgs::msg::Trajectory;
 using voltron_msgs::msg::TrajectoryPoint;
+
+double dist_between_points(TrajectoryPoint& p1, TrajectoryPoint& p2) {
+    return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2));
+}
+
 
 MotionPlannerNode::MotionPlannerNode() : Node("motion_planner_node")
 {
@@ -62,6 +68,7 @@ void MotionPlannerNode::send_message() {
     if(zones != nullptr){
       limit_to_zones(tmp, *zones);
     }
+    limit_to_curvature(tmp, max_lat_accel);
     smooth(tmp, max_accel, max_decel);
     trajectory_publisher->publish(tmp);
     return;
@@ -93,6 +100,66 @@ double MotionPlannerNode::quat_to_heading(double x, double y, double z, double w
   double t4 = 1.0 - 2.0 * (y * y + z * z);
   return std::atan2(t3, t4) + M_PI;
 }*/
+
+/**
+ * @brief Limits the speed of the trajectory to the curvature, so that
+ * the vehicle does not experience lateral acceleration greater than
+ * the maximum comfortable acceleration.
+ * 
+ * @param trajectory
+ * @param max_accel 
+ * @param curvature_interval - the mininum distance interval to use for calculating curvature
+ */
+void MotionPlannerNode::limit_to_curvature(Trajectory &trajectory, double max_accel, double curvature_interval) {
+    double interval_size = 0;
+    auto interval_start = trajectory.points.begin();
+    auto interval_end = trajectory.points.begin();
+
+    // loop until the interval reaches end of trajectory
+    while (interval_end != trajectory.points.end())
+    {
+      // Ensure that the interval is at least the size of the curvature interval
+      while(interval_size < curvature_interval && std::next(interval_end) != trajectory.points.end())
+      {
+        interval_size += dist_between_points(*interval_end, *std::next(interval_end));
+        interval_end++;
+      }
+
+      if(interval_size < curvature_interval)
+      {
+        break;
+      }
+
+      // Calculate the curvature of the interval, by finding the 
+      // angle between the headings of the interval
+      double s_dx = std::next(interval_start)->x - interval_start->x;
+      double s_dy = std::next(interval_start)->y - interval_start->y;
+      double e_dx = interval_end->x - std::prev(interval_end)->x;
+      double e_dy = interval_end->y - std::prev(interval_end)->y;
+
+      // Calculate angle between using dot product, so need to normalize first
+      double s_mag = std::sqrt(s_dx * s_dx + s_dy * s_dy);
+      double e_mag = std::sqrt(e_dx * e_dx + e_dy * e_dy);
+
+      double dot = (s_dx * e_dx + s_dy * e_dy) / (s_mag * e_mag);
+      double angle = std::acos(dot);
+
+      // curvature is angle per meter
+      double curvature = abs(angle / interval_size);
+      if(curvature > 0){
+        double max_speed = max_accel / curvature;
+        // set each point in the interval no greater than max speed
+        for(auto it = interval_start; it != interval_end; it++)
+        {
+         it->vx = std::min(it->vx, max_speed);
+        }
+      }
+
+      // move the start of the interval by one point, and adjust the size
+      interval_start++;
+      interval_size -= dist_between_points(*interval_start, *std::prev(interval_start));
+    }
+}
 
 /**
  * @brief Limits the speed of a trajectory to the mininmum speed of a zone.
@@ -183,9 +250,7 @@ void MotionPlannerNode::smooth(Trajectory& trajectory, double max_accel, double 
   for(int i = 0; i < trajectory.points.size()-1; i++){
     TrajectoryPoint &seg_end = trajectory.points[i+1];
     TrajectoryPoint &seg_begin = trajectory.points[i];
-    double dx = seg_end.x - seg_begin.x; 
-    double dy = seg_end.y - seg_begin.y; 
-    double dist = sqrt(dx*dx + dy*dy);
+    double dist = dist_between_points(seg_begin, seg_end);
 
     double start_speed = seg_begin.vx;
     double max_end_speed = std::sqrt(2*max_accel*dist+start_speed*start_speed);
@@ -196,9 +261,7 @@ void MotionPlannerNode::smooth(Trajectory& trajectory, double max_accel, double 
     TrajectoryPoint &seg_end = trajectory.points[i];
     TrajectoryPoint &seg_begin = trajectory.points[i-1];
 
-    double dx = seg_end.x - seg_begin.x; 
-    double dy = seg_end.y - seg_begin.y; 
-    double dist = sqrt(dx*dx + dy*dy);
+    double dist = dist_between_points(seg_begin, seg_end);
 
     double end_speed = seg_end.vx;
     double max_start_speed = std::sqrt(2*max_decel*dist+end_speed*end_speed);
