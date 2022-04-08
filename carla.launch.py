@@ -267,6 +267,13 @@ def generate_launch_description():
         executable='ObstacleZonerLaunch',
         output='screen',
     )
+    zone_fusion = Node(
+        package='zone_fusion',
+        name='zone_fusion',
+        namespace='planning',
+        executable='ZoneFusionLaunch',
+        output='screen',
+    )
     lane_planner = Node(
         package='lane_planner_nodes',
         name='lane_planner_node',
@@ -346,6 +353,7 @@ def generate_launch_description():
         # path_planner,
         # lane_planner,
         # parking_planner,
+        zone_fusion,
         obstacle_zoner,
         behavior_planner,
         path_publisher,

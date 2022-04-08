@@ -22,6 +22,7 @@ void ObstacleZonerNode::zone_perception(Obstacle3DArray::SharedPtr ptr) {
         Zone zone;
         zone.max_speed = 0;
         zone.cost = 999;
+        RCLCPP_INFO(this->get_logger(), "(%f,%f,%f)", obstacle.bounding_box.center.position.x, obstacle.bounding_box.center.position.y, obstacle.bounding_box.center.position.z);
         //take x/y corner of the box. start at +/+ corner and go clockwise
         //+x, +y
         geometry_msgs::msg::Point32 p;
