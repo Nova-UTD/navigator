@@ -38,13 +38,12 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 
   this->path_subscription = this->create_subscription
     <FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
+
+  this->obstacles_subscription = this->create_subscription
+    <Obstacles>("/objects", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
 }
 
 BehaviorPlannerNode::~BehaviorPlannerNode() {}
-
-void BehaviorPlannerNode::update_current_path(FinalPath::SharedPtr ptr) {
-  this->current_path = ptr;
-}
 
 void BehaviorPlannerNode::update_current_speed(Odometry::SharedPtr ptr) {
   // save current position into prev position and update value
@@ -58,10 +57,17 @@ void BehaviorPlannerNode::update_current_speed(Odometry::SharedPtr ptr) {
   this->current_speed = std::sqrt(vector_velocity.dot(vector_velocity));
 }
 
+void BehaviorPlannerNode::update_current_path(FinalPath::SharedPtr ptr) {
+  this->current_path = ptr;
+}
+
+void BehaviorPlannerNode::update_current_obstacles(Obstacles::SharedPtr ptr) {
+  this->current_obstacles = ptr;
+}
+
 void BehaviorPlannerNode::send_message() {
   if (this->current_path == nullptr) return;
   update_state();
-  RCLCPP_INFO(this->get_logger(), std::to_string(final_zones.zones.size()));
   final_zone_publisher->publish(this->final_zones);
 }
 
@@ -80,6 +86,7 @@ void BehaviorPlannerNode::update_state() {
       
       if (is_stopped()) stop_ticks += 1;
       if (stop_ticks >= 20) {
+        stop_ticks = 0;
         current_state = STOPPED;
       }
       break;
@@ -97,12 +104,11 @@ void BehaviorPlannerNode::update_state() {
       RCLCPP_INFO(this->get_logger(), "current state: IN_JUNCTION");
 
       // to account for gap between car & zone
-      if (in_zone()) reached_zone = true;
+      if (in_zone(current_position_x, current_position_y)) reached_zone = true;
 
       if (reached_zone) {
-        if (!in_zone()) {
+        if (!in_zone(current_position_x, current_position_y)) {
           reached_zone = false;
-          final_zones.zones.clear();
           current_state = LANEKEEPING;
         }
       }
@@ -111,7 +117,7 @@ void BehaviorPlannerNode::update_state() {
 }
 
 
-bool BehaviorPlannerNode::in_zone() {
+bool BehaviorPlannerNode::in_zone(float x, float y) {
 
   if (!final_zones.zones.size()) {
     RCLCPP_INFO(this->get_logger(), "ERROR: in junction but no zones");
@@ -123,7 +129,7 @@ bool BehaviorPlannerNode::in_zone() {
   typedef boost::geometry::model::polygon<point_type> polygon_type;
   
   polygon_type poly;
-  point_type p(current_position_x, current_position_y);
+  point_type p(x, y);
 
   std::vector<point_type> points;
   for(auto point : final_zones.zones[0].poly.points) {
@@ -196,7 +202,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
         Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
         switch(current_signal) {
             case SignalType::Yield:
-                zone.max_speed = YIELD_SPEED;
+                zone.max_speed = STOP_SPEED;
                 break;
             case SignalType::Stop:
                 zone.max_speed = STOP_SPEED;
@@ -213,8 +219,13 @@ bool BehaviorPlannerNode::upcoming_intersection() {
   return zones_made;
 }
 
-// no perception data so just returning false for now
 bool BehaviorPlannerNode::obstacles_present() {
+  for (Obstacle obs : current_obstacles->obstacles) {
+    // what if our vehicle is in zone by accident?
+    if (in_zone(obs.bounding_box.center.position.x, -obs.bounding_box.center.position.y)) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -229,7 +240,7 @@ BehaviorPlannerNode::SignalType BehaviorPlannerNode::classify_signal(const navig
         return SignalType::Stop;
     }
     if (signal.type == "205") {
-        return SignalType::Stop; //return SignalType::Yield;
+        return SignalType::Yield;
     }
     return SignalType::None;
 }

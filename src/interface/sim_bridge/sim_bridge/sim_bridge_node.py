@@ -53,7 +53,7 @@ import random
 
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
-CLIENT_PORT = 2000
+CLIENT_PORT = 2009
 CLIENT_WORLD = 'Town07'
 EGO_AUTOPILOT_ENABLED = False
 EGO_SPAWN_X = -180
@@ -68,7 +68,7 @@ LIDAR_PERIOD = 1/(10.0)  # 10 Hz
 SEMANTIC_LIDAR_PERIOD = 1/(2.0)  # 10 Hz
 SPEEDOMETER_PERIOD = 1/(10.0)  # 10 Hz
 STEERING_ANGLE_PERIOD = 1/(10.0)  # 10 Hz
-OBSTACLE_QTY_VEHICLE = 0  # Spawn n cars
+OBSTACLE_QTY_VEHICLE = 1  # Spawn n cars
 OBSTACLE_QTY_PED = 0  # Spawn n peds
 
 # Map-specific constants
@@ -357,10 +357,11 @@ class SimBridgeNode(Node):
             obst.velocity.z = actor_vel.z
 
             # Set bounding box
+            # changed due to CARLA's nonsensical location logic
             pos = Point()
-            pos.x = bbox.location.x
-            pos.y = bbox.location.y*-1
-            pos.z = bbox.location.z
+            pos.x = vehicle.get_location().x #bbox.location.x
+            pos.y = vehicle.get_location().y #bbox.location.y*-1
+            pos.z = vehicle.get_location().z #bbox.location.z
 
             actor_tf: carla.Transform = vehicle.get_transform()
 
@@ -625,14 +626,19 @@ class SimBridgeNode(Node):
 
         for vehicle in range(vehicle_count):
             # Choose a vehicle blueprint at random.
-            vehicle_bp = random.choice(
-                self.blueprint_library.filter('vehicle.*.*'))
-            random_spawn = random.choice(
-                self.world.get_map().get_spawn_points())
+            vehicle_bp = random.choice(self.blueprint_library.filter('vehicle.*.*'))
+            
+            # currently manually spawning to test junction code
+            random_spawn = carla.Transform(carla.Location(x=-77.5, y=-158, z=20), carla.Rotation(yaw=90))
+            # random_spawn = random.choice(self.world.get_map().get_spawn_points())
+            
+            # spawn vehicle
             self.get_logger().info("Spawning vehicle ({}) @ {}".format(vehicle_bp.id, random_spawn))
             vehicle = self.world.try_spawn_actor(vehicle_bp, random_spawn)
+            
+            # autopilot off for now (junction code testing)
             if vehicle is not None:
-                vehicle.set_autopilot(enabled=True)
+                vehicle.set_autopilot(enabled=False)
 
     def add_pedestrians(self, count: int):
         self.get_logger().info("Spawning {} pedestrians".format(count))

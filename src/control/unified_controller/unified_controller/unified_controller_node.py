@@ -22,7 +22,7 @@ class UnifiedController(Node):
 
     cached_odometry = Odometry()
     cached_path = Trajectory()
-    a_offset = 40
+    a_offset = 20
     b_offset = 4
     pointA_idx = 40
     pointB_idx = pointA_idx+1
