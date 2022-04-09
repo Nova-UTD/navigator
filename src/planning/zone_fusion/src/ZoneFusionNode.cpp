@@ -19,13 +19,11 @@ ZoneFusionNode::ZoneFusionNode() : rclcpp::Node("zone_fusion") {
 ZoneFusionNode::~ZoneFusionNode() {}
 
 void ZoneFusionNode::update_bp_zones(ZoneArray::SharedPtr zones) {
-    RCLCPP_INFO(this->get_logger(), "update bp");
     bp_zones = zones;
     send_message();
 }
 
 void ZoneFusionNode::update_obstacle_zones(ZoneArray::SharedPtr zones) {
-    RCLCPP_INFO(this->get_logger(), "update obstacles");
     obstacle_zones = zones;
     send_message();
 }
@@ -44,7 +42,6 @@ void ZoneFusionNode::send_message() {
             dst.zones.push_back(zone);
         }
     }
-    RCLCPP_INFO(this->get_logger(), "publish %d zones", dst.zones.size());
     this->zone_publisher->publish(dst);
 }
 

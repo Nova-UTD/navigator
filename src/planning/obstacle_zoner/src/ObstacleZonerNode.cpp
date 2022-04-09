@@ -27,7 +27,7 @@ void ObstacleZonerNode::zone_perception(Obstacle3DArray::SharedPtr ptr) {
         stop_zone.cost = 999;
         RCLCPP_INFO(this->get_logger(), "(%f,%f,%f)", obstacle.bounding_box.center.position.x, obstacle.bounding_box.center.position.y, obstacle.bounding_box.center.position.z);
         double center_x = obstacle.bounding_box.center.position.x;
-        double center_y = obstacle.bounding_box.center.position.y;
+        double center_y = -obstacle.bounding_box.center.position.y; //translate
         double extent_x = obstacle.bounding_box.size.x + zone_padding;
         double extent_y = obstacle.bounding_box.size.x + zone_padding;
         //stop zone:

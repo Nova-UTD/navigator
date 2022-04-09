@@ -53,7 +53,7 @@ import random
 
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
-CLIENT_PORT = 2009
+CLIENT_PORT = 2000
 CLIENT_WORLD = 'Town07'
 EGO_AUTOPILOT_ENABLED = False
 EGO_SPAWN_X = -180
@@ -68,7 +68,7 @@ LIDAR_PERIOD = 1/(10.0)  # 10 Hz
 SEMANTIC_LIDAR_PERIOD = 1/(2.0)  # 10 Hz
 SPEEDOMETER_PERIOD = 1/(10.0)  # 10 Hz
 STEERING_ANGLE_PERIOD = 1/(10.0)  # 10 Hz
-OBSTACLE_QTY_VEHICLE = 1  # Spawn n cars
+OBSTACLE_QTY_VEHICLE = 10  # Spawn n cars
 OBSTACLE_QTY_PED = 0  # Spawn n peds
 
 # Map-specific constants
@@ -343,6 +343,8 @@ class SimBridgeNode(Node):
 
         obstacles = []
         for vehicle in vehicles:
+            if vehicle.id == self.ego.id:
+                continue #motivational quote: we should not be an obstacle to ourselves
             obst = Obstacle3D()
             obst.id = vehicle.id
             obst.label = obst.CAR  # TODO: Generalize, e.g. "bike", "car"
@@ -629,8 +631,8 @@ class SimBridgeNode(Node):
             vehicle_bp = random.choice(self.blueprint_library.filter('vehicle.*.*'))
             
             # currently manually spawning to test junction code
-            random_spawn = carla.Transform(carla.Location(x=-77.5, y=-158, z=20), carla.Rotation(yaw=90))
-            # random_spawn = random.choice(self.world.get_map().get_spawn_points())
+            #random_spawn = carla.Transform(carla.Location(x=-77.5, y=-158, z=20), carla.Rotation(yaw=90))
+            random_spawn = random.choice(self.world.get_map().get_spawn_points())
             
             # spawn vehicle
             self.get_logger().info("Spawning vehicle ({}) @ {}".format(vehicle_bp.id, random_spawn))
@@ -638,7 +640,7 @@ class SimBridgeNode(Node):
             
             # autopilot off for now (junction code testing)
             if vehicle is not None:
-                vehicle.set_autopilot(enabled=False)
+                vehicle.set_autopilot(enabled=True)
 
     def add_pedestrians(self, count: int):
         self.get_logger().info("Spawning {} pedestrians".format(count))

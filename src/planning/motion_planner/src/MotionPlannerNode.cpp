@@ -36,7 +36,7 @@ MotionPlannerNode::MotionPlannerNode() : Node("motion_planner_node")
 {
     trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectory>("outgoing_trajectory", 8);
     path_subscription = this->create_subscription<voltron_msgs::msg::FinalPath>("/planning/paths", 10, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
-    zone_subscription = this->create_subscription<ZoneArray>("/planning/zone_array", 10, bind(&MotionPlannerNode::update_zones, this, std::placeholders::_1));
+    zone_subscription = this->create_subscription<ZoneArray>("/planning/zones", 10, bind(&MotionPlannerNode::update_zones, this, std::placeholders::_1));
     odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
     //current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
     //steering_angle_subscription = this->create_subscription<voltron_msgs::msg::SteeringPosition>("/can/steering_angle", 8, bind(&MotionPlannerNode::update_steering_angle, this, std::placeholders::_1));
