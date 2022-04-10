@@ -98,7 +98,7 @@ class LidarCorrectionNode(Node):
         self.road_boundary = None
         self.map_bl_tf = TransformStamped()
 
-        self.bias = Point()
+        self.biases = []
 
     def poly_sub_cb(self, msg: PolygonArray):
         polygons = []
@@ -155,8 +155,6 @@ class LidarCorrectionNode(Node):
             viz_msg.points.append(Point(
                 x=pt[0], y=pt[1]
             ))
-        print(
-            f"Received polygon with {len(big_ole_polygon.exterior.coords)} points")
         viz_msgs.markers.append(viz_msg)
         self.poly_viz_pub.publish(viz_msgs)
 
@@ -177,7 +175,9 @@ class LidarCorrectionNode(Node):
     def preprocessPoints(self, pts):
         # Filter out faraway points
         pts = pts[np.logical_and(pts['x'] <= 8.0, abs(pts['y'] < 5))]
-        pts = pts[::2]  # Downsample, only keeping every nth point
+        pts = pts[::8]  # Downsample, only keeping every nth point
+        # Shift the point cloud n meters closer to the car. This is a temporary fix.
+        pts['x'] -= 3.0
 
         pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, pts)
         pcd_msg.header.frame_id = 'base_link'
@@ -207,7 +207,6 @@ class LidarCorrectionNode(Node):
             return
 
         # Transform road boundary to base_link (car's reference frame)
-
         pts = []
         if not isinstance(road_bound, ShapelyPolygon):
             self.get_logger().warn("Multipolygons not supported, skipping de-bias.")
@@ -234,15 +233,7 @@ class LidarCorrectionNode(Node):
         map_pts[:, 0] += trans.x
         map_pts[:, 1] += trans.y
 
-        # yaw = 0.0  # 2*math.asin(self.map_bl_tf.transform.rotation.z)
-        # x_offset = self.map_bl_tf.transform.translation.x
-        # y_offset = self.map_bl_tf.transform.translation.y
-        # tf_matrix = np.array(
-        #     [math.cos(yaw), -1*math.sin(yaw), math.sin(yaw),
-        #         math.cos(yaw), x_offset, y_offset]
-        # )
-        # road_bound = affinity.affine_transform(road_bound, tf_matrix)
-
+        # Visualize our road boundary
         viz_msg = Marker()
         viz_msg.header.stamp = self.get_clock().now().to_msg()
         viz_msg.header.frame_id = 'base_link'  # TODO: Update this after transform
@@ -265,16 +256,18 @@ class LidarCorrectionNode(Node):
         viz_msgs.markers.append(viz_msg)
         self.poly_viz_pub.publish(viz_msgs)
 
-        src_original = rnp.numpify(msg)
+        road_bound = ShapelyPolygon(map_pts)
 
+        # Pre-process our road pointcloud
+        src_original = rnp.numpify(msg)
         src_3d = self.preprocessPoints(src_original)
         if src_3d is None:
             return
-        # print(src_3d)
         # These include points inside the road boundary, which aren't useful to us
         src_all = np.array([src_3d['x'], src_3d['y']]).T
         # print(src_all)
         if src_all.shape[1] != 2:
+            self.get_logger().warn("Filtered road points not in expected shape, skipping.")
             return
         # print(src_all)
         # print("---")
@@ -287,71 +280,64 @@ class LidarCorrectionNode(Node):
         for pt in src_all:
             shapely_pt = ShapelyPoint(pt)
             if not shapely_pt.within(road_bound):
+                # Possible slowdown...
                 p1, p2 = nearest_points(road_bound, shapely_pt)
                 # print(p1.distance(shapely_pt))
-                if p1.distance(shapely_pt) < 2.0:
-                    outside_count += 1
-                    mean_y += p1.y
+                # if p1.distance(shapely_pt) < 2.0:
+                outside_count += 1
+                mean_y += pt[1]
+                # print(pt[1])
         if outside_count < 1:
+            self.get_logger().info("No bias found, skipping.")
             return
 
         # T, distances, i = self.icp(src, dst)
         mean_y /= outside_count
+        # print(f"{mean_y} // {outside_count}")
 
         # We now have a vector along the y axis (either the vehicle's left or right) representing our bias
         # We should rotate this using the inverse of the map->bl transform,
         # which will give us a map-level bias vector that we can use to correct GNSS data
-        Kp = 1*(outside_count/len(src_all))
-        yaw = 2*math.asin(self.map_bl_tf.transform.rotation.z*-1)
-        bias_x = mean_y * math.sin(yaw)
-        bias_y = mean_y * math.cos(yaw)
+        Kp = 4*(outside_count/len(src_all))
 
-        self.bias.x += bias_x*Kp
-        if self.bias.x > 2.0:
-            # self.get_logger().warn("X bias being capped at 2 meters")
-            self.bias.x = 2.0
-        if self.bias.x < -2.0:
-            # self.get_logger().warn("X bias being capped at -2 meters")
-            self.bias.x = -2.0
+        self.biases.append(mean_y*Kp)
+        print("Appending {}".format(mean_y*Kp))
+        if len(self.biases) > 5:
+            self.biases.pop(0)
 
-        self.bias.y += bias_y*Kp
-        if self.bias.y > 2.0:
-            # self.get_logger().warn("y bias being capped at 2 meters")
-            self.bias.y = 2.0
-        if self.bias.y < -2.0:
-            # self.get_logger().warn("y bias being capped at -2 meters")
-            self.bias.y = -2.0
+        smoothed_bias = sum(self.biases) / len(self.biases)
+        if smoothed_bias > 2.0:
+            self.get_logger().warn("y bias being capped at 2 meters")
+            smoothed_bias = 2.0
+        if smoothed_bias < -2.0:
+            self.get_logger().warn("y bias being capped at -2 meters")
+            smoothed_bias = -2.0
 
-        self.publish_correction_arrow(bias_x*-1, bias_y*-1)
+        self.publish_correction_arrow(0.0, smoothed_bias*-1)
 
         # if abs(mean_y) < 2:
         #     return
 
         result_pose = PoseWithCovarianceStamped()
         result_pose.header.stamp = self.get_clock().now().to_msg()
-        result_pose.header.frame_id = 'map'
+        result_pose.header.frame_id = 'base_link'
         # TODO: Add our corrected rotation
-        result_pose.pose.pose.orientation = self.map_bl_tf.transform.rotation
-        result_pose.pose.pose.position.y = (
-            self.map_bl_tf.transform.translation.y + self.bias.y)*1
-        result_pose.pose.pose.position.x = (
-            self.map_bl_tf.transform.translation.x + self.bias.x)*1
+        # result_pose.pose.pose.orientation = self.map_bl_tf.transform.rotation
+        result_pose.pose.pose.position.y = smoothed_bias * -1
+        result_pose.pose.pose.position.x = 0.0
 
-        sdev = 30.0  # Meters, s.t. pos.x = n +/- accuracy
-        cov = math.sqrt(sdev)
-
-        result_pose.pose.covariance = [cov, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, cov, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, 0.0, cov, 0.0, 0.0, 0.0,
-                                       0.0, 0.0, 0.0, cov, 0.0, 0.0,
-                                       0.0, 0.0, 0.0, 0.0, cov, 0.0,
-                                       0.0, 0.0, 0.0, 0.0, 0.0, cov]
+        result_pose.pose.covariance = [5.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, 0.5, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         if mean_y > 0:
-            print("MOVE RIGHT {:.1f}, K:{:.2f}".format(abs(mean_y*Kp), Kp))
+            print("MOVE RIGHT {:.1f}, K:{:.2f}".format(smoothed_bias, Kp))
         else:
             print("MOVE LEFT {:.1f}, K:{:.2f}".format(
-                abs(mean_y*Kp), Kp))
+                smoothed_bias, Kp))
 
         self.result_odom_pub.publish(result_pose)
 

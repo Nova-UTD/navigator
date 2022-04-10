@@ -794,7 +794,7 @@ class SimBridgeNode(Node):
         birds_eye_cam_bp = self.blueprint_library.find('sensor.camera.rgb')
         birds_eye_cam_bp.set_attribute('sensor_tick', str(0.1))
         relative_transform = carla.Transform(carla.Location(
-            x=0.0, y=0.0, z=20.0), carla.Rotation(pitch=-90.0))
+            x=1.0, y=0.0, z=20.0), carla.Rotation(pitch=-90.0))
         self.birds_eye_cam = self.world.spawn_actor(
             birds_eye_cam_bp, relative_transform, attach_to=self.ego)
         self.birds_eye_cam.listen(self.birds_eye_cam_cb)
@@ -807,7 +807,7 @@ class SimBridgeNode(Node):
         # Horizontal FOV of ZED2i@720 is 100.6
         front_rgb_bp.set_attribute('fov', str(100.6))
         relative_transform = carla.Transform(carla.Location(
-            x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
+            x=1.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
         self.front_rgb = self.world.spawn_actor(
             front_rgb_bp, relative_transform, attach_to=self.ego)
         self.front_rgb.listen(self.front_rgb_cb)
@@ -820,7 +820,7 @@ class SimBridgeNode(Node):
         # Horizontal FOV of ZED2i@720 is 100.6
         front_depth_bp.set_attribute('fov', str(100.6))
         relative_transform = carla.Transform(carla.Location(
-            x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
+            x=1.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
         self.front_depth = self.world.spawn_actor(
             front_depth_bp, relative_transform, attach_to=self.ego)
         self.front_depth.listen(self.front_depth_cb)
@@ -834,7 +834,7 @@ class SimBridgeNode(Node):
         # Horizontal FOV of ZED2i@720 is 100.6
         front_semantic_bp.set_attribute('fov', str(100.6))
         relative_transform = carla.Transform(carla.Location(
-            x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
+            x=1.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
         self.front_semantic = self.world.spawn_actor(
             front_semantic_bp, relative_transform, attach_to=self.ego)
         self.front_semantic.listen(self.front_semantic_cam_cb)
@@ -851,7 +851,7 @@ class SimBridgeNode(Node):
         zed_imu_bp.set_attribute('sensor_tick', str(0.025))
         # TODO: Add covariance. WSH.
         relative_transform = carla.Transform(carla.Location(
-            x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
+            x=1.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
         self.zed_imu = self.world.spawn_actor(
             zed_imu_bp, relative_transform, attach_to=self.ego)
         self.zed_imu.listen(self.zed_imu_cb)
