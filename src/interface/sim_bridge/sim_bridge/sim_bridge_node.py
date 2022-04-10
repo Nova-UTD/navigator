@@ -86,11 +86,11 @@ M_TO_DEG = 9e-6  # APPROXIMATE! WSH.
 
 # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
 GNSS_ALT_BIAS = 0.0*M_TO_DEG
-GNSS_ALT_SDEV = 0.3*M_TO_DEG
+GNSS_ALT_SDEV = 0.9*M_TO_DEG
 GNSS_LAT_BIAS = 0.0*M_TO_DEG
-GNSS_LAT_SDEV = 0.3*M_TO_DEG
+GNSS_LAT_SDEV = 0.9*M_TO_DEG
 GNSS_LON_BIAS = 0.0*M_TO_DEG
-GNSS_LON_SDEV = 0.3*M_TO_DEG
+GNSS_LON_SDEV = 0.9*M_TO_DEG
 GNSS_TWIST_LIN_SDEV = 0.3  # m/s
 
 # Publish a true map->base_link transform. Disable this if
@@ -215,11 +215,6 @@ class SimBridgeNode(Node):
         self.front_semantic_cam_pub.publish(img_msg)
 
     def gnss_cb(self, data: carla.GnssMeasurement):
-        debug = self.world.debug
-        current_loc = self.gnss.get_transform().location
-        to_loc = self.gnss.get_transform().location
-        to_loc.z += 4.0
-        debug.draw_line(current_loc, to_loc, 0.5, carla.Color(255, 0, 0))
         msg = Odometry()
         posewithcov = PoseWithCovariance()
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -254,7 +249,7 @@ class SimBridgeNode(Node):
         twist_linear.z = ego_vel.z
         msg.twist.twist.linear = twist_linear
 
-        angular_sdev = 1.0
+        angular_sdev = 0.6
 
         posewithcov.covariance = [GNSS_LAT_SDEV**.5, 0.0, 0.0, 0.0, 0.0, 0.0,
                                   0.0, GNSS_LON_SDEV**.5, 0.0, 0.0, 0.0, 0.0,
@@ -293,13 +288,13 @@ class SimBridgeNode(Node):
         imu_msg.angular_velocity.x = data.gyroscope.x * -1
         imu_msg.angular_velocity.y = data.gyroscope.y * -1
         imu_msg.angular_velocity.z = data.gyroscope.z * -1
-        imu_msg.linear_acceleration_covariance = [0.3, 0.0, 0.0,
-                                                  0.0, 0.3, 0.0,
-                                                  0.0, 0.0, 0.3]
+        imu_msg.linear_acceleration_covariance = [0.0, 0.0, 0.0,
+                                                  0.0, 0.0, 0.0,
+                                                  0.0, 0.0, 0.0]
 
-        imu_msg.angular_velocity_covariance = [0.05, 0.0, 0.0,
-                                               0.0, 0.5, 0.0,
-                                               0.0, 0.0, 0.5]
+        imu_msg.angular_velocity_covariance = [0.0, 0.0, 0.0,
+                                               0.0, 0.0, 0.0,
+                                               0.0, 0.0, 0.0]
 
         self.zed_imu_pub.publish(imu_msg)
 
@@ -790,7 +785,6 @@ class SimBridgeNode(Node):
         relative_transform = carla.Transform(carla.Location(
             x=1.0, y=0.0, z=0.0), carla.Rotation())  # TODO: Fix transform
 
-        # debug.draw_box(carla.BoundingBox(actor_snapshot.get_transform().location,carla.Vector3D(0.5,0.5,2)),actor_snapshot.get_transform().rotation, 0.05, carla.Color(255,0,0,0),0)
         self.gnss = self.world.spawn_actor(
             gnss_bp, relative_transform, attach_to=self.ego)
         self.gnss.listen(self.gnss_cb)

@@ -110,6 +110,19 @@ def generate_launch_description():
         ]
     )
 
+    odom_bl_ukf = Node(
+        package='robot_localization',
+        executable='ukf_node',
+        name='localization_odom_bl',
+        parameters=[(path.join(param_dir, "atlas", "odom_bl.param.yaml"))],
+        remappings=[
+            ("/odom0", "/sensors/gnss/odom"),
+            ("/imu0", "/sensors/zed/imu"),
+            ("/twist0", "/sensors/speedometer/twist"),
+            ("/pose0", "/atlas/corrected_pose")
+        ]
+    )
+
     # odom_bl_ukf = Node(
     #     package='robot_localization',
     #     executable='ukf_node',
@@ -337,12 +350,13 @@ def generate_launch_description():
         # LOCALIZATION
         # ndt,
         map_odom_ukf,
+        odom_bl_ukf,
 
         # MAPPING
         odr_viz,
 
         # MISC
-        odom_bl_link,
+        # odom_bl_link,
         urdf_publisher,
         visuals,
         # deviation_monitor,
