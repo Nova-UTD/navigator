@@ -24,10 +24,7 @@ Todos:
 
 '''
 
-from turtle import Shape
-from cv2 import mean
-from scipy import rand
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointCloud2, Imu
 from scipy.spatial.transform import Rotation as R
 from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, Polygon, PolygonStamped, Point32, PoseWithCovarianceStamped
 from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D, PolygonArray
@@ -73,6 +70,9 @@ class LidarCorrectionNode(Node):
         self.road_cloud_sub = self.create_subscription(
             PointCloud2, '/lidar/semantic/road', self.calculate_bias, 10
         )
+        self.imu_sub = self.create_subscription(
+            Imu, '/sensors/zed/imu', self.cache_imu, 10
+        )
         self.nearby_lane_poly_sub = self.create_subscription(
             PolygonArray, '/atlas/nearby_road_polygons', self.poly_sub_cb, 10
         )
@@ -97,8 +97,12 @@ class LidarCorrectionNode(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.road_boundary = None
         self.map_bl_tf = TransformStamped()
+        self.yaw_velocity = 0.0
 
         self.biases = []
+
+    def cache_imu(self, msg: Imu):
+        self.yaw_velocity = msg.angular_velocity.z
 
     def poly_sub_cb(self, msg: PolygonArray):
         polygons = []
@@ -174,7 +178,7 @@ class LidarCorrectionNode(Node):
 
     def preprocessPoints(self, pts):
         # Filter out faraway points
-        pts = pts[np.logical_and(pts['x'] <= 8.0, abs(pts['y'] < 5))]
+        pts = pts[np.logical_and(pts['x'] <= 12.0, abs(pts['y'] < 6))]
         pts = pts[::8]  # Downsample, only keeping every nth point
         # Shift the point cloud n meters closer to the car. This is a temporary fix.
         pts['x'] -= 3.0
@@ -189,6 +193,10 @@ class LidarCorrectionNode(Node):
 
     def calculate_bias(self, msg: PointCloud2):
         start = time.time()
+
+        if abs(self.yaw_velocity) > 0.5:
+            self.get_logger().info("Turning too fast, skipping de-bias")
+            return
 
         road_bound = self.road_boundary
 
@@ -298,22 +306,12 @@ class LidarCorrectionNode(Node):
         # We now have a vector along the y axis (either the vehicle's left or right) representing our bias
         # We should rotate this using the inverse of the map->bl transform,
         # which will give us a map-level bias vector that we can use to correct GNSS data
-        Kp = 4*(outside_count/len(src_all))
+        Kp = 7*(outside_count/len(src_all))
 
-        self.biases.append(mean_y*Kp)
-        print("Appending {}".format(mean_y*Kp))
-        if len(self.biases) > 5:
-            self.biases.pop(0)
+        correction = min(mean_y*Kp*-1, 1.0)
+        correction = max(correction, -1.0)
 
-        smoothed_bias = sum(self.biases) / len(self.biases)
-        if smoothed_bias > 2.0:
-            self.get_logger().warn("y bias being capped at 2 meters")
-            smoothed_bias = 2.0
-        if smoothed_bias < -2.0:
-            self.get_logger().warn("y bias being capped at -2 meters")
-            smoothed_bias = -2.0
-
-        self.publish_correction_arrow(0.0, smoothed_bias*-1)
+        self.publish_correction_arrow(0.0, mean_y*Kp*-1)
 
         # if abs(mean_y) < 2:
         #     return
@@ -323,21 +321,21 @@ class LidarCorrectionNode(Node):
         result_pose.header.frame_id = 'base_link'
         # TODO: Add our corrected rotation
         # result_pose.pose.pose.orientation = self.map_bl_tf.transform.rotation
-        result_pose.pose.pose.position.y = smoothed_bias * -1
+        result_pose.pose.pose.position.y = correction
         result_pose.pose.pose.position.x = 0.0
 
         result_pose.pose.covariance = [5.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, 0.5, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, 0.1, 0.0, 0.0, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         if mean_y > 0:
-            print("MOVE RIGHT {:.1f}, K:{:.2f}".format(smoothed_bias, Kp))
+            print("MOVE RIGHT {:.1f}, K:{:.2f}".format(correction, Kp))
         else:
             print("MOVE LEFT {:.1f}, K:{:.2f}".format(
-                smoothed_bias, Kp))
+                correction, Kp))
 
         self.result_odom_pub.publish(result_pose)
 

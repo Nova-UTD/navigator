@@ -43,7 +43,6 @@ import tf2_py
 from tf2_ros.buffer import Buffer
 import tf2_msgs
 from tf2_ros import TransformException, TransformStamped
-import pymap3d
 from cv_bridge import CvBridge
 import numpy as np
 import ros2_numpy as rnp
@@ -86,12 +85,12 @@ MAP_ORIGIN_LON = 0.0  # degrees
 M_TO_DEG = 9e-6  # APPROXIMATE! WSH.
 
 # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
-GNSS_ALT_BIAS = 2.0*M_TO_DEG
-GNSS_ALT_SDEV = 0.05*M_TO_DEG
-GNSS_LAT_BIAS = 2.0*M_TO_DEG
-GNSS_LAT_SDEV = 0.05*M_TO_DEG
-GNSS_LON_BIAS = 2.0*M_TO_DEG
-GNSS_LON_SDEV = 0.05*M_TO_DEG
+GNSS_ALT_BIAS = 0.0*M_TO_DEG
+GNSS_ALT_SDEV = 0.3*M_TO_DEG
+GNSS_LAT_BIAS = 0.0*M_TO_DEG
+GNSS_LAT_SDEV = 0.3*M_TO_DEG
+GNSS_LON_BIAS = 0.0*M_TO_DEG
+GNSS_LON_SDEV = 0.3*M_TO_DEG
 GNSS_TWIST_LIN_SDEV = 0.3  # m/s
 
 # Publish a true map->base_link transform. Disable this if
@@ -216,21 +215,16 @@ class SimBridgeNode(Node):
         self.front_semantic_cam_pub.publish(img_msg)
 
     def gnss_cb(self, data: carla.GnssMeasurement):
+        debug = self.world.debug
+        current_loc = self.gnss.get_transform().location
+        to_loc = self.gnss.get_transform().location
+        to_loc.z += 4.0
+        debug.draw_line(current_loc, to_loc, 0.5, carla.Color(255, 0, 0))
         msg = Odometry()
         posewithcov = PoseWithCovariance()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = 'map'
         msg.child_frame_id = 'gnss'
-
-        enu_coords = pymap3d.geodetic2enu(
-            data.latitude, data.longitude, 0.0,
-            MAP_ORIGIN_LAT, MAP_ORIGIN_LON, 0.0
-        )
-
-        posewithcov.pose.position.x = enu_coords[0]
-        posewithcov.pose.position.y = enu_coords[1]
-        # This should be 0.0. We don't care about altitude. WSH.
-        posewithcov.pose.position.z = enu_coords[2]
 
         ego_tf = self.ego.get_transform()
         ego_quat = R.from_euler(
@@ -244,6 +238,15 @@ class SimBridgeNode(Node):
         posewithcov.pose.orientation.z = ego_quat[2]
         posewithcov.pose.orientation.w = ego_quat[3]
 
+        dev_x = random.uniform(GNSS_LON_SDEV * -1, GNSS_LON_SDEV)
+        posewithcov.pose.position.x = ego_tf.location.x + GNSS_LON_BIAS + dev_x
+        dev_y = random.uniform(GNSS_LAT_SDEV * -1, GNSS_LAT_SDEV)
+        posewithcov.pose.position.y = ego_tf.location.y*-1 + GNSS_LAT_BIAS + dev_y
+
+        # This should be 0.0. We don't care about altitude. WSH.
+        dev_z = random.uniform(GNSS_ALT_SDEV * -1, GNSS_ALT_SDEV)
+        posewithcov.pose.position.z = ego_tf.location.z + GNSS_ALT_BIAS + dev_z
+
         ego_vel = self.ego.get_velocity()
         twist_linear = Vector3()
         twist_linear.x = ego_vel.x
@@ -253,8 +256,8 @@ class SimBridgeNode(Node):
 
         angular_sdev = 1.0
 
-        posewithcov.covariance = [GNSS_LON_SDEV**.5, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, GNSS_LAT_SDEV**.5, 0.0, 0.0, 0.0, 0.0,
+        posewithcov.covariance = [GNSS_LAT_SDEV**.5, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, GNSS_LON_SDEV**.5, 0.0, 0.0, 0.0, 0.0,
                                   0.0, 0.0, GNSS_ALT_SDEV**.5, 0.0, 0.0, 0.0,
                                   0.0, 0.0, 0.0, angular_sdev**.5, 0.0, 0.0,
                                   0.0, 0.0, 0.0, 0.0, angular_sdev**.5, 0.0,
@@ -294,9 +297,9 @@ class SimBridgeNode(Node):
                                                   0.0, 0.3, 0.0,
                                                   0.0, 0.0, 0.3]
 
-        # imu_msg.angular_velocity_covariance   =  [0.1, 0.0, 0.0,
-        #                                           0.0, 0.1, 0.0,
-        #                                           0.0, 0.0, 0.1]
+        imu_msg.angular_velocity_covariance = [0.05, 0.0, 0.0,
+                                               0.0, 0.5, 0.0,
+                                               0.0, 0.0, 0.5]
 
         self.zed_imu_pub.publish(imu_msg)
 
@@ -785,7 +788,9 @@ class SimBridgeNode(Node):
         gnss_bp.set_attribute('noise_lon_bias', str(GNSS_LON_BIAS))
         gnss_bp.set_attribute('sensor_tick', str(GNSS_PERIOD))
         relative_transform = carla.Transform(carla.Location(
-            x=0.0, y=0.0, z=0.0), carla.Rotation())  # TODO: Fix transform
+            x=1.0, y=0.0, z=0.0), carla.Rotation())  # TODO: Fix transform
+
+        # debug.draw_box(carla.BoundingBox(actor_snapshot.get_transform().location,carla.Vector3D(0.5,0.5,2)),actor_snapshot.get_transform().rotation, 0.05, carla.Color(255,0,0,0),0)
         self.gnss = self.world.spawn_actor(
             gnss_bp, relative_transform, attach_to=self.ego)
         self.gnss.listen(self.gnss_cb)
