@@ -34,7 +34,7 @@ from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, 
 from nav_msgs.msg import Odometry  # For GPS, ground truth
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import Image  # For cameras
-from std_msgs.msg import Bool, Header, Float32
+from std_msgs.msg import Bool, Header, Float32, Empty
 from os.path import exists
 import math
 from tf2_ros.transform_broadcaster import TransformBroadcaster
@@ -85,11 +85,11 @@ MAP_ORIGIN_LON = 0.0  # degrees
 M_TO_DEG = 9e-6  # APPROXIMATE! WSH.
 
 # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
-GNSS_ALT_BIAS = 0.0*M_TO_DEG
+GNSS_ALT_BIAS = 1.0  # Meters
 GNSS_ALT_SDEV = 0.9*M_TO_DEG
-GNSS_LAT_BIAS = 0.0*M_TO_DEG
+GNSS_LAT_BIAS = 1.0
 GNSS_LAT_SDEV = 0.9*M_TO_DEG
-GNSS_LON_BIAS = 0.0*M_TO_DEG
+GNSS_LON_BIAS = 1.0
 GNSS_LON_SDEV = 0.9*M_TO_DEG
 GNSS_TWIST_LIN_SDEV = 0.3  # m/s
 
@@ -214,6 +214,10 @@ class SimBridgeNode(Node):
         img_msg = self.get_semantic_image(data)
         self.front_semantic_cam_pub.publish(img_msg)
 
+    def front_lane_invasion_cb(self, data: carla.LaneInvasionEvent):
+        # self.get_logger().warn("Ego vehicle invaded lane.")
+        self.lane_invasion_event_pub.publish(Empty())
+
     def gnss_cb(self, data: carla.GnssMeasurement):
         msg = Odometry()
         posewithcov = PoseWithCovariance()
@@ -250,13 +254,14 @@ class SimBridgeNode(Node):
         msg.twist.twist.linear = twist_linear
 
         angular_sdev = 0.6
+        covariance_multiplier = 2.0
 
-        posewithcov.covariance = [GNSS_LAT_SDEV**.5, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, GNSS_LON_SDEV**.5, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, GNSS_ALT_SDEV**.5, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, angular_sdev**.5, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, angular_sdev**.5, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 0.0, angular_sdev**.5]
+        posewithcov.covariance = [GNSS_LAT_SDEV**.5*covariance_multiplier, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, GNSS_LON_SDEV**.5*covariance_multiplier, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, GNSS_ALT_SDEV**.5*covariance_multiplier, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, angular_sdev**.5*covariance_multiplier, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, angular_sdev**.5*covariance_multiplier, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, 0.0, angular_sdev**.5*covariance_multiplier]
 
         msg.twist.covariance = [GNSS_TWIST_LIN_SDEV**.5, 0.0, 0.0, 0.0, 0.0, 0.0,
                                 0.0, GNSS_TWIST_LIN_SDEV**.5, 0.0, 0.0, 0.0, 0.0,
@@ -546,6 +551,12 @@ class SimBridgeNode(Node):
             10
         )
 
+        self.lane_invasion_event_pub = self.create_publisher(
+            Empty,
+            '/carla/lane_invasion_event',
+            10
+        )
+
         self.front_semantic_cam_pub = self.create_publisher(
             Image,
             '/camera_front/semantic',
@@ -757,6 +768,13 @@ class SimBridgeNode(Node):
         self.front_lidar = self.world.spawn_actor(
             lidar_bp, relative_transform, attach_to=self.ego)
         self.front_lidar.listen(self.front_lidar_cb)
+
+        # Attach lane_invasion sensor
+        lane_invasion_bp = self.blueprint_library.find(
+            'sensor.other.lane_invasion')
+        self.front_lane_invasion = self.world.spawn_actor(
+            lane_invasion_bp, relative_transform, attach_to=self.ego)
+        self.front_lane_invasion.listen(self.front_lane_invasion_cb)
 
         # Semantic lidar
         sem_lidar_bp = self.blueprint_library.find(

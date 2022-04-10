@@ -65,23 +65,23 @@
         false,
       ]
 
-    # pose0: "/pose0"
-    # pose0_config:
-    #   [
-    #     false,
-    #     true,
-    #     false,
-    #     false,
-    #     false,
-    #     false,
-    #     false,
-    #     false,
-    #     false,
-    #     false,
-    #     false,
-    #     false,
-    #     false,
-    #     false,
-    #     false,
-    #   ]
-    # pose0_differential: false
+    pose0: "/pose0"
+    pose0_config:
+      [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]
+    pose0_differential: false

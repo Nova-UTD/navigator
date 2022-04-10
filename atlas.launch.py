@@ -350,13 +350,13 @@ def generate_launch_description():
         # LOCALIZATION
         # ndt,
         map_odom_ukf,
-        odom_bl_ukf,
+        # odom_bl_ukf,
 
         # MAPPING
         odr_viz,
 
         # MISC
-        # odom_bl_link,
+        odom_bl_link,
         urdf_publisher,
         visuals,
         # deviation_monitor,

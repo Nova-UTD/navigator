@@ -325,7 +325,7 @@ class LidarCorrectionNode(Node):
         result_pose.pose.pose.position.x = 0.0
 
         result_pose.pose.covariance = [5.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, 0.1, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
