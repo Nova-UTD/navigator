@@ -6,7 +6,7 @@
     world_frame: "map"
     two_d_mode: true
 
-    odom0: "/odom0" # xyz and yaw
+    odom0: "/odom0" # xyz, yaw, vx, vy
     odom0_config:
       [
         true,
@@ -15,8 +15,8 @@
         false,
         false,
         true,
-        false,
-        false,
+        true,
+        true,
         false,
         false,
         false,
@@ -40,9 +40,9 @@
         true,
         true,
         true,
-        false,
-        false,
-        false,
+        true,
+        true,
+        true,
       ]
 
     twist0: "/twist0" # Only use x velocity (speedometer)
@@ -65,22 +65,22 @@
         false,
       ]
 
-    pose0: "/pose0"
-    pose0_config:
-      [
-        true,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ]
+    # pose0: "/pose0"
+    # pose0_config:
+    #   [
+    #     true,
+    #     true,
+    #     true,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #   ]

@@ -26,7 +26,6 @@ Todos:
 
 from turtle import Shape
 from cv2 import mean
-from pygame import K_PAGEDOWN
 from scipy import rand
 from sensor_msgs.msg import PointCloud2
 from scipy.spatial.transform import Rotation as R
@@ -97,7 +96,9 @@ class LidarCorrectionNode(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.road_boundary = None
-        self.bl_map_tf = TransformStamped()
+        self.map_bl_tf = TransformStamped()
+
+        self.bias = Point()
 
     def poly_sub_cb(self, msg: PolygonArray):
         polygons = []
@@ -129,14 +130,14 @@ class LidarCorrectionNode(Node):
 
             viz_msgs.markers.append(viz_msg)
 
-        # self.nearby_lane_polys.append(polygon)
-        total_area = 0.0
-        for poly in polygons:
-            total_area += poly.area
         big_ole_polygon = unary_union(polygons)
+
         if isinstance(big_ole_polygon, MultiPolygon):
             big_ole_polygon = big_ole_polygon.geoms[0]
-        # print("{} vs {}".format(total_area, big_ole_polygon.area))
+
+        if not isinstance(big_ole_polygon, ShapelyPolygon):
+            self.get_logger().warn("Polygon result is not of type ShapelyPolygon. Skipping.")
+            return
 
         viz_msg = Marker()
         viz_msg.header.stamp = self.get_clock().now().to_msg()
@@ -146,74 +147,37 @@ class LidarCorrectionNode(Node):
             r=0.0, g=0.5, b=1.0, a=1.0
         )
         viz_msg.frame_locked = True
-        viz_msg.ns = 'nearby_poly_merged'
-        # viz_msg.id =
-        viz_msg.scale.x = 0.3
+        viz_msg.ns = 'nearby_poly_merged_map'
 
-        if not isinstance(big_ole_polygon, ShapelyPolygon):
-            return
+        viz_msg.scale.x = 1.0
 
         for pt in big_ole_polygon.exterior.coords:
             viz_msg.points.append(Point(
                 x=pt[0], y=pt[1]
             ))
-        # viz_msgs.markers.append(viz_msg)
-
-        # Form a PolygonStamped for viz
+        print(
+            f"Received polygon with {len(big_ole_polygon.exterior.coords)} points")
+        viz_msgs.markers.append(viz_msg)
+        self.poly_viz_pub.publish(viz_msgs)
 
         self.poly_viz_pub.publish(viz_msgs)
         self.road_boundary = big_ole_polygon.simplify(
-            0.2, preserve_topology=False)  # Done! "Save" result
+            0.4, preserve_topology=False)  # Done! "Save" result
+
+        try:
+            # Destination base_link is listed first in args
+            self.map_bl_tf = self.tf_buffer.lookup_transform(
+                'base_link', 'map', rclpy.time.Time(seconds=0, nanoseconds=0))
+
+        except TransformException as ex:
+            self.get_logger().info(
+                f'Could not transform map to base_link: {ex}')
+            return
 
     def preprocessPoints(self, pts):
         # Filter out faraway points
-        pts = pts[np.logical_and(pts['x'] <= 20.0, abs(pts['y'] < 5))]
-        pts = pts[::4]
-
-        # # Find our base_link->map transform
-        # try:
-        #     # Destination map is listed first in args
-        #     self.bl_map_tf = self.tf_buffer.lookup_transform(
-        #         'map', 'base_link', rclpy.time.Time(seconds=0, nanoseconds=0))
-        # except TransformException as ex:
-        #     self.get_logger().info(
-        #         f'Could not transform map to base_link: {ex}')
-        #     return
-
-        # translation = self.bl_map_tf.transform.translation
-        # # pts['x'] += translation.x
-        # # pts['y'] += translation.y
-        # # pts['z'] += translation.z
-        # # self.get_logger().info("{}".format(translation.z))
-
-        # # Rotate all points to base_link
-        # # TODO: Remove or rework; rotations are computationally costly!
-        # quat = [
-        #     self.bl_map_tf.transform.rotation.x,
-        #     self.bl_map_tf.transform.rotation.y,
-        #     self.bl_map_tf.transform.rotation.z,
-        #     self.bl_map_tf.transform.rotation.w
-        # ]
-        # r = R.from_quat(quat)
-        # # xyz = np.transpose(np.array([npcloud['x'], npcloud['y'], npcloud['z']]))
-
-        # # pts = r.apply(xyz)
-
-        # xyz = np.array(
-        #     [pts['x'].flatten(), pts['y'].flatten(), pts['z'].flatten()])
-        # # print(xyz)
-        # # print("----")
-
-        # xyz = np.transpose(xyz)
-
-        # xyz = r.apply(xyz)
-        # xyz = np.transpose(xyz)
-        # xyz[0] += translation.x
-        # xyz[1] += translation.y
-        # xyz[2] += translation.z
-        # pts['x'] = np.array(xyz[0]).T
-        # pts['y'] = np.array(xyz[1]).T
-        # pts['z'] = np.array(xyz[2]).T
+        pts = pts[np.logical_and(pts['x'] <= 8.0, abs(pts['y'] < 5))]
+        pts = pts[::2]  # Downsample, only keeping every nth point
 
         pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, pts)
         pcd_msg.header.frame_id = 'base_link'
@@ -229,8 +193,8 @@ class LidarCorrectionNode(Node):
         road_bound = self.road_boundary
 
         try:
-            # Destination map is listed first in args
-            self.bl_map_tf = self.tf_buffer.lookup_transform(
+            # Destination base_link is listed first in args
+            self.map_bl_tf = self.tf_buffer.lookup_transform(
                 'base_link', 'map', rclpy.time.Time(seconds=0, nanoseconds=0))
         except TransformException as ex:
             self.get_logger().info(
@@ -238,17 +202,46 @@ class LidarCorrectionNode(Node):
             return
 
         # Is our HD map data available? If not, skip.
-        if self.road_boundary is None:
+        if road_bound is None:
+            self.get_logger().warn("Road boundary is unavailable, skipping de-bias.")
             return
-        else:  # Transform road boundary to base_link (car's reference frame)
-            yaw = 2*math.asin(self.bl_map_tf.transform.rotation.z)
-            x_offset = self.bl_map_tf.transform.translation.x
-            y_offset = self.bl_map_tf.transform.translation.y
-            tf_matrix = np.array(
-                [math.cos(yaw), -1*math.sin(yaw), math.sin(yaw),
-                 math.cos(yaw), x_offset, y_offset]
-            )
-            road_bound = affinity.affine_transform(road_bound, tf_matrix)
+
+        # Transform road boundary to base_link (car's reference frame)
+
+        pts = []
+        if not isinstance(road_bound, ShapelyPolygon):
+            self.get_logger().warn("Multipolygons not supported, skipping de-bias.")
+            return
+        for map_pt in road_bound.exterior.coords:
+            map_pt: ShapelyPoint
+
+            bl_x = map_pt[0]
+            bl_y = map_pt[1]
+            pts.append([bl_x, bl_y, 0.0])
+        map_pts = np.array(pts)
+        quat = [
+            self.map_bl_tf.transform.rotation.x,
+            self.map_bl_tf.transform.rotation.y,
+            self.map_bl_tf.transform.rotation.z,
+            self.map_bl_tf.transform.rotation.w
+        ]
+        r = R.from_quat(quat)
+        # xyz = np.transpose(np.array([npcloud['x'], npcloud['y'], npcloud['z']]))
+        trans: Vector3 = self.map_bl_tf.transform.translation
+        if len(map_pts) < 1:
+            return
+        map_pts = r.apply(map_pts)
+        map_pts[:, 0] += trans.x
+        map_pts[:, 1] += trans.y
+
+        # yaw = 0.0  # 2*math.asin(self.map_bl_tf.transform.rotation.z)
+        # x_offset = self.map_bl_tf.transform.translation.x
+        # y_offset = self.map_bl_tf.transform.translation.y
+        # tf_matrix = np.array(
+        #     [math.cos(yaw), -1*math.sin(yaw), math.sin(yaw),
+        #         math.cos(yaw), x_offset, y_offset]
+        # )
+        # road_bound = affinity.affine_transform(road_bound, tf_matrix)
 
         viz_msg = Marker()
         viz_msg.header.stamp = self.get_clock().now().to_msg()
@@ -258,13 +251,13 @@ class LidarCorrectionNode(Node):
             r=0.0, g=0.5, b=1.0, a=1.0
         )
         viz_msg.frame_locked = True
-        viz_msg.ns = 'nearby_poly_merged'
+        viz_msg.ns = 'nearby_poly_merged_bl'
 
         viz_msg.scale.x = 1.0
         if not isinstance(road_bound, ShapelyPolygon):
             return
 
-        for pt in road_bound.exterior.coords:
+        for pt in map_pts:
             viz_msg.points.append(Point(
                 x=pt[0], y=pt[1]
             ))
@@ -305,40 +298,60 @@ class LidarCorrectionNode(Node):
         # T, distances, i = self.icp(src, dst)
         mean_y /= outside_count
 
-        # x_off = np.array(src_pts).mean
-        # y_off = T[1, 2]
-        # print("Move {:.2f} left, {:.2f} forward".format(y_off, x_off))
-        # print("Of {}, {:.1f}%".format(
-        #     len(src_all), inside_count/len(src_all)*100))
-        # self.publish_correction_arrow(T[0, 2], T[1, 2])
+        # We now have a vector along the y axis (either the vehicle's left or right) representing our bias
+        # We should rotate this using the inverse of the map->bl transform,
+        # which will give us a map-level bias vector that we can use to correct GNSS data
+        Kp = 1*(outside_count/len(src_all))
+        yaw = 2*math.asin(self.map_bl_tf.transform.rotation.z*-1)
+        bias_x = mean_y * math.sin(yaw)
+        bias_y = mean_y * math.cos(yaw)
 
-        if abs(mean_y) < 2:
-            return
+        self.bias.x += bias_x*Kp
+        if self.bias.x > 2.0:
+            # self.get_logger().warn("X bias being capped at 2 meters")
+            self.bias.x = 2.0
+        if self.bias.x < -2.0:
+            # self.get_logger().warn("X bias being capped at -2 meters")
+            self.bias.x = -2.0
 
-        Kp = 10*(outside_count/len(src_all))
+        self.bias.y += bias_y*Kp
+        if self.bias.y > 2.0:
+            # self.get_logger().warn("y bias being capped at 2 meters")
+            self.bias.y = 2.0
+        if self.bias.y < -2.0:
+            # self.get_logger().warn("y bias being capped at -2 meters")
+            self.bias.y = -2.0
+
+        self.publish_correction_arrow(bias_x*-1, bias_y*-1)
+
+        # if abs(mean_y) < 2:
+        #     return
 
         result_pose = PoseWithCovarianceStamped()
         result_pose.header.stamp = self.get_clock().now().to_msg()
-        result_pose.header.frame_id = 'base_link'
+        result_pose.header.frame_id = 'map'
         # TODO: Add our corrected rotation
-        result_pose.pose.pose.orientation = self.bl_map_tf.transform.rotation
-        og_transl = self.bl_map_tf.transform.translation
-        result_pose.pose.pose.position.y = -1*mean_y*Kp
+        result_pose.pose.pose.orientation = self.map_bl_tf.transform.rotation
+        result_pose.pose.pose.position.y = (
+            self.map_bl_tf.transform.translation.y + self.bias.y)*1
+        result_pose.pose.pose.position.x = (
+            self.map_bl_tf.transform.translation.x + self.bias.x)*1
 
         sdev = 30.0  # Meters, s.t. pos.x = n +/- accuracy
+        cov = math.sqrt(sdev)
 
-        result_pose.pose.covariance = [sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, sdev, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, 0.0, sdev, 0.0, 0.0, 0.0,
-                                       0.0, 0.0, 0.0, sdev, 0.0, 0.0,
-                                       0.0, 0.0, 0.0, 0.0, sdev, 0.0,
-                                       0.0, 0.0, 0.0, 0.0, 0.0, sdev]
+        result_pose.pose.covariance = [cov, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, cov, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, 0.0, cov, 0.0, 0.0, 0.0,
+                                       0.0, 0.0, 0.0, cov, 0.0, 0.0,
+                                       0.0, 0.0, 0.0, 0.0, cov, 0.0,
+                                       0.0, 0.0, 0.0, 0.0, 0.0, cov]
 
         if mean_y > 0:
             print("MOVE RIGHT {:.1f}, K:{:.2f}".format(abs(mean_y*Kp), Kp))
         else:
             print("MOVE LEFT {:.1f}, K:{:.2f}".format(
-                abs(mean_y*Kp), K_PAGEDOWN))
+                abs(mean_y*Kp), Kp))
 
         self.result_odom_pub.publish(result_pose)
 
@@ -350,16 +363,13 @@ class LidarCorrectionNode(Node):
         viz_msg.color = ColorRGBA(
             r=1.0, g=0.0, b=0.0, a=1.0
         )
-        viz_msg.header.frame_id = 'map'
+        viz_msg.header.frame_id = 'base_link'
         viz_msg.type = Marker.ARROW
         viz_msg.header.stamp = self.get_clock().now().to_msg()
-        viz_msg.scale.x = 0.3
         viz_msg.frame_locked = True
         viz_msg.ns = 'correction_arrow'
         viz_msg.scale.x = 0.3
         viz_msg.scale.y = 0.6
-        viz_msg.pose.position.x = self.bl_map_tf.transform.translation.x
-        viz_msg.pose.position.y = self.bl_map_tf.transform.translation.y
         viz_msg.points.append(Point(
             x=0.0,
             y=0.0

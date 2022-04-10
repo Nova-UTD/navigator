@@ -24,6 +24,9 @@ Todos:
 
 '''
 
+import cv2
+import random
+import carla
 from sensor_msgs.msg import PointCloud2
 from scipy.spatial.transform import Rotation as R
 from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, TwistWithCovarianceStamped
@@ -47,12 +50,9 @@ import ros2_numpy as rnp
 from rclpy.node import Node
 import rclpy
 import sys
-sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
-import carla
+sys.path.append(
+    '/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
 
-import random
-
-import cv2
 
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
@@ -87,32 +87,17 @@ M_TO_DEG = 9e-6  # APPROXIMATE! WSH.
 
 # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
 GNSS_ALT_BIAS = 2.0*M_TO_DEG
-GNSS_ALT_SDEV = 0.1*M_TO_DEG
+GNSS_ALT_SDEV = 0.05*M_TO_DEG
 GNSS_LAT_BIAS = 2.0*M_TO_DEG
-GNSS_LAT_SDEV = 0.1*M_TO_DEG
+GNSS_LAT_SDEV = 0.05*M_TO_DEG
 GNSS_LON_BIAS = 2.0*M_TO_DEG
-GNSS_LON_SDEV = 0.1*M_TO_DEG
+GNSS_LON_SDEV = 0.05*M_TO_DEG
+GNSS_TWIST_LIN_SDEV = 0.3  # m/s
 
 # Publish a true map->base_link transform. Disable this if
 # another localization algorithm (ukf, ndt, etc.) is running! WSH.
 PULBISH_MAP_BL_TRANSFORM = False
 PUBLISH_GROUND_TRUTH_SEMANTIC_LIDAR = False
-
-sys.path.append(
-    '/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
-
-sys.path.append(
-    '/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
-
-
-# For lidar data manipulation/conversion. WSH.
-
-# For camera data conversion. WSH.
-
-# For lat/lon-> ENU conversions. WSH.
-
-
-# Message definitons
 
 
 class SimBridgeNode(Node):
@@ -266,21 +251,34 @@ class SimBridgeNode(Node):
         twist_linear.z = ego_vel.z
         msg.twist.twist.linear = twist_linear
 
-        linear_sdev = 8.0
         angular_sdev = 1.0
 
-        posewithcov.covariance = [linear_sdev, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, linear_sdev, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, linear_sdev, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, angular_sdev, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, angular_sdev, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 0.0, angular_sdev]
+        posewithcov.covariance = [GNSS_LON_SDEV**.5, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, GNSS_LAT_SDEV**.5, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, GNSS_ALT_SDEV**.5, 0.0, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, angular_sdev**.5, 0.0, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, angular_sdev**.5, 0.0,
+                                  0.0, 0.0, 0.0, 0.0, 0.0, angular_sdev**.5]
+
+        msg.twist.covariance = [GNSS_TWIST_LIN_SDEV**.5, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                0.0, GNSS_TWIST_LIN_SDEV**.5, 0.0, 0.0, 0.0, 0.0,
+                                0.0, 0.0, -1.0, 0.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0, -1.0, 0.0, 0.0,
+                                0.0, 0.0, 0.0, 0.0, -1.0, 0.0,
+                                0.0, 0.0, 0.0, 0.0, 0.0, -1.0]
 
         msg.pose = posewithcov
 
         self.gnss_pub.publish(msg)
 
     def zed_imu_cb(self, data: carla.IMUMeasurement):
+
+        if abs(data.accelerometer.x) > 2.0:
+            return
+
+        if abs(data.accelerometer.y) > 2.0:
+            return
+
         imu_msg = Imu()
 
         imu_msg.header.stamp = self.get_clock().now().to_msg()
