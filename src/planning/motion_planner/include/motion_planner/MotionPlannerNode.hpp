@@ -39,6 +39,7 @@ public:
 
     void smooth(voltron_msgs::msg::Trajectory& trajectory, double max_accel, double max_decel);
     void limit_to_zones(voltron_msgs::msg::Trajectory& trajectory, voltron_msgs::msg::ZoneArray& zones);
+    void limit_to_curvature(voltron_msgs::msg::Trajectory& trajectory, double max_acceleration, double curvature_interval = 2.0);
 
 private:
     //calls MotionPlanner to get the trajectories, selects one, and sends a message containing all trajectories
