@@ -91,7 +91,7 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::s
 
 		for (odr::Vec3D point : centerline) {
 			route.push_back(point);
-			costed_path.speeds.push_back(5);
+			costed_path.speeds.push_back(10);
 		}
 	}
 	RCLCPP_INFO(this->get_logger(), "generated path");
