@@ -24,6 +24,7 @@ Todos:
 
 '''
 
+from cv2 import mean
 from sensor_msgs.msg import PointCloud2, Imu
 from scipy.spatial.transform import Rotation as R
 from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, Polygon, PolygonStamped, Point32, PoseWithCovarianceStamped
@@ -66,6 +67,8 @@ class LidarCorrectionNode(Node):
     def __init__(self):
         super().__init__('lidar_correction_node')
 
+        print("true_x,true_y,x,y,yaw,bias")
+
         # Create our publishers
         self.road_cloud_sub = self.create_subscription(
             PointCloud2, '/lidar/semantic/road', self.calculate_bias, 10
@@ -91,6 +94,14 @@ class LidarCorrectionNode(Node):
             PoseWithCovarianceStamped, '/atlas/corrected_pose', 10
         )
 
+        self.true_odom_sub = self.create_subscription(
+            Odometry, '/carla/odom', self.true_odom_cb, 10)
+
+        self.gnss_sub = self.create_subscription(
+            Odometry, '/sensors/gnss/odom', self.gnss_cb, 10)
+
+        self.true_odom = Odometry()
+        self.gnss_odom = Odometry()
         self.declare_parameter("iteration_count", 3)
 
         self.tf_buffer = Buffer()
@@ -99,7 +110,7 @@ class LidarCorrectionNode(Node):
         self.map_bl_tf = TransformStamped()
         self.yaw_velocity = 0.0
 
-        self.biases = []
+        self.lateral_correction = 0.0
 
     def cache_imu(self, msg: Imu):
         self.yaw_velocity = msg.angular_velocity.z
@@ -178,10 +189,13 @@ class LidarCorrectionNode(Node):
 
     def preprocessPoints(self, pts):
         # Filter out faraway points
-        pts = pts[np.logical_and(pts['x'] <= 12.0, abs(pts['y'] < 6))]
-        pts = pts[::8]  # Downsample, only keeping every nth point
+        pts = pts[np.logical_and(
+            np.logical_and(
+                pts['x'] <= 10.0, pts['y'] < 10),
+            np.logical_and(pts['y'] > -6, pts['z'] < 0.5))]
+        pts = pts[::1]  # Downsample, only keeping every nth point
         # Shift the point cloud n meters closer to the car. This is a temporary fix.
-        pts['x'] -= 3.0
+        pts['x'] -= 2.0
 
         pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, pts)
         pcd_msg.header.frame_id = 'base_link'
@@ -191,11 +205,19 @@ class LidarCorrectionNode(Node):
 
         return pts
 
+    def true_odom_cb(self, msg: Odometry):
+        # print("True OD received")
+        self.true_odom = msg
+
+    def gnss_cb(self, msg: Odometry):
+        # print("True OD received")
+        self.gnss_odom = msg
+
     def calculate_bias(self, msg: PointCloud2):
         start = time.time()
 
-        if abs(self.yaw_velocity) > 0.5:
-            self.get_logger().info("Turning too fast, skipping de-bias")
+        if abs(self.yaw_velocity) > 0.3:
+            # self.get_logger().info("Turning too fast, skipping de-bias")
             return
 
         road_bound = self.road_boundary
@@ -203,7 +225,7 @@ class LidarCorrectionNode(Node):
         try:
             # Destination base_link is listed first in args
             self.map_bl_tf = self.tf_buffer.lookup_transform(
-                'base_link', 'map', rclpy.time.Time(seconds=0, nanoseconds=0))
+                'odom', 'map', rclpy.time.Time(seconds=0, nanoseconds=0))
         except TransformException as ex:
             self.get_logger().info(
                 f'Could not transform map to base_link: {ex}')
@@ -290,57 +312,68 @@ class LidarCorrectionNode(Node):
             if not shapely_pt.within(road_bound):
                 # Possible slowdown...
                 p1, p2 = nearest_points(road_bound, shapely_pt)
-                # print(p1.distance(shapely_pt))
-                # if p1.distance(shapely_pt) < 2.0:
-                outside_count += 1
-                mean_y += pt[1]
+                dist = p1.distance(shapely_pt)
+                if dist < 1.0:
+                    outside_count += 1
+                    mean_y += shapely_pt.y-p1.y
                 # print(pt[1])
         if outside_count < 1:
-            self.get_logger().info("No bias found, skipping.")
+            # self.get_logger().info("No bias found, skipping.")
             return
 
         # T, distances, i = self.icp(src, dst)
+        map_bl_tf = self.tf_buffer.lookup_transform(
+            'map', 'base_link', rclpy.time.Time(seconds=0, nanoseconds=0))
         mean_y /= outside_count
-        # print(f"{mean_y} // {outside_count}")
+        yaw = 2*math.asin(map_bl_tf.transform.rotation.z)
+        transl = map_bl_tf.transform.translation
+        true = self.true_odom.pose.pose.position
+        # print(f"{true.x},{true.y},{transl.x},{transl.y},{yaw},{mean_y}")
 
         # We now have a vector along the y axis (either the vehicle's left or right) representing our bias
         # We should rotate this using the inverse of the map->bl transform,
         # which will give us a map-level bias vector that we can use to correct GNSS data
-        Kp = 7*(outside_count/len(src_all))
+        # Kp = 1*(outside_count**2/len(src_all))
+        K = 3.0
+        corr_x = -1*(mean_y*math.cos(math.pi/2+yaw)*K)
+        corr_y = -1*(mean_y*math.sin(math.pi/2+yaw)*K)
 
-        correction = min(mean_y*Kp*-1, 1.0)
-        correction = max(correction, -1.0)
+        # correction = min(mean_y*Kp*-1, 1.0)
+        # correction = max(correction, -1.0)
 
-        self.publish_correction_arrow(0.0, mean_y*Kp*-1)
+        # self.publish_correction_arrow(0.0, mean_y*Kp*-1)
 
         # if abs(mean_y) < 2:
         #     return
 
+        # TODO: Add our corrected rotation
+        # result_pose.pose.pose.orientation = self.map_bl_tf.transform.rotation
+
+        if mean_y > 0:
+            print("MOVE RIGHT {:.1f}".format(mean_y))
+        else:
+            print("MOVE LEFT {:.1f}".format(
+                mean_y))
+
         result_pose = PoseWithCovarianceStamped()
         result_pose.header.stamp = self.get_clock().now().to_msg()
         result_pose.header.frame_id = 'base_link'
-        # TODO: Add our corrected rotation
-        # result_pose.pose.pose.orientation = self.map_bl_tf.transform.rotation
-        result_pose.pose.pose.position.y = correction
+
         result_pose.pose.pose.position.x = 0.0
+        result_pose.pose.pose.position.y = self.lateral_correction
 
         result_pose.pose.covariance = [5.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, 0.3, 0.0, 0.0, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-        if mean_y > 0:
-            print("MOVE RIGHT {:.1f}, K:{:.2f}".format(correction, Kp))
-        else:
-            print("MOVE LEFT {:.1f}, K:{:.2f}".format(
-                correction, Kp))
-
         self.result_odom_pub.publish(result_pose)
 
         end = time.time()
         # print("{:.2f} ms".format((end - start)*1000))
+        self.lateral_correction = mean_y*K*-1
 
     def publish_correction_arrow(self, arrow_x, arrow_y):
         viz_msg = Marker()
