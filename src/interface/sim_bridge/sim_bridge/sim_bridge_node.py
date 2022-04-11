@@ -85,11 +85,11 @@ MAP_ORIGIN_LON = 0.0  # degrees
 M_TO_DEG = 9e-6  # APPROXIMATE! WSH.
 
 # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
-GNSS_ALT_BIAS = 2.0  # Meters
+GNSS_ALT_BIAS = 2.04  # Meters
 GNSS_ALT_SDEV = 0.9*M_TO_DEG
-GNSS_LAT_BIAS = 2.0
+GNSS_LAT_BIAS = 2.04
 GNSS_LAT_SDEV = 0.9*M_TO_DEG
-GNSS_LON_BIAS = 2.0
+GNSS_LON_BIAS = 2.04
 GNSS_LON_SDEV = 0.9*M_TO_DEG
 GNSS_TWIST_LIN_SDEV = 0.3  # m/s
 
@@ -256,8 +256,8 @@ class SimBridgeNode(Node):
         angular_sdev = 0.6
         covariance_multiplier = 2.0
 
-        posewithcov.covariance = [0.05, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.05, 0.0, 0.0, 0.0, 0.0,
+        posewithcov.covariance = [0.2, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.2, 0.0, 0.0, 0.0, 0.0,
                                   0.0, 0.0, GNSS_ALT_SDEV**.5*covariance_multiplier, 0.0, 0.0, 0.0,
                                   0.0, 0.0, 0.0, angular_sdev**.5*covariance_multiplier, 0.0, 0.0,
                                   0.0, 0.0, 0.0, 0.0, angular_sdev**.5*covariance_multiplier, 0.0,

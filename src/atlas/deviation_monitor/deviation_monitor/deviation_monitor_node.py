@@ -102,6 +102,7 @@ class DeviationMonitorNode(Node):
 
     def ukf_odom_cb(self, msg: Odometry):
         # print("UKF OD received")
+        t = time.time() - self.start
         ukf_pos = msg.pose.pose.position
         tru_pos = self.true_odom.pose.pose.position
         if tru_pos.x == 0.0:
@@ -111,7 +112,6 @@ class DeviationMonitorNode(Node):
             (ukf_pos.y - tru_pos.y)**2 +
             (ukf_pos.z - tru_pos.z)**2
         )
-        t = time.time() - self.start
 
         self.errors.append(transl_error)
         mean_error = np.array(self.errors).mean()
@@ -120,7 +120,7 @@ class DeviationMonitorNode(Node):
         f.write(
             f"{t},{tru_pos.x}, {tru_pos.y}, {ukf_pos.x},{ukf_pos.y},{mean_error},{transl_error}\n")
 
-        if t > 300:
+        if t > 600:
             f.close()
             exit()
         else:
