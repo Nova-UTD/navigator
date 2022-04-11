@@ -66,7 +66,7 @@ start = time.time()
 date_time = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
 f = open('deviation_report_{}.csv'.format(date_time), 'w')
 f.write(
-    f"time,tru_x, tru_y, ukf_x,ukf_y,error\n")
+    f"time,tru_x, tru_y, ukf_x,ukf_y,error,current_error\n")
 
 
 class DeviationMonitorNode(Node):
@@ -118,7 +118,7 @@ class DeviationMonitorNode(Node):
         self.deviation_pub.publish(Float32(data=mean_error))
         # print("Er @ {}: {}".format(len(self.errors), mean_error))
         f.write(
-            f"{t},{tru_pos.x}, {tru_pos.y}, {ukf_pos.x},{ukf_pos.y},{mean_error}\n")
+            f"{t},{tru_pos.x}, {tru_pos.y}, {ukf_pos.x},{ukf_pos.y},{mean_error},{transl_error}\n")
 
         if t > 300:
             f.close()
