@@ -25,7 +25,6 @@ void ObstacleZonerNode::zone_perception(Obstacle3DArray::SharedPtr ptr) {
         Zone stop_zone;
         stop_zone.max_speed = 0;
         stop_zone.cost = 999;
-        RCLCPP_INFO(this->get_logger(), "(%f,%f,%f)", obstacle.bounding_box.center.position.x, obstacle.bounding_box.center.position.y, obstacle.bounding_box.center.position.z);
         double center_x = obstacle.bounding_box.center.position.x;
         double center_y = -obstacle.bounding_box.center.position.y; //translate
         double extent_x = obstacle.bounding_box.size.x + zone_padding;
@@ -34,20 +33,20 @@ void ObstacleZonerNode::zone_perception(Obstacle3DArray::SharedPtr ptr) {
         //take x/y corner of the box. start at +/+ corner and go clockwise
         //+x, +y
         geometry_msgs::msg::Point32 p;
-        p.x = center_x + extent_x;
-        p.y = center_y + extent_y;
+        p.x = obstacle.bounding_box.corners[0].x;
+        p.y = obstacle.bounding_box.corner[0].y
         stop_zone.poly.points.push_back(p);
         //+x, -y
-        p.x = center_x + extent_x;
-        p.y = center_y - extent_y;
+        p.x = obstacle.bounding_box.corners[1].x;
+        p.y = obstacle.bounding_box.corner[1].y
         stop_zone.poly.points.push_back(p);
         //-x, -y
-        p.x = center_x - extent_x;
-        p.y = center_y - extent_y;
+        p.x = obstacle.bounding_box.corners[2].x;
+        p.y = obstacle.bounding_box.corner[2].y
         stop_zone.poly.points.push_back(p);
         //-x, +y
-        p.x = center_x - extent_x;
-        p.y = center_y + extent_y;
+        p.x = obstacle.bounding_box.corners[3].x;
+        p.y = obstacle.bounding_box.corner[3].y
         stop_zone.poly.points.push_back(p);
         zones.zones.push_back(stop_zone);
         //slow zone:

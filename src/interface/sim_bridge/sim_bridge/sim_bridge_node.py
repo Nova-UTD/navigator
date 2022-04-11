@@ -386,6 +386,28 @@ class SimBridgeNode(Node):
                 y=bbox.extent.y,
                 z=bbox.extent.z
             )
+            #add corner points
+            corner = Point()
+            corner.x = pos.x + bbox.extent.x
+            corner.y = pos.y + bbox.extent.y
+            corner.z = pos.z
+            obst.bounding_box.corners.append(corner)
+            corner = Point()
+            corner.x = pos.x + bbox.extent.x
+            corner.y = pos.y - bbox.extent.y
+            corner.z = pos.z
+            obst.bounding_box.corners.append(corner)
+            corner = Point()
+            corner.x = pos.x - bbox.extent.x
+            corner.y = pos.y - bbox.extent.y
+            corner.z = pos.z
+            obst.bounding_box.corners.append(corner)
+            corner = Point()
+            corner.x = pos.x - bbox.extent.x
+            corner.y = pos.y + bbox.extent.y
+            corner.z = pos.z
+            obst.bounding_box.corners.append(corner)
+
 
             obstacles.append(obst)
         obstacles_msg = Obstacle3DArray()
