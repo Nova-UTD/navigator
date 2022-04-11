@@ -27,7 +27,7 @@ class UnifiedController(Node):
 
     STEERING_LOOKEAHAD_DISTANCE = 25 # meters
 
-    MAX_STEERING_ANGLE = 10.58294 # radians
+    MAX_STEERING_ANGLE = 0.58294 # radians
 
     cached_odometry: Odometry = Odometry()
     cached_path: Trajectory = Trajectory()
