@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 
 namespace navigator {
@@ -17,10 +18,12 @@ namespace gps {
 class SerialPort final {
 public:
   SerialPort(const std::string & device_name);
-  std::string get_line();
+  ~SerialPort();
+  std::optional<std::string> get_line();
 
 private:
   int descriptor;
+  std::string buffer;
 };
 
 }

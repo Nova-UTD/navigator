@@ -1,5 +1,5 @@
 #include <iostream>
-#include "gps/SerialPort.hpp"
+#include "gps/GPSNode.hpp"
 
 int main(int argc, char ** argv) {
   if(argc < 2) {
@@ -8,9 +8,12 @@ int main(int argc, char ** argv) {
   }
 
   std::string device(argv[1]);
-  navigator::gps::SerialPort serial(device);
 
-  while(true) {
-    std::cout << serial.get_line() << std::endl;
-  }
+  navigator::gps::gps_params params = {
+				       device,
+  };
+
+  rclcpp::init(0, nullptr);
+  rclcpp::spin(std::make_shared<navigator::gps::GPSNode>(params));
+  rclcpp::shutdown();
 }

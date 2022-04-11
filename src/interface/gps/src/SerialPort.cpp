@@ -1,6 +1,6 @@
 /*
  * Package:   gps
- * Filename:  src/SerialPort.hpp
+ * Filename:  src/SerialPort.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
  * Copyright: 2022, Nova UTD
@@ -38,24 +38,28 @@ SerialPort::SerialPort(const std::string & device_name) {
   tty.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL);
   tty.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
   tty.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
-  tty.c_cc[VTIME] = 0;
-  tty.c_cc[VMIN] = 1;
+  tty.c_cc[VTIME] = 1;
+  tty.c_cc[VMIN] = 0;
   cfsetispeed(&tty, B115200);
   cfsetospeed(&tty, B115200);
 
   if(tcsetattr(this->descriptor, TCSANOW, &tty) != 0) throw std::runtime_error("Error from tcsetattr");
 }
 
-std::string SerialPort::get_line() {
-  std::string buffer;
-  while(true) {
-    char input;
-    if(read(this->descriptor, &input, 1)) {
-      if(input == '\n') {
-	return buffer;
-      } else {
-	buffer += input;
-      }
+SerialPort::~SerialPort() {
+  close(this->descriptor);
+}
+
+std::optional<std::string> SerialPort::get_line() {
+  char input;
+  while(read(this->descriptor, &input, 1)) {
+    if(input == '\n') {
+      std::string temp = std::move(this->buffer);
+      this->buffer = "";
+      return std::optional(temp);
+    } else {
+      this->buffer += input;
     }
   }
+  return std::optional<std::string>();
 }

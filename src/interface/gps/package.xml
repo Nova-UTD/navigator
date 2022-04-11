@@ -10,9 +10,7 @@
   <buildtool_depend>nova_auto_package</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>voltron_msgs</depend>
-
-  <test_depend>voltron_test_utils</test_depend>
+  <depend>nav_msgs</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
