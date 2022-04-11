@@ -110,7 +110,7 @@ class LidarCorrectionNode(Node):
         self.map_bl_tf = TransformStamped()
         self.yaw_velocity = 0.0
 
-        self.lateral_correction = 0.0
+        self.bias = [0.0, 0.0]
 
     def cache_imu(self, msg: Imu):
         self.yaw_velocity = msg.angular_velocity.z
@@ -215,9 +215,39 @@ class LidarCorrectionNode(Node):
 
     def calculate_bias(self, msg: PointCloud2):
         start = time.time()
+        print(self.bias)
+        try:
+            # Destination base_link is listed first in args
+            map_bl_tf = self.tf_buffer.lookup_transform(
+                'map', 'base_link', rclpy.time.Time(seconds=0, nanoseconds=0))
+            result_pose = PoseWithCovarianceStamped()
+            result_pose.header.stamp = self.get_clock().now().to_msg()
+            result_pose.header.frame_id = 'map'
+
+            # self.lateral_corrections.append(mean_y*K*-1)
+            # if len(self.lateral_corrections) > 16:
+            #     self.lateral_corrections.pop(0)
+            # mean_correction = sum(self.lateral_corrections) / \
+            #     len(self.lateral_corrections)
+            trans = map_bl_tf.transform.translation
+            result_pose.pose.pose.position.x = trans.x + self.bias[0]
+            result_pose.pose.pose.position.y = trans.y + self.bias[1]
+
+            result_pose.pose.covariance = [0.1, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.1, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+            self.result_odom_pub.publish(result_pose)
+        except TransformException as ex:
+            self.get_logger().info(
+                f'Could not transform map to base_link: {ex}')
+            return
 
         if abs(self.yaw_velocity) > 0.3:
-            # self.get_logger().info("Turning too fast, skipping de-bias")
+            self.get_logger().info("Turning too fast, skipping de-bias")
             return
 
         road_bound = self.road_boundary
@@ -258,6 +288,7 @@ class LidarCorrectionNode(Node):
         # xyz = np.transpose(np.array([npcloud['x'], npcloud['y'], npcloud['z']]))
         trans: Vector3 = self.map_bl_tf.transform.translation
         if len(map_pts) < 1:
+            self.get_logger().warn("Map points too short, skipping.")
             return
         map_pts = r.apply(map_pts)
         map_pts[:, 0] += trans.x
@@ -276,6 +307,7 @@ class LidarCorrectionNode(Node):
 
         viz_msg.scale.x = 1.0
         if not isinstance(road_bound, ShapelyPolygon):
+            self.get_logger().warn("Failed to generate ShapelyPolygon, skipping.")
             return
 
         for pt in map_pts:
@@ -292,6 +324,7 @@ class LidarCorrectionNode(Node):
         src_original = rnp.numpify(msg)
         src_3d = self.preprocessPoints(src_original)
         if src_3d is None:
+            self.get_logger().warn("Failed to filter road points, skipping.")
             return
         # These include points inside the road boundary, which aren't useful to us
         src_all = np.array([src_3d['x'], src_3d['y']]).T
@@ -303,6 +336,7 @@ class LidarCorrectionNode(Node):
         # print("---")
 
         if len(road_bound.exterior.coords) < 4:
+            self.get_logger().warn("Filtered road points too short, skipping.")
             return
 
         outside_count = 0
@@ -334,14 +368,20 @@ class LidarCorrectionNode(Node):
         # We should rotate this using the inverse of the map->bl transform,
         # which will give us a map-level bias vector that we can use to correct GNSS data
         # Kp = 1*(outside_count**2/len(src_all))
-        K = 3.0
+        K = 10.0 * (outside_count/len(src_all))
+
         corr_x = -1*(mean_y*math.cos(math.pi/2+yaw)*K)
         corr_y = -1*(mean_y*math.sin(math.pi/2+yaw)*K)
+        self.bias[0] += corr_x*0.25
+        self.bias[1] += corr_y*0.25
 
-        # correction = min(mean_y*Kp*-1, 1.0)
-        # correction = max(correction, -1.0)
+        self.bias[0] = min(self.bias[0], 1.0)
+        self.bias[0] = max(self.bias[0], -1.0)
+        self.bias[1] = min(self.bias[1], 1.0)
+        self.bias[1] = max(self.bias[1], -1.0)
 
-        # self.publish_correction_arrow(0.0, mean_y*Kp*-1)
+        self.publish_correction_arrow(
+            transl.x, transl.y, transl.x+corr_x, transl.y+corr_y)
 
         # if abs(mean_y) < 2:
         #     return
@@ -355,32 +395,15 @@ class LidarCorrectionNode(Node):
             print("MOVE LEFT {:.1f}".format(
                 mean_y))
 
-        result_pose = PoseWithCovarianceStamped()
-        result_pose.header.stamp = self.get_clock().now().to_msg()
-        result_pose.header.frame_id = 'base_link'
-
-        result_pose.pose.pose.position.x = 0.0
-        result_pose.pose.pose.position.y = self.lateral_correction
-
-        result_pose.pose.covariance = [5.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, 0.3, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-
-        self.result_odom_pub.publish(result_pose)
-
         end = time.time()
         # print("{:.2f} ms".format((end - start)*1000))
-        self.lateral_correction = mean_y*K*-1
 
-    def publish_correction_arrow(self, arrow_x, arrow_y):
+    def publish_correction_arrow(self, arrow_ax, arrow_ay, arrow_bx, arrow_by):
         viz_msg = Marker()
         viz_msg.color = ColorRGBA(
             r=1.0, g=0.0, b=0.0, a=1.0
         )
-        viz_msg.header.frame_id = 'base_link'
+        viz_msg.header.frame_id = 'map'
         viz_msg.type = Marker.ARROW
         viz_msg.header.stamp = self.get_clock().now().to_msg()
         viz_msg.frame_locked = True
@@ -388,12 +411,12 @@ class LidarCorrectionNode(Node):
         viz_msg.scale.x = 0.3
         viz_msg.scale.y = 0.6
         viz_msg.points.append(Point(
-            x=0.0,
-            y=0.0
+            x=arrow_ax,
+            y=arrow_ay
         ))
         viz_msg.points.append(Point(
-            x=arrow_x,
-            y=arrow_y
+            x=arrow_bx,
+            y=arrow_by
         ))
 
         self.arrow_viz_pub.publish(viz_msg)

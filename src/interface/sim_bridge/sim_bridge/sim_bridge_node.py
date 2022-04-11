@@ -62,10 +62,10 @@ EGO_AUTOPILOT_ENABLED = True
 # EGO_SPAWN_Y = -60.0
 # EGO_SPAWN_Z = 6.0
 # EGO_SPAWN_YAW = 0.0
-EGO_SPAWN_X = -89.5
-EGO_SPAWN_Y = -162.6
-EGO_SPAWN_Z = 2.0
-EGO_SPAWN_YAW = 180.0
+EGO_SPAWN_X = 0.0  # -89.5
+EGO_SPAWN_Y = 28.0  # -162.6
+EGO_SPAWN_Z = 4.0
+EGO_SPAWN_YAW = 0.0
 EGO_MODEL = 'vehicle.audi.etron'
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
@@ -256,15 +256,15 @@ class SimBridgeNode(Node):
         angular_sdev = 0.6
         covariance_multiplier = 2.0
 
-        posewithcov.covariance = [2.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 2.0, 0.0, 0.0, 0.0, 0.0,
+        posewithcov.covariance = [0.05, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                  0.0, 0.05, 0.0, 0.0, 0.0, 0.0,
                                   0.0, 0.0, GNSS_ALT_SDEV**.5*covariance_multiplier, 0.0, 0.0, 0.0,
                                   0.0, 0.0, 0.0, angular_sdev**.5*covariance_multiplier, 0.0, 0.0,
                                   0.0, 0.0, 0.0, 0.0, angular_sdev**.5*covariance_multiplier, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 0.0, angular_sdev**.5*covariance_multiplier]
+                                  0.0, 0.0, 0.0, 0.0, 0.0, 0.2]
 
-        msg.twist.covariance = [GNSS_TWIST_LIN_SDEV**.5, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                0.0, GNSS_TWIST_LIN_SDEV**.5, 0.0, 0.0, 0.0, 0.0,
+        msg.twist.covariance = [0.15, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                0.0, 0.15, 0.0, 0.0, 0.0, 0.0,
                                 0.0, 0.0, -1.0, 0.0, 0.0, 0.0,
                                 0.0, 0.0, 0.0, -1.0, 0.0, 0.0,
                                 0.0, 0.0, 0.0, 0.0, -1.0, 0.0,
@@ -293,13 +293,13 @@ class SimBridgeNode(Node):
         imu_msg.angular_velocity.x = data.gyroscope.x * -1
         imu_msg.angular_velocity.y = data.gyroscope.y * -1
         imu_msg.angular_velocity.z = data.gyroscope.z * -1
-        imu_msg.linear_acceleration_covariance = [0.0, 0.0, 0.0,
-                                                  0.0, 0.0, 0.0,
-                                                  0.0, 0.0, 0.0]
+        imu_msg.linear_acceleration_covariance = [0.1, 0.0, 0.0,
+                                                  0.0, 0.1, 0.0,
+                                                  0.0, 0.0, 0.1]
 
-        imu_msg.angular_velocity_covariance = [0.0, 0.0, 0.0,
-                                               0.0, 0.0, 0.0,
-                                               0.0, 0.0, 0.0]
+        imu_msg.angular_velocity_covariance = [0.05, 0.0, 0.0,
+                                               0.0, 0.05, 0.0,
+                                               0.0, 0.0, 0.05]
 
         self.zed_imu_pub.publish(imu_msg)
 
@@ -449,7 +449,7 @@ class SimBridgeNode(Node):
             math.sqrt((vel.x ** 2) + (vel.y ** 2) + (vel.z ** 2))/0.447) * 0.447
         twist_linear.twist.twist.linear.x = speed
         # Our speedometer is accurate to ~0.5 m/s. Covariance is the square of stdev.
-        twist_linear.twist.covariance[0] = 0.25
+        twist_linear.twist.covariance[0] = 0.1
         twist_linear.header.frame_id = 'base_link'
         twist_linear.header.stamp = self.get_clock().now().to_msg()
 
@@ -734,9 +734,12 @@ class SimBridgeNode(Node):
         spawn_loc.x = EGO_SPAWN_X  # 0.0
         spawn_loc.y = EGO_SPAWN_Y  # 24.5
         spawn_loc.z = EGO_SPAWN_Z  # 2.0  # Start up in the air
+        random_spawn = random.choice(
+            self.world.get_map().get_spawn_points())
         spawn = carla.Transform()
-        spawn.location = spawn_loc
-        spawn.rotation.yaw = EGO_SPAWN_YAW
+        spawn = random_spawn
+        # spawn.location = spawn_loc
+        # spawn.rotation.yaw = EGO_SPAWN_YAW
         self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, spawn))
         vehicle_bp = self.blueprint_library.find(EGO_MODEL)
         self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, spawn)

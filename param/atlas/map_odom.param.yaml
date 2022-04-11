@@ -15,8 +15,8 @@
         false,
         false,
         true,
-        true,
-        true,
+        false,
+        false,
         false,
         false,
         false,
@@ -37,9 +37,9 @@
         false,
         false,
         false,
-        true,
-        true,
-        true,
+        false,
+        false,
+        false,
         true,
         true,
         true,
@@ -68,7 +68,7 @@
     pose0: "/pose0"
     pose0_config:
       [
-        false,
+        true,
         true,
         false,
         false,

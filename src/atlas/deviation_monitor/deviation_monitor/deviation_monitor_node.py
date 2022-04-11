@@ -24,6 +24,14 @@ Todos:
 
 '''
 
+from sklearn.neighbors import NearestNeighbors
+from shapely.ops import nearest_points
+import cv2
+from shapely import affinity
+from shapely.ops import unary_union, transform
+from shapely.geometry import MultiPolygon
+from shapely.geometry.polygon import Polygon as ShapelyPolygon
+from shapely.geometry import Point as ShapelyPoint
 from turtle import Shape
 from scipy import rand
 from sensor_msgs.msg import PointCloud2
@@ -46,21 +54,19 @@ import numpy as np
 import ros2_numpy as rnp
 from rclpy.node import Node
 import rclpy
-
-# For process timing
+from datetime import datetime
 import time
 
+start = time.time()
+
 # Polygon intersection stuff
-from shapely.geometry import Point as ShapelyPoint
-from shapely.geometry.polygon import Polygon as ShapelyPolygon
-from shapely.geometry import MultiPolygon
-from shapely.ops import unary_union, transform
-from shapely import affinity
 
 # For ICP
-import cv2
-from shapely.ops import nearest_points
-from sklearn.neighbors import NearestNeighbors
+
+date_time = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
+f = open('deviation_report_{}.csv'.format(date_time), 'w')
+f.write(
+    f"time,tru_x, tru_y, ukf_x,ukf_y,error\n")
 
 
 class DeviationMonitorNode(Node):
@@ -87,7 +93,8 @@ class DeviationMonitorNode(Node):
         self.bl_map_tf = TransformStamped()
         self.true_odom = Odometry()
         self.errors = []
-        self.error_history = 500
+        self.error_history = 1000
+        self.start = time.time()
 
     def true_odom_cb(self, msg: Odometry):
         # print("True OD received")
@@ -97,17 +104,27 @@ class DeviationMonitorNode(Node):
         # print("UKF OD received")
         ukf_pos = msg.pose.pose.position
         tru_pos = self.true_odom.pose.pose.position
+        if tru_pos.x == 0.0:
+            return
         transl_error = math.sqrt(
             (ukf_pos.x - tru_pos.x)**2 +
             (ukf_pos.y - tru_pos.y)**2 +
             (ukf_pos.z - tru_pos.z)**2
         )
+        t = time.time() - self.start
 
-        if len(self.errors) < self.error_history:
-            self.errors.append(transl_error)
+        self.errors.append(transl_error)
         mean_error = np.array(self.errors).mean()
         self.deviation_pub.publish(Float32(data=mean_error))
-        print("Er: {}".format(mean_error))
+        # print("Er @ {}: {}".format(len(self.errors), mean_error))
+        f.write(
+            f"{t},{tru_pos.x}, {tru_pos.y}, {ukf_pos.x},{ukf_pos.y},{mean_error}\n")
+
+        if t > 300:
+            f.close()
+            exit()
+        else:
+            print(f"{300-t}, {mean_error}")
 
 
 def main(args=None):
@@ -120,6 +137,7 @@ def main(args=None):
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
+    f.close()
     deviation_monitor_node.destroy_node()
     rclpy.shutdown()
 
