@@ -372,8 +372,8 @@ class LidarCorrectionNode(Node):
 
         corr_x = -1*(mean_y*math.cos(math.pi/2+yaw)*K)
         corr_y = -1*(mean_y*math.sin(math.pi/2+yaw)*K)
-        self.bias[0] += corr_x*0.25
-        self.bias[1] += corr_y*0.25
+        self.bias[0] += corr_x*0.35
+        self.bias[1] += corr_y*0.35
 
         self.bias[0] = min(self.bias[0], 1.0)
         self.bias[0] = max(self.bias[0], -1.0)
