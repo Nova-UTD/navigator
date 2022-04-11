@@ -39,7 +39,7 @@ namespace BehaviorPlanner {
 
 constexpr auto message_frequency = 100ms;
 constexpr float STOP_SPEED = 0.0;
-constexpr float YIELD_SPEED = 5.0;
+constexpr float YIELD_SPEED = 3.0;
 constexpr float SPEED_LIMIT = 10.0;
 
 
@@ -83,6 +83,7 @@ private:
     State current_state;
     bool reached_zone;
     int stop_ticks;
+    int yield_ticks;
 
     // pub/sub functions
     void send_message();
@@ -92,11 +93,11 @@ private:
     void update_state();
 
     // transition functions
-    bool upcoming_intersection();
     bool in_zone(float x, float y);
+    bool upcoming_intersection();
     bool obstacles_present();
-    bool is_stopped();  
-    void add_stop_zone();
+    bool reached_desired_velocity(float desired_velocity);
+    bool is_stopped();
     SignalType classify_signal(const navigator::opendrive::Signal& signal);
 
 };

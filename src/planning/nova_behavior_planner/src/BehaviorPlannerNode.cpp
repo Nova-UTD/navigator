@@ -21,6 +21,7 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
   this->current_state = LANEKEEPING;
   this->reached_zone = false;
   this->stop_ticks = 0;
+  this->yield_ticks = 0;
 
   // xml parsing
   RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
@@ -78,7 +79,20 @@ void BehaviorPlannerNode::update_state() {
       RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
       
       if (upcoming_intersection()) {
-        current_state = STOPPING;
+        if (final_zones.zones[0].max_speed == STOP_SPEED) {
+          current_state = STOPPING;
+        } else {
+          current_state = YIELDING;
+        }
+      }
+      break;
+    case YIELDING:
+      RCLCPP_INFO(this->get_logger(), "current state: YIELDING");
+
+      if (reached_desired_velocity(YIELD_SPEED)) yield_ticks += 1;
+      if (yield_ticks >= 5) {
+        yield_ticks = 0;
+        current_state = IN_JUNCTION;
       }
       break;
     case STOPPING:
@@ -202,7 +216,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
         Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
         switch(current_signal) {
             case SignalType::Yield:
-                zone.max_speed = STOP_SPEED;
+                zone.max_speed = YIELD_SPEED;
                 break;
             case SignalType::Stop:
                 zone.max_speed = STOP_SPEED;
@@ -227,6 +241,11 @@ bool BehaviorPlannerNode::obstacles_present() {
     }
   }
   return false;
+}
+
+bool BehaviorPlannerNode::reached_desired_velocity(float desired_velocity) {
+  float speed_dif = std::abs(desired_velocity - current_speed);
+  return speed_dif < 0.08;
 }
 
 bool BehaviorPlannerNode::is_stopped() {
