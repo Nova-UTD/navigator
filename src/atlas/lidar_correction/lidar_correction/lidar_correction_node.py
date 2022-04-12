@@ -74,7 +74,7 @@ class LidarCorrectionNode(Node):
 
         # Create our publishers
         self.road_cloud_sub = self.create_subscription(
-            PointCloud2, '/lidar/semantic/road', self.calculate_bias, 10
+            PointCloud2, '/lidar/semantic/road', self.calculate_bias, 1
         )
         self.imu_sub = self.create_subscription(
             Imu, '/sensors/zed/imu', self.cache_imu, 10
@@ -169,7 +169,7 @@ class LidarCorrectionNode(Node):
             viz_msgs.markers.append(viz_msg)
 
         loc = bl_map_tf.transform.translation
-        nearby_circle = ShapelyPoint(loc.x, loc.y).buffer(20)
+        nearby_circle = ShapelyPoint(loc.x, loc.y).buffer(12)
         big_ole_polygon = unary_union(polygons).intersection(nearby_circle)
 
         if isinstance(big_ole_polygon, MultiPolygon):
@@ -206,9 +206,9 @@ class LidarCorrectionNode(Node):
         # Filter out faraway points
         pts = pts[np.logical_and(
             np.logical_and(
-                pts['x'] <= 20.0, pts['y'] < 10),
+                pts['x'] <= 8.0, pts['y'] < 10),
             np.logical_and(pts['y'] > -6, pts['z'] < 0.5))]
-        pts = pts[::1]  # Downsample, only keeping every nth point
+        pts = pts[::8]  # Downsample, only keeping every nth point
         # Shift the point cloud n meters closer to the car. This is a temporary fix.
         pts['x'] -= 2.0
 
@@ -314,44 +314,37 @@ class LidarCorrectionNode(Node):
         if src_all.shape[1] != 2:
             self.get_logger().warn("Filtered road points not in expected shape, skipping.")
             return
-        # print(src_all)
-        # print("---")
 
         if len(road_bound.exterior.coords) < 4:
             self.get_logger().warn("Filtered road points too short, skipping.")
             return
 
         outside_count = 0
-        mean_y = 0
-        pts_a = []
-        pts_b = []
-        road_grid = self.get_road_grid(road_bound, 1.0)
+        road_grid = self.get_road_grid(road_bound, 0.4)
         for pt in src_all:
             shapely_pt = ShapelyPoint(pt)
             if not shapely_pt.within(road_bound):
                 # Possible slowdown...
-                p1, p2 = nearest_points(road_bound, shapely_pt)
-                pts_a.append([shapely_pt.x, shapely_pt.y])
-                pts_b.append([p1.x, p1.y])
                 # if dist < 1.0:
                 outside_count += 1
-                mean_y += shapely_pt.y-p1.y
-                # print(pt[1])
-        # print(src_all)
-        # print(road_grid)
 
         if outside_count < 10:
-            # self.get_logger().info("No bias found, skipping.")
+            self.get_logger().info("Not enough rogue points, skipping.")
             return
 
         '''
         ICP!
         '''
-        res = self.icp(road_grid, src_all, verbose=False)
+        # print("Pre-ICP: {:.2f} ms".format((time.time() - start)*1000))
+        res = self.icp(road_grid, src_all, max_iterations=20,
+                       convergence_rotation_threshold=1.0, verbose=True)
+        print("Post-ICP: {:.2f} ms".format((time.time() - start)*1000))
         if res is None or len(res) < 2:
+            print("ICP failed: Where's the result?")
             return
         tf, np_pts = res
-        print(f"Y: {tf[1,2]}")
+        # print(f"Y: {tf[1,2]}")
+        corrected_y = tf[1, 2]
 
         data = np.zeros(len(np_pts), dtype=[
             ('x', np.float32),
@@ -385,19 +378,18 @@ class LidarCorrectionNode(Node):
             #     self.lateral_corrections.pop(0)
             # mean_correction = sum(self.lateral_corrections) / \
             #     len(self.lateral_corrections)
-            force = 3.0 if self.idx > 100 else 1.0
             trans = map_bl_tf.transform.translation
-            result_pose.pose.pose.position.x = trans.x  # + tf[0, 2]
-            result_pose.pose.pose.position.y = trans.y  # + tf[1, 2]
+            result_pose.pose.pose.position.x = trans.x + self.bias[0]
+            result_pose.pose.pose.position.y = trans.y + self.bias[1]
 
-            result_pose.pose.covariance = [0.05, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                           0.0, 0.05, 0.0, 0.0, 0.0, 0.0,
+            result_pose.pose.covariance = [0.1, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.1, 0.0, 0.0, 0.0, 0.0,
                                            0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                            0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                            0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                            0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-            # self.result_odom_pub.publish(result_pose)
+            self.result_odom_pub.publish(result_pose)
         except TransformException as ex:
             self.get_logger().info(
                 f'Could not transform map to base_link: {ex}')
@@ -405,37 +397,24 @@ class LidarCorrectionNode(Node):
 
         map_bl_tf = self.tf_buffer.lookup_transform(
             'map', 'base_link', rclpy.time.Time(seconds=0, nanoseconds=0))
-        mean_y /= outside_count
+        # mean_y /= outside_count
         yaw = 2*math.asin(map_bl_tf.transform.rotation.z)
         transl = map_bl_tf.transform.translation
-
-        # self.publish_correction_arrow_bl(tf[0, 2], tf[1, 2])
-        # print(f"({tf[0,2]},{tf[1,2]})")
-        # print(f"{transl.x + tf[0, 2]}, {transl.x + tf[0, 2]}")
-
-        # print(pts_a)
-        # print(pts_b)
-
-        # T, distances, i = self.icp(src, dst)
         map_bl_tf = self.tf_buffer.lookup_transform(
             'map', 'base_link', rclpy.time.Time(seconds=0, nanoseconds=0))
-        mean_y /= outside_count
-        yaw = 2*math.asin(map_bl_tf.transform.rotation.z)
-        transl = map_bl_tf.transform.translation
-        true = self.true_odom.pose.pose.position
-        # print(f"{true.x},{true.y},{transl.x},{transl.y},{yaw},{mean_y}")
 
         # We now have a vector along the y axis (either the vehicle's left or right) representing our bias
         # We should rotate this using the inverse of the map->bl transform,
         # which will give us a map-level bias vector that we can use to correct GNSS data
         # Kp = 1*(outside_count**2/len(src_all))
-        K = 10.0 * (outside_count/len(src_all))
-        corr_x = -1*(mean_y*math.cos(math.pi/2+yaw)*4)
-        corr_y = -1*(mean_y*math.sin(math.pi/2+yaw)*4)
-        corr_x = min(corr_x, 2.0)
-        corr_x = max(corr_x, -2.0)
-        corr_y = min(corr_y, 2.0)
-        corr_y = max(corr_y, -2.0)
+        K = 6.0
+        corr_x = K*(corrected_y*math.cos(math.pi/2+yaw))
+        corr_y = K*(corrected_y*math.sin(math.pi/2+yaw))
+        corr_x = min(corr_x, 1.0)
+        corr_x = max(corr_x, -1.0)
+        corr_y = min(corr_y, 1.0)
+        corr_y = max(corr_y, -1.0)
+
         # self.bias[0] += corr_x*0.05
         # self.bias[1] += corr_y*0.05
         self.bias[0] -= self.bias[0]/self.idx
@@ -463,8 +442,8 @@ class LidarCorrectionNode(Node):
         # print(
         #     "{:.2f},{:.2f},{:.2f}, {:.2f},{:.2f},{:.2f},{:.2f}".format(time.time()-self.start, transl.x, transl.y, corr_x, corr_y, self.bias[0], self.bias[1]))
 
-        end = time.time()
-        # print("{:.2f} ms".format((end - start)*1000))
+        # print("Total: {:.2f} ms".format((time.time() - start)*1000))
+        # print(corrected_y)
 
     def publish_correction_arrow(self, arrow_ax, arrow_ay, arrow_bx, arrow_by):
         viz_msg = Marker()
@@ -515,7 +494,7 @@ class LidarCorrectionNode(Node):
         # viz_msg.pose.position.x =
         # viz_msg.pose.position.y =
         # viz_msg.pose.position.z = 2.0
-        print(f"Yaw: {math.acos(tf[0,0])}")
+        # print(f"Yaw: {math.acos(tf[0,0])}")
 
         viz_msg.pose.orientation.z = math.sin(math.acos(tf[0, 0])/2)
 
@@ -548,18 +527,6 @@ class LidarCorrectionNode(Node):
     # This is from Clay Flannigan's ICP implementation:
     # https://github.com/ClayFlannigan/icp/blob/master/icp.py
     # WSH.
-
-    def euclidean_distance(self, point1, point2):
-        """
-        Euclidean distance between two points.
-        :param point1: the first point as a tuple (a_1, a_2, ..., a_n)
-        :param point2: the second point as a tuple (b_1, b_2, ..., b_n)
-        :return: the Euclidean distance
-        """
-        a = np.array(point1)
-        b = np.array(point2)
-
-        return np.linalg.norm(a - b, ord=2)
 
     def point_based_matching(self, point_pairs):
         """
@@ -614,7 +581,7 @@ class LidarCorrectionNode(Node):
 
         return rot_angle, translation_x, translation_y
 
-    def icp(self, reference_points, points, max_iterations=100, distance_threshold=3.0, convergence_translation_threshold=0.3,
+    def icp(self, reference_points, points, max_iterations=100, distance_threshold=3.0, convergence_translation_threshold=0.05,
             convergence_rotation_threshold=1e-2, point_pairs_threshold=10, verbose=False):
         """
         An implementation of the Iterative Closest Point algorithm that matches a set of M 2D points to another set
@@ -639,6 +606,7 @@ class LidarCorrectionNode(Node):
         transl_x = 0.0
         transl_y = 0.0
         if reference_points is None:
+            print("ICP skip: No road points were given.")
             return
         nbrs = NearestNeighbors(
             n_neighbors=1, algorithm='kd_tree').fit(reference_points)
@@ -707,7 +675,7 @@ class LidarCorrectionNode(Node):
                 break
 
         if len(transformation_history) < 1:
-            self.get_logger().warn("ICP failed. Skipping")
+            self.get_logger().warn("ICP skip. No transforms in history.")
             return []
 
         init_tf = transformation_history[0]
@@ -747,6 +715,7 @@ class LidarCorrectionNode(Node):
         np_pts = np.array(
             np_pts)
         if len(np_pts) < 1:
+            "Road grid skip: No valid points found."
             return
         data['x'] = np_pts[:, 0]
 
@@ -755,8 +724,8 @@ class LidarCorrectionNode(Node):
         data['r'] = 227.0
         data['g'] = 181.0
         data['b'] = 5.0
-        data = data[data['x'] > 3]
-        data = data[data['x'] < 20]
+        data = data[data['x'] > 1]
+        data = data[data['x'] < 12]
         msg = rnp.msgify(PointCloud2, data)
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = "base_link"
