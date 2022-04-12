@@ -36,7 +36,7 @@ void ObstacleZonerNode::zone_perception(Obstacle3DArray::SharedPtr ptr) {
         //+x, -y
         stop_zone.poly.points.push_back(extend_from_center(zone_padding, obstacle.bounding_box.corners[1].x, obstacle.bounding_box.corners[1].y, center_x, center_y));
         //-x, -y
-        stop_zone.poly.points.push_back(extend_from_center(zone_padding, obstacle.bounding_box.corners[2].x, obstacle.bounding_box.corners[2 ].y, center_x, center_y));
+        stop_zone.poly.points.push_back(extend_from_center(zone_padding, obstacle.bounding_box.corners[2].x, obstacle.bounding_box.corners[2].y, center_x, center_y));
         //-x, +y
         stop_zone.poly.points.push_back(extend_from_center(zone_padding, obstacle.bounding_box.corners[3].x, obstacle.bounding_box.corners[3].y, center_x, center_y));
         zones.zones.push_back(stop_zone);
@@ -44,24 +44,15 @@ void ObstacleZonerNode::zone_perception(Obstacle3DArray::SharedPtr ptr) {
         Zone slow_zone;
         slow_zone.max_speed = slow_speed;
         slow_zone.cost = 100;
-        double slow_extent_x = extent_x + slow_extent;
-        double slow_extent_y = extent_y + slow_extent;
-        geometry_msgs::msg::Point32 p;
-        p.x = center_x + slow_extent_x;
-        p.y = center_y + slow_extent_y;
-        slow_zone.poly.points.push_back(p);
+        //+x, +y
+        slow_zone.poly.points.push_back(extend_from_center(zone_padding+slow_extent, obstacle.bounding_box.corners[0].x, obstacle.bounding_box.corners[0].y, center_x, center_y));
         //+x, -y
-        p.x = center_x + slow_extent_x;
-        p.y = center_y - slow_extent_y;
-        slow_zone.poly.points.push_back(p);
+        slow_zone.poly.points.push_back(extend_from_center(zone_padding+slow_extent, obstacle.bounding_box.corners[1].x, obstacle.bounding_box.corners[1].y, center_x, center_y));
         //-x, -y
-        p.x = center_x - slow_extent_x;
-        p.y = center_y - slow_extent_y;
-        slow_zone.poly.points.push_back(p);
+        slow_zone.poly.points.push_back(extend_from_center(zone_padding+slow_extent, obstacle.bounding_box.corners[2].x, obstacle.bounding_box.corners[2].y, center_x, center_y));
         //-x, +y
-        p.x = center_x - slow_extent_x;
-        p.y = center_y + slow_extent_y;
-        slow_zone.poly.points.push_back(p);
+        slow_zone.poly.points.push_back(extend_from_center(zone_padding+slow_extent, obstacle.bounding_box.corners[3].x, obstacle.bounding_box.corners[3].y, center_x, center_y));
+        zones.zones.push_back(stop_zone);
         zones.zones.push_back(slow_zone);
 
     }

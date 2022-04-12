@@ -24,10 +24,10 @@ public:
 
 private:  
     //extra space to put around obstacles to avoid near misses
-    static constexpr double zone_padding = 1.5f;
+    static constexpr double zone_padding = 2.0;
     //size of the slow zone that goes around around the padded stop zone
-    static constexpr double slow_extent = 1;
-    static constexpr double slow_speed = 2; //speed to set the slow zone two
+    static constexpr double slow_extent = 1.0;
+    static constexpr double slow_speed = 2.0; //speed to set the slow zone two
     // pub/sub
     rclcpp::Publisher<ZoneArray>::SharedPtr zone_publisher;
     rclcpp::Subscription<Obstacle3DArray>::SharedPtr perception_subscription;

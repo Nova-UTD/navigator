@@ -388,12 +388,15 @@ class SimBridgeNode(Node):
             )
             #add world space corner points
             corner_points = bbox.get_world_vertices(actor_tf)
-            for i, tf_pt in enumerate(corner_points):
+            carla_to_our_ordering = [(0,0),(4,1),(6,2),(2,3)] #carla orders vertices in the box differently than we do. 
+            for c, us in carla_to_our_ordering:
+                tf_pt = corner_points[c]
                 corner = Point()
                 corner.x = tf_pt.x
                 corner.y = -tf_pt.y #change coordinate system
                 corner.z = tf_pt.z
-                obst.bounding_box.corners[i] = corner
+                obst.bounding_box.corners[us] = corner
+                
 
 
             obstacles.append(obst)
