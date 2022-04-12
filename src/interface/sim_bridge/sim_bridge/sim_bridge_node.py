@@ -361,9 +361,9 @@ class SimBridgeNode(Node):
             # Set bounding box
             # changed due to CARLA's nonsensical location logic
             pos = Point()
-            pos.x = vehicle.get_location().x #bbox.location.x
-            pos.y = vehicle.get_location().y #bbox.location.y*-1
-            pos.z = vehicle.get_location().z #bbox.location.z
+            pos.x = vehicle.get_location().x 
+            pos.y = -vehicle.get_location().y
+            pos.z = vehicle.get_location().z
 
             actor_tf: carla.Transform = vehicle.get_transform()
 
@@ -386,27 +386,14 @@ class SimBridgeNode(Node):
                 y=bbox.extent.y,
                 z=bbox.extent.z
             )
-            #add corner points
-            corner = Point()
-            corner.x = pos.x + bbox.extent.x
-            corner.y = pos.y + bbox.extent.y
-            corner.z = pos.z
-            obst.bounding_box.corners.append(corner)
-            corner = Point()
-            corner.x = pos.x + bbox.extent.x
-            corner.y = pos.y - bbox.extent.y
-            corner.z = pos.z
-            obst.bounding_box.corners.append(corner)
-            corner = Point()
-            corner.x = pos.x - bbox.extent.x
-            corner.y = pos.y - bbox.extent.y
-            corner.z = pos.z
-            obst.bounding_box.corners.append(corner)
-            corner = Point()
-            corner.x = pos.x - bbox.extent.x
-            corner.y = pos.y + bbox.extent.y
-            corner.z = pos.z
-            obst.bounding_box.corners.append(corner)
+            #add world space corner points
+            corner_points = bbox.get_world_vertices(actor_tf)
+            for i, tf_pt in enumerate(corner_points):
+                corner = Point()
+                corner.x = tf_pt.x
+                corner.y = -tf_pt.y #change coordinate system
+                corner.z = tf_pt.z
+                obst.bounding_box.corners[i] = corner
 
 
             obstacles.append(obst)

@@ -44,7 +44,7 @@ public:
 
 private:
     //how many points on path to actually consider
-    static constexpr size_t horizon = 100;
+    static constexpr size_t horizon = 400;
     //calls MotionPlanner to get the trajectories, selects one, and sends a message containing all trajectories
     //in the future, this will only send the selected trajectory. but sending all is useful for testing
     void send_message();

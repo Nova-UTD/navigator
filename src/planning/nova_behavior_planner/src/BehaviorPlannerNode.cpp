@@ -236,7 +236,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
 bool BehaviorPlannerNode::obstacles_present() {
   for (Obstacle obs : current_obstacles->obstacles) {
     // what if our vehicle is in zone by accident?
-    if (in_zone(obs.bounding_box.center.position.x, -obs.bounding_box.center.position.y)) {
+    if (in_zone(obs.bounding_box.center.position.x, obs.bounding_box.center.position.y)) {
       return true;
     }
   }

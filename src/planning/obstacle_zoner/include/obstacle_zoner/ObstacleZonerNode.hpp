@@ -24,7 +24,7 @@ public:
 
 private:  
     //extra space to put around obstacles to avoid near misses
-    static constexpr double zone_padding = 0.5f;
+    static constexpr double zone_padding = 1.5f;
     //size of the slow zone that goes around around the padded stop zone
     static constexpr double slow_extent = 1;
     static constexpr double slow_speed = 2; //speed to set the slow zone two
@@ -33,6 +33,7 @@ private:
     rclcpp::Subscription<Obstacle3DArray>::SharedPtr perception_subscription;
 
     void zone_perception(Obstacle3DArray::SharedPtr ptr);
+    geometry_msgs::msg::Point32 extend_from_center(double extra_distance, double x, double y, double center_x, double center_y);
 
 };
 
