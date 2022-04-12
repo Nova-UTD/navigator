@@ -24,6 +24,8 @@ Todos:
 
 '''
 
+from turtle import Shape
+from typing import final
 from cv2 import mean
 from sensor_msgs.msg import PointCloud2, Imu
 from scipy.spatial.transform import Rotation as R
@@ -55,6 +57,7 @@ from shapely.geometry.polygon import Polygon as ShapelyPolygon
 from shapely.geometry import MultiPolygon
 from shapely.ops import unary_union, transform
 from shapely import affinity
+from shapely.prepared import prep
 
 # For ICP
 import cv2
@@ -86,8 +89,16 @@ class LidarCorrectionNode(Node):
             Marker, '/atlas/correction_arrow', 10
         )
 
-        self.pcd_debug_pub = self.create_publisher(
-            PointCloud2, '/atlas/debug/pcd', 10
+        self.road_grid_debug_pub = self.create_publisher(
+            PointCloud2, '/atlas/debug/road_grid', 10
+        )
+
+        self.icp_result_pub = self.create_publisher(
+            PointCloud2, '/atlas/debug/icp_result', 10
+        )
+
+        self.icp_input_pub = self.create_publisher(
+            PointCloud2, '/atlas/debug/icp_input', 10
         )
 
         self.result_odom_pub = self.create_publisher(
@@ -118,6 +129,16 @@ class LidarCorrectionNode(Node):
         self.yaw_velocity = msg.angular_velocity.z
 
     def poly_sub_cb(self, msg: PolygonArray):
+        bl_map_tf = TransformStamped()
+        try:
+            # Destination base_link is listed first in args
+            bl_map_tf = self.tf_buffer.lookup_transform(
+                'map', 'base_link', rclpy.time.Time(seconds=0, nanoseconds=0))
+
+        except TransformException as ex:
+            self.get_logger().info(
+                f'Could not transform map to base_link: {ex}')
+            return
         polygons = []
         viz_msgs = MarkerArray()
         for i, poly_msg in enumerate(msg.polygons):
@@ -147,7 +168,9 @@ class LidarCorrectionNode(Node):
 
             viz_msgs.markers.append(viz_msg)
 
-        big_ole_polygon = unary_union(polygons)
+        loc = bl_map_tf.transform.translation
+        nearby_circle = ShapelyPoint(loc.x, loc.y).buffer(20)
+        big_ole_polygon = unary_union(polygons).intersection(nearby_circle)
 
         if isinstance(big_ole_polygon, MultiPolygon):
             big_ole_polygon = big_ole_polygon.geoms[0]
@@ -179,21 +202,11 @@ class LidarCorrectionNode(Node):
         self.road_boundary = big_ole_polygon.simplify(
             0.4, preserve_topology=False)  # Done! "Save" result
 
-        try:
-            # Destination base_link is listed first in args
-            self.map_bl_tf = self.tf_buffer.lookup_transform(
-                'base_link', 'map', rclpy.time.Time(seconds=0, nanoseconds=0))
-
-        except TransformException as ex:
-            self.get_logger().info(
-                f'Could not transform map to base_link: {ex}')
-            return
-
     def preprocessPoints(self, pts):
         # Filter out faraway points
         pts = pts[np.logical_and(
             np.logical_and(
-                pts['x'] <= 10.0, pts['y'] < 10),
+                pts['x'] <= 20.0, pts['y'] < 10),
             np.logical_and(pts['y'] > -6, pts['z'] < 0.5))]
         pts = pts[::1]  # Downsample, only keeping every nth point
         # Shift the point cloud n meters closer to the car. This is a temporary fix.
@@ -203,50 +216,18 @@ class LidarCorrectionNode(Node):
         pcd_msg.header.frame_id = 'base_link'
         pcd_msg.header.stamp = self.get_clock().now().to_msg()
 
-        self.pcd_debug_pub.publish(pcd_msg)
+        self.icp_input_pub.publish(pcd_msg)
 
         return pts
 
     def true_odom_cb(self, msg: Odometry):
-        # print("True OD received")
         self.true_odom = msg
 
     def gnss_cb(self, msg: Odometry):
-        # print("True OD received")
         self.gnss_odom = msg
 
     def calculate_bias(self, msg: PointCloud2):
         start = time.time()
-        try:
-            # Destination base_link is listed first in args
-            map_bl_tf = self.tf_buffer.lookup_transform(
-                'map', 'base_link', rclpy.time.Time(seconds=0, nanoseconds=0))
-            result_pose = PoseWithCovarianceStamped()
-            result_pose.header.stamp = self.get_clock().now().to_msg()
-            result_pose.header.frame_id = 'map'
-
-            # self.lateral_corrections.append(mean_y*K*-1)
-            # if len(self.lateral_corrections) > 16:
-            #     self.lateral_corrections.pop(0)
-            # mean_correction = sum(self.lateral_corrections) / \
-            #     len(self.lateral_corrections)
-            force = 3.0 if self.idx > 100 else 1.0
-            trans = map_bl_tf.transform.translation
-            result_pose.pose.pose.position.x = trans.x + self.bias[0]
-            result_pose.pose.pose.position.y = trans.y + self.bias[1]
-
-            result_pose.pose.covariance = [0.05, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                           0.0, 0.05, 0.0, 0.0, 0.0, 0.0,
-                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-
-            self.result_odom_pub.publish(result_pose)
-        except TransformException as ex:
-            self.get_logger().info(
-                f'Could not transform map to base_link: {ex}')
-            return
 
         # if abs(self.yaw_velocity) > 0.3:
         #     # self.get_logger().info("Turning too fast, skipping de-bias")
@@ -330,7 +311,6 @@ class LidarCorrectionNode(Node):
             return
         # These include points inside the road boundary, which aren't useful to us
         src_all = np.array([src_3d['x'], src_3d['y']]).T
-        # print(src_all)
         if src_all.shape[1] != 2:
             self.get_logger().warn("Filtered road points not in expected shape, skipping.")
             return
@@ -345,6 +325,7 @@ class LidarCorrectionNode(Node):
         mean_y = 0
         pts_a = []
         pts_b = []
+        road_grid = self.get_road_grid(road_bound, 1.0)
         for pt in src_all:
             shapely_pt = ShapelyPoint(pt)
             if not shapely_pt.within(road_bound):
@@ -356,17 +337,82 @@ class LidarCorrectionNode(Node):
                 outside_count += 1
                 mean_y += shapely_pt.y-p1.y
                 # print(pt[1])
+        # print(src_all)
+        # print(road_grid)
 
-        if outside_count < 1:
+        if outside_count < 10:
             # self.get_logger().info("No bias found, skipping.")
             return
 
-        pts_a = np.array(pts_a)
-        pts_b = np.array(pts_b)
-        dist = np.sqrt(
-            np.square(pts_a[:, 0]-pts_b[:, 0])+np.square(pts_a[:, 1]-pts_b[:, 1]))
-        tf = self.icp(pts_a, pts_b)
-        print(tf)
+        '''
+        ICP!
+        '''
+        res = self.icp(road_grid, src_all, verbose=False)
+        if res is None or len(res) < 2:
+            return
+        tf, np_pts = res
+        print(f"Y: {tf[1,2]}")
+
+        data = np.zeros(len(np_pts), dtype=[
+            ('x', np.float32),
+            ('y', np.float32),
+            ('z', np.float32)
+        ])
+        np_pts = np.array(
+            np_pts)
+        data['x'] = np_pts[:, 0]
+
+        data['y'] = np_pts[:, 1]
+        data['z'] = 2.0
+        data = data[data['x'] > 0]
+        msg = rnp.msgify(PointCloud2, data)
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = "base_link"
+        self.icp_result_pub.publish(msg)
+
+        self.visualize_tf_result(tf)
+
+        try:
+            # Destination base_link is listed first in args
+            map_bl_tf = self.tf_buffer.lookup_transform(
+                'map', 'base_link', rclpy.time.Time(seconds=0, nanoseconds=0))
+            result_pose = PoseWithCovarianceStamped()
+            result_pose.header.stamp = self.get_clock().now().to_msg()
+            result_pose.header.frame_id = 'map'
+
+            # self.lateral_corrections.append(mean_y*K*-1)
+            # if len(self.lateral_corrections) > 16:
+            #     self.lateral_corrections.pop(0)
+            # mean_correction = sum(self.lateral_corrections) / \
+            #     len(self.lateral_corrections)
+            force = 3.0 if self.idx > 100 else 1.0
+            trans = map_bl_tf.transform.translation
+            result_pose.pose.pose.position.x = trans.x  # + tf[0, 2]
+            result_pose.pose.pose.position.y = trans.y  # + tf[1, 2]
+
+            result_pose.pose.covariance = [0.05, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.05, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+            # self.result_odom_pub.publish(result_pose)
+        except TransformException as ex:
+            self.get_logger().info(
+                f'Could not transform map to base_link: {ex}')
+            return
+
+        map_bl_tf = self.tf_buffer.lookup_transform(
+            'map', 'base_link', rclpy.time.Time(seconds=0, nanoseconds=0))
+        mean_y /= outside_count
+        yaw = 2*math.asin(map_bl_tf.transform.rotation.z)
+        transl = map_bl_tf.transform.translation
+
+        # self.publish_correction_arrow_bl(tf[0, 2], tf[1, 2])
+        # print(f"({tf[0,2]},{tf[1,2]})")
+        # print(f"{transl.x + tf[0, 2]}, {transl.x + tf[0, 2]}")
+
         # print(pts_a)
         # print(pts_b)
 
@@ -403,9 +449,6 @@ class LidarCorrectionNode(Node):
         self.bias[1] = min(self.bias[1], 2.0)
         self.bias[1] = max(self.bias[1], -2.0)
 
-        self.publish_correction_arrow(
-            transl.x, transl.y, transl.x+self.bias[0]*4, transl.y+self.bias[1]*4)
-
         # if abs(mean_y) < 2:
         #     return
 
@@ -417,8 +460,8 @@ class LidarCorrectionNode(Node):
         # else:
         #     print("MOVE LEFT {:.1f}".format(
         #         mean_y))
-        print(
-            "{:.2f},{:.2f},{:.2f}, {:.2f},{:.2f},{:.2f},{:.2f}".format(time.time()-self.start, transl.x, transl.y, corr_x, corr_y, self.bias[0], self.bias[1]))
+        # print(
+        #     "{:.2f},{:.2f},{:.2f}, {:.2f},{:.2f},{:.2f},{:.2f}".format(time.time()-self.start, transl.x, transl.y, corr_x, corr_y, self.bias[0], self.bias[1]))
 
         end = time.time()
         # print("{:.2f} ms".format((end - start)*1000))
@@ -447,124 +490,278 @@ class LidarCorrectionNode(Node):
 
         self.arrow_viz_pub.publish(viz_msg)
 
+    def visualize_tf_result(self, tf):
+        # print(tf)
+        viz_msg = Marker()
+        viz_msg.color = ColorRGBA(
+            r=1.0, g=0.0, b=0.0, a=1.0
+        )
+        viz_msg.header.frame_id = 'base_link'
+        viz_msg.type = Marker.ARROW
+        viz_msg.header.stamp = self.get_clock().now().to_msg()
+        viz_msg.frame_locked = True
+        viz_msg.ns = 'correction_arrow'
+        viz_msg.scale.x = 0.3
+        viz_msg.scale.y = 0.6
+        viz_msg.points.append(Point(
+            x=0.0,
+            y=0.0
+        ))
+        viz_msg.points.append(Point(
+            x=tf[0, 2]*-1,
+            y=tf[1, 2]*-1
+        ))
+
+        # viz_msg.pose.position.x =
+        # viz_msg.pose.position.y =
+        # viz_msg.pose.position.z = 2.0
+        print(f"Yaw: {math.acos(tf[0,0])}")
+
+        viz_msg.pose.orientation.z = math.sin(math.acos(tf[0, 0])/2)
+
+        self.arrow_viz_pub.publish(viz_msg)
+
+    def publish_correction_arrow_bl(self, arrow_x, arrow_y):
+        viz_msg = Marker()
+        viz_msg.color = ColorRGBA(
+            r=1.0, g=0.0, b=0.0, a=1.0
+        )
+        viz_msg.header.frame_id = 'base_link'
+        viz_msg.type = Marker.ARROW
+        viz_msg.header.stamp = self.get_clock().now().to_msg()
+        viz_msg.frame_locked = True
+        viz_msg.ns = 'correction_arrow'
+        viz_msg.scale.x = 0.3
+        viz_msg.scale.y = 0.6
+        viz_msg.points.append(Point(
+            x=0.0,
+            y=0.0
+        ))
+        viz_msg.points.append(Point(
+            x=0.0,
+            y=arrow_y*2
+        ))
+        viz_msg.pose.position.z = 2.0
+
+        self.arrow_viz_pub.publish(viz_msg)
+
     # This is from Clay Flannigan's ICP implementation:
     # https://github.com/ClayFlannigan/icp/blob/master/icp.py
     # WSH.
 
-    def best_fit_transform(self, A, B):
-        '''
-        Calculates the least-squares best-fit transform that maps corresponding points A to B in m spatial dimensions
-        Input:
-        A: Nxm numpy array of corresponding points
-        B: Nxm numpy array of corresponding points
-        Returns:
-        T: (m+1)x(m+1) homogeneous transformation matrix that maps A on to B
-        R: mxm rotation matrix
-        t: mx1 translation vector
-        '''
+    def euclidean_distance(self, point1, point2):
+        """
+        Euclidean distance between two points.
+        :param point1: the first point as a tuple (a_1, a_2, ..., a_n)
+        :param point2: the second point as a tuple (b_1, b_2, ..., b_n)
+        :return: the Euclidean distance
+        """
+        a = np.array(point1)
+        b = np.array(point2)
 
-        assert A.shape == B.shape
+        return np.linalg.norm(a - b, ord=2)
 
-        # get number of dimensions
-        m = A.shape[1]
+    def point_based_matching(self, point_pairs):
+        """
+        This function is based on the paper "Robot Pose Estimation in Unknown Environments by Matching 2D Range Scans"
+        by F. Lu and E. Milios.
 
-        # translate points to their centroids
-        centroid_A = np.mean(A, axis=0)
-        centroid_B = np.mean(B, axis=0)
-        AA = A - centroid_A
-        BB = B - centroid_B
+        :param point_pairs: the matched point pairs [((x1, y1), (x1', y1')), ..., ((xi, yi), (xi', yi')), ...]
+        :return: the rotation angle and the 2D translation (x, y) to be applied for matching the given pairs of points
+        """
 
-        # rotation matrix
-        H = np.dot(AA.T, BB)
-        U, S, Vt = np.linalg.svd(H)
-        R = np.dot(Vt.T, U.T)
+        x_mean = 0
+        y_mean = 0
+        xp_mean = 0
+        yp_mean = 0
+        n = len(point_pairs)
 
-        # special reflection case
-        if np.linalg.det(R) < 0:
-            Vt[m-1, :] *= -1
-            R = np.dot(Vt.T, U.T)
+        if n == 0:
+            return None, None, None
 
-        # translation
-        t = centroid_B.T - np.dot(R, centroid_A.T)
+        for pair in point_pairs:
 
-        # homogeneous transformation
-        T = np.identity(m+1)
-        T[:m, :m] = R
-        T[:m, m] = t
+            (x, y), (xp, yp) = pair
 
-        return T, R, t
+            x_mean += x
+            y_mean += y
+            xp_mean += xp
+            yp_mean += yp
 
-    def nearest_neighbor(self, src, dst):
-        '''
-        Find the nearest (Euclidean) neighbor in dst for each point in src
-        Input:
-            src: Nxm array of points
-            dst: Nxm array of points
-        Output:
-            distances: Euclidean distances of the nearest neighbor
-            indices: dst indices of the nearest neighbor
-        '''
+        x_mean /= n
+        y_mean /= n
+        xp_mean /= n
+        yp_mean /= n
 
-        assert src.shape == dst.shape
+        s_x_xp = 0
+        s_y_yp = 0
+        s_x_yp = 0
+        s_y_xp = 0
+        for pair in point_pairs:
 
-        neigh = NearestNeighbors(n_neighbors=1)
-        neigh.fit(dst)
-        distances, indices = neigh.kneighbors(src, return_distance=True)
-        return distances.ravel(), indices.ravel()
+            (x, y), (xp, yp) = pair
 
-    def icp(self, A, B, init_pose=None, max_iterations=20, tolerance=0.001):
-        '''
-        The Iterative Closest Point method: finds best-fit transform that maps points A on to points B
-        Input:
-            A: Nxm numpy array of source mD points
-            B: Nxm numpy array of destination mD point
-            init_pose: (m+1)x(m+1) homogeneous transformation
-            max_iterations: exit algorithm after max_iterations
-            tolerance: convergence criteria
-        Output:
-            T: final homogeneous transformation that maps A on to B
-            distances: Euclidean distances (errors) of the nearest neighbor
-            i: number of iterations to converge
-        '''
+            s_x_xp += (x - x_mean)*(xp - xp_mean)
+            s_y_yp += (y - y_mean)*(yp - yp_mean)
+            s_x_yp += (x - x_mean)*(yp - yp_mean)
+            s_y_xp += (y - y_mean)*(xp - xp_mean)
 
-        assert A.shape == B.shape
+        rot_angle = math.atan2(s_x_yp - s_y_xp, s_x_xp + s_y_yp)
+        translation_x = xp_mean - \
+            (x_mean*math.cos(rot_angle) - y_mean*math.sin(rot_angle))
+        translation_y = yp_mean - \
+            (x_mean*math.sin(rot_angle) + y_mean*math.cos(rot_angle))
 
-        # get number of dimensions
-        m = A.shape[1]
+        return rot_angle, translation_x, translation_y
 
-        # make points homogeneous, copy them to maintain the originals
-        src = np.ones((m+1, A.shape[0]))
-        dst = np.ones((m+1, B.shape[0]))
-        src[:m, :] = np.copy(A.T)
-        dst[:m, :] = np.copy(B.T)
+    def icp(self, reference_points, points, max_iterations=100, distance_threshold=3.0, convergence_translation_threshold=0.3,
+            convergence_rotation_threshold=1e-2, point_pairs_threshold=10, verbose=False):
+        """
+        An implementation of the Iterative Closest Point algorithm that matches a set of M 2D points to another set
+        of N 2D (reference) points.
 
-        # apply the initial pose estimation
-        if init_pose is not None:
-            src = np.dot(init_pose, src)
+        :param reference_points: the reference point set as a numpy array (N x 2)
+        :param points: the point that should be aligned to the reference_points set as a numpy array (M x 2)
+        :param max_iterations: the maximum number of iteration to be executed
+        :param distance_threshold: the distance threshold between two points in order to be considered as a pair
+        :param convergence_translation_threshold: the threshold for the translation parameters (x and y) for the
+                                                transformation to be considered converged
+        :param convergence_rotation_threshold: the threshold for the rotation angle (in rad) for the transformation
+                                                to be considered converged
+        :param point_pairs_threshold: the minimum number of point pairs the should exist
+        :param verbose: whether to print informative messages about the process (default: False)
+        :return: the transformation history as a list of numpy arrays containing the rotation (R) and translation (T)
+                transformation in each iteration in the format [R | T] and the aligned points as a numpy array M x 2
+        """
 
-        prev_error = 0
+        transformation_history = []
+        r_stack = []
+        transl_x = 0.0
+        transl_y = 0.0
+        if reference_points is None:
+            return
+        nbrs = NearestNeighbors(
+            n_neighbors=1, algorithm='kd_tree').fit(reference_points)
 
-        for i in range(max_iterations):
-            # find the nearest neighbors between the current source and destination points
-            distances, indices = self.nearest_neighbor(
-                src[:m, :].T, dst[:m, :].T)
+        for iter_num in range(max_iterations):
+            if verbose:
+                print('------ iteration', iter_num, '------')
 
-            # compute the transformation between the current source and nearest destination points
-            T, _, _ = self.best_fit_transform(src[:m, :].T, dst[:m, indices].T)
+            closest_point_pairs = []  # list of point correspondences for closest point rule
 
-            # update the current source
-            src = np.dot(T, src)
+            distances, indices = nbrs.kneighbors(points)
+            for nn_index in range(len(distances)):
+                if distances[nn_index][0] < distance_threshold:
+                    closest_point_pairs.append(
+                        (points[nn_index], reference_points[indices[nn_index][0]]))
 
-            # check error
-            mean_error = np.mean(distances)
-            if np.abs(prev_error - mean_error) < tolerance:
+            # if only few point pairs, stop process
+            if verbose:
+                print('number of pairs found:', len(closest_point_pairs))
+            if len(closest_point_pairs) < point_pairs_threshold:
+                if verbose:
+                    print('No better solution can be found (very few point pairs)!')
                 break
-            prev_error = mean_error
 
-        # calculate final transformation
-        T, _, _ = self.best_fit_transform(A, src[:m, :].T)
+            # compute translation and rotation using point correspondences
+            closest_rot_angle, closest_translation_x, closest_translation_y = self.point_based_matching(
+                closest_point_pairs)
+            if closest_rot_angle is not None:
+                if verbose:
+                    print('Rotation:', math.degrees(
+                        closest_rot_angle), 'degrees')
+                    print('Translation:', closest_translation_x,
+                          closest_translation_y)
+            if closest_rot_angle is None or closest_translation_x is None or closest_translation_y is None:
+                if verbose:
+                    print('No better solution can be found!')
+                break
 
-        return T, distances, i
+            # transform 'points' (using the calculated rotation and translation)
+            c, s = math.cos(closest_rot_angle), math.sin(closest_rot_angle)
+            rot = np.array([[c, -s],
+                            [s, c]])
+            rot_fixed = np.array([[c, -s],
+                                  [s, c],
+                                  [0, 0]])
+            r_stack.append(rot)
+            transl_x += closest_translation_x
+            transl_y += closest_translation_y
+            # aligned_points = np.dot(points, rot.T)
+            # aligned_points[:, 0] += closest_translation_x
+            points[:, 1] += closest_translation_y
+
+            # update 'points' for the next iteration
+            # points = aligned_points
+
+            # update transformation history
+            transformation_history.append(
+                np.hstack((rot_fixed, np.array([[closest_translation_x], [closest_translation_y], [1.0]]))))
+
+            # check convergence
+            if (abs(closest_rot_angle) < convergence_rotation_threshold) \
+                    and (abs(closest_translation_x) < convergence_translation_threshold) \
+                    and (abs(closest_translation_y) < convergence_translation_threshold):
+                if verbose:
+                    print('Converged!')
+                break
+
+        if len(transformation_history) < 1:
+            self.get_logger().warn("ICP failed. Skipping")
+            return []
+
+        init_tf = transformation_history[0]
+        final_tf = init_tf
+        for tf in transformation_history[1:]:
+            final_tf = np.dot(tf, final_tf)
+
+        return final_tf, points
+
+    def get_road_grid(self, polygon: ShapelyPolygon, res):
+        valid_points = []
+        latmin, lonmin, latmax, lonmax = polygon.bounds
+
+        # create prepared polygon
+        prep_polygon = prep(polygon)
+
+        # construct a rectangular mesh
+        points = []
+        for lat in np.arange(latmin, latmax, res):
+            for lon in np.arange(lonmin, lonmax, res):
+                points.append(ShapelyPoint((round(lat, 4), round(lon, 4))))
+
+        # validate if each point falls inside shape using
+        # the prepared polygon
+        valid_points.extend(filter(prep_polygon.contains, points))
+        np_pts = []
+        for spt in valid_points:
+            np_pts.append([spt.x, spt.y])
+        data = np.zeros(len(np_pts), dtype=[
+            ('x', np.float32),
+            ('y', np.float32),
+            ('z', np.float32),
+            ('r', np.float32),
+            ('g', np.float32),
+            ('b', np.float32)
+        ])
+        np_pts = np.array(
+            np_pts)
+        if len(np_pts) < 1:
+            return
+        data['x'] = np_pts[:, 0]
+
+        data['y'] = np_pts[:, 1]
+        data['z'] = 2.0
+        data['r'] = 227.0
+        data['g'] = 181.0
+        data['b'] = 5.0
+        data = data[data['x'] > 3]
+        data = data[data['x'] < 20]
+        msg = rnp.msgify(PointCloud2, data)
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = "base_link"
+        self.road_grid_debug_pub.publish(msg)
+        return np_pts
 
 
 def main(args=None):
