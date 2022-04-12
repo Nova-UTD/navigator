@@ -32,6 +32,11 @@ If you're interested in reusing our code, you're welcome and encouraged to do so
 
 Our code is licensed under the MIT License, which can be found in the LICENSE file. Alternatively, read an online version [here](https://mit-license.org/). Note that Autoware's code, including the sections of their code that are included in our project, are under Autoware's license, not ours. 
 
-## Autoware.Auto
-
-Huge thanks to [Autoware.Auto](autoware.auto). Our code is heavily based on theirs, and straight up includes large portions of it. This wouldn't have been possible (or at least, would have been much, much harder) without them!
+## Thanks
+We owe much to the open source community, and Navigator includes or is supported by code from a number of projects. These include:
+- ROS2 Foxy, maintainted by the Open Source Robotics Foundation
+- The [CARLA simulator](carla.org), maintained by the CARLA community
+- Some components from [Autoware.Auto](autoware.auto), maintained by the Autoware Foundation
+- [libOpenDRIVE](https://github.com/grepthat/libOpenDRIVE), maintained by Sebastian Pagel
+- The ROS [robot_localization](https://docs.ros.org/en/melodic/api/robot_localization/html/index.html) package, written by Thomas Moore and Daniel Stouch
+- The [Shapely](https://pypi.org/project/Shapely/) Python geometry package, written by Sean Gillies
