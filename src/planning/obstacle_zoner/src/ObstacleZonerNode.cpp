@@ -27,8 +27,6 @@ void ObstacleZonerNode::zone_perception(Obstacle3DArray::SharedPtr ptr) {
         stop_zone.cost = 999;
         double center_x = obstacle.bounding_box.center.position.x;
         double center_y = obstacle.bounding_box.center.position.y; //translate
-        double extent_x = obstacle.bounding_box.size.x + zone_padding;
-        double extent_y = obstacle.bounding_box.size.x + zone_padding;
         //stop zone:
         //take x/y corner of the box. extend vector from center of box an extra zone_padding units. start at +/+ corner and go clockwise
         //+x, +y

@@ -13,8 +13,8 @@ Targetted sensors:
 - Front and rear Lidar
 ✓ Front  RGB camera
 ✓ Front depth camera
-- CARLA ground truths for
-    - Detected objects
+✓ CARLA ground truths for
+    ✓ Detected objects
     ✓ Car's odometry (position, orientation, speed)
     ✓ CARLA virtual bird's-eye camera (/carla/birds_eye_rgb)
 
@@ -50,17 +50,14 @@ import sys
 sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
 import carla
 import random
+import scenarios
 
+#SCENARIO TO RUN
+SCENARIO = scenarios.normal
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
-CLIENT_WORLD = 'Town07'
-EGO_AUTOPILOT_ENABLED = False
-EGO_SPAWN_X = -180
-EGO_SPAWN_Y = -163
-EGO_SPAWN_Z = 20.0
-EGO_SPAWN_YAW = 90
-EGO_MODEL = 'vehicle.audi.etron'
+
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0)  # 10 Hz
@@ -358,34 +355,8 @@ class SimBridgeNode(Node):
             obst.velocity.y = actor_vel.y*-1  # Fix coordinate system
             obst.velocity.z = actor_vel.z
 
-            # Set bounding box
-            # changed due to CARLA's nonsensical location logic
-            pos = Point()
-            pos.x = vehicle.get_location().x 
-            pos.y = -vehicle.get_location().y
-            pos.z = vehicle.get_location().z
-
             actor_tf: carla.Transform = vehicle.get_transform()
 
-            actor_quat = R.from_euler(
-                'yzx',
-                [actor_tf.rotation.pitch*-1*math.pi/180.0,
-                 actor_tf.rotation.yaw*-1*math.pi/180.0-math.pi,
-                 actor_tf.rotation.roll*-1*math.pi/180.0]
-            ).as_quat()
-            orientation_msg = Quaternion()
-            orientation_msg.x = actor_quat[0]
-            orientation_msg.y = actor_quat[1]
-            orientation_msg.z = actor_quat[2]
-            orientation_msg.w = actor_quat[3]
-
-            obst.bounding_box.center.position = pos
-            obst.bounding_box.center.orientation = orientation_msg
-            obst.bounding_box.size = Vector3(
-                x=bbox.extent.x,
-                y=bbox.extent.y,
-                z=bbox.extent.z
-            )
             #add world space corner points
             corner_points = bbox.get_world_vertices(actor_tf)
             carla_to_our_ordering = [(0,0),(4,1),(6,2),(2,3)] #carla orders vertices in the box differently than we do. 
@@ -397,7 +368,6 @@ class SimBridgeNode(Node):
                 corner.z = tf_pt.z
                 obst.bounding_box.corners[us] = corner
                 
-
 
             obstacles.append(obst)
         obstacles_msg = Obstacle3DArray()
@@ -473,22 +443,22 @@ class SimBridgeNode(Node):
 
         # Publish tf if enabled
         if PULBISH_MAP_BL_TRANSFORM:
-            t = TransformStamped()
-            t.header = odom.header
-            t.child_frame_id = odom.child_frame_id
+            self.last_tf = TransformStamped()
+            self.last_tf.header = odom.header
+            self.last_tf.child_frame_id = odom.child_frame_id
             translation = Vector3(
                 x=odom.pose.pose.position.x,
                 y=odom.pose.pose.position.y,
                 z=odom.pose.pose.position.z
             )
-            t.transform.translation = translation
-            t.transform.rotation = Quaternion(
+            self.last_tf.transform.translation = translation
+            self.last_tf.transform.rotation = Quaternion(
                 x=ego_quat[0],
                 y=ego_quat[1],
                 z=ego_quat[2],
                 w=ego_quat[3]
             )
-            self.tf_broadcaster.sendTransform(t)
+            self.tf_broadcaster.sendTransform(self.last_tf)
 
     def __init__(self):
         super().__init__('sim_bridge_node')
@@ -635,83 +605,14 @@ class SimBridgeNode(Node):
 
         self.connect_to_carla()
 
-    def add_vehicles(self, vehicle_count: int):
-        self.get_logger().info("Spawning {} vehicles".format(vehicle_count))
-
-        for vehicle in range(vehicle_count):
-            # Choose a vehicle blueprint at random.
-            vehicle_bp = random.choice(self.blueprint_library.filter('vehicle.*.*'))
-            
-            # currently manually spawning to test junction code
-            #random_spawn = carla.Transform(carla.Location(x=-77.5, y=-158, z=20), carla.Rotation(yaw=90))
-            random_spawn = random.choice(self.world.get_map().get_spawn_points())
-            
-            # spawn vehicle
-            self.get_logger().info("Spawning vehicle ({}) @ {}".format(vehicle_bp.id, random_spawn))
-            vehicle = self.world.try_spawn_actor(vehicle_bp, random_spawn)
-            
-            # autopilot off for now (junction code testing)
-            if vehicle is not None:
-                vehicle.set_autopilot(enabled=True)
-
-    def add_pedestrians(self, count: int):
-        self.get_logger().info("Spawning {} pedestrians".format(count))
-
-        for ped in range(count):
-            # Choose a vehicle blueprint at random.
-            ped_bp = random.choice(self.blueprint_library.filter('walker.*.*'))
-            spawn = self.world.get_random_location_from_navigation()
-            self.get_logger().info("Spawning ped ({}) @ {}".format(ped_bp.id, spawn))
-            random_spawn = random.choice(
-                self.world.get_map().get_spawn_points())
-            random_spawn.location = spawn
-            ped = self.world.try_spawn_actor(ped_bp, random_spawn)
-            # if ped is not None:
-            #     ped.set_autopilot(enabled=True)
-
     def connect_to_carla(self):
         # Connect to client, load world
         self.get_logger().info("Connecting to CARLA on port {}".format(CLIENT_PORT))
         client = carla.Client('localhost', CLIENT_PORT)
         client.set_timeout(20.0)
-        self.world = client.load_world(CLIENT_WORLD)
-
-        # Forcefully destroy existing actors
-        # if len(self.world.get_actors()) > 0:
-        #     self.get_logger().info("Removing {} old actors".format(len(self.world.get_actors())))
-        #     for actor in self.world.get_actors():
-        #         actor.destroy()
-
-        # Spawn ego vehicle
-        # Get car blueprint
-        self.blueprint_library = self.world.get_blueprint_library()
-
-        # collision_sensor_bp = blueprint_library.find('sensor.other.collision')
-        # Get random spawn point
-        # random_spawn = self.world.get_map().get_spawn_points()[0]
-        spawn_loc = carla.Location()
-        spawn_loc.x = EGO_SPAWN_X  # 0.0
-        spawn_loc.y = EGO_SPAWN_Y  # 24.5
-        spawn_loc.z = EGO_SPAWN_Z  # 2.0  # Start up in the air
-        spawn_rot = carla.Rotation()
-        spawn_rot.pitch = 0
-        spawn_rot.roll = 0
-        spawn_rot.yaw = EGO_SPAWN_YAW
-        spawn = carla.Transform()
-        spawn.location = spawn_loc
-        spawn.rotation = spawn_rot
-        self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, spawn))
-        vehicle_bp = self.blueprint_library.find(EGO_MODEL)
-        self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, spawn)
-        # TODO: Destroy ego actor when node exits or crashes. Currently keeps actor alive in CARLA,
-        # which eventually leads to memory overflow. WSH.
-        self.ego.set_autopilot(enabled=EGO_AUTOPILOT_ENABLED)
-
-        self.add_ego_sensors()
-
-        self.add_vehicles(OBSTACLE_QTY_VEHICLE)
-
-        self.add_pedestrians(OBSTACLE_QTY_PED)
+        SCENARIO(self) #load test scenario
+        sim_bridge.get_logger().info("Started scenario!")
+        
 
     def add_ego_sensors(self):
 
