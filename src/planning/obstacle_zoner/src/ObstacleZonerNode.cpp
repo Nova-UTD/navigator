@@ -25,49 +25,57 @@ void ObstacleZonerNode::zone_perception(Obstacle3DArray::SharedPtr ptr) {
         Zone stop_zone;
         stop_zone.max_speed = 0;
         stop_zone.cost = 999;
+        RCLCPP_INFO(this->get_logger(), "(%f,%f,%f)", obstacle.bounding_box.center.position.x, obstacle.bounding_box.center.position.y, obstacle.bounding_box.center.position.z);
         double center_x = obstacle.bounding_box.center.position.x;
         double center_y = obstacle.bounding_box.center.position.y; //translate
         double extent_x = obstacle.bounding_box.size.x + zone_padding;
         double extent_y = obstacle.bounding_box.size.x + zone_padding;
         //stop zone:
-        //take x/y corner of the box. extend vector from center of box an extra zone_padding units. start at +/+ corner and go clockwise
+        //take x/y corner of the box. start at +/+ corner and go clockwise
         //+x, +y
-        stop_zone.poly.points.push_back(extend_from_center(zone_padding, obstacle.bounding_box.corners[0].x, obstacle.bounding_box.corners[0].y, center_x, center_y));
+        geometry_msgs::msg::Point32 p;
+        p.x = center_x + extent_x;
+        p.y = center_y + extent_y;
+        stop_zone.poly.points.push_back(p);
         //+x, -y
-        stop_zone.poly.points.push_back(extend_from_center(zone_padding, obstacle.bounding_box.corners[1].x, obstacle.bounding_box.corners[1].y, center_x, center_y));
+        p.x = center_x + extent_x;
+        p.y = center_y - extent_y;
+        stop_zone.poly.points.push_back(p);
         //-x, -y
-        stop_zone.poly.points.push_back(extend_from_center(zone_padding, obstacle.bounding_box.corners[2].x, obstacle.bounding_box.corners[2].y, center_x, center_y));
+        p.x = center_x - extent_x;
+        p.y = center_y - extent_y;
+        stop_zone.poly.points.push_back(p);
         //-x, +y
-        stop_zone.poly.points.push_back(extend_from_center(zone_padding, obstacle.bounding_box.corners[3].x, obstacle.bounding_box.corners[3].y, center_x, center_y));
+        p.x = center_x - extent_x;
+        p.y = center_y + extent_y;
+        stop_zone.poly.points.push_back(p);
         zones.zones.push_back(stop_zone);
         //slow zone:
         Zone slow_zone;
         slow_zone.max_speed = slow_speed;
         slow_zone.cost = 100;
-        //+x, +y
-        slow_zone.poly.points.push_back(extend_from_center(zone_padding+slow_extent, obstacle.bounding_box.corners[0].x, obstacle.bounding_box.corners[0].y, center_x, center_y));
+        double slow_extent_x = extent_x + slow_extent;
+        double slow_extent_y = extent_y + slow_extent;
+        p.x = center_x + slow_extent_x;
+        p.y = center_y + slow_extent_y;
+        slow_zone.poly.points.push_back(p);
         //+x, -y
-        slow_zone.poly.points.push_back(extend_from_center(zone_padding+slow_extent, obstacle.bounding_box.corners[1].x, obstacle.bounding_box.corners[1].y, center_x, center_y));
+        p.x = center_x + slow_extent_x;
+        p.y = center_y - slow_extent_y;
+        slow_zone.poly.points.push_back(p);
         //-x, -y
-        slow_zone.poly.points.push_back(extend_from_center(zone_padding+slow_extent, obstacle.bounding_box.corners[2].x, obstacle.bounding_box.corners[2].y, center_x, center_y));
+        p.x = center_x - slow_extent_x;
+        p.y = center_y - slow_extent_y;
+        slow_zone.poly.points.push_back(p);
         //-x, +y
-        slow_zone.poly.points.push_back(extend_from_center(zone_padding+slow_extent, obstacle.bounding_box.corners[3].x, obstacle.bounding_box.corners[3].y, center_x, center_y));
-        zones.zones.push_back(stop_zone);
+        p.x = center_x - slow_extent_x;
+        p.y = center_y + slow_extent_y;
+        slow_zone.poly.points.push_back(p);
         zones.zones.push_back(slow_zone);
 
     }
     this->zone_publisher->publish(zones);
 }
 
-//returns the point distance ||(x,y)-center||+extra_distance from the center, that's in the same direction as (x,y) from the center
-geometry_msgs::msg::Point32 ObstacleZonerNode::extend_from_center(double extra_distance, double x, double y, double center_x, double center_y) {
-    double dx = x-center_x;
-    double dy = y-center_y;
-    double mag = sqrt(dx*dx+dy*dy);
-    geometry_msgs::msg::Point32 p;
-    p.x = center_x + dx/mag*(mag+extra_distance);
-    p.y = center_y + dy/mag*(mag+extra_distance);
-    return p;
-}
 
 

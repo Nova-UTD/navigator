@@ -69,6 +69,8 @@ void BehaviorPlannerNode::update_current_obstacles(Obstacles::SharedPtr ptr) {
 void BehaviorPlannerNode::send_message() {
   if (this->current_path == nullptr) return;
   update_state();
+  RCLCPP_INFO(this->get_logger(), "XXXXX" + std::to_string(current_position_x));
+  RCLCPP_INFO(this->get_logger(), "YYYYY" + std::to_string(current_position_y));
   final_zone_publisher->publish(this->final_zones);
 }
 
@@ -117,11 +119,19 @@ void BehaviorPlannerNode::update_state() {
     case IN_JUNCTION:
       RCLCPP_INFO(this->get_logger(), "current state: IN_JUNCTION");
 
+      if (obstacles_present() && final_zones.zones.size()) {
+        final_zones.zones[0].max_speed = STOP_SPEED;
+        RCLCPP_INFO(this->get_logger(), "EMERGENCY STOP");
+      } else if (final_zones.zones.size()) {
+        final_zones.zones[0].max_speed = YIELD_SPEED;
+        RCLCPP_INFO(this->get_logger(), "ITS OK");
+      }
+
       // to account for gap between car & zone
-      if (in_zone(current_position_x, current_position_y)) reached_zone = true;
+      if (point_in_zone(current_position_x, current_position_y)) reached_zone = true;
 
       if (reached_zone) {
-        if (!in_zone(current_position_x, current_position_y)) {
+        if (!point_in_zone(current_position_x, current_position_y)) {
           reached_zone = false;
           current_state = LANEKEEPING;
         }
@@ -131,28 +141,50 @@ void BehaviorPlannerNode::update_state() {
 }
 
 
-bool BehaviorPlannerNode::in_zone(float x, float y) {
+bool BehaviorPlannerNode::point_in_zone(float x, float y) {
 
   if (!final_zones.zones.size()) {
     RCLCPP_INFO(this->get_logger(), "ERROR: in junction but no zones");
     return false;
   }
-
-  // check if current position is in zone polygon
-  typedef boost::geometry::model::d2::point_xy<double> point_type;
-  typedef boost::geometry::model::polygon<point_type> polygon_type;
   
-  polygon_type poly;
+  polygon_type zone_poly;
   point_type p(x, y);
 
-  std::vector<point_type> points;
+  std::vector<point_type> poly_points;
   for(auto point : final_zones.zones[0].poly.points) {
-    points.push_back(point_type(point.x, point.y));
+    poly_points.push_back(point_type(point.x, point.y));
   }
 
-  boost::geometry::assign_points(poly, points);
-  return boost::geometry::within(p, poly);
+  boost::geometry::assign_points(zone_poly, poly_points);
+  return boost::geometry::within(p, zone_poly);
 }
+
+bool BehaviorPlannerNode::poly_in_zone(BoundingBox obs_bbox) {
+
+  if (!final_zones.zones.size()) {
+    RCLCPP_INFO(this->get_logger(), "ERROR: in junction but no zones");
+    return false;
+  }
+  RCLCPP_INFO(this->get_logger(), "HERE");
+  polygon_type zone_poly;
+  polygon_type obs_poly;
+
+  std::vector<point_type> zone_points;
+  for(auto point : final_zones.zones[0].poly.points) {
+    zone_points.push_back(point_type(point.x, point.y));
+  }
+  boost::geometry::assign_points(zone_poly, zone_points);
+  
+  for(Point point : obs_bbox.corners) {
+    if (boost::geometry::within(point_type(point.x, point.y), zone_poly)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 
 bool BehaviorPlannerNode::upcoming_intersection() {
 
@@ -235,10 +267,17 @@ bool BehaviorPlannerNode::upcoming_intersection() {
 
 bool BehaviorPlannerNode::obstacles_present() {
   for (Obstacle obs : current_obstacles->obstacles) {
-    // what if our vehicle is in zone by accident?
-    if (in_zone(obs.bounding_box.center.position.x, obs.bounding_box.center.position.y)) {
+
+    // // using center point of obs
+    // if (point_in_zone(obs.bounding_box.center.position.x, obs.bounding_box.center.position.y)) {
+    //   return true;
+    // }
+
+    // using corners of obs
+    if (poly_in_zone(obs.bounding_box)) {
       return true;
     }
+
   }
   return false;
 }

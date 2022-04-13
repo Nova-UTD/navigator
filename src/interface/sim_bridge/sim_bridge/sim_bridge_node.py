@@ -68,7 +68,7 @@ LIDAR_PERIOD = 1/(10.0)  # 10 Hz
 SEMANTIC_LIDAR_PERIOD = 1/(2.0)  # 10 Hz
 SPEEDOMETER_PERIOD = 1/(10.0)  # 10 Hz
 STEERING_ANGLE_PERIOD = 1/(10.0)  # 10 Hz
-OBSTACLE_QTY_VEHICLE = 10  # Spawn n cars
+OBSTACLE_QTY_VEHICLE = 1  # Spawn n cars
 OBSTACLE_QTY_PED = 0  # Spawn n peds
 
 # Map-specific constants
@@ -336,15 +336,79 @@ class SimBridgeNode(Node):
     def reverse_command_cb(self, msg: Bool):
         self.reverse_cmd = msg.data
 
+
+    def publish_boxes_pedestrians(self, ego_vehicle):
+
+        pedestrians = self.world.get_actors().filter('walker.*')
+        ego_bbox = ego_vehicle.bounding_box
+
+        obstacles = []
+        for pedestrian in pedestrians:
+            obst = Obstacle3D()
+            obst.id = pedestrian.id
+            obst.label = obst.PEDESTRIAN
+            obst.confidence = random.uniform(0.5, 1.0)
+
+            bbox = pedestrian.bounding_box
+
+            # Set velocity
+            actor_vel = pedestrian.get_velocity()
+            obst.velocity.x = actor_vel.x
+            obst.velocity.y = actor_vel.y*-1  # Fix coordinate system
+            obst.velocity.z = actor_vel.z
+
+            # Set bounding box
+            # changed due to CARLA's nonsensical location logic
+            pos = Point()
+            pos.x = pedestrian.get_location().x #bbox.location.x
+            pos.y = pedestrian.get_location().y #bbox.location.y*-1
+            pos.z = pedestrian.get_location().z #bbox.location.z
+
+            actor_tf: carla.Transform = pedestrian.get_transform()
+
+            actor_quat = R.from_euler(
+                'yzx',
+                [actor_tf.rotation.pitch*-1*math.pi/180.0,
+                 actor_tf.rotation.yaw*-1*math.pi/180.0-math.pi,
+                 actor_tf.rotation.roll*-1*math.pi/180.0]
+            ).as_quat()
+            orientation_msg = Quaternion()
+            orientation_msg.x = actor_quat[0]
+            orientation_msg.y = actor_quat[1]
+            orientation_msg.z = actor_quat[2]
+            orientation_msg.w = actor_quat[3]
+
+            obst.bounding_box.center.position = pos
+            obst.bounding_box.center.orientation = orientation_msg
+            obst.bounding_box.size = Vector3(
+                x=bbox.extent.x, #+ (ego_bbox.extent.x / 2),
+                y=bbox.extent.y, #+ (ego_bbox.extent.y / 2),
+                z=bbox.extent.z #+ (ego_bbox.extent.z / 2)
+            )
+
+            obstacles.append(obst)
+
+        obstacles_msg = Obstacle3DArray()
+        obstacles_msg.obstacles = obstacles
+        obstacles_msg.header.stamp = self.get_clock().now().to_msg()
+        obstacles_msg.header.frame_id = 'map'
+
+        return obstacles
+
+        # self.ground_truth_obst_pub.publish(obstacles_msg)
+        # self.get_logger().info("{}".format(obstacles))
+
+
+
     def publish_true_boxes(self):
 
         vehicles = self.world.get_actors().filter('vehicle.*')
-        # self.get_logger().info("Publishing {} boxes.".format(len(vehicles)))
+        ego_vehicle = None
+        self.get_logger().info("Publishing {} boxes.".format(len(vehicles)))
 
         obstacles = []
         for vehicle in vehicles:
-            if vehicle.id == self.ego.id:
-                continue #motivational quote: we should not be an obstacle to ourselves
+
             obst = Obstacle3D()
             obst.id = vehicle.id
             obst.label = obst.CAR  # TODO: Generalize, e.g. "bike", "car"
@@ -399,11 +463,17 @@ class SimBridgeNode(Node):
                 
 
 
+            if vehicle.id == self.ego.id:
+                ego_vehicle = vehicle 
+                continue # motivational quote: we should not be an obstacle to ourselves
             obstacles.append(obst)
+
         obstacles_msg = Obstacle3DArray()
         obstacles_msg.obstacles = obstacles
         obstacles_msg.header.stamp = self.get_clock().now().to_msg()
         obstacles_msg.header.frame_id = 'map'
+
+        obstacles += self.publish_boxes_pedestrians(ego_vehicle)
 
         self.ground_truth_obst_pub.publish(obstacles_msg)
         # self.get_logger().info("{}".format(obstacles))
@@ -643,16 +713,16 @@ class SimBridgeNode(Node):
             vehicle_bp = random.choice(self.blueprint_library.filter('vehicle.*.*'))
             
             # currently manually spawning to test junction code
-            #random_spawn = carla.Transform(carla.Location(x=-77.5, y=-158, z=20), carla.Rotation(yaw=90))
-            random_spawn = random.choice(self.world.get_map().get_spawn_points())
+            random_spawn = carla.Transform(carla.Location(x=-77.5, y=-152, z=20), carla.Rotation(yaw=90))
+            # random_spawn = random.choice(self.world.get_map().get_spawn_points())
             
             # spawn vehicle
             self.get_logger().info("Spawning vehicle ({}) @ {}".format(vehicle_bp.id, random_spawn))
-            vehicle = self.world.try_spawn_actor(vehicle_bp, random_spawn)
+            vehicle = self.world.spawn_actor(vehicle_bp, random_spawn)
             
             # autopilot off for now (junction code testing)
-            if vehicle is not None:
-                vehicle.set_autopilot(enabled=True)
+            # if vehicle is not None:
+            vehicle.set_autopilot(enabled=False)
 
     def add_pedestrians(self, count: int):
         self.get_logger().info("Spawning {} pedestrians".format(count))
@@ -660,14 +730,18 @@ class SimBridgeNode(Node):
         for ped in range(count):
             # Choose a vehicle blueprint at random.
             ped_bp = random.choice(self.blueprint_library.filter('walker.*.*'))
-            spawn = self.world.get_random_location_from_navigation()
-            self.get_logger().info("Spawning ped ({}) @ {}".format(ped_bp.id, spawn))
-            random_spawn = random.choice(
-                self.world.get_map().get_spawn_points())
-            random_spawn.location = spawn
+
+            # spawn = self.world.get_random_location_from_navigation()
+            # random_spawn = random.choice(self.world.get_map().get_spawn_points())
+            # random_spawn.location = spawn
+            random_spawn = carla.Transform(carla.Location(x=-77.5, y=-152, z=20), carla.Rotation(yaw=90))
+            
+            self.get_logger().info("Spawning ped ({}) @ {}".format(ped_bp.id, 0))
             ped = self.world.try_spawn_actor(ped_bp, random_spawn)
+
             # if ped is not None:
-            #     ped.set_autopilot(enabled=True)
+            #     walker_controller_bp = world.get_blueprint_library().find('controller.ai.walker')
+            #     world.SpawnActor(walker_controller_bp, carla.Transform(), ped)
 
     def connect_to_carla(self):
         # Connect to client, load world

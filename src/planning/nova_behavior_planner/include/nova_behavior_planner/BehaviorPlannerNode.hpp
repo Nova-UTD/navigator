@@ -8,6 +8,8 @@
 #include "voltron_msgs/msg/zone.hpp"
 #include "voltron_msgs/msg/obstacle3_d_array.hpp"
 #include "voltron_msgs/msg/obstacle3_d.hpp"
+#include "voltron_msgs/msg/bounding_box3_d.hpp"
+#include <geometry_msgs/msg/point.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include "nova_behavior_planner/BehaviorPlanner.hpp"
 #include "nova_behavior_planner/BehaviorStates.hpp"
@@ -28,11 +30,16 @@ using CostedPaths = voltron_msgs::msg::CostedPaths;
 using Odometry = nav_msgs::msg::Odometry;
 using ZoneArray = voltron_msgs::msg::ZoneArray;
 using Zone = voltron_msgs::msg::Zone;
+using BoundingBox = voltron_msgs::msg::BoundingBox3D;
 
 // temp perception
 using Obstacles = voltron_msgs::msg::Obstacle3DArray;
 using Obstacle = voltron_msgs::msg::Obstacle3D;
 
+// Boost
+using Point = geometry_msgs::msg::Point;
+typedef boost::geometry::model::d2::point_xy<double> point_type;
+typedef boost::geometry::model::polygon<point_type> polygon_type;
 
 namespace Nova {
 namespace BehaviorPlanner {
@@ -41,7 +48,6 @@ constexpr auto message_frequency = 100ms;
 constexpr float STOP_SPEED = 0.0;
 constexpr float YIELD_SPEED = 3.0;
 constexpr float SPEED_LIMIT = 10.0;
-
 
 class BehaviorPlannerNode : public rclcpp::Node {
 
@@ -93,7 +99,8 @@ private:
     void update_state();
 
     // transition functions
-    bool in_zone(float x, float y);
+    bool point_in_zone(float x, float y);
+    bool poly_in_zone(BoundingBox obs_bbox);
     bool upcoming_intersection();
     bool obstacles_present();
     bool reached_desired_velocity(float desired_velocity);
