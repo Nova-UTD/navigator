@@ -8,7 +8,9 @@
  */
 
 #include <chrono>
+#include <sstream>
 #include "gps/GPSNode.hpp"
+#include "gps/GPSFix.hpp"
 using namespace navigator::gps;
 using namespace std::chrono_literals;
 
@@ -26,6 +28,7 @@ GPSNode::GPSNode(gps_params params) : rclcpp::Node("gps") {
 void GPSNode::init() {
   this->gps_port = std::make_unique<SerialPort>(this->params.device_name);
   this->timer = this->create_wall_timer(0.25s, std::bind(&GPSNode::check_messages, this));
+  this->odometry_publisher = this->create_publisher<nav_msgs::msg::Odometry>("gps_odometry_topic", 8);
 }
 
 void GPSNode::check_messages() {
@@ -37,6 +40,11 @@ void GPSNode::check_messages() {
     next_line = this->gps_port->get_line();
   }
   if(line.has_value()) {
-    RCLCPP_INFO(this->get_logger(), line.value());
+    GPSFix fix(line.value());
+    if(!fix.valid()) {
+      RCLCPP_INFO(this->get_logger(), "No GPS fix!");
+    } else {
+      this->odometry_publisher->publish(fix.to_message());
+    }
   }
 }
