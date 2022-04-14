@@ -15,8 +15,5 @@ uint32 id
 # The confidence score of the detected object in the range [0-1]
 float32 confidence
 
-# linear velocity of the object
-geometry_msgs/Vector3 velocity
-
-# A 3D bounding box
-BoundingBox3D bounding_box
+# A 2D bounding box
+BoundingBox2D bounding_box
