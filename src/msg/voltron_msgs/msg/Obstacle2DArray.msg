@@ -1,2 +1,2 @@
 std_msgs/Header header
-Obstacle3D[] obstacles
+Obstacle2D[] obstacles

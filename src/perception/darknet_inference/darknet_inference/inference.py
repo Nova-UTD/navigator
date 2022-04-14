@@ -75,16 +75,19 @@ class DarknetInferenceNode(Node):
 
         for box in filtered:
             obstacle = Obstacle2D()
-            obstacle.confidence = box[5]
+            obstacle.confidence = float(box[5])
             obstacle.label = COCO_TO_NOVA[box[6]]
-            obstacle.bounding_box.x1 = box[0]
-            obstacle.bounding_box.y1 = box[1]
-            obstacle.bounding_box.x1 = box[2]
-            obstacle.bounding_box.y1 = box[3]    
+            obstacle.bounding_box.x1 = float(box[0])
+            obstacle.bounding_box.y1 = float(box[1])
+            obstacle.bounding_box.x2 = float(box[2])
+            obstacle.bounding_box.y2 = float(box[3])
             obstacle_array.obstacles.append(obstacle)
-   
+    
         # publish 2d obstacles
-        self.obstacle_array_pub.publish(obstacle_array)
+        if len(obstacle_array.obstacles) != 0:
+            self.obstacle_array_pub.publish(obstacle_array)
+        else:
+            return
 
         
 def main(args=None):

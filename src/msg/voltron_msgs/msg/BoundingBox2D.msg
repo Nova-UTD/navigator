@@ -10,7 +10,7 @@
 # you can get exact pixel values by
 # multiplying against image size x and size y
 
-float64 x1
-float64 y1
-float64 x2
-float64 y2
+float32 x1
+float32 y1
+float32 x2
+float32 y2
