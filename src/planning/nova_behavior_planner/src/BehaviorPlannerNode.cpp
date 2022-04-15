@@ -42,6 +42,9 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 
   this->obstacles_subscription = this->create_subscription
     <Obstacles>("/objects", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
+
+  this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+  this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
 BehaviorPlannerNode::~BehaviorPlannerNode() {}
@@ -66,6 +69,15 @@ void BehaviorPlannerNode::update_current_obstacles(Obstacles::SharedPtr ptr) {
   this->current_obstacles = ptr;
 }
 
+void BehaviorPlannerNode::update_tf() {
+    try {
+		currentTf = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+	} catch (tf2::TransformException& e) {
+		RCLCPP_INFO(this->get_logger(), "Could not transform base_link to map: %s", e.what());
+		return;
+	}
+}
+
 void BehaviorPlannerNode::send_message() {
   if (this->current_path == nullptr) return;
   update_state();
@@ -88,7 +100,6 @@ void BehaviorPlannerNode::update_state() {
       break;
     case YIELDING:
       RCLCPP_INFO(this->get_logger(), "current state: YIELDING");
-
       if (reached_desired_velocity(YIELD_SPEED)) yield_ticks += 1;
       if (yield_ticks >= 5) {
         yield_ticks = 0;
@@ -233,11 +244,27 @@ bool BehaviorPlannerNode::upcoming_intersection() {
   return zones_made;
 }
 
+std::array<geometry_msgs::msg::Point, 8> BehaviorPlannerNode::transform_obstacle(const Obstacle& obstacle) {
+    double tf_x = this->currentTf.transform.translation.x;
+    double tf_y = this->currentTf.transform.translation.y;
+    std::array<geometry_msgs::msg::Point, 8> corners;
+    //transform corner
+    for (size_t i = 0; i < obstacle.bounding_box.corners.size(); i++) {
+        corners[i].x = obstacle.bounding_box.corners[i].x + tf_x;
+        corners[i].y = obstacle.bounding_box.corners[i].y + tf_y;
+    }
+    return corners;
+}
+
 bool BehaviorPlannerNode::obstacles_present() {
+  this->update_tf();
   for (Obstacle obs : current_obstacles->obstacles) {
-    // what if our vehicle is in zone by accident?
-    if (in_zone(obs.bounding_box.center.position.x, obs.bounding_box.center.position.y)) {
-      return true;
+      std::array<geometry_msgs::msg::Point, 8> corners = transform_obstacle(obs);
+    for (const auto& point : corners) {
+      // what if our vehicle is in zone by accident?
+      if (in_zone(point.x, point.y)) {
+        return true;
+      }
     }
   }
   return false;
