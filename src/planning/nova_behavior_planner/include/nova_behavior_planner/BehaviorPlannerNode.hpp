@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "rclcpp/rclcpp.hpp"
 #include "voltron_msgs/msg/final_path.hpp"
 #include "voltron_msgs/msg/costed_paths.hpp"
@@ -13,6 +15,11 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include "nova_behavior_planner/BehaviorPlanner.hpp"
 #include "nova_behavior_planner/BehaviorStates.hpp"
+
+#include "tf2/convert.h"
+#include "tf2/exceptions.h"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/buffer.h"
 
 // libOpenDRIVE stuff
 #include "OpenDriveMap.h"
@@ -78,6 +85,11 @@ private:
 	navigator::opendrive::types::OpenDriveMapPtr map;
     std::shared_ptr<navigator::opendrive::types::MapInfo> map_info;
 
+    // need to transform bounding boxes to world space
+    std::shared_ptr<tf2_ros::TransformListener> transform_listener_{nullptr};
+    std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+    geometry_msgs::msg::TransformStamped currentTf;
+
     // stopping variables
     float current_speed;
     float current_position_x;
@@ -92,19 +104,23 @@ private:
     int yield_ticks;
 
     // pub/sub functions
-    void send_message();
     void update_current_speed(Odometry::SharedPtr ptr);
     void update_current_path(FinalPath::SharedPtr ptr);
     void update_current_obstacles(Obstacles::SharedPtr ptr);
+    void update_tf();
+    std::array<geometry_msgs::msg::Point, 8> transform_obstacle(const Obstacle& obstacle);
+    void send_message();
+    
+    // FSM
     void update_state();
 
     // transition functions
     bool point_in_zone(float x, float y);
     bool poly_in_zone(BoundingBox obs_bbox);
-    bool upcoming_intersection();
     bool obstacles_present();
     bool reached_desired_velocity(float desired_velocity);
     bool is_stopped();
+    bool upcoming_intersection();
     SignalType classify_signal(const navigator::opendrive::Signal& signal);
 
 };

@@ -42,6 +42,9 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 
   this->obstacles_subscription = this->create_subscription
     <Obstacles>("/objects", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
+
+  this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+  this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
 BehaviorPlannerNode::~BehaviorPlannerNode() {}
@@ -66,11 +69,31 @@ void BehaviorPlannerNode::update_current_obstacles(Obstacles::SharedPtr ptr) {
   this->current_obstacles = ptr;
 }
 
+void BehaviorPlannerNode::update_tf() {
+  try {
+		currentTf = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+	} catch (tf2::TransformException& e) {
+		RCLCPP_INFO(this->get_logger(), "Could not transform base_link to map: %s", e.what());
+		return;
+	}
+}
+
+std::array<geometry_msgs::msg::Point, 8> BehaviorPlannerNode::transform_obstacle(const Obstacle& obstacle) {
+  double tf_x = this->currentTf.transform.translation.x;
+  double tf_y = this->currentTf.transform.translation.y;
+  std::array<geometry_msgs::msg::Point, 8> corners;
+  
+  //transform corner
+  for (size_t i = 0; i < obstacle.bounding_box.corners.size(); i++) {
+    corners[i].x = obstacle.bounding_box.corners[i].x + tf_x;
+    corners[i].y = obstacle.bounding_box.corners[i].y + tf_y;
+  }
+  return corners;
+}
+
 void BehaviorPlannerNode::send_message() {
   if (this->current_path == nullptr) return;
   update_state();
-  RCLCPP_INFO(this->get_logger(), "XXXXX" + std::to_string(current_position_x));
-  RCLCPP_INFO(this->get_logger(), "YYYYY" + std::to_string(current_position_y));
   final_zone_publisher->publish(this->final_zones);
 }
 
@@ -90,7 +113,6 @@ void BehaviorPlannerNode::update_state() {
       break;
     case YIELDING:
       RCLCPP_INFO(this->get_logger(), "current state: YIELDING");
-
       if (reached_desired_velocity(YIELD_SPEED)) yield_ticks += 1;
       if (yield_ticks >= 5) {
         yield_ticks = 0;
@@ -124,7 +146,6 @@ void BehaviorPlannerNode::update_state() {
         RCLCPP_INFO(this->get_logger(), "EMERGENCY STOP");
       } else if (final_zones.zones.size()) {
         final_zones.zones[0].max_speed = YIELD_SPEED;
-        RCLCPP_INFO(this->get_logger(), "ITS OK");
       }
 
       // to account for gap between car & zone
@@ -166,7 +187,7 @@ bool BehaviorPlannerNode::poly_in_zone(BoundingBox obs_bbox) {
     RCLCPP_INFO(this->get_logger(), "ERROR: in junction but no zones");
     return false;
   }
-  RCLCPP_INFO(this->get_logger(), "HERE");
+
   polygon_type zone_poly;
   polygon_type obs_poly;
 
@@ -185,6 +206,29 @@ bool BehaviorPlannerNode::poly_in_zone(BoundingBox obs_bbox) {
   return false;
 }
 
+bool BehaviorPlannerNode::obstacles_present() {
+  this->update_tf();
+  for (Obstacle obs : current_obstacles->obstacles) {
+    std::array<geometry_msgs::msg::Point, 8> corners = transform_obstacle(obs);
+    for (const auto& point : corners) {
+      if (point_in_zone(point.x, point.y)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool BehaviorPlannerNode::reached_desired_velocity(float desired_velocity) {
+  float speed_dif = std::abs(desired_velocity - current_speed);
+  return speed_dif < 0.08;
+}
+
+bool BehaviorPlannerNode::is_stopped() {
+  float speed_dif = std::abs(STOP_SPEED - current_speed);
+  float position_dif = std::abs(prev_position_x - current_position_x) + std::abs(prev_position_y - current_position_y);
+  return (speed_dif < 0.01 && position_dif < 0.01);
+}
 
 bool BehaviorPlannerNode::upcoming_intersection() {
 
@@ -263,34 +307,6 @@ bool BehaviorPlannerNode::upcoming_intersection() {
   }
 
   return zones_made;
-}
-
-bool BehaviorPlannerNode::obstacles_present() {
-  for (Obstacle obs : current_obstacles->obstacles) {
-
-    // // using center point of obs
-    // if (point_in_zone(obs.bounding_box.center.position.x, obs.bounding_box.center.position.y)) {
-    //   return true;
-    // }
-
-    // using corners of obs
-    if (poly_in_zone(obs.bounding_box)) {
-      return true;
-    }
-
-  }
-  return false;
-}
-
-bool BehaviorPlannerNode::reached_desired_velocity(float desired_velocity) {
-  float speed_dif = std::abs(desired_velocity - current_speed);
-  return speed_dif < 0.08;
-}
-
-bool BehaviorPlannerNode::is_stopped() {
-  float speed_dif = std::abs(STOP_SPEED - current_speed);
-  float position_dif = std::abs(prev_position_x - current_position_x) + std::abs(prev_position_y - current_position_y);
-  return (speed_dif < 0.01 && position_dif < 0.01);
 }
 
 BehaviorPlannerNode::SignalType BehaviorPlannerNode::classify_signal(const navigator::opendrive::Signal& signal) {
