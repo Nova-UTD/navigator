@@ -336,6 +336,13 @@ class SimBridgeNode(Node):
     def add_obstacle(self, actor, obstacles):
         if actor.id == self.ego.id:
             return #motivational quote: we should not be an obstacle to ourselves
+
+        ego_position = Point()
+        ego_tf: carla.Transform = self.ego.get_transform()
+        ego_position.x = ego_tf.location.x
+        ego_position.y = ego_tf.location.y*-1
+        ego_position.z = 0.0  # Force to zero
+
         obst = Obstacle3D()
         obst.id = actor.id
         obst.label = obst.CAR  # TODO: Generalize, e.g. "bike", "car"
@@ -357,9 +364,10 @@ class SimBridgeNode(Node):
         for c, us in carla_to_our_ordering:
             tf_pt = corner_points[c]
             corner = Point()
-            corner.x = tf_pt.x
-            corner.y = -tf_pt.y #change coordinate system
-            corner.z = tf_pt.z
+            #change all coordinates to be relative to car ('base_link') instead of world ('map')
+            corner.x = tf_pt.x-ego_position.x
+            corner.y = -tf_pt.y -ego_position.y#change coordinate system
+            corner.z = tf_pt.z-ego_position.z
             obst.bounding_box.corners[us] = corner
                 
 
