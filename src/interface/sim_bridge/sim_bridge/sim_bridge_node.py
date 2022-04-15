@@ -50,13 +50,13 @@ import sys
 sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
 import carla
 import random
-import scenarios
+import sim_bridge.scenarios as sc
 
 #SCENARIO TO RUN
-SCENARIO = scenarios.normal
+SCENARIO = sc.normal
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
-CLIENT_PORT = 2000
+CLIENT_PORT = 35790
 
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
@@ -608,8 +608,8 @@ class SimBridgeNode(Node):
     def connect_to_carla(self):
         # Connect to client, load world
         self.get_logger().info("Connecting to CARLA on port {}".format(CLIENT_PORT))
-        client = carla.Client('localhost', CLIENT_PORT)
-        client.set_timeout(20.0)
+        self.client = carla.Client('localhost', CLIENT_PORT)
+        self.client.set_timeout(20.0)
         SCENARIO(self) #load test scenario
         sim_bridge.get_logger().info("Started scenario!")
         

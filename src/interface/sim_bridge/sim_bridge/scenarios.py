@@ -7,7 +7,7 @@ def parked_in_intersection(sim_bridge):
     EGO_SPAWN_Z = 20.0
     EGO_SPAWN_YAW = 90
 
-    sim_bridge.world = client.load_world(CLIENT_WORLD)
+    sim_bridge.world = sim_bridge.client.load_world(CLIENT_WORLD)
     setup_ego(sim_bridge, EGO_SPAWN_X, EGO_SPAWN_Y, EGO_SPAWN_Z, EGO_SPAWN_YAW)
     add_vehicles(sim_bridge, autopilot=False, spawn_points=[carla.Transform(carla.Location(x=-77.5, y=-158, z=20), carla.Rotation(yaw=90))])
 
@@ -18,7 +18,7 @@ def normal(sim_bridge):
     EGO_SPAWN_Z = 20.0
     EGO_SPAWN_YAW = 90
 
-    sim_bridge.world = client.load_world(CLIENT_WORLD)
+    sim_bridge.world = sim_bridge.client.load_world(CLIENT_WORLD)
     setup_ego(sim_bridge, EGO_SPAWN_X, EGO_SPAWN_Y, EGO_SPAWN_Z, EGO_SPAWN_YAW)
     add_vehicles(sim_bridge, [None]*10)
     add_pedestrians(sim_bridge, [None]*10)
@@ -29,7 +29,6 @@ def add_vehicles(sim_bridge, spawn_points=[None], autopilot=True):
         # Choose a vehicle blueprint at random.
         vehicle_bp = random.choice(sim_bridge.blueprint_library.filter('vehicle.*.*'))
         
-        # currently manually spawning to test junction code
         if not spawn:
             #spawn randomly if no point is provided
             spawn = random.choice(sim_bridge.world.get_map().get_spawn_points())
@@ -52,8 +51,8 @@ def add_pedestrians(sim_bridge, spawn_points = None, autopilot=True):
         sim_bridge.get_logger().info("Spawning ped ({}) @ {}".format(ped_bp.id, spawn))
         
         if not spawn:
-            spawn = random.choice(
-                sim_bridge.world.get_map().get_spawn_points())
+            #spawn randomly if no point is provided
+            spawn = random.choice(sim_bridge.world.get_map().get_spawn_points())
 
         ped = sim_bridge.world.try_spawn_actor(ped_bp, spawn)
         if ped is not None:
@@ -75,11 +74,11 @@ def setup_ego(sim_bridge, ego_x, ego_y, ego_z, ego_yaw, carla_autopilot = False,
     spawn.location = spawn_loc
     spawn.rotation = spawn_rot
     vehicle_bp = sim_bridge.blueprint_library.find(model)
-    sim_bridge.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, ego_spawn_tf)
+    sim_bridge.ego: carla.Vehicle = sim_bridge.world.spawn_actor(vehicle_bp, spawn)
     # TODO: Destroy ego actor when node exits or crashes. Currently keeps actor alive in CARLA,
     # which eventually leads to memory overflow. WSH.
     sim_bridge.ego.set_autopilot(enabled=carla_autopilot)
-    self.add_ego_sensors()
+    sim_bridge.add_ego_sensors()
 
 
 
