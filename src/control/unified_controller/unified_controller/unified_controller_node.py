@@ -3,6 +3,7 @@
 # Unified Controller for Throttle, Brake, and Steering
 # Nova 2022 - https://github.com/Nova-UTD/navigator/
 # Will Heitman - Will.Heitman@utdallas.edu
+# Egan Johnson - Egan.Johnson@utdallas.edu
 
 from typing import List
 from voltron_msgs.msg import Trajectory, TrajectoryPoint, PeddlePosition, SteeringPosition
@@ -18,16 +19,92 @@ from visualization_msgs.msg import Marker
 import tf2_ros
 import collections
 
+class PIDController():
+    kp = 0
+    ki = 0
+    kd = 0
+
+    integral = 0
+    last_error = 0
+    last_time = 0
+
+    max_integral = 1
+
+    def __init__(self, kp, ki, kd, max_integral):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.max_integral = max_integral
+    
+   
+    def reset(self, time):
+        """
+            Resets the controller to an initial state, to prevent
+            the controller from making a jump at the start of a new
+            sequence.
+        """
+        self.integral = 0
+        self.last_error = 0
+        self.last_time = time
+
+    def update(self, time, error):
+        """
+            Updates the controller with the given error and returns
+            the control signal.
+        """
+        dt = time - self.last_time
+        if dt == 0:
+            return 0
+        self.integral += error * dt
+        if self.integral > self.max_integral:
+            self.integral = self.max_integral
+        elif self.integral < -self.max_integral:
+            self.integral = -self.max_integral
+        derivative = (error - self.last_error) / dt
+        self.last_error = error
+        self.last_time = time
+        return (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
+
+    
+
 class UnifiedController(Node):
+
+    VEHICLE_MASS_KG = 769.0
+    ENGINE_POWER_W = 6500.0
+    WHEEL_FRICTION_COEFFICIENT_LOWER = 0.4
+    WHEEL_FRICTION_COEFFICIENT_UPPER = 0.7
+    BRAKE_FORCE = WHEEL_FRICTION_COEFFICIENT_UPPER * VEHICLE_MASS_KG * 9.81 # a guess
+
+    WHEEL_BASE = 3.4
+    MAX_STEERING_ANGLE = 0.58294 # radians
+
 
     MAX_SAFE_DECELERATION = 8 # m/s^2
     MAX_COMFORTABLE_DECELERATION = 1 # m/s^2
-    MAX_COMFORTABLE_ACCELERATION = 1 
+    MAX_COMFORTABLE_ACCELERATION = 1
+    MAX_LATERAL_ACCELERATION = 1 # radial acceleration on turns
+
     MIN_TIME_LOOKAHEAD = 10
+    STEERING_LOOKEAHAD_DISTANCE = 10 # meters
 
-    STEERING_LOOKEAHAD_DISTANCE = 25 # meters
 
-    MAX_STEERING_ANGLE = 0.58294 # radians
+    throttle_controller: PIDController
+    brake_controller: PIDController
+
+    # Pid constants
+    KP_THROTTLE = 0.25
+    KI_THROTTLE = 0.005
+    KD_THROTTLE = 0.0
+    MAX_WINDUP_THROTTLE = 0.5
+
+    KP_BRAKE = 0.25
+    KI_BRAKE = 0.01
+    KD_BRAKE = 0.0
+    MAX_WINDUP_BRAKE = 0.5
+
+
+    STATE_ACCEL = 0 # 0 for neither, 1 for accel, -1 for decel
+
 
     cached_odometry: Odometry = Odometry()
     cached_path: Trajectory = Trajectory()
@@ -48,52 +125,47 @@ class UnifiedController(Node):
         current_path_index = self.closest_point_index(current_pos)
         current_speed: float = self.get_speed()
         current_heading: float = self.get_heading_theta()
-        heading_vector = (math.sin(current_heading), math.cos(current_heading))
+        odom_time = self.get_odom_time()
+
+        self.get_logger().info("Current speed: %f" % current_speed)
 
         # Find lookahead information
         steering_lookahead: Point = self.point_at_distance(current_path_index, self.STEERING_LOOKEAHAD_DISTANCE)[0]
         v_lookeahead_time = self.MIN_TIME_LOOKAHEAD + current_speed * self.MAX_COMFORTABLE_DECELERATION
-        velocity_lookahead, goal_v, time_to_v_lookahead = self.point_at_time(current_path_index, 1)
+        velocity_lookahead, goal_v, time_to_v_lookahead = self.point_at_time(current_path_index, v_lookeahead_time)
 
-        # Extract goal acceleration, steering information
-        goal_accel = (goal_v - current_speed) / max(time_to_v_lookahead,0.01)
-        
-        # limit accel to acceptable range
-        goal_accel = min(goal_accel, self.MAX_COMFORTABLE_ACCELERATION)
-        goal_accel = max(goal_accel, -self.MAX_SAFE_DECELERATION)
-
-        # Calculate steering angle
+        # Get goal steering angle
         vector_to_lookahead = (steering_lookahead.y - current_pos.y, steering_lookahead.x - current_pos.x)
-        # normalize vector
-        dist_to_lookahead = max(math.sqrt(vector_to_lookahead[0]**2 + vector_to_lookahead[1]**2), 0.01)
-        vector_to_lookahead = (vector_to_lookahead[0] / dist_to_lookahead, vector_to_lookahead[1] / dist_to_lookahead)
-        # calculate angle between heading and lookahead using dot product
-        steering_angle = math.acos((vector_to_lookahead[0] * heading_vector[0]) + (vector_to_lookahead[1] * heading_vector[1]))
-        # calcualte sign of angle between heading and lookahead using cross product (2d)
-        angle_sign = vector_to_lookahead[1] * heading_vector[0] - vector_to_lookahead[0] * heading_vector[1]
-        # # flip sign if angle is negative
-        if angle_sign < 0:
-            steering_angle = -steering_angle
+        goal_steering_angle = self.pure_pursuit(current_heading, vector_to_lookahead)
+        
+        # limit goal velocity based on goal steering angle
 
-        # log heading vector, lookahead vector
-        self.get_logger().info("Heading vector: %s" % str(heading_vector))
-        self.get_logger().info("Lookahead vector: %s" % str(vector_to_lookahead))
+        # Print strait-line distance to lookahead
+        distance = (steering_lookahead.x - current_pos.x)**2 + (steering_lookahead.y - current_pos.y)**2
+        distance = math.sqrt(distance)
+        self.get_logger().info("Distance to lookahead: %f" % distance)
 
-        self.get_logger().info("Throttle position: %f" % self.accel_to_throttle(goal_accel))
-        self.get_logger().info("Steering position: %f" % self.steering_angle_to_wheel(steering_angle))
-        self.get_logger().info("Brake position: %f" % self.accel_to_brake(goal_accel))
+        # limit steering angle based on current velocity and vehicle limits
+        max_steering_angle = self.MAX_STEERING_ANGLE
+        if current_speed > 0.05:
+            goal_curvature = goal_steering_angle / self.WHEEL_BASE
+            max_steering_angle = max(max_steering_angle, self.MAX_LATERAL_ACCELERATION * self.WHEEL_BASE / current_speed)
+        goal_steering_angle = min(goal_steering_angle, max_steering_angle)
+        goal_steering_angle = max(goal_steering_angle, -max_steering_angle)
 
+        throttle, brake = self.calculate_throttle_brake(current_speed, goal_v, time_to_v_lookahead, odom_time)
 
         self.throttle_pub.publish(PeddlePosition(
-            data= self.accel_to_throttle(goal_accel)
+            data= float(throttle)
         ))
 
         self.brake_pub.publish(PeddlePosition(
-            data= self.accel_to_brake(goal_accel)
+            data= float(brake)
         ))
 
         self.steering_pub.publish(SteeringPosition(
-            data= self.steering_angle_to_wheel(steering_angle)
+            # Coordinate system is flipped from what I was doing math with
+            data= -float(goal_steering_angle)
         ))
     
     def closest_point_index(self, pos: Point) -> int:
@@ -139,7 +211,6 @@ class UnifiedController(Node):
     def point_at_distance(self, start_index: int, distance: float):
         """
         Returns the (point, speed) at the given distance, starting at the given index.
-        Time follows idealized path velocities.
         """
         path = self.cached_path.points
         dist_elapsed = 0
@@ -149,7 +220,6 @@ class UnifiedController(Node):
             dx = point_i.x - prev_point.x
             dy = point_i.y - prev_point.y
             d = math.sqrt(dx*dx + dy*dy)
-           
             dist_elapsed += d
 
             if dist_elapsed >= distance:
@@ -158,6 +228,8 @@ class UnifiedController(Node):
                         y=point_i.y,
                         z=0.0),
                     point_i.vx)
+            
+            prev_point = point_i
 
 
     def get_heading_theta(self) -> Vector3:
@@ -197,20 +269,91 @@ class UnifiedController(Node):
         """
         return float(min(max(angle, -self.MAX_STEERING_ANGLE), self.MAX_STEERING_ANGLE))
 
-    def accel_to_throttle(self, accel: float) -> float:
+    def calculate_throttle_brake(self, current_speed: float, goal_speed: float, time_to_goal: float, odom_stamp: float):
         """
-        Converts an acceleration to a throttle position
+            Calculates the (throttle, brake) needed to reach the given speed, given the current speed,
+            the time to reach the goal speed, and the current throttle and brake positions.
         """
-        return float(max(0, accel / 2.0))
+        if current_speed < goal_speed:
+            return self.calculate_throttle(current_speed, goal_speed, time_to_goal, odom_stamp), 0
+        else:
+            return 0, self.calculate_brake(current_speed, goal_speed, time_to_goal, odom_stamp)
 
-    def accel_to_brake(self, accel: float) -> float:
+    def calculate_throttle(self, current_speed: float, goal_speed: float, time_to_goal: float, odom_stamp: float):
         """
-        Converts an acceleration to a brake position
+            Calculates the throttle needed to reach the given speed, given the current speed,
+            the time to reach the goal speed, and the current throttle and brake positions.
         """
-        return float(min(0, accel / 5.0))
+        # If we have not been using throttle, the controller is out of date
+        if self.STATE_ACCEL < 1:
+            self.throttle_controller.reset(odom_stamp)
+            self.STATE_ACCEL = 1
+
+        # Calculate lower bound of acceleration from friction, to avoid over-throttling
+        a_friction = -self.WHEEL_FRICTION_COEFFICIENT_LOWER * 9.81
+
+        a_target = (goal_speed - current_speed) / max(time_to_goal, 0.01)
+        a_target = min(self.MAX_COMFORTABLE_ACCELERATION, a_target)
+
+        a_active = a_target - a_friction
+
+        # Assume throttle is linear with engine power.
+        # p = m * v * a
+        # throttle = p / pmax
+        # However, while physically correct, this doesn't help us when velocity is 0.
+        # Rely on the PID controller for this.
+        throttle_theoretical = (self.VEHICLE_MASS_KG * current_speed * a_active) / self.ENGINE_POWER_W
+        throttle = throttle_theoretical + self.throttle_controller.update(odom_stamp, a_target)
+        return throttle
+
+    def calculate_brake(self, current_speed: float, goal_speed: float, time_to_goal: float, odom_stamp: float):
+        """
+            Calculates the brake needed to reach the given speed, given the current speed,
+            the time to reach the goal speed, and the current throttle and brake positions.
+        """
+        if self.STATE_ACCEL > -1:
+            self.brake_controller.reset(odom_stamp)
+            self.STATE_ACCEL = -1
+
+        deceleration = (current_speed - goal_speed) / max(time_to_goal, 0.01)
+
+        # Special case: stopping 
+        if (abs(goal_speed) < 0.1 and abs(current_speed) < 0.1):
+            # transition to braking to avoid jolt
+            return 1.0 - abs(current_speed)
+        
+        return self.brake_controller.update(odom_stamp, deceleration)
+
+    def pure_pursuit(self, heading_angle, offset_vector):
+        """
+        Pure pursuit calculator
+        
+        heading_direction: the direction of the heading vector
+        offset_vector (x, y): vector from car origin to lookahead, in the same coordinate systems
+            as heading_direction
+
+        Reference
+        https://www.ri.cmu.edu/pub_files/pub3/coulter_r_craig_1992_1/coulter_r_craig_1992_1.pdf
+
+        Returns steering angle
+        """
+        # rotate offset by heading angle to get offset in the car's coordinate system
+        transformed_offset = [0, 0]
+        transformed_offset[0] = offset_vector[0] * math.cos(heading_angle) - offset_vector[1] * math.sin(heading_angle)
+        transformed_offset[1] = offset_vector[0] * math.sin(heading_angle) + offset_vector[1] * math.cos(heading_angle)
+
+        mag_offset = math.sqrt(offset_vector[0] * offset_vector[0] + offset_vector[1] * offset_vector[1])
+
+        curvature = 2* transformed_offset[0] / mag_offset**2
+
+        # translate angle to 
+        return curvature * self.WHEEL_BASE
 
     def __init__(self):
         super().__init__('unified_controller_node')
+
+        self.throttle_controller = PIDController(self.KP_THROTTLE, self.KI_THROTTLE, self.KD_THROTTLE, self.MAX_WINDUP_THROTTLE)
+        self.brake_controller = PIDController(self.KP_BRAKE, self.KI_BRAKE, self.KD_BRAKE, self.MAX_WINDUP_BRAKE)
 
         # Subscribe to our path
         self.path_sub = self.create_subscription(
@@ -271,6 +414,8 @@ class UnifiedController(Node):
         current_pos = pose.pose.pose.position
         return math.sqrt(math.pow((current_pos.x-pt.x),2)+math.pow((current_pos.y-pt.y),2))
 
+    def get_odom_time(self):
+        return self.cached_odometry.header.stamp.sec + self.cached_odometry.header.stamp.nanosec / 1e9
 def main(args=None):
     rclpy.init(args=args)
 
