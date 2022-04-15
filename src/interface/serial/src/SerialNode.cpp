@@ -29,9 +29,9 @@ void SerialNode::init() {
   this->timer = this->create_wall_timer
     (0.25s, std::bind(&SerialNode::check_messages, this));
   this->publisher = this->create_publisher<std_msgs::msg::String>
-    ("incoming_lines", 8);
+    ("serial_incoming_lines", 8);
   this->subscription = this->create_subscription<std_msgs::msg::String>
-    ("outgoing_lines", 8, std::bind
+    ("serial_outgoing_lines", 8, std::bind
      (&SerialNode::send_message, this, std::placeholders::_1));
 }
 
