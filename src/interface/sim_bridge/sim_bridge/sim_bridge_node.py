@@ -52,8 +52,8 @@ import carla
 import random
 import sim_bridge.scenarios as sc
 
-#SCENARIO TO RUN
-SCENARIO = sc.normal
+# #SCENARIO TO RUN
+# SCENARIO = sc.car_in_junction
 
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
@@ -624,7 +624,10 @@ class SimBridgeNode(Node):
         self.get_logger().info("Connecting to CARLA on port {}".format(CLIENT_PORT))
         self.client = carla.Client('localhost', CLIENT_PORT)
         self.client.set_timeout(20.0)
-        SCENARIO(self) # load test scenario
+        
+        scenario_manager = sc.ScenarioManager(self)
+        scenario_manager.car_stopped_at_junction()
+
         self.get_logger().info("Started scenario!")
         
 

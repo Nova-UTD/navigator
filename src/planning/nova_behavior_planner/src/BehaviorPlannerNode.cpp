@@ -116,7 +116,12 @@ void BehaviorPlannerNode::update_state() {
       if (reached_desired_velocity(YIELD_SPEED)) yield_ticks += 1;
       if (yield_ticks >= 5) {
         yield_ticks = 0;
-        current_state = IN_JUNCTION;
+        if (!obstacles_present()) {
+          current_state = IN_JUNCTION;
+        } else if (final_zones.zones.size()) {
+          final_zones.zones[0].max_speed = STOP_SPEED;
+          current_state = STOPPING;
+        }
       }
       break;
     case STOPPING:

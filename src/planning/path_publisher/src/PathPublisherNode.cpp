@@ -137,7 +137,7 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 
 	// Add path to array
 	marker_array.markers.push_back(marker);
-	RCLCPP_INFO(this->get_logger(), "path viz");
+	// RCLCPP_INFO(this->get_logger(), "path viz");
 
 	viz_pub->publish(marker_array);
 }
@@ -165,7 +165,7 @@ void PathPublisherNode::generatePaths() {
 	}
 	auto currentRoadId = currentLane->road.lock()->id;
 	
-	RCLCPP_INFO(get_logger(), "(%.2f, %.2f) Road %s, Current lane: %i", current_pos.x, current_pos.y, currentRoadId.c_str(), currentLane->id);
+	// RCLCPP_INFO(get_logger(), "(%.2f, %.2f) Road %s, Current lane: %i", current_pos.x, current_pos.y, currentRoadId.c_str(), currentLane->id);
 	//if (currentRoadId == "10" && this->path == this->route1) {
 	//	RCLCPP_INFO(get_logger(), "SWITCHED PATH");
 	//	this->path = this->route2;

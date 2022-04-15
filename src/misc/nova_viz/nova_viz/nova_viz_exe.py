@@ -34,7 +34,7 @@ class NovaVizNode(Node):
         self.zones_sub = self.create_subscription(ZoneArray, '/planning/zone_array', self.zones_cb, 10)
 
     def zones_cb(self, msg: ZoneArray):
-        self.get_logger().info("Received {} zones".format(len(msg.zones)))
+        # self.get_logger().info("Received {} zones".format(len(msg.zones)))
         marker_array = MarkerArray()
         for idx, zone in enumerate(msg.zones):
             zone_marker = Marker()

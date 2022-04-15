@@ -35,7 +35,7 @@ class VizSubscriber(Node):
         self.trajectory_viz_pub = self.create_publisher(Marker, '/viz/trajectory', 10)
 
     def motion_paths_cb(self, msg: Trajectory):
-        self.get_logger().info("Received {} points".format(len(msg.points)))
+        # self.get_logger().info("Received {} points".format(len(msg.points)))
         line_strip = Marker()
         line_strip.header.frame_id = 'map'
         line_strip.header.stamp = self.get_clock().now().to_msg()
