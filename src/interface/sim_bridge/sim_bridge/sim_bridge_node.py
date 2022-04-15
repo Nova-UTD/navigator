@@ -53,10 +53,10 @@ import random
 import sim_bridge.scenarios as sc
 
 #SCENARIO TO RUN
-SCENARIO = sc.normal
+SCENARIO = sc.parked_in_intersection
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
-CLIENT_PORT = 35790
+CLIENT_PORT = 12532
 
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
@@ -333,43 +333,48 @@ class SimBridgeNode(Node):
     def reverse_command_cb(self, msg: Bool):
         self.reverse_cmd = msg.data
 
+    def add_obstacle(self, actor, obstacles):
+        if actor.id == self.ego.id:
+            return #motivational quote: we should not be an obstacle to ourselves
+        obst = Obstacle3D()
+        obst.id = actor.id
+        obst.label = obst.CAR  # TODO: Generalize, e.g. "bike", "car"
+        obst.confidence = random.uniform(0.5, 1.0)
+
+        bbox = actor.bounding_box
+
+        # Set velocity
+        actor_vel = actor.get_velocity()
+        obst.velocity.x = actor_vel.x
+        obst.velocity.y = actor_vel.y*-1  # Fix coordinate system
+        obst.velocity.z = actor_vel.z
+
+        actor_tf: carla.Transform = actor.get_transform()
+
+        #add world space corner points
+        corner_points = bbox.get_world_vertices(actor_tf)
+        carla_to_our_ordering = [(0,0),(4,1),(6,2),(2,3)] #carla orders vertices in the box differently than we do. 
+        for c, us in carla_to_our_ordering:
+            tf_pt = corner_points[c]
+            corner = Point()
+            corner.x = tf_pt.x
+            corner.y = -tf_pt.y #change coordinate system
+            corner.z = tf_pt.z
+            obst.bounding_box.corners[us] = corner
+                
+
+        obstacles.append(obst)
     def publish_true_boxes(self):
 
         vehicles = self.world.get_actors().filter('vehicle.*')
+        pedestrians = self.world.get_actors().filter('walker.*')
         # self.get_logger().info("Publishing {} boxes.".format(len(vehicles)))
 
         obstacles = []
         for vehicle in vehicles:
-            if vehicle.id == self.ego.id:
-                continue #motivational quote: we should not be an obstacle to ourselves
-            obst = Obstacle3D()
-            obst.id = vehicle.id
-            obst.label = obst.CAR  # TODO: Generalize, e.g. "bike", "car"
-            obst.confidence = random.uniform(0.5, 1.0)
-
-            bbox = vehicle.bounding_box
-
-            # Set velocity
-            actor_vel = vehicle.get_velocity()
-            obst.velocity.x = actor_vel.x
-            obst.velocity.y = actor_vel.y*-1  # Fix coordinate system
-            obst.velocity.z = actor_vel.z
-
-            actor_tf: carla.Transform = vehicle.get_transform()
-
-            #add world space corner points
-            corner_points = bbox.get_world_vertices(actor_tf)
-            carla_to_our_ordering = [(0,0),(4,1),(6,2),(2,3)] #carla orders vertices in the box differently than we do. 
-            for c, us in carla_to_our_ordering:
-                tf_pt = corner_points[c]
-                corner = Point()
-                corner.x = tf_pt.x
-                corner.y = -tf_pt.y #change coordinate system
-                corner.z = tf_pt.z
-                obst.bounding_box.corners[us] = corner
-                
-
-            obstacles.append(obst)
+            self.add_obstacle(vehicle, obstacles)
+        for ped in pedestrians:
+            self.add_obstacle(ped, obstacles)
         obstacles_msg = Obstacle3DArray()
         obstacles_msg.obstacles = obstacles
         obstacles_msg.header.stamp = self.get_clock().now().to_msg()
@@ -611,7 +616,7 @@ class SimBridgeNode(Node):
         self.client = carla.Client('localhost', CLIENT_PORT)
         self.client.set_timeout(20.0)
         SCENARIO(self) #load test scenario
-        sim_bridge.get_logger().info("Started scenario!")
+        self.get_logger().info("Started scenario!")
         
 
     def add_ego_sensors(self):

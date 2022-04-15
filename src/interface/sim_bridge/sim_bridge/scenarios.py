@@ -1,4 +1,5 @@
 import carla
+import random
 
 def parked_in_intersection(sim_bridge):
     CLIENT_WORLD = 'Town07'
@@ -24,7 +25,7 @@ def normal(sim_bridge):
     add_pedestrians(sim_bridge, [None]*10)
 
 def add_vehicles(sim_bridge, spawn_points=[None], autopilot=True):
-    sim_bridge.get_logger().info("Spawning {} vehicles".format(vehicle_count))
+    sim_bridge.get_logger().info("Spawning {} vehicles".format(len(spawn_points)))
     for spawn in spawn_points:
         # Choose a vehicle blueprint at random.
         vehicle_bp = random.choice(sim_bridge.blueprint_library.filter('vehicle.*.*'))
@@ -42,7 +43,7 @@ def add_vehicles(sim_bridge, spawn_points=[None], autopilot=True):
             vehicle.set_autopilot(enabled=autopilot)
 
 def add_pedestrians(sim_bridge, spawn_points = None, autopilot=True):
-    sim_bridge.get_logger().info("Spawning {} pedestrians".format(count))
+    sim_bridge.get_logger().info("Spawning {} pedestrians".format(len(spawn_points)))
 
     for spawn in spawn_points:
         # Choose a vehicle blueprint at random.
@@ -55,8 +56,8 @@ def add_pedestrians(sim_bridge, spawn_points = None, autopilot=True):
             spawn = random.choice(sim_bridge.world.get_map().get_spawn_points())
 
         ped = sim_bridge.world.try_spawn_actor(ped_bp, spawn)
-        if ped is not None:
-             ped.set_autopilot(enabled=autopilot)
+        #if ped is not None:
+        #     ped.set_autopilot(enabled=autopilot)
 
 def setup_ego(sim_bridge, ego_x, ego_y, ego_z, ego_yaw, carla_autopilot = False, model='vehicle.audi.etron'):
     
