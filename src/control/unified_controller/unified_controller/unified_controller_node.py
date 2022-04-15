@@ -85,7 +85,7 @@ class UnifiedController(Node):
     MAX_LATERAL_ACCELERATION = 1 # radial acceleration on turns
 
     MIN_TIME_LOOKAHEAD = 10
-    STEERING_LOOKEAHAD_DISTANCE = 10 # meters
+    STEERING_LOOKEAHAD_DISTANCE = 7 # meters
 
 
     throttle_controller: PIDController
@@ -97,10 +97,10 @@ class UnifiedController(Node):
     KD_THROTTLE = 0.0
     MAX_WINDUP_THROTTLE = 0.5
 
-    KP_BRAKE = 0.25
-    KI_BRAKE = 0.01
+    KP_BRAKE = 0.6
+    KI_BRAKE = 0.1
     KD_BRAKE = 0.0
-    MAX_WINDUP_BRAKE = 0.5
+    MAX_WINDUP_BRAKE = 10
 
 
     STATE_ACCEL = 0 # 0 for neither, 1 for accel, -1 for decel
