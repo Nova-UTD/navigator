@@ -1,5 +1,5 @@
 /*
- * Package:   gps
+ * Package:   serial
  * Filename:  src/SerialPort.cpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
@@ -7,14 +7,14 @@
  * License:   MIT License
  */
 
-#include "gps/SerialPort.hpp"
+#include "serial/SerialPort.hpp"
 #include <cstring>
 #include <stdexcept>
 #include <termios.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-using navigator::gps::SerialPort;
+using navigator::serial::SerialPort;
 
 SerialPort::SerialPort(const std::string & device_name) {
   this->descriptor = open(device_name.c_str(), O_RDWR);
@@ -62,4 +62,9 @@ std::optional<std::string> SerialPort::get_line() {
     }
   }
   return std::optional<std::string>();
+}
+
+void SerialPort::send(std::string message) {
+  message += '\n';
+  write(this->descriptor, message.c_str(), message.length());
 }

@@ -1,6 +1,6 @@
 /*
- * Package:   gps
- * Filename:  include/gps/gps_params.hpp
+ * Package:   serial
+ * Filename:  include/serial/serial_params.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
  * Copyright: 2022, Nova UTD
@@ -12,9 +12,9 @@
 #include <string>
 
 namespace navigator {
-namespace gps {
+namespace serial {
 
-struct gps_params {
+struct serial_params {
   std::string device_name;
 };
 

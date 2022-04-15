@@ -1,6 +1,6 @@
 /*
- * Package:   gps
- * Filename:  include/gps/SerialPort.hpp
+ * Package:   serial
+ * Filename:  include/serial/SerialPort.hpp
  * Author:    Joshua Williams
  * Email:     joshmackwilliams@protonmail.com
  * Copyright: 2022, Nova UTD
@@ -13,13 +13,14 @@
 #include <string>
 
 namespace navigator {
-namespace gps {
+namespace serial {
 
 class SerialPort final {
 public:
   SerialPort(const std::string & device_name);
   ~SerialPort();
   std::optional<std::string> get_line();
+  void send(std::string message);
 
 private:
   int descriptor;

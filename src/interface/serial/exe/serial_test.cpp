@@ -1,5 +1,5 @@
 #include <iostream>
-#include "gps/GPSNode.hpp"
+#include "serial/SerialNode.hpp"
 
 int main(int argc, char ** argv) {
   if(argc < 2) {
@@ -9,11 +9,11 @@ int main(int argc, char ** argv) {
 
   std::string device(argv[1]);
 
-  navigator::gps::gps_params params = {
+  navigator::serial::serial_params params = {
 				       device,
   };
 
   rclcpp::init(0, nullptr);
-  rclcpp::spin(std::make_shared<navigator::gps::GPSNode>(params));
+  rclcpp::spin(std::make_shared<navigator::serial::SerialNode>(params));
   rclcpp::shutdown();
 }

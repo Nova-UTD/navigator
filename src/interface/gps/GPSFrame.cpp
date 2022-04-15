@@ -8,10 +8,10 @@
  */
 
 #include <sstream>
-#include "gps/GPSFix.hpp"
+#include "gps/GPSFrame.hpp"
 using namespace navigator::gps;
 
-GPSFix::GPSFix(std::string message) {
+GPSFrame::GPSFrame(std::string message) {
   std::stringstream stream(message);
   stream >> this->latitude;
   stream >> this->longtitude;
@@ -30,11 +30,11 @@ GPSFix::GPSFix(std::string message) {
   this->speed_acc /= 1000; // m/s
 }
 
-bool GPSFix::valid() {
+bool GPSFrame::valid() {
   return this->position_acc > 0;
 }
 
-nav_msgs::msg::Odometry GPSFix::to_message() {
+nav_msgs::msg::Odometry GPSFrame::to_message() {
   nav_msgs::msg::Odometry msg;
 
   return msg;
