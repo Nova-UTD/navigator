@@ -29,7 +29,7 @@ class ScenarioManager:
             
             # autopilot off for now (junction code testing)
             if vehicle is not None:
-                vehicle.set_autopilot(enabled=autopilot)
+                vehicle.set_autopilot(enabled=autopilot)        
 
     def add_pedestrians(self, spawn_points = None, autopilot=True):
         self.sim_bridge.get_logger().info("Spawning {} pedestrians".format(len(spawn_points)))
@@ -82,12 +82,18 @@ class ScenarioManager:
     MAIN BEHAVIORS
     '''
 
+    # Works (Commit 503)
+    # Car should slow down before continuing
+    # LK -> Y -> IJ -> LK
     def upcoming_yield_sign(self):
         self.reset_vars()
         
         self.sim_bridge.world = self.sim_bridge.client.load_world(self.world)
         self.setup_ego(self.ego_spawn[0], self.ego_spawn[1], self.ego_spawn[2], self.ego_yaw)
 
+    # Works (Commit 503)
+    # Car should stop before continuing
+    # LK -> SG -> SD -> IJ -> LK
     def upcoming_stop_sign(self):
         self.reset_vars()
         self.ego_spawn = (-152, -79, 20)
@@ -95,6 +101,9 @@ class ScenarioManager:
         self.sim_bridge.world = self.sim_bridge.client.load_world(self.world)
         self.setup_ego(self.ego_spawn[0], self.ego_spawn[1], self.ego_spawn[2], self.ego_yaw)
 
+    # Works (Commit 503)
+    # Car should slow down then stop completely
+    # LK -> Y -> IJ
     def car_in_yield_junction(self):
         self.reset_vars()
         
@@ -105,6 +114,9 @@ class ScenarioManager:
         car_loc = carla.Transform(carla.Location(x=-72, y=-158, z=20), carla.Rotation(yaw=90))
         self.add_vehicles(autopilot=False, spawn_points=[car_loc])
 
+    # Works (Commit 503)
+    # Car should stop for junction but never proceed
+    # LK -> SG -> SD
     def car_in_stop_junction(self):
         self.reset_vars()
         self.ego_spawn = (-152, -79, 20)
@@ -116,6 +128,9 @@ class ScenarioManager:
         car_loc = carla.Transform(carla.Location(x=-150, y=-35, z=20), carla.Rotation(yaw=90))
         self.add_vehicles(autopilot=False, spawn_points=[car_loc])
 
+    # Works (Commit 503)
+    # Car should behave normally
+    # LK -> ...
     def car_in_front(self):
         self.reset_vars()
          
@@ -126,6 +141,9 @@ class ScenarioManager:
         car_loc = carla.Transform(carla.Location(x=-170, y=-158, z=20), carla.Rotation(yaw=0))
         self.add_vehicles(autopilot=True, spawn_points=[car_loc])
 
+    # Works (Commit 503)
+    # Car should behave normally
+    # LK -> ...
     def car_in_back(self):
         self.reset_vars()
          
@@ -136,26 +154,36 @@ class ScenarioManager:
         car_loc = carla.Transform(carla.Location(x=-185, y=-158, z=20), carla.Rotation(yaw=0))
         self.add_vehicles(autopilot=True, spawn_points=[car_loc])
 
+    # Works (Commit 503)
+    # IDK
+    # IDK    
     def car_stopped_at_yield_junction(self):
         self.reset_vars()
+        self.ego_spawn = (-101, -158, 20)
 
         self.sim_bridge.world = self.sim_bridge.client.load_world(self.world)
         self.setup_ego(self.ego_spawn[0], self.ego_spawn[1], self.ego_spawn[2], self.ego_yaw)
         
-        # other car position at junction FILLIN
-        car_loc = carla.Transform(carla.Location(x=-58.9, y=-162, z=20), carla.Rotation(yaw=180))
-        self.add_vehicles(autopilot=False, spawn_points=[car_loc])
+        # other car position at junction
+        car_loc = carla.Transform(carla.Location(x=-50, y=-158, z=20), carla.Rotation(yaw=180))
+        self.add_vehicles(autopilot=True, spawn_points=[car_loc])
 
+    # Works (Commit 503)
+    # Car should stop at junction, wait for ROW cars to clear junction, then go
+    # LK -> SG -> SD -> W -> IJ -> LK
     def car_stopped_at_stop_junction(self):
         self.reset_vars()
-        self.ego_spawn = (-152, -79, 20)
+        # -60.2
+        self.ego_spawn = (-152, -60.2, 20)
 
         self.sim_bridge.world = self.sim_bridge.client.load_world(self.world)
         self.setup_ego(self.ego_spawn[0], self.ego_spawn[1], self.ego_spawn[2], self.ego_yaw)
         
         # other car position at junction FILLIN
-        car_loc = carla.Transform(carla.Location(x=-150, y=-27, z=20), carla.Rotation(yaw=90))
-        self.add_vehicles(autopilot=False, spawn_points=[car_loc])
+        car_loc = carla.Transform(carla.Location(x=-150, y=-2, z=20), carla.Rotation(yaw=180))
+        car_loc2 = carla.Transform(carla.Location(x=-120, y=-36, z=20), carla.Rotation(yaw=180))
+        self.add_vehicles(autopilot=True, spawn_points=[car_loc, car_loc2])
+
 
     '''
     EGO STARTING BEHAVIORS

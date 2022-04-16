@@ -66,7 +66,7 @@ LIDAR_PERIOD = 1/(10.0)  # 10 Hz
 SEMANTIC_LIDAR_PERIOD = 1/(2.0)  # 10 Hz
 SPEEDOMETER_PERIOD = 1/(10.0)  # 10 Hz
 STEERING_ANGLE_PERIOD = 1/(10.0)  # 10 Hz
-OBSTACLE_QTY_VEHICLE = 1  # Spawn n cars
+OBSTACLE_QTY_VEHICLE = 2  # Spawn n cars
 OBSTACLE_QTY_PED = 0  # Spawn n peds
 
 # Map-specific constants
@@ -626,7 +626,7 @@ class SimBridgeNode(Node):
         self.client.set_timeout(20.0)
         
         scenario_manager = sc.ScenarioManager(self)
-        scenario_manager.car_stopped_at_junction()
+        scenario_manager.car_stopped_at_stop_junction()
 
         self.get_logger().info("Started scenario!")
         

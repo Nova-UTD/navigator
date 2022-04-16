@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-
+#include <vector>
 #include "rclcpp/rclcpp.hpp"
 #include "voltron_msgs/msg/final_path.hpp"
 #include "voltron_msgs/msg/costed_paths.hpp"
@@ -102,6 +102,7 @@ private:
     bool reached_zone;
     int stop_ticks;
     int yield_ticks;
+    std::vector<int> obs_with_ROW; // holds IDs of obstacles with right-of-way
 
     // pub/sub functions
     void update_current_speed(Odometry::SharedPtr ptr);
@@ -115,13 +116,16 @@ private:
     void update_state();
 
     // transition functions
+    float zone_point_distance(float x, float y);
     bool point_in_zone(float x, float y);
     bool poly_in_zone(BoundingBox obs_bbox);
-    bool obstacles_present();
+    bool obstacles_present(bool in_junction = false);
+    void check_right_of_way();
     bool reached_desired_velocity(float desired_velocity);
     bool is_stopped();
     bool upcoming_intersection();
     SignalType classify_signal(const navigator::opendrive::Signal& signal);
+
 
 };
 

@@ -5,7 +5,6 @@
 #include <tf2/utils.h>
 #include <cmath>
 #include <unordered_set>
-
 #include <boost/geometry/algorithms/within.hpp> 
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
@@ -113,15 +112,11 @@ void BehaviorPlannerNode::update_state() {
       break;
     case YIELDING:
       RCLCPP_INFO(this->get_logger(), "current state: YIELDING");
+      
       if (reached_desired_velocity(YIELD_SPEED)) yield_ticks += 1;
       if (yield_ticks >= 5) {
         yield_ticks = 0;
-        if (!obstacles_present()) {
-          current_state = IN_JUNCTION;
-        } else if (final_zones.zones.size()) {
-          final_zones.zones[0].max_speed = STOP_SPEED;
-          current_state = STOPPING;
-        }
+        current_state = IN_JUNCTION;
       }
       break;
     case STOPPING:
@@ -139,14 +134,26 @@ void BehaviorPlannerNode::update_state() {
       if (!obstacles_present()) {
         if (final_zones.zones.size()) {
           final_zones.zones[0].max_speed = YIELD_SPEED;
+          current_state = IN_JUNCTION;
         }
+      } else if (obs_with_ROW.size() != 0) {
+        current_state = WAITING_AT_JUNCTION;
+      }
+      break;
+    case WAITING_AT_JUNCTION:
+      RCLCPP_INFO(this->get_logger(), "current state: WAITING_AT_JUNCTION");
+
+      if (obs_with_ROW.size() != 0) {
+        // check if any of the ID obstacles are gone and remove from ID array
+        check_right_of_way();
+      } else {
         current_state = IN_JUNCTION;
       }
       break;
     case IN_JUNCTION:
       RCLCPP_INFO(this->get_logger(), "current state: IN_JUNCTION");
 
-      if (obstacles_present() && final_zones.zones.size()) {
+      if (obstacles_present(true) && final_zones.zones.size()) {
         final_zones.zones[0].max_speed = STOP_SPEED;
         RCLCPP_INFO(this->get_logger(), "EMERGENCY STOP");
       } else if (final_zones.zones.size()) {
@@ -166,6 +173,25 @@ void BehaviorPlannerNode::update_state() {
   }
 }
 
+
+float BehaviorPlannerNode::zone_point_distance(float x, float y) {
+
+  if (!final_zones.zones.size()) {
+    RCLCPP_INFO(this->get_logger(), "ERROR: in junction but no zones");
+    return false;
+  }
+
+  polygon_type zone_poly;
+  point_type p(x, y);
+
+  std::vector<point_type> poly_points;
+  for(auto point : final_zones.zones[0].poly.points) {
+    poly_points.push_back(point_type(point.x, point.y));
+  }
+
+  boost::geometry::assign_points(zone_poly, poly_points);
+  return boost::geometry::distance(p, zone_poly);
+}
 
 bool BehaviorPlannerNode::point_in_zone(float x, float y) {
 
@@ -211,17 +237,62 @@ bool BehaviorPlannerNode::poly_in_zone(BoundingBox obs_bbox) {
   return false;
 }
 
-bool BehaviorPlannerNode::obstacles_present() {
+bool BehaviorPlannerNode::obstacles_present(bool in_junction) {
+  
   this->update_tf();
+  bool obs_in_junction = false;
+
   for (Obstacle obs : current_obstacles->obstacles) {
     std::array<geometry_msgs::msg::Point, 8> corners = transform_obstacle(obs);
+    
+    size_t i = 0; // last 4 corners of Carla are nonsense for some reason
     for (const auto& point : corners) {
-      if (point_in_zone(point.x, point.y)) {
-        return true;
+      if (i < 4 && point_in_zone(point.x, point.y)) {
+        // obstacle is already inside zone
+        obs_in_junction = true;
+      } else if (i < 4 && !in_junction && zone_point_distance(point.x, point.y) < 5.0) {
+        // obstacle is outside zone (assume they have right-of-way)
+        // don't care about this property if we are already inside junction
+        obs_with_ROW.push_back(obs.id);
+        break;
       }
+      i += 1;
     }
   }
-  return false;
+  return obs_in_junction || (obs_with_ROW.size() != 0);
+}
+
+void BehaviorPlannerNode::check_right_of_way() {
+  
+  this->update_tf();
+
+  for (Obstacle obs : current_obstacles->obstacles) {
+
+    std::array<geometry_msgs::msg::Point, 8> corners = transform_obstacle(obs);
+
+    float min_distance = 1000;
+    size_t i = 0; // last 4 corners of Carla are nonsense for some reason
+    for (const auto& point : corners) {
+      if (i >= 4) break;
+      i += 1;
+      float distance = zone_point_distance(point.x, point.y);  
+      if (distance < min_distance) {
+        min_distance = distance;
+      }
+    }
+
+    // if zone-closest corner is farther away than 10 meters, obstacle can be removed
+    if (min_distance > 10.0) {
+      for (size_t i = 0; i < obs_with_ROW.size(); i++) {
+        if (obs_with_ROW[i] == obs.id) {
+          obs_with_ROW.erase(obs_with_ROW.begin() + i);
+          break;
+        }
+      }
+    }
+
+  }
+
 }
 
 bool BehaviorPlannerNode::reached_desired_velocity(float desired_velocity) {
