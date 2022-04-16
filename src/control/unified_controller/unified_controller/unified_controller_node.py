@@ -78,13 +78,15 @@ class UnifiedController(Node):
     WHEEL_BASE = 3.4
     MAX_STEERING_ANGLE = 0.58294 # radians
 
-
     MAX_SAFE_DECELERATION = 8 # m/s^2
     MAX_COMFORTABLE_DECELERATION = 1 # m/s^2
     MAX_COMFORTABLE_ACCELERATION = 1
     MAX_LATERAL_ACCELERATION = 1 # radial acceleration on turns
 
     MIN_TIME_LOOKAHEAD = 10
+    VELOCITY_LOOKEAHED_DISTANCE = 2 + 3.4 # the car tracks velocity this far ahead of the origin of its coordinate 
+    # system. I.e. if the origin is at the front of the car and lookeahead is 1 meter, the car will stop 1 meter
+    # before zone boundaries.
     STEERING_LOOKEAHAD_DISTANCE = 7 # meters
 
 
@@ -130,9 +132,9 @@ class UnifiedController(Node):
         self.get_logger().info("Current speed: %f" % current_speed)
 
         # Find lookahead information
-        steering_lookahead: Point = self.point_at_distance(current_path_index, self.STEERING_LOOKEAHAD_DISTANCE)[0]
+        steering_lookahead: TrajectoryPoint = self.point_at_distance(current_path_index, self.STEERING_LOOKEAHAD_DISTANCE)
         v_lookeahead_time = self.MIN_TIME_LOOKAHEAD + current_speed * self.MAX_COMFORTABLE_DECELERATION
-        velocity_lookahead, goal_v, time_to_v_lookahead = self.point_at_time(current_path_index, v_lookeahead_time)
+        velocity_lookahead, goal_v, time_to_v_lookahead = self.point_at_time(current_path_index, v_lookeahead_time, self.VELOCITY_LOOKEAHED_DISTANCE)
 
         # Get goal steering angle
         vector_to_lookahead = (steering_lookahead.y - current_pos.y, steering_lookahead.x - current_pos.x)
@@ -184,14 +186,20 @@ class UnifiedController(Node):
                 min_dist = d
         return min_index
 
-    def point_at_time(self, start_index: int, horizon: float):
+    def point_at_time(self, start_index: int, horizon: float, distance_lookeahead: float = 0):
         """
         Returns the (point, speed, time_to_point) at the given time (seconds) into the future, starting at the given index.
         Time follows idealized path velocities.
         """
         path = self.cached_path.points
         time_elapsed = 0
-        prev_point: TrajectoryPoint = path[start_index]
+
+        prev_point = path[start_index]
+
+        if(distance_lookeahead > 0):
+            prev_point = self.point_at_distance(start_index, distance_lookeahead)
+            start_index = self.index_at_distance(start_index, distance_lookeahead)[0]
+
         for i in range(1, len(path)):
             point_i: TrajectoryPoint = path[(start_index + i) % len(path)]
             dx = point_i.x - prev_point.x
@@ -211,7 +219,40 @@ class UnifiedController(Node):
     def point_at_distance(self, start_index: int, distance: float):
         """
         Returns the (point, speed) at the given distance, starting at the given index.
+
+        Unlike index_at_distance, interpolates between points, so the returned point
+        may not be a vertice but will have an arclength very close to given distance.
         """
+        overshoot_index, overshoot_distance = self.index_at_distance(start_index, distance)
+        overshoot_distance -= distance
+        undershoot_index = (overshoot_index + len(self.cached_path.points) - 1) % len(self.cached_path.points)
+
+        overshoot_point : TrajectoryPoint = self.cached_path.points[overshoot_index]
+        undershoot_point : TrajectoryPoint= self.cached_path.points[undershoot_index]
+
+        dx = overshoot_point.x - undershoot_point.x
+        dy = overshoot_point.y - undershoot_point.y
+        d = math.sqrt(dx*dx + dy*dy)
+
+        interpolation_coefficient = 0
+        if(d > 0.01):
+            interpolation_coefficient = overshoot_distance / d
+
+        interpolated_speed = overshoot_point.vx * interpolation_coefficient + \
+            undershoot_point.vx * (1 - interpolation_coefficient)
+        
+        interpolated_point = TrajectoryPoint(x = undershoot_point.x + interpolation_coefficient * dx,
+                                            y = undershoot_point.y + interpolation_coefficient * dy,
+                                            vx = interpolated_speed, vy = 0.0)
+       
+        return interpolated_point
+       
+
+    def index_at_distance(self, start_index: int, distance: float):
+        """ Returns the index of the point at the given distance from the start point.
+            Returns (index, distance), where distance is the arc distance from the start point.
+            Since the path is discrete, this may be greater than the given distance.
+         """ 
         path = self.cached_path.points
         dist_elapsed = 0
         prev_point: TrajectoryPoint = path[start_index]
@@ -223,11 +264,7 @@ class UnifiedController(Node):
             dist_elapsed += d
 
             if dist_elapsed >= distance:
-                return (
-                    Point(x=point_i.x,
-                        y=point_i.y,
-                        z=0.0),
-                    point_i.vx)
+                return ((start_index + i) % len(path), dist_elapsed)
             
             prev_point = point_i
 
