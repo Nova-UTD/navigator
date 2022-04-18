@@ -80,7 +80,7 @@ void MotionPlannerNode::odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPt
 
 /**
  * @brief Looks for the point on the trajectory closest to the car, then adds all points less than horizon units away to trajectory
- *          (loops if at end of path)
+ *          (if at end of path, the trajectory will be shorter than horizon. In this case, the last ppoint will have speed 0)
  * 
  * @param horizon - number of points on the final path
  */
@@ -100,8 +100,8 @@ voltron_msgs::msg::Trajectory MotionPlannerNode::build_trajectory(voltron_msgs::
         }
     }
     //add trimmed points
-    for (size_t points = 0; points < horizon; points++) {
-        size_t i = (min_idx + points) % ideal_path->points.size();
+    for (size_t points = 0; points < horizon && min_idx+points < path->points.size(); points++) {
+        size_t i = min_idx + points;
         TrajectoryPoint pt = voltron_msgs::msg::TrajectoryPoint();
         auto p = path->points[i];
         pt.x = p.x;
@@ -109,6 +109,12 @@ voltron_msgs::msg::Trajectory MotionPlannerNode::build_trajectory(voltron_msgs::
         pt.vx = path->speeds[i];
         t.points.push_back(pt);
     }
+
+    // If we are at the end of the path, set the last point's speed to 0
+    if (min_idx + horizon >= path->points.size()) {
+        t.points.back().vx = 0;
+    }
+    
     return t;
 }
 
