@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'bag_tools_node = bag_tools.bag_tools_node:main'
+            'gnss_log_publisher = bag_tools.gnss_log_publisher:main'
         ],
     },
 )
