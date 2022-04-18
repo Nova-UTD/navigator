@@ -82,12 +82,35 @@ def generate_launch_description():
             ("target", "steering_target"),
             ("measurement", "real_steering_angle")])
     
+    joy = Node(
+        package = 'joy_linux',
+        executable = 'joy_linux_node',
+        parameters = [
+            (path.join
+             (param_dir,"interface","joy.param.yaml"))],
+        remappings = [])
+
+    joy_control = Node(
+        package = 'joy_control',
+        executable = 'joy_control',
+        parameters = [
+            (path.join
+             (param_dir,"interface","joy_control.param.yaml"))],
+        remappings = [
+            ("joy_control_throttle", "throttle_position"),
+            ("joy_control_brake", "brake_position"),
+            ("joy_control_steering", "steering_target"),
+            ("joy_control_enable", "steering_enable"),
+            ("joy_control_input", "/joy")])
+    
     return LaunchDescription([
-        serial,
-        servo_throttle,
-        servo_brake,
-        can,
-        epas_reporter,
-        epas_controller,
-        steering_pid,
+        #serial,
+        #servo_throttle,
+        #servo_brake,
+        #can,
+        #epas_reporter,
+        #epas_controller,
+        #steering_pid,
+        joy,
+        joy_control
     ])

@@ -1,0 +1,4 @@
+---
+/**:
+  ros__parameters:
+    dev: /dev/input/js1
