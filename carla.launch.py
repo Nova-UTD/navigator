@@ -241,20 +241,23 @@ def generate_launch_description():
         package='motion_planner',
         name='motion_planner_node',
         namespace='planning',
-        executable='motion_planner_exe',
+        executable='motion_planner',
         output='screen',
         remappings=[
             ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
         ]
     )
-    motion_planner_visuals = Node(
-        package='motion_planner_visuals',
-        name='motion_planner_visuals_node',
+    behavior_planner = Node(
+        package='nova_behavior_planner',
+        name='behavior_planner',
         namespace='planning',
-        executable='motion_planner_visuals_exe',
+        executable='BehaviorPlannerLaunch',
         output='screen',
-        remappings = [
-            ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
+        parameters=[
+            (path.join(param_dir,"planning","path_publisher.param.yaml"))
+        ],
+        remappings=[
+            
         ]
     )
     lane_planner = Node(
@@ -300,7 +303,6 @@ def generate_launch_description():
         package='map_publishers',
         executable='lanelet_loader'
     )
-    
     return LaunchDescription([
         # CONTROL
         unified_controller,
@@ -337,7 +339,7 @@ def generate_launch_description():
         # path_planner,
         # lane_planner,
         # parking_planner,
+        behavior_planner,
         path_publisher,
-        # motion_planner,
-        # motion_planner_visuals
+        motion_planner
     ])

@@ -37,11 +37,7 @@ public:
 	void generatePaths();
 
 private:
-	std::set<std::string> onramp_ids; // Road IDs
-	std::set<std::string> loop_ids; // RoadIDs
 	std::set<std::string> all_ids;
-	std::set<std::string> stop_road_ids;
-	std::set<std::string> go_road_ids;
 	
 	voltron_msgs::msg::FinalPath path;
 	odr::OpenDriveMap* map;
@@ -55,9 +51,8 @@ private:
 
 	voltron_msgs::msg::FinalPath route1;
 	voltron_msgs::msg::FinalPath route2;
-	voltron_msgs::msg::FinalPath route2_nonstop;
 
 	void publish_paths_viz(voltron_msgs::msg::FinalPath path);
-	voltron_msgs::msg::FinalPath generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, odr::OpenDriveMap *map, std::set<std::string> &stop_roads);
+	voltron_msgs::msg::FinalPath generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, odr::OpenDriveMap *map);
 	void switch_path(voltron_msgs::msg::FinalPath path);
 };
