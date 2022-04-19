@@ -69,7 +69,8 @@ def generate_launch_description():
             (path.join(param_dir,"interface","epas_controller.param.yaml"))],
         remappings = [
             ("epas_translator_steering_power", "steering_power"),
-            ("epas_translator_outgoing_can_frames", "outgoing_can_frames")])
+            ("epas_translator_outgoing_can_frames", "outgoing_can_frames"),
+            ("epas_translator_enable", "steering_enable")])
 
     steering_pid = Node(
         package = 'pid_controller',
