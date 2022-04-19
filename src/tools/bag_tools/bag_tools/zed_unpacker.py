@@ -24,10 +24,11 @@ Todos:
 
 '''
 
+import cv2
+import time
 from scipy import rand
-from sensor_msgs.msg import PointCloud2
-from scipy.spatial.transform import Rotation as R
-from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, Polygon, PolygonStamped, Point32
+from sensor_msgs.msg import PointCloud2, Image
+from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, PoseWithCovarianceStamped
 from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D, PolygonArray
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import Odometry  # For GPS, ground truth
@@ -45,11 +46,28 @@ import numpy as np
 import ros2_numpy as rnp
 from rclpy.node import Node
 import rclpy
+from scipy.spatial.transform import Rotation as R
 
 # ZED stuff
 import pyzed.sl as sl
 svo_path = "/home/main/voltron/assets/bags/april16/HD720_SN34750148_17-02-06_trimmed.svo"
 zed = sl.Camera()
+USE_BATCHING = True
+
+# Image format conversion
+
+'''
+CHECKLIST
+=========
+
+Publish to ROS:
+- [x] RGB image from left camera (15 Hz)
+- [x] Depth map (15 Hz)
+- [-] Point cloud -- Skipped, too slow for now
+- [ ] Array of detected objects
+- [x] Pose data (with sensor fusion of optical odom) (max Hz)
+
+'''
 
 
 class ZedUnpacker(Node):
@@ -61,10 +79,21 @@ class ZedUnpacker(Node):
         # self.road_cloud_sub = self.create_subscription(
         #     PointCloud2, '/lidar/semantic/road', self.calculate_bias, 10
         # )
+        self.pose_pub = self.create_publisher(
+            PoseWithCovarianceStamped, '/sensors/zed/pose', 10)
 
-        self.gnss_pub = self.create_publisher(
-            Odometry, '/sensors/gnss/odom', 10)
+        self.left_rgb_pub = self.create_publisher(
+            Image, 'sensors/zed/left_rgb', 10
+        )
 
+        self.depth_img_pub = self.create_publisher(
+            Image, 'sensors/zed/depth_img', 10
+        )
+        self.pcd_pub = self.create_publisher(
+            PointCloud2, 'sensors/zed/depth_cloud', 10
+        )
+
+        self.br = CvBridge()
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
@@ -74,6 +103,8 @@ class ZedUnpacker(Node):
         # Use the ROS coordinate system for all measurements
         init_parameters.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Z_UP_X_FWD
         init_parameters.coordinate_units = sl.UNIT.METER  # Set units in meters
+        init_parameters.depth_minimum_distance = 1.0
+        init_parameters.depth_minimum_distance = 40.0
         init_parameters.svo_real_time_mode = True
 
         zed = sl.Camera()
@@ -82,8 +113,31 @@ class ZedUnpacker(Node):
             print(repr(status))
             exit()
 
+        # Enable pos tracking
         tracking_params = sl.PositionalTrackingParameters()
         zed.enable_positional_tracking(tracking_params)
+
+        # Enable object detection
+        batch_parameters = sl.BatchParameters()
+        batch_parameters.enable = False
+        obj_param = sl.ObjectDetectionParameters(
+            batch_trajectories_parameters=batch_parameters)
+
+        obj_param.detection_model = sl.DETECTION_MODEL.MULTI_CLASS_BOX
+        # Defines if the object detection will track objects across images flow.
+        obj_param.enable_tracking = True
+        zed.enable_object_detection(obj_param)
+
+        # Configure object detection runtime parameters
+        obj_runtime_param = sl.ObjectDetectionRuntimeParameters()
+        detection_confidence = 60
+        obj_runtime_param.detection_confidence_threshold = detection_confidence
+        # To select a set of specific object classes
+        obj_runtime_param.object_class_filter = [
+            sl.OBJECT_CLASS.VEHICLE, sl.OBJECT_CLASS.PERSON, sl.OBJECT_CLASS.ANIMAL]
+        # To set a specific threshold
+        obj_runtime_param.object_class_detection_confidence_threshold = {
+            sl.OBJECT_CLASS.PERSON: detection_confidence}
 
         runtime = sl.RuntimeParameters()
         camera_pose = sl.Pose()
@@ -93,11 +147,22 @@ class ZedUnpacker(Node):
         py_translation = sl.Translation()
         pose_data = sl.Transform()
 
-        svo_image = sl.Mat()
+        image = sl.Mat()
+        depth = sl.Mat()
+        point_cloud = sl.Mat()
+        objects = sl.Objects()  # Structure containing all the detected objects
         while True:
             if zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
-                # Read right RGB image
-                zed.retrieve_image(svo_image, sl.VIEW.RIGHT)
+                # Read left RGB image
+                zed.retrieve_image(image, sl.VIEW.LEFT)
+                # Retrieve depth matrix. Depth is aligned on the left RGB image
+                zed.retrieve_measure(depth, sl.MEASURE.DEPTH)
+                # Retrieve colored point cloud
+                zed.retrieve_measure(point_cloud, sl.MEASURE.XYZRGBA)
+
+                # Retrieve the detected objects
+                zed.retrieve_objects(objects, obj_runtime_param)
+
                 # Get the timestamp at the time the image was captured
                 timestamp = zed.get_timestamp(sl.TIME_REFERENCE.CURRENT)
 
@@ -105,13 +170,23 @@ class ZedUnpacker(Node):
 
                 tracking_state = zed.get_position(
                     camera_pose, sl.REFERENCE_FRAME.WORLD)
+
                 if tracking_state == sl.POSITIONAL_TRACKING_STATE.OK:
-                    rotation = camera_pose.get_rotation_vector()
-                    translation = camera_pose.get_translation(py_translation)
-                    print(translation.get())
+                    self.publish_pose(camera_pose)
+                else:
+                    self.get_logger().warning("Positional tracking not available.")
+
+                self.publish_zed_img(image)
+                self.publish_depth_img(depth)
+                self.publish_object_boxes(objects)
+
+                # Disable for now... It's too slow
+                # self.publish_depth_cloud(point_cloud)
+
+                # print(translation.get())
 
                 # print("Image resolution: {0} x {1} || Image timestamp: {2}\n".format(svo_image.get_width(), svo_image.get_height(),
-                    #  timestamp.get_milliseconds()))
+                #  timestamp.get_milliseconds()))
 
                 # Get frame count
                 svo_position = zed.get_svo_position()
@@ -122,7 +197,93 @@ class ZedUnpacker(Node):
             else:
                 print(zed.grab())
 
-    # def publish_zed_img(self, mat: sl.Mat):
+    def publish_zed_img(self, mat: sl.Mat):
+        np_mat = mat.get_data()
+        # msg = rnp.msgify(Image, np_mat, 'bgra8')
+        msg = self.br.cv2_to_imgmsg(np_mat)
+        msg.header.stamp = self.get_clock().now().to_msg()
+        # Not strictly accurate, should be in left frame...
+        msg.header.frame_id = 'zed2_camera_center'
+        self.left_rgb_pub.publish(msg)
+
+    def publish_depth_img(self, mat: sl.Mat):
+        tic = time.time()
+        np_mat = mat.get_data()
+        # msg = rnp.msgify(Image, np_mat, 'bgra8')
+        msg = self.br.cv2_to_imgmsg(np_mat)
+        msg.header.stamp = self.get_clock().now().to_msg()
+        # Not strictly accurate, should be in left frame...
+        msg.header.frame_id = 'zed2_camera_center'
+        self.depth_img_pub.publish(msg)
+        # print(time.time()-tic)
+
+    def publish_depth_cloud(self, mat: sl.Mat):
+        tic = time.time()
+        np_mat = mat.get_data()
+        # print(np_mat)
+        np_mat = np_mat[np.logical_not(np.isnan(np_mat[:, :, 0]))]
+        np_mat.dtype = [
+            ('x', np.float32),
+            ('y', np.float32),
+            ('z', np.float32),
+            ('rgba', np.float32)
+        ]
+        print(np_mat)
+        msg = rnp.msgify(PointCloud2, np_mat)
+        msg.header.stamp = self.get_clock().now().to_msg()
+        # Not strictly accurate, should be in left frame...
+        msg.header.frame_id = 'zed2_camera_center'
+        self.pcd_pub.publish(msg)
+        print(time.time()-tic)
+
+    def publish_object_boxes(self, objects: sl.Objects):
+        obj_array = Obstacle3DArray()
+        print(f"Objects: {len(objects.object_list)}")
+        for object in objects.object_list:
+            obj_msg = Obstacle3D()
+            if object.label == sl.OBJECT_CLASS.PERSON:
+                obj_msg.label = Obstacle3D.PEDESTRIAN
+            elif object.label == sl.OBJECT_CLASS.VEHICLE:
+                if object.sublabel == sl.OBJECT_SUBCLASS.BICYCLE:
+                    obj_msg.label = Obstacle3D.BIKE
+                else:
+                    obj_msg.label = Obstacle3D.CAR
+            else:
+                obj_msg.label = Obstacle3D.OTHER
+            obj_msg.id = object.id
+            obj_msg.confidence = object.confidence
+            print(object.bounding_box)
+            obj_msg.velocity = Vector3(
+                x=object.velocity[0],
+                y=object.velocity[1],
+                z=object.velocity[2]
+            )
+            # obj_msg.velocity = obje
+            print("{} {}".format(object.id, object.position))
+
+    def publish_pose(self, pose: sl.Pose):
+        rotation = pose.get_rotation_vector()
+        translation = pose.get_translation().get()
+
+        msg = PoseWithCovarianceStamped()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        # Hm...  We will set our state estimate UKF to differentiate this.
+        msg.header.frame_id = 'map'
+
+        # Set position
+        msg.pose.pose.position.x = translation[0]
+        msg.pose.pose.position.y = translation[1]
+        # This should be zero... but it isn't
+        msg.pose.pose.position.z = translation[2]
+
+        # Set orientation
+        quat = R.from_rotvec(rotation).as_quat()  # [x,y,z,w]
+        msg.pose.pose.orientation.x = quat[0]
+        msg.pose.pose.orientation.y = quat[1]
+        msg.pose.pose.orientation.z = quat[2]
+        msg.pose.pose.orientation.w = quat[3]
+
+        self.pose_pub.publish(msg)
 
 
 def main(args=None):
