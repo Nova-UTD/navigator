@@ -55,7 +55,7 @@ alt0 = 196.0
 skip_time = 14  # seconds
 
 gps_log_path = "/home/main/voltron/assets/bags/april16/putty20220416170158.log"
-outfile = open("converted_gps.csv", 'w')
+# outfile = open("converted_gps.csv", 'w')
 
 
 class GnssLogPublisher(Node):
@@ -76,7 +76,7 @@ class GnssLogPublisher(Node):
         self.road_boundary = None
         self.gps_timer = self.create_timer(0.5, self.publish_next_gnss)
         self.log_file = open(gps_log_path, 'r').readlines()
-        outfile.write(f"x,y,z,u,v,speed,pos_acc,yaw_acc,speed_acc\n")
+        # outfile.write(f"x,y,z,u,v,speed,pos_acc,yaw_acc,speed_acc\n")
 
         self.idx = skip_time*2  # 2 hz
 
@@ -146,7 +146,7 @@ def main(args=None):
     gnss_log_publisher = GnssLogPublisher()
 
     rclpy.spin(gnss_log_publisher)
-    outfile.close()
+    # outfile.close()
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically

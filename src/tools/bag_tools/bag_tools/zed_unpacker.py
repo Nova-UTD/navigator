@@ -29,7 +29,7 @@ import time
 from scipy import rand
 from sensor_msgs.msg import PointCloud2, Image
 from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, PoseWithCovarianceStamped
-from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D, PolygonArray
+from voltron_msgs.msg import Obstacle3DArray, Obstacle3D, BoundingBox3D, BoundingBox2D, Obstacle2D, Obstacle2DArray
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import Odometry  # For GPS, ground truth
 from std_msgs.msg import Bool, Header, Float32, ColorRGBA
@@ -50,7 +50,7 @@ from scipy.spatial.transform import Rotation as R
 
 # ZED stuff
 import pyzed.sl as sl
-svo_path = "/home/main/voltron/assets/bags/april16/HD720_SN34750148_17-02-06_trimmed.svo"
+svo_path = "/home/main/voltron/assets/bags/april16/HD720_SN34750148_17-02-06_trimmed_3s5.svo"
 zed = sl.Camera()
 USE_BATCHING = True
 
@@ -64,7 +64,7 @@ Publish to ROS:
 - [x] RGB image from left camera (15 Hz)
 - [x] Depth map (15 Hz)
 - [-] Point cloud -- Skipped, too slow for now
-- [ ] Array of detected objects
+- [x] Array of detected objects
 - [x] Pose data (with sensor fusion of optical odom) (max Hz)
 
 '''
@@ -92,6 +92,11 @@ class ZedUnpacker(Node):
         self.pcd_pub = self.create_publisher(
             PointCloud2, 'sensors/zed/depth_cloud', 10
         )
+        self.object_pub_3d = self.create_publisher(
+            Obstacle3DArray, 'sensors/zed/obstacle_array_3d', 10)
+
+        self.object_pub_2d = self.create_publisher(
+            Obstacle2DArray, 'sensors/zed/obstacle_array_2d', 10)
 
         self.br = CvBridge()
         self.tf_buffer = Buffer()
@@ -238,28 +243,78 @@ class ZedUnpacker(Node):
 
     def publish_object_boxes(self, objects: sl.Objects):
         obj_array = Obstacle3DArray()
+        obj_2d_array = Obstacle2DArray()
         print(f"Objects: {len(objects.object_list)}")
         for object in objects.object_list:
             obj_msg = Obstacle3D()
+            obj_2d_msg = Obstacle2D()
             if object.label == sl.OBJECT_CLASS.PERSON:
                 obj_msg.label = Obstacle3D.PEDESTRIAN
+                obj_2d_msg.label = Obstacle3D.PEDESTRIAN
             elif object.label == sl.OBJECT_CLASS.VEHICLE:
                 if object.sublabel == sl.OBJECT_SUBCLASS.BICYCLE:
                     obj_msg.label = Obstacle3D.BIKE
+                    obj_2d_msg.label = Obstacle3D.BIKE
                 else:
                     obj_msg.label = Obstacle3D.CAR
+                    obj_2d_msg.label = Obstacle3D.CAR
             else:
                 obj_msg.label = Obstacle3D.OTHER
+                obj_2d_msg.label = Obstacle3D.OTHER
             obj_msg.id = object.id
+            obj_2d_msg.id = object.id
             obj_msg.confidence = object.confidence
-            print(object.bounding_box)
+            obj_2d_msg.confidence = object.confidence
+            # print(object.bounding_box)
             obj_msg.velocity = Vector3(
                 x=object.velocity[0],
                 y=object.velocity[1],
                 z=object.velocity[2]
             )
-            # obj_msg.velocity = obje
-            print("{} {}".format(object.id, object.position))
+            # Add 3D box only if we have eight corners
+            bbox_msg = BoundingBox3D()
+            corners = []
+            if len(object.bounding_box[:] == 8):
+                for point in object.bounding_box[:]:
+
+                    pt = Point(
+                        x=point[0].item(),
+                        y=point[1].item(),
+                        z=point[2].item()
+                    )
+                    corners.append(pt)
+                    # print(pt)
+            print(corners)
+            if len(corners) == 8:
+                bbox_msg.corners = corners
+                print(bbox_msg.corners)
+            obj_msg.bounding_box = bbox_msg
+            obj_array.obstacles.append(obj_msg)
+
+            # Finally, add 2D box
+            bbox_msg_2d = BoundingBox2D()
+            corners = []
+            if len(object.bounding_box_2d[:] == 4):
+                corners = object.bounding_box_2d[:]
+                bbox_msg_2d.a[0] = corners[0][0].item()
+                bbox_msg_2d.a[1] = corners[0][1].item()
+                bbox_msg_2d.b[0] = corners[1][0].item()
+                bbox_msg_2d.b[1] = corners[1][1].item()
+                bbox_msg_2d.c[0] = corners[2][0].item()
+                bbox_msg_2d.c[1] = corners[2][1].item()
+                bbox_msg_2d.d[0] = corners[3][0].item()
+                bbox_msg_2d.d[1] = corners[3][1].item()
+            obj_2d_msg.bounding_box = bbox_msg_2d
+            obj_2d_array.obstacles.append(obj_2d_msg)
+
+        obj_array.header.stamp = self.get_clock().now().to_msg()
+        obj_array.header.frame_id = 'base_link'
+        obj_2d_array.header.stamp = self.get_clock().now().to_msg()
+        obj_2d_array.header.frame_id = 'base_link'
+        # obj_msg.velocity = obje
+        # print("{} {}".format(object.id, object.position))
+        self.object_pub_3d.publish(obj_array)
+        self.object_pub_2d.publish(obj_2d_array)
 
     def publish_pose(self, pose: sl.Pose):
         rotation = pose.get_rotation_vector()
