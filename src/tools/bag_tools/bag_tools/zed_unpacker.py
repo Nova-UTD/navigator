@@ -46,22 +46,15 @@ import ros2_numpy as rnp
 from rclpy.node import Node
 import rclpy
 
-# GPS stuff
-import pymap3d as pm
-
-lat0 = 32.989487
-lon0 = -96.750437
-alt0 = 196.0
-skip_time = 14  # seconds
-
-gps_log_path = "/home/main/voltron/assets/bags/april16/putty20220416170158.log"
-outfile = open("converted_gps.csv", 'w')
+# ZED stuff
+import pyzed.sl as sl
+svo_path = "/home/main/voltron/assets/bags/april16/HD720_SN34750148_17-02-06_trimmed.svo"
 
 
-class GnssLogPublisher(Node):
+class ZedUnpacker(Node):
 
     def __init__(self):
-        super().__init__('gnss_log_publisher')
+        super().__init__('zed_unpacker')
 
         # Create our publishers
         # self.road_cloud_sub = self.create_subscription(
@@ -143,15 +136,15 @@ class GnssLogPublisher(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    gnss_log_publisher = GnssLogPublisher()
+    zed_unpacker = ZedUnpacker()
 
-    rclpy.spin(gnss_log_publisher)
+    rclpy.spin(zed_unpacker)
     outfile.close()
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    gnss_log_publisher.destroy_node()
+    zed_unpacker.destroy_node()
     rclpy.shutdown()
 
 

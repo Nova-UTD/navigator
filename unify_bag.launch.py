@@ -13,8 +13,9 @@ from ament_index_python import get_package_share_directory
 
 import subprocess
 
-bag_path = "/mnt/sda1/bags/april16/rosbag2_2022_04_16-22_02_11"
-svo_path = "/mnt/sda1/bags/april16/HD720_SN34750148_17-02-06_trimmed.svo"
+bag_path = "/home/main/voltron/assets/bags/april16/rosbag2_2022_04_16-22_02_11"
+svo_path = "/home/main/voltron/assets/bags/april16/HD720_SN34750148_17-02-06_trimmed.svo"
+
 
 def generate_launch_description():
 
@@ -23,9 +24,8 @@ def generate_launch_description():
 
     launch_path = path.realpath(__file__)
     launch_dir = path.dirname(launch_path)
-    param_dir = path.join(launch_dir,"param")
+    param_dir = path.join(launch_dir, "param")
     interface = "vcan0"
-
 
     zed_wrapper_node = Node(
         package='zed_wrapper',
@@ -35,13 +35,13 @@ def generate_launch_description():
             # YAML files
             path.join(param_dir, "perception", "zed.param.yaml"),
             {
-                
-                 'general.camera_name': 'zed2',
-                 'general.camera_model': 'zed2',
-                 'general.svo_file': svo_path,
+
+                'general.camera_name': 'zed2',
+                'general.camera_model': 'zed2',
+                'general.svo_file': svo_path,
                 #  'general.svo_loop': True, # Loop infinitely
-                 'pos_tracking.base_frame': 'base_link',
-                 'od_enabled': True
+                'pos_tracking.base_frame': 'base_link',
+                'od_enabled': True
             }
         ]
     )
