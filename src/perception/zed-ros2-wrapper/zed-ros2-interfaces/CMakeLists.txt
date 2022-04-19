@@ -33,6 +33,7 @@ set(MSG_FILES
     "msg/BoundingBox3D.msg"
     "msg/Skeleton2D.msg"
     "msg/Skeleton3D.msg"
+    "msg/DepthInfoStamped.msg"
 )
 
 set(SRV_FILES

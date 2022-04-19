@@ -72,7 +72,7 @@ class GnssLogPublisher(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.road_boundary = None
-        self.gps_timer = self.create_timer(0.05, self.publish_next_gnss)
+        self.gps_timer = self.create_timer(0.5, self.publish_next_gnss)
         self.log_file = open(gps_log_path, 'r').readlines()
         outfile.write(f"x,y,z,u,v,speed,pos_acc,yaw_acc,speed_acc\n")
 
