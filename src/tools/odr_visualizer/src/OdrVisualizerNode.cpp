@@ -66,7 +66,7 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node")
 	// Read map from file, using our path param
 	std::string xodr_path = this->get_parameter("xodr_path").as_string();
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-	odr_map = navigator::opendrive::load_map(xodr_path);
+	odr_map = navigator::opendrive::load_map(xodr_path)->map;
 
 	generateMapMarkers();
 }

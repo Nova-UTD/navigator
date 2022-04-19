@@ -1,23 +1,15 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>nova_behavior_planner</name>
+  <name>zone_fusion</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="nikhil.narvekar.712@gmail.com">nnarvekar</maintainer>
+  <description>Combines different sources of zones into one message</description>
+  <maintainer email="jim3moore@gmail.com">Jim Moore</maintainer>
   <license>MIT License</license>
 
   <buildtool_depend>nova_auto_package</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>libopendrive</depend>
-  <depend>geometry_msgs</depend>
-  <depend>nav_msgs</depend>
-  <depend>opendrive_utils</depend>
-  <depend>std_msgs</depend>
-  <depend>tf2</depend>
-  <depend>tf2_ros</depend>
-  <depend>visualization_msgs</depend>
   <depend>voltron_msgs</depend>
   <depend>zone_lib</depend>
 

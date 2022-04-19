@@ -19,7 +19,7 @@ from std_msgs.msg import String, Header, ColorRGBA
 from geometry_msgs.msg import PoseStamped, Polygon, Point32, Point
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker, MarkerArray
-from voltron_msgs.msg import CostedPaths, CostedPath, Zone, ZoneArray, Obstacle3DArray, Obstacle3D
+from voltron_msgs.msg import CostedPaths, CostedPath, Zone, ZoneArray, Obstacle3DArray, Obstacle3D, Trajectory
 import math
 
 
@@ -27,6 +27,17 @@ class NovaVizNode(Node):
 
     def __init__(self):
         super().__init__('nova_viz_node')
+
+        self.get_logger().info("woo")
+        self.trajectory_sub = self.create_subscription(
+            Trajectory, '/planning/outgoing_trajectory', self.motion_paths_cb, 10)
+
+        self.zones_viz_pub = self.create_publisher(
+            MarkerArray, '/viz/zones', 10)
+        self.trajectory_viz_pub = self.create_publisher(
+            MarkerArray, '/viz/trajectory', 10)
+        self.zones_sub = self.create_subscription(
+            ZoneArray, '/planning/zone_array', self.zones_cb, 10)
         self.costed_paths_sub = self.create_subscription(
             CostedPaths, '/planning/paths', self.paths_cb, 10)
         self.path_viz_pub = self.create_publisher(Marker, '/viz/path', 10)
