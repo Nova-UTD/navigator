@@ -137,7 +137,7 @@ class UnifiedController(Node):
     position : TrajectoryPoint # trajectory point for convenience working with combining the position and path points
     heading_theta : float # 0 is x axis (?). In radians
     path : List[TrajectoryPoint] # saved version of cached_path.points in case cached_path is updated mid-calculations
-    stamp_time : float
+    stamp_time : float = 0.0
     current_path_index : int
 
     def paths_cb(self, msg: Trajectory):
@@ -153,7 +153,10 @@ class UnifiedController(Node):
         path : Trajectory = self.cached_path
 
         self.path = path.points
-        self.stamp_time = odo.header.stamp.sec + odo.header.stamp.nanosec/1e9
+        new_stamp_time = odo.header.stamp.sec + odo.header.stamp.nanosec/1e9
+        if(abs(new_stamp_time - self.stamp_time) > 1):
+            self.tb_controller.reset(new_stamp_time)
+        self.stamp_time = new_stamp_time
 
         self.velocity = odo.twist.twist.linear
         self.speed = (self.velocity.x**2 + self.velocity.y**2)**0.5
@@ -227,44 +230,42 @@ class UnifiedController(Node):
         """
         p1 = self.point_at_distance(start_index, distance_shift)
         p2 = self.point_at_distance(start_index, distance_shift + distance_delta)
-        
-        if p1.vx < 0.2 and self.speed < 0.2:
-            # we aren't moving, and don't want to move, so all is well
-            return 0
 
-        """
-        We have a formula often found in physics
-        for constant acceleration:
-            v2**2 = v1**2 + 2*a*dx
-            (v2**2 - v1**2) / (2*dx) = a
-        {1} (v2 - v1)(v2 + v1) / (2*dx) = a
-        We have another formula:
-            v2 = v1 + a*dt
-        {2} v2 - v1 = a*dt
-        Substituting {2} into {1}:
-            a*dt(v2 + v1) / (2*dx) = a
-        We can for solve dt if a != 0 and (v2 + v1) != 0:
-            dt = 2 * dx / (v2 + v1)
-        It turns out the case where a==0 and (v2 + v1)==0 is the
-        same statement, since our velocities are non-negative: for
-        (v1 + v2 ==0), both v1 and v2 are 0, so a is 0. In this case
-        the time to any x past the initial point is always infinite,
-        and we can return x1.
-        """
-        d_to_p1 = (p1.x - self.position.x)**2 + (p1.y - self.position.y)**2
-        d_to_p1 = math.sqrt(d_to_p1)
-        t_to_p1 = 2 * d_to_p1 / (p1.vx + self.speed)
-
-        a = (p2.vx - self.speed) / t_to_p1
-
+        # We want to make the current speed equal to the target speed,
+        # treating our position as if we are shifted by distance_shift.
+        # We can calculate the acceleration needed to get to the target
+        # speed of p2 if we use the position of p1 but the current speed.
         # We also want to track the derivative of the velocity profile
-        # so use p2 to approximate
-        if abs(p1.vx + p2.vx) > 0.2: 
-            d_to_p2 = (p2.x - p1.x)**2 + (p2.y - p1.y)**2
-            d_to_p2 = math.sqrt(d_to_p2)
-            t_to_p2 = 2 * d_to_p2 / (p1.vx + p2.vx)
-            
-            a += (p2.vx - p1.vx) / max(t_to_p2, 0.1)
+        # (ideal acceleration), so calculate again using ideal p1 speeds
+        # and average the accelerations.
+        speeds = (self.speed, p1.vx)
+        a = 0
+        for s in speeds:
+            if p1.vx < 0.2 and self.speed < 0.2:
+            # we aren't moving, and don't want to move, so all is well
+                continue
+            """
+            We have a formula often found in physics
+            for constant acceleration:
+                v2**2 = v1**2 + 2*a*dx
+                (v2**2 - v1**2) / (2*dx) = a
+            {1} (v2 - v1)(v2 + v1) / (2*dx) = a
+            We have another formula:
+                v2 = v1 + a*dt
+            {2} v2 - v1 = a*dt
+            Substituting {2} into {1}:
+                a*dt(v2 + v1) / (2*dx) = a
+            We can for solve dt if a != 0 and (v2 + v1) != 0:
+                dt = 2 * dx / (v2 + v1)
+            It turns out the case where a==0 and (v2 + v1)==0 is the
+            same statement, since our velocities are non-negative: for
+            (v1 + v2 ==0), both v1 and v2 are 0, so a is 0. In this case
+            the time to any x past the initial point is always infinite,
+            and we can return x1.
+            """
+            t_to_p2 = 2 * distance_delta / (p2.vx + s)
+
+            a += (p2.vx - s) / t_to_p2
         
         return a
 
