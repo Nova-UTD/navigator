@@ -80,6 +80,8 @@ class GnssLogPublisher(Node):
         
 
     def publish_next_gnss(self):
+        if self.idx == len(self.log_file):
+            self.idx = skip_time*2 # Loop infinitely
         line = self.log_file[self.idx]
         parts = line.split()
         # print(parts)

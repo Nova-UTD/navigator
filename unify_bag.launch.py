@@ -14,12 +14,12 @@ from ament_index_python import get_package_share_directory
 import subprocess
 
 bag_path = "/mnt/sda1/bags/april16/rosbag2_2022_04_16-22_02_11"
-svo_path = "/mnt/sda1/bags/april16/HD720_SN34750148_17-02-06.svo"
+svo_path = "/mnt/sda1/bags/april16/HD720_SN34750148_17-02-06_trimmed.svo"
 
 def generate_launch_description():
 
-    # run a bag
-    bag_process = subprocess.Popen(f"ros2 bag play {bag_path}".split())
+    # run a bag in an infinite loop
+    bag_process = subprocess.Popen(f"ros2 bag play -l {bag_path}".split())
 
     launch_path = path.realpath(__file__)
     launch_dir = path.dirname(launch_path)
@@ -39,7 +39,9 @@ def generate_launch_description():
                  'general.camera_name': 'zed2',
                  'general.camera_model': 'zed2',
                  'general.svo_file': svo_path,
-                 'pos_tracking.base_frame': 'base_link'
+                #  'general.svo_loop': True, # Loop infinitely
+                 'pos_tracking.base_frame': 'base_link',
+                 'od_enabled': True
             }
         ]
     )
