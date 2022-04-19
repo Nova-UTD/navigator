@@ -49,6 +49,7 @@ import rclpy
 # ZED stuff
 import pyzed.sl as sl
 svo_path = "/home/main/voltron/assets/bags/april16/HD720_SN34750148_17-02-06_trimmed.svo"
+zed = sl.Camera()
 
 
 class ZedUnpacker(Node):
@@ -66,71 +67,62 @@ class ZedUnpacker(Node):
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
-        self.road_boundary = None
-        self.gps_timer = self.create_timer(0.5, self.publish_next_gnss)
-        self.log_file = open(gps_log_path, 'r').readlines()
-        outfile.write(f"x,y,z,u,v,speed,pos_acc,yaw_acc,speed_acc\n")
 
-        self.idx = skip_time*2  # 2 hz
+        init_parameters = sl.InitParameters()
+        init_parameters.set_from_svo_file(svo_path)
 
-    def publish_next_gnss(self):
-        if self.idx == len(self.log_file):
-            self.idx = skip_time*2  # Loop infinitely
-        line = self.log_file[self.idx]
-        parts = line.split()
-        # print(parts)
-        lat = int(parts[0])/1e7
-        lon = int(parts[1])/1e7
-        alt = alt0
+        # Use the ROS coordinate system for all measurements
+        init_parameters.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Z_UP_X_FWD
+        init_parameters.coordinate_units = sl.UNIT.METER  # Set units in meters
+        init_parameters.svo_real_time_mode = True
 
-        x, y, z = pm.geodetic2enu(lat, lon, alt, lat0, lon0, alt0)
-        compass_yaw = float(parts[2])/1e5
-        yaw_deg = (compass_yaw-90)*-1
-        if yaw_deg < 0.0:
-            yaw_deg += 360.0
-        elif yaw_deg > 360.0:
-            yaw_deg -= 360.0
-        yaw = yaw_deg * math.pi/180.0
-        speed = float(parts[3])/1000
+        zed = sl.Camera()
+        status = zed.open(init_parameters)
+        if status != sl.ERROR_CODE.SUCCESS:
+            print(repr(status))
+            exit()
 
-        msg = Odometry()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = "map"
-        # Should this be base_link? Doesn't make a huge difference.
-        msg.child_frame_id = "odom"
-        msg.pose.pose.position.x = x
-        msg.pose.pose.position.y = y
-        msg.pose.pose.position.z = z
-        msg.pose.pose.orientation.w = math.cos(yaw/2)
-        msg.pose.pose.orientation.z = math.sin(yaw/2)
+        tracking_params = sl.PositionalTrackingParameters()
+        zed.enable_positional_tracking(tracking_params)
 
-        msg.twist.twist.linear.x = speed*math.cos(yaw)
-        msg.twist.twist.linear.y = speed*math.sin(yaw)
+        runtime = sl.RuntimeParameters()
+        camera_pose = sl.Pose()
 
-        pos_acc = float(parts[4])/1e7
-        yaw_acc = float(parts[5])/1e5
-        speed_acc = float(parts[6])/1e3  # TODO: verify these scales...
+        camera_info = zed.get_camera_information()
 
-        msg.pose.covariance = [pos_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
-                               0.0, pos_acc, 0.0, 0.0, 0.0, 0.0,
-                               0.0, 0.0, pos_acc, 0.0, 0.0, 0.0,
-                               0.0, 0.0, 0.0, yaw_acc, 0.0, 0.0,
-                               0.0, 0.0, 0.0, 0.0, yaw_acc, 0.0,
-                               0.0, 0.0, 0.0, 0.0, 0.0, yaw_acc]
+        py_translation = sl.Translation()
+        pose_data = sl.Transform()
 
-        msg.twist.covariance = [speed_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                0.0, speed_acc, 0.0, 0.0, 0.0, 0.0,
-                                0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        svo_image = sl.Mat()
+        while True:
+            if zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
+                # Read right RGB image
+                zed.retrieve_image(svo_image, sl.VIEW.RIGHT)
+                # Get the timestamp at the time the image was captured
+                timestamp = zed.get_timestamp(sl.TIME_REFERENCE.CURRENT)
 
-        self.gnss_pub.publish(msg)
-        # u = speed*math.cos(yaw)
-        # v = speed*math.sin(yaw)
+                # Get current pose from tracker
 
-        # outfile.write(f"{x},{y},{z},{u},{v},{speed},{pos_acc},{yaw_acc},{speed_acc}\n")
-        self.idx += 1
+                tracking_state = zed.get_position(
+                    camera_pose, sl.REFERENCE_FRAME.WORLD)
+                if tracking_state == sl.POSITIONAL_TRACKING_STATE.OK:
+                    rotation = camera_pose.get_rotation_vector()
+                    translation = camera_pose.get_translation(py_translation)
+                    print(translation.get())
+
+                # print("Image resolution: {0} x {1} || Image timestamp: {2}\n".format(svo_image.get_width(), svo_image.get_height(),
+                    #  timestamp.get_milliseconds()))
+
+                # Get frame count
+                svo_position = zed.get_svo_position()
+            elif zed.grab() == sl.ERROR_CODE.END_OF_SVOFILE_REACHED:
+                print("SVO end has been reached. Looping back to first frame")
+                zed.set_svo_position(0)
+
+            else:
+                print(zed.grab())
+
+    # def publish_zed_img(self, mat: sl.Mat):
 
 
 def main(args=None):
@@ -139,7 +131,7 @@ def main(args=None):
     zed_unpacker = ZedUnpacker()
 
     rclpy.spin(zed_unpacker)
-    outfile.close()
+    zed.close()
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
