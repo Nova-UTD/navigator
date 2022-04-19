@@ -29,8 +29,8 @@ class NovaVizNode(Node):
         super().__init__('nova_viz_node')
 
         self.get_logger().info("woo")
-        self.trajectory_sub = self.create_subscription(
-            Trajectory, '/planning/outgoing_trajectory', self.motion_paths_cb, 10)
+        # self.trajectory_sub = self.create_subscription(
+        #     Trajectory, '/planning/outgoing_trajectory', self.motion_paths_cb, 10)
 
         self.zones_viz_pub = self.create_publisher(
             MarkerArray, '/viz/zones', 10)
