@@ -1,0 +1,4 @@
+/planning/path_publisher_node:
+  ros__parameters:
+    cruising_speed_ms: 10.0
+    map_xodr_file_path: data/maps/town07/Town07_Opt.xodr

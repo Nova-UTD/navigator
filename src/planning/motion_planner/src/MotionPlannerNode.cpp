@@ -49,7 +49,7 @@ MotionPlannerNode::MotionPlannerNode() : Node("motion_planner_node")
 }
 
 void MotionPlannerNode::send_message() {
-    if (ideal_path == nullptr) {
+    if (ideal_path == nullptr || odometry == nullptr) {
         // RCLCPP_WARN(this->get_logger(), "motion planner has no input path, skipping...");
         return;
     }

@@ -25,13 +25,21 @@ using visualization_msgs::msg::MarkerArray;
 using voltron_msgs::msg::FinalPath;
 using namespace std::chrono_literals;
 
+#define MAP_PARAM "map_xodr_file_path"
+#define SPEED_PARAM "cruising_speed_ms"
+
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
-	std::string xodr_path = "data/maps/town07/Town07_Opt.xodr";
+	// Declare parameters
+	this->declare_parameter<std::string>(MAP_PARAM, "data/maps/town07/Town07_Opt.xodr");
+	this->declare_parameter<double>(SPEED_PARAM, 10.0);
+
+	std::string xodr_path;
+	this->get_parameter<std::string>(MAP_PARAM, xodr_path);
+	this->get_parameter<double>(SPEED_PARAM, cruising_speed);
+
 	paths_pub = this->create_publisher<FinalPath>("paths", 1);
-	odom_sub = this->create_subscription<Odometry>("/odometry/filtered", 1, [this](Odometry::SharedPtr msg) {
-		cached_odom = msg;
-	});
+	
 	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
     
 	auto route_1_road_ids = std::vector<std::string>{
@@ -91,7 +99,7 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::s
 
 		for (odr::Vec3D point : centerline) {
 			route.push_back(point);
-			costed_path.speeds.push_back(10);
+			costed_path.speeds.push_back(cruising_speed);
 		}
 	}
 	RCLCPP_INFO(this->get_logger(), "generated path");
@@ -144,30 +152,8 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 
 
 void PathPublisherNode::generatePaths() {
-	// Wait until odometry data is available
-	if (cached_odom == nullptr) {
-		RCLCPP_WARN(get_logger(), "Odometry not yet received, skipping...");
-		return;
-	}
-	Point current_pos = cached_odom->pose.pose.position;
-
-	auto twist = cached_odom->twist.twist.linear;
-	double speed = std::sqrt(twist.x*twist.x+twist.y*twist.y);
 
 	paths_pub->publish(this->path);
 	publish_paths_viz(this->path);
-
-
-	auto currentLane = navigator::opendrive::get_lane_from_xy_with_route(map, current_pos.x, current_pos.y, all_ids);
-	if (currentLane == nullptr) {
-		RCLCPP_WARN(get_logger(), "Lane could not be located.");
-		return;
-	}
-	auto currentRoadId = currentLane->road.lock()->id;
 	
-	// RCLCPP_INFO(get_logger(), "(%.2f, %.2f) Road %s, Current lane: %i", current_pos.x, current_pos.y, currentRoadId.c_str(), currentLane->id);
-	//if (currentRoadId == "10" && this->path == this->route1) {
-	//	RCLCPP_INFO(get_logger(), "SWITCHED PATH");
-	//	this->path = this->route2;
-	//}
 }
