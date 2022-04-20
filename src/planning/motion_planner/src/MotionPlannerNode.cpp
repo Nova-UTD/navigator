@@ -21,10 +21,6 @@
 #include <list>
 #include <algorithm>
 
-const double max_accel = 1.0;
-const double max_lat_accel = 0.6;
-const double max_decel = 1.0;
-
 using namespace navigator::motion_planner;
 using namespace navigator::zones_lib;
 
@@ -40,12 +36,28 @@ double dist_between_points(TrajectoryPoint& p1, TrajectoryPoint& p2) {
 
 MotionPlannerNode::MotionPlannerNode() : Node("motion_planner_node")
 {
+    // Parameters
+    this->declare_parameter<double>("max_accel", 1.0);
+    this->declare_parameter<double>("max_lat_accel", 0.6);
+    this->declare_parameter<double>("max_decel", 1.0);
+    this->declare_parameter<int64_t>("horizon", 400);
+    this->declare_parameter<double>("approx_point_spacing", 0.25);
+
+    this->get_parameter<double>("max_accel", this->max_accel);
+    this->get_parameter<double>("max_lat_accel", this->max_lat_accel);
+    this->get_parameter<double>("max_decel", this->max_decel);
+    this->get_parameter<int64_t>("horizon", this->horizon);
+    this->get_parameter<double>("approx_point_spacing", this->approx_point_spacing);
+
+
     trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectory>("outgoing_trajectory", 8);
     path_subscription = this->create_subscription<voltron_msgs::msg::FinalPath>("/planning/paths", 10, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
     zone_subscription = this->create_subscription<ZoneArray>("/planning/zones", 10, bind(&MotionPlannerNode::update_zones, this, std::placeholders::_1));
     odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
     control_timer = this->create_wall_timer(message_frequency, bind(&MotionPlannerNode::send_message, this));
     
+    
+
 }
 
 void MotionPlannerNode::send_message() {
@@ -195,8 +207,9 @@ void MotionPlannerNode::limit_to_zones(Trajectory& trajectory, ZoneArray& zones)
     if(trajectory.points.size() < 1u) return;
     std::vector<double> speeds;
     std::vector<boost_polygon> polygons;
-    //horizon distance for zone (each trajectory point is spaced 0.25m apart)
-    constexpr double max_dist = horizon*0.25;
+    //horizon distance for zone 
+    double max_dist = horizon*approx_point_spacing;
+
     boost_point car_point{odometry->pose.pose.position.x, odometry->pose.pose.position.y};
     // Copy into a list since we will be inserting multiple
     // points into the middle

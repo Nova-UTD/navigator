@@ -31,7 +31,7 @@ namespace navigator {
 namespace motion_planner {
 
 // How often to publish the new trajectory message
-constexpr auto message_frequency = 250ms;
+constexpr auto message_frequency = 100ms;
 
 class MotionPlannerNode : public rclcpp::Node {
 public:
@@ -44,7 +44,14 @@ public:
 
 private:
     //how many points on path to actually consider
-    static constexpr size_t horizon = 400;
+    int64_t horizon;
+    double approx_point_spacing;
+
+    // Motion constraints
+    double max_accel;
+    double max_lat_accel;
+    double max_decel;
+
     //calls MotionPlanner to get the trajectories, selects one, and sends a message containing all trajectories
     //in the future, this will only send the selected trajectory. but sending all is useful for testing
     void send_message();

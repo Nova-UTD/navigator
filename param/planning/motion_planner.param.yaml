@@ -1,0 +1,8 @@
+/planning/motion_planner_node:
+  ros__parameters:
+    approx_point_spacing: 0.25
+    horizon: 400
+    max_accel: 0.70
+    max_decel: 0.70
+    max_lat_accel: 0.6
+    use_sim_time: false

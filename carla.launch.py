@@ -156,7 +156,7 @@ def generate_launch_description():
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        arguments=[path.join(launch_dir, "data", "voltron.urdf")]
+        arguments=[path.join(launch_dir, "data", "hail_bopp.urdf")]
     )
     
     visuals = Node(
@@ -245,7 +245,10 @@ def generate_launch_description():
         output='screen',
         remappings=[
             ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
-        ]
+        ],
+        parameters=[
+            (path.join(param_dir,"planning","motion_planner.param.yaml"))
+        ],
     )
     behavior_planner = Node(
         package='nova_behavior_planner',
