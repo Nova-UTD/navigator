@@ -181,9 +181,13 @@ class UnifiedController(Node):
 
         self.update_state()
 
+        # get lookahead distances based on reachable path
+        reachable_dist = self.reachable_distance(self.current_path_index, max(self.STEERING_LOOKEAHAD_DISTANCE, self.VELOCITY_LOOKEAHED_DISTANCE))
+        v_look_dist = min(self.VELOCITY_LOOKEAHED_DISTANCE, reachable_dist)
+        s_look_dist = min(self.STEERING_LOOKEAHAD_DISTANCE, reachable_dist)
 
         # Get goal steering angle
-        steering_lookahead: TrajectoryPoint = self.point_at_distance(self.current_path_index, self.STEERING_LOOKEAHAD_DISTANCE)
+        steering_lookahead: TrajectoryPoint = self.point_at_distance(self.current_path_index, s_look_dist)
         vector_to_lookahead = (steering_lookahead.y - self.position.y, steering_lookahead.x - self.position.x)
         goal_steering_angle = self.pure_pursuit(self.heading_theta, vector_to_lookahead)  
 
@@ -191,8 +195,7 @@ class UnifiedController(Node):
         goal_steering_angle = max(goal_steering_angle, -self.MAX_STEERING_ANGLE)
 
         # Get throttle and brake
-        dist_to_v_look = self.reachable_distance(self.current_path_index, self.VELOCITY_LOOKEAHED_DISTANCE)
-        v_look = self.point_at_distance(self.current_path_index, dist_to_v_look)
+        v_look = self.point_at_distance(self.current_path_index, v_look_dist)
         target_velocity = v_look.vx
         throttle, brake = self.calculate_throttle_brake(target_velocity, self.stamp_time)
 
