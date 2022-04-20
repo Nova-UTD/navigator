@@ -105,9 +105,9 @@ class UnifiedController(Node):
     MAX_COMFORTABLE_DECELERATION = 1 # m/s^2
     MAX_COMFORTABLE_ACCELERATION = 1
     MAX_LATERAL_ACCELERATION = 1.0 # radial acceleration on turns
+    TOP_SPEED = 9.0 # m/s
 
-    VELOCITY_LOOKEAHED_DISTANCE = 2 + 3.4 # the car tracks velocity this far ahead of the origin of its coordinate 
-    VELOCITY_DERIVATIVE_INTERVAL = 2.0 # meters
+    VELOCITY_LOOKEAHED_DISTANCE = 4 + 3.4 # the car tracks velocity this far ahead of the origin of its coordinate 
     # system. I.e. if the origin is at the front of the car and lookeahead is 1 meter, the car will stop 1 meter
     # before zone boundaries.
     STEERING_LOOKEAHAD_DISTANCE = 7 # meters
@@ -117,11 +117,11 @@ class UnifiedController(Node):
     # Pid constants
     KP_TB = 1.0
     KI_TB = 0.0
-    KD_TB = 0.0
+    KD_TB = 0.3
     MAX_WINDUP_TB = 5
 
-    KP_THROTTLE = 0.5
-    KP_BRAKE = 0.8
+    KP_THROTTLE = 0.25
+    KP_BRAKE = 0.45
 
 
     STATE_ACCEL = 0 # 0 for neither, 1 for accel, -1 for decel
@@ -191,10 +191,10 @@ class UnifiedController(Node):
         goal_steering_angle = max(goal_steering_angle, -self.MAX_STEERING_ANGLE)
 
         # Get throttle and brake
-        target_acceleration = self.get_target_acceleration(self.current_path_index, self.VELOCITY_LOOKEAHED_DISTANCE, self.VELOCITY_DERIVATIVE_INTERVAL)
-        throttle, brake = self.calculate_throttle_brake(target_acceleration, self.stamp_time)
-
-        self.get_logger().info("Target acceleration: %f" % target_acceleration)
+        dist_to_v_look = self.reachable_distance(self.current_path_index, self.VELOCITY_LOOKEAHED_DISTANCE)
+        v_look = self.point_at_distance(self.current_path_index, dist_to_v_look)
+        target_velocity = v_look.vx
+        throttle, brake = self.calculate_throttle_brake(target_velocity, self.stamp_time)
 
         self.throttle_pub.publish(PeddlePosition(
             data= float(throttle)
@@ -222,53 +222,6 @@ class UnifiedController(Node):
                 min_index = i
                 min_dist = d
         return min_index
-
-    def get_target_acceleration(self, start_index: int, distance_shift, distance_delta):
-        """
-        Returns the acceleration of the vehicle required to meet the velocity profile.
-        Forcasts the target by a shift, and uses distance interval to calculate the acceleration.
-        """
-        p1 = self.point_at_distance(start_index, distance_shift)
-        p2 = self.point_at_distance(start_index, distance_shift + distance_delta)
-
-        # We want to make the current speed equal to the target speed,
-        # treating our position as if we are shifted by distance_shift.
-        # We can calculate the acceleration needed to get to the target
-        # speed of p2 if we use the position of p1 but the current speed.
-        # We also want to track the derivative of the velocity profile
-        # (ideal acceleration), so calculate again using ideal p1 speeds
-        # and average the accelerations.
-        speeds = (self.speed, p1.vx)
-        a = 0
-        for s in speeds:
-            if p1.vx < 0.2 and self.speed < 0.2:
-            # we aren't moving, and don't want to move, so all is well
-                continue
-            """
-            We have a formula often found in physics
-            for constant acceleration:
-                v2**2 = v1**2 + 2*a*dx
-                (v2**2 - v1**2) / (2*dx) = a
-            {1} (v2 - v1)(v2 + v1) / (2*dx) = a
-            We have another formula:
-                v2 = v1 + a*dt
-            {2} v2 - v1 = a*dt
-            Substituting {2} into {1}:
-                a*dt(v2 + v1) / (2*dx) = a
-            We can for solve dt if a != 0 and (v2 + v1) != 0:
-                dt = 2 * dx / (v2 + v1)
-            It turns out the case where a==0 and (v2 + v1)==0 is the
-            same statement, since our velocities are non-negative: for
-            (v1 + v2 ==0), both v1 and v2 are 0, so a is 0. In this case
-            the time to any x past the initial point is always infinite,
-            and we can return x1.
-            """
-            t_to_p2 = 2 * distance_delta / (p2.vx + s)
-
-            a += (p2.vx - s) / t_to_p2
-        
-        return a
-
       
     def point_at_distance(self, start_index: int, distance: float):
         """
@@ -301,12 +254,8 @@ class UnifiedController(Node):
 
         interpolation_coefficient = 1 - (overshoot_distance / d)
 
-        a = (overshoot_point.vx **2 - undershoot_point.vx **2) / (2*d)
-        interpolated_speed = undershoot_point.vx **2 + 2*a*overshoot_distance
-        if interpolated_speed < 0:
-            interpolated_speed = 0
-        else:
-            interpolated_speed = math.sqrt(interpolated_speed)
+        # "interpolated"
+        interpolated_speed = overshoot_point.vx
         
         interpolated_point = TrajectoryPoint(x = undershoot_point.x + interpolation_coefficient * dx,
                                             y = undershoot_point.y + interpolation_coefficient * dy,
@@ -314,6 +263,27 @@ class UnifiedController(Node):
        
         return interpolated_point
        
+
+    def reachable_distance(self, start_index: int, max_distance : float) -> float:
+        """
+            Finds what distance ahead of start_index is reachable in any amount of 
+            time. Anything following a period of 0 velocity or past the end of the
+            path is not reachable, so it will return the distance up to that point.
+
+            Stops searching at max_distance and returns that distance. 
+        """
+        distance = 0
+        prev_point = self.path[start_index]
+        for i in range(start_index +1, len(self.path)):
+            pi = self.path[i]
+            if(pi.vx == 0) and (prev_point.vx == 0):
+                break
+
+            distance += math.sqrt((pi.x - prev_point.x)**2 + (pi.y - prev_point.y)**2)
+            if distance > max_distance:
+                break
+        
+        return min(distance, max_distance)
 
     def index_at_distance(self, start_index: int, distance: float):
         """ Returns the index of the point at the given distance from the start point.
@@ -345,24 +315,25 @@ class UnifiedController(Node):
         """
         return float(min(max(angle, -self.MAX_STEERING_ANGLE), self.MAX_STEERING_ANGLE))
 
-    def calculate_throttle_brake(self, accel : float, odom_stamp: float):
+    def calculate_throttle_brake(self, target_v : float, odom_stamp: float):
         """
             Calculates the (throttle, brake) needed to reach the given speed, given the current speed,
             the time to reach the goal speed, and the current throttle and brake positions.
         """
 
+        self.get_logger().info("Calculating throttle/brake for target speed %f" % target_v)
+
         # special case: full brake when stopped
-        if abs(accel) < 0.2 and abs(self.speed) < 0.2:
-            return 0.0, 1.0 - self.speed
+        if abs(target_v) < 0.2 and abs(self.speed) < 0.2:
+            self.tb_controller.reset(odom_stamp)
+            return (0.0, 1.0 - self.speed)
 
-        accel = min(accel, self.MAX_COMFORTABLE_ACCELERATION)
-        accel = max(accel, -self.MAX_SAFE_DECELERATION)
-
-        psudeo_force = self.tb_controller.update(odom_stamp, accel)
+        psudeo_force = target_v / self.TOP_SPEED
+        psudeo_force += self.tb_controller.update(odom_stamp, target_v - self.speed)
 
         if psudeo_force > 0:
             return (min(1, psudeo_force * self.KP_THROTTLE), 0) 
-        if psudeo_force < 0:
+        if psudeo_force <= 0:
             return (0, min(1, -psudeo_force * self.KP_BRAKE))
 
 
