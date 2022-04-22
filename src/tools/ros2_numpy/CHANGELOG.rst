@@ -1,8 +1,3 @@
-Forthcoming
------------
-* Ported to `tf_transformations <https://github.com/DLu/tf_transformations>`_
-
-
 2.0.4 (2021-11-02)
 ------------------
 * Modified transformations.py for quaternion convention (`#2 <https://github.com/Box-Robotics/ros2_numpy/pull/2>`_)

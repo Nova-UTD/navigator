@@ -3,7 +3,7 @@ import numpy as np
 import geometry_msgs
 
 import ros2_numpy as rnp
-import tf_transformations as trans
+import ros2_numpy.transformations as trans
 
 class TestQuat(unittest.TestCase):
     def test_representation(self):

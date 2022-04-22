@@ -7,9 +7,9 @@
 
 macro(nova_auto_package)
 
-# Use C++ 20, unless manually set otherwise
+# Use C++ 17, unless manually set otherwise
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 20)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
 
 # Add options to enable extra warnings

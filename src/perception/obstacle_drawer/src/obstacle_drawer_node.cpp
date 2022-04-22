@@ -31,7 +31,7 @@ ObstacleDrawer::ObstacleDrawer() : Node("obstacle_drawer_node") {
         "nova_obstacle_array", 10, std::bind(&ObstacleDrawer::draw_obstacles, this, _1));
 }
 
-void ObstacleDrawer::draw_obstacles(const voltron_msgs::msg::Obstacle3DArray::SharedPtr msg) const {
+void ObstacleDrawer::draw_obstacles(const voltron_msgs::msg::Obstacle3DArray::SharedPtr msg) {
 
     auto marker_array = visualization_msgs::msg::MarkerArray();
 

@@ -23,7 +23,7 @@ class ObstacleDrawer : public rclcpp::Node {
 private:
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obstacle_marker_array_publisher;
     rclcpp::Subscription<voltron_msgs::msg::Obstacle3DArray>::SharedPtr obstacles_subscription;
-    void draw_obstacles(const voltron_msgs::msg::Obstacle3DArray::SharedPtr msg) const;
+    void draw_obstacles(const voltron_msgs::msg::Obstacle3DArray::SharedPtr msg);
 
 public:
     ObstacleDrawer();

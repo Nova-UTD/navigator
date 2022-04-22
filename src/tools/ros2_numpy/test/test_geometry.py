@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 import ros2_numpy as rnp
-import tf_transformations as transformations
+from ros2_numpy import transformations
 
 from geometry_msgs.msg import Vector3, Quaternion, Transform, Point, Pose
 
