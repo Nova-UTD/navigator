@@ -425,6 +425,7 @@ class SimBridgeNode(Node):
         odom.header.stamp = self.get_clock().now().to_msg()
         odom.child_frame_id = 'base_link'
 
+        # add -1 to 1 to position values (noise for state estimation)
         ego_position = Point()
         ego_orientation = Quaternion()
         ego_tf: carla.Transform = ego.get_transform()

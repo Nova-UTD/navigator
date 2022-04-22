@@ -68,6 +68,7 @@ private:
         None=0,
         Yield=1,
         Stop=2,
+        SpeedBump=3
     };
 
     // pub/sub

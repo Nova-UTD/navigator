@@ -349,7 +349,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
       if (signals != map_info->signals.end()) {
         double s = lane->road.lock()->ref_line->match(x, y);
         for(const Signal& signal : signals->second) {
-          //check if signal applies to this point
+          // check if signal applies to this point
           if (navigator::opendrive::signal_applies(signal, s, id, lane->id)) {
             auto new_sig = classify_signal(signal);
             if (new_sig > current_signal) {
@@ -361,24 +361,28 @@ bool BehaviorPlannerNode::upcoming_intersection() {
       }
     }
     if (current_signal != SignalType::None && junction != "-1" && seen_junctions.find(junction) == seen_junctions.end()) {
-        //we are under the effect of a signal and in a junction that we haven't seen before
-        //make a zone for this junction:
-        seen_junctions.insert(junction);
-        zones_made = true;
-        Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
-        switch(current_signal) {
-            case SignalType::Yield:
-                zone.max_speed = YIELD_SPEED;
-                break;
-            case SignalType::Stop:
-                zone.max_speed = STOP_SPEED;
-                break;
-            default:
-                zone.max_speed = 0;
-                RCLCPP_WARN(this->get_logger(), "unknown signal type %d", (int)current_signal);
-                break;
-        }
-        final_zones.zones.push_back(zone);
+      //we are under the effect of a signal and in a junction that we haven't seen before
+      //make a zone for this junction:
+      seen_junctions.insert(junction);
+      zones_made = true;
+      Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
+      switch(current_signal) {
+          case SignalType::Yield:
+              zone.max_speed = YIELD_SPEED;
+              break;
+          case SignalType::Stop:
+              zone.max_speed = STOP_SPEED;
+              break;
+          default:
+              zone.max_speed = 0;
+              RCLCPP_WARN(this->get_logger(), "unknown signal type %d", (int)current_signal);
+              break;
+      }
+      final_zones.zones.push_back(zone);
+    } else if (current_signal == SignalType::SpeedBump && junction == "-1") {
+      // we are at a speedbump road
+      zones_made = true;
+      Zone zone = navigator::zones_lib::to_zone_msg()
     }
   }
 
