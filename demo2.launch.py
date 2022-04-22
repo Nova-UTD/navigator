@@ -74,10 +74,10 @@ def generate_launch_description():
         arguments=['/dev/ttyACM0']
     )
 
-    carla = Node(
-        package='sim_bridge',
-        executable='sim_bridge_node'
-    )
+    # carla = Node(
+    #     package='sim_bridge',
+    #     executable='sim_bridge_node'
+    # )
 
     # LOCALIZATION
     ndt = Node(
@@ -97,7 +97,7 @@ def generate_launch_description():
         name='localization_map_odom',
         parameters=[(path.join(param_dir,"atlas","map_odom.param.yaml"))],
         remappings=[
-            ("/odom0", "/gnss/odom"),
+            ("/odom0", "/sensors/gnss/odom"),
             ("/imu0", "/imu_primary/data"),
             ("/twist0", "/can/speedometer_twist")
         ]
@@ -326,7 +326,7 @@ def generate_launch_description():
 
         # INTERFACE
         # can,
-        carla,
+        # carla,
         # epas_controller,
         # epas_reporter,
         # gnss,

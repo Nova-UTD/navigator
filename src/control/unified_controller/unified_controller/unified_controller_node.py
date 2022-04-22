@@ -426,7 +426,7 @@ class UnifiedController(Node):
         # Subscribe to odometry
         self.odom_sub = self.create_subscription(
             Odometry,
-            '/carla/odom',
+            '/sensors/gnss/odom',
             self.odom_cb,
             10
         )

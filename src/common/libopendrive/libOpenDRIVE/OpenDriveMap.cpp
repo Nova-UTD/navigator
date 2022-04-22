@@ -299,8 +299,8 @@ OpenDriveMap::OpenDriveMap(const std::string& xodr_file, const OpenDriveMapConfi
             }
 
             /* check for lateralProfile shape - not implemented yet */
-            for (auto road_shape_node : road_node.child("lateralProfile").children("shape"))
-                printf("Lateral Profile Shape not supported\n");
+            // for (auto road_shape_node : road_node.child("lateralProfile").children("shape"))
+            //     printf("Lateral Profile Shape not supported\n");
         }
 
         /* parse road lane sections and lanes */
