@@ -16,7 +16,7 @@ def generate_launch_description():
     launch_dir = path.dirname(launch_path)
     param_dir = path.join(launch_dir, "param")
     parameter_file = parameters = [
-        (path.join(param_dir, "hubble", "robot_localization.param.yaml"))]
+        (path.join(param_dir, "mapping", "lio_sam.param.yaml"))]
     launch_path = os.path.realpath(__file__)
     launch_dir = os.path.dirname(launch_path)
 
