@@ -16,7 +16,8 @@ using std::placeholders::_1;
 using namespace Nova::BehaviorPlanner;
 
 BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {  
-  std::string xodr_path = "data/maps/town07/Town07_Opt.xodr";
+  // std::string xodr_path = "data/maps/town07/Town07_Opt.xodr";
+  std::string xodr_path = "data/maps/demo2/Demo2_map.xodr";
   this->current_state = LANEKEEPING;
   this->reached_zone = false;
   this->stop_ticks = 0;
