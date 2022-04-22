@@ -11,7 +11,7 @@ project(${directory_name})
 
 find_package(ament_cmake_auto REQUIRED)
 
-FIND_PACKAGE( Boost 1.71 REQUIRED )
+FIND_PACKAGE( Boost 1.65 REQUIRED )
 ament_export_include_directories(${Boost_INCLUDE_DIR})
 
 ament_auto_package()

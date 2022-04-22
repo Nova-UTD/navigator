@@ -22,7 +22,6 @@
 #include <voltron_msgs/msg/costed_path.hpp>
 
 #include <lanelet2_core/LaneletMap.h>
-#include <motion_common/motion_common.hpp>
 #include <tf2/buffer_core.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
