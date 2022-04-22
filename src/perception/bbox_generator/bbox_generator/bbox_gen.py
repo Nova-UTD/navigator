@@ -18,10 +18,10 @@ CENTER_Y = 356.9830
 
 DEPTH_MAX = 20.0
 RANGE_MAX = 60.0
-SEARCH_RADIUS = 0.75
+SEARCH_RADIUS = 1.0
 
 INTRINSIC_MATRIX = np.array([
-   [FOCAL_X, 0, CENTER_X, 0],
+    [FOCAL_X, 0, CENTER_X, 0],
     [0, FOCAL_Y, CENTER_Y, 0],
     [0, 0, 1, 0],
     [0, 0, 0, 1]
@@ -29,8 +29,8 @@ INTRINSIC_MATRIX = np.array([
 
 EXTRINSIC_MATRIX = np.array([
     [0, -1, 0, 0],
-    [0, 0, -1,1],
-    [1, 0, 0, -3.1],
+    [0, 0, -1, 1],
+    [1, 0, 0, 0],
     [0, 0, 0, 1]
 ])
 
@@ -52,11 +52,33 @@ class BBoxGeneratorNode(Node):
     def __init__(self):
         super().__init__('bbox_gen_node')
 
-        depth_sub = message_filters.Subscriber(self, Image, '/depth_image')
-        obstacles_2d_sub = message_filters.Subscriber(self, Obstacle2DArray, '/obstacle_array_2d')
-        self.sync = message_filters.ApproximateTimeSynchronizer([depth_sub, obstacles_2d_sub], 1, 2.0)
-        self.sync.registerCallback(self.bbox_gen_cb)
+        # self.depth_sub = message_filters.Subscriber(
+        #     self, Image, '/depth_image')
+        # self.obstacles_2d_sub = message_filters.Subscriber(
+        #     self, Obstacle2DArray, '/obstacle_array_2d')
+        # self.sync = message_filters.ApproximateTimeSynchronizer(
+        #     fs=[self.depth_sub, self.obstacles_2d_sub],
+        #     queue_size=1,
+        #     slop=1/10.0
+        # )
+        # self.sync.registerCallback(self.bbox_gen_cb)
 
+        self.obstacle_array_2d_cb = self.create_subscription(
+            Obstacle2DArray,
+            '/obstacle_array_2d',
+            self.bbox_gen_cb,
+            10
+        )
+
+        self.depth_image = None
+        self.depth_sub = self.create_subscription(
+            Image,
+            '/sensors/zed/depth_img',
+            self.depth_image_cb,
+            10
+        )
+
+        self.pcd_kdtree = None
         self.lidar_sub = self.create_subscription(
             PointCloud2,
             '/lidar_fused',
@@ -64,20 +86,22 @@ class BBoxGeneratorNode(Node):
             10
         )
 
-        self.pcd_kdtree = None
-
         self.obstacles_3d_pub = self.create_publisher(
             Obstacle3DArray,
             '/obstacle_array_3d',
             10
         )
-    
 
-    def bbox_gen_cb(self, depth_msg: Image, obstacles_2d: Obstacle2DArray):
-        self.get_logger().debug('got bbox_gen_cb')
-        depth_image = rnp.numpify(depth_msg)
+    # generate 3-d bounding box from 2-d bounding boxes
+    def bbox_gen_cb(self, obstacles_2d: Obstacle2DArray):
+        self.get_logger().info('got bbox_gen_cb')
+        print(self.depth_image)
+        if type(self.depth_image) != np.ndarray:
+            return
+        else:
+            depth_image = self.depth_image
+
         obstacles_3d_array = Obstacle3DArray()
-
         for index, obstacle in enumerate(obstacles_2d.obstacles):
             # get the bounding box in pixels
             x1 = int(obstacle.bounding_box.x1 * IMAGE_SIZE_X)
@@ -86,12 +110,12 @@ class BBoxGeneratorNode(Node):
             y2 = int(obstacle.bounding_box.y2 * IMAGE_SIZE_Y)
 
             # get the approx min depth of bounding box
-            min_depth = np.percentile(depth_image[y1:y2, x1:x2], 10)
-            bbox_3d = np.zeros((8,3))
+            min_depth = np.percentile(depth_image[y1:y2, x1:x2], 5)
+            bbox_3d = np.zeros((8, 3))
 
             # if the obstacle is further than max depth of camera
             if (min_depth > DEPTH_MAX):
-                if self.pcd_kdtree != None: # pass the box generation to lidar-based method
+                if self.pcd_kdtree != None:  # pass the box generation to lidar-based method
                     # center of 2D bbox into 3D
                     center_pixel_x = (x2+x1) // 2
                     center_pixel_y = (y2+y1) // 2
@@ -99,12 +123,14 @@ class BBoxGeneratorNode(Node):
                     largest_query = []
                     for z in np.arange(DEPTH_MAX, RANGE_MAX):
                         # project the center pixel of 2D bbox for different depth values
-                        center_pixel = np.array([center_pixel_x, center_pixel_y, 1, 1/z]).reshape(4, -1)
+                        center_pixel = np.array(
+                            [center_pixel_x, center_pixel_y, 1, 1/z]).reshape(4, -1)
                         proj_point = np.matmul(INV_PROJ, center_pixel) * z
                         proj_point = np.transpose(proj_point[:-1, :], (1, 0))
 
                         # get the nearest neighbor points to the projected center pixel within a radius
-                        query_indices = self.pcd_kdtree.query_ball_point(proj_point, SEARCH_RADIUS)[0]
+                        query_indices = self.pcd_kdtree.query_ball_point(
+                            proj_point, SEARCH_RADIUS)[0]
 
                         # store the query that resulted in most points
                         if len(query_indices) > len(largest_query):
@@ -122,11 +148,14 @@ class BBoxGeneratorNode(Node):
                     continue
 
             # project 2-d bounding box into 3-d
-            xx, yy = np.meshgrid([x1,x2], [y1,y2])
+            xx, yy = np.meshgrid([x1, x2], [y1, y2])
             depth_array = np.full_like(xx, min_depth, dtype=np.float32)
-            pixel_array = np.stack([xx, yy, np.ones_like(xx), 1/(depth_array+1e-3)]).reshape(4,-1)
-            bbox_3d_front = np.matmul(INV_PROJ, pixel_array) * depth_array.flatten()
-            bbox_3d_front = np.transpose(bbox_3d_front[:-1, :], (1, 0)).astype(np.float32)
+            pixel_array = np.stack([xx, yy, np.ones_like(
+                xx), 1/(depth_array+1e-3)]).reshape(4, -1)
+            bbox_3d_front = np.matmul(
+                INV_PROJ, pixel_array) * depth_array.flatten()
+            bbox_3d_front = np.transpose(
+                bbox_3d_front[:-1, :], (1, 0)).astype(np.float32)
 
             # get 8 box corners in msg format
             bbox_3d_back = np.copy(bbox_3d_front)
@@ -151,35 +180,39 @@ class BBoxGeneratorNode(Node):
                 point.y = bbox_3d[i][1].item()
                 point.z = bbox_3d[i][2].item()
                 obstacle_3d.bounding_box.corners[i] = point
-            
+
             obstacles_3d_array.obstacles.append(obstacle_3d)
 
         obstacles_3d_array.header.frame_id = 'base_link'
         obstacles_3d_array.header.stamp = self.get_clock().now().to_msg()
         self.obstacles_3d_pub.publish(obstacles_3d_array)
-        
+
+    # cache depth image
+    def depth_image_cb(self, depth_msg: Image):
+        self.get_logger().info('got depth')
+        self.depth_image = rnp.numpify(depth_msg)
 
     # expects transformed, fused lidar point clouds
-    # filters the point cloud and stores it in a K-d Tree
+    # filters the point cloud and caches it as a K-d Tree
     def lidar_cb(self, lidar_msg: PointCloud2):
-        self.get_logger().debug('got lidar_cb')
+        self.get_logger().info('got lidar_cb')
         pcd = rnp.numpify(lidar_msg)
         if lidar_msg.header.frame_id != 'base_link':
             # something is wrong with frame_id
             self.get_logger().info('Received lidar scan with invalid frame')
             return
-        
-        # remove the floor 
-        pcd = pcd[pcd['z'] > 0.2] 
+
+        # remove the floor
+        pcd = pcd[pcd['z'] > 0.2]
 
         # get it into kdtree data format
         x, y, z = pcd['x'], pcd['y'], pcd['z']
-        data = np.stack([x,y,z], axis=-1).reshape(-1, 3)
+        data = np.stack([x, y, z], axis=-1).reshape(-1, 3)
 
         # store as kdtree
         self.pcd_kdtree = cKDTree(data)
 
-         
+
 def main(args=None):
     rclpy.init(args=args)
 

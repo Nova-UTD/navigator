@@ -17,7 +17,7 @@ RANGE_MAX = 60.0
 SEARCH_RADIUS = 0.75
 
 INTRINSIC_MATRIX = np.array([
-   [FOCAL_X, 0, CENTER_X, 0],
+    [FOCAL_X, 0, CENTER_X, 0],
     [0, FOCAL_Y, CENTER_Y, 0],
     [0, 0, 1, 0],
     [0, 0, 0, 1]
@@ -25,8 +25,8 @@ INTRINSIC_MATRIX = np.array([
 
 EXTRINSIC_MATRIX = np.array([
     [0, -1, 0, 0],
-    [0, 0, -1,1],
-    [1, 0, 0, -3.1],
+    [0, 0, -1, 1],
+    [1, 0, 0, 0],
     [0, 0, 0, 1]
 ])
 
@@ -52,13 +52,14 @@ class PointCloudGenNode(Node):
             10
         )
 
-
     def depth_cb(self, depth_msg: Image):
         depth_image = rnp.numpify(depth_msg)
 
         # project into 3-D space
-        xx, yy = np.meshgrid(np.arange(0, IMAGE_SIZE_X), np.arange(0, IMAGE_SIZE_Y))
-        pixel_array = np.stack([xx, yy, np.ones_like(xx), 1/(depth_image+1e-3)]).reshape(4,-1)
+        xx, yy = np.meshgrid(np.arange(0, IMAGE_SIZE_X),
+                             np.arange(0, IMAGE_SIZE_Y))
+        pixel_array = np.stack([xx, yy, np.ones_like(
+            xx), 1/(depth_image+1e-3)]).reshape(4, -1)
         points_array = np.matmul(INV_PROJ, pixel_array) * depth_image.flatten()
         pcd = np.transpose(points_array[:-1, :], (1, 0)).astype(np.float32)
 
@@ -66,17 +67,19 @@ class PointCloudGenNode(Node):
         num_points = pcd.shape[0]
         num_select_points = 100_000
         if num_select_points < num_points:
-            random_indices = np.random.choice(num_points, num_select_points, replace=False)
+            random_indices = np.random.choice(
+                num_points, num_select_points, replace=False)
             pcd = pcd[random_indices]
 
         # turn into pointcloud msg
-        pcd.dtype = [('x', np.float32), ('y', np.float32), ('z', np.float32)]  # specify fields
+        pcd.dtype = [('x', np.float32), ('y', np.float32),
+                     ('z', np.float32)]  # specify fields
         pcd_msg = rnp.msgify(PointCloud2, pcd)
         pcd_msg.header.frame_id = 'base_link'
-        pcd_msg.header.stamp =  self.get_clock().now().to_msg()
+        pcd_msg.header.stamp = self.get_clock().now().to_msg()
         self.pcd_pub.publish(pcd_msg)
 
-         
+
 def main(args=None):
     rclpy.init(args=args)
 
