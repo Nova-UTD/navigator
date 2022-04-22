@@ -168,7 +168,14 @@ class ZedUnpacker(Node):
             if zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
 
                 imu_msg = Imu()
-                imu_msg.header.stamp = self.get_clock().now().to_msg()
+                now = self.get_clock().now().to_msg()
+                self.get_logger().info(f"{now.nanosec}")
+
+                # now.nanosec = int(now.nanosec-2e8)
+                if now.nanosec - 5e8 < 0:
+                    now.nanosec = int(1e9 + now.nanosec - 5e8)
+                    now.sec = int(now.sec - 1)
+                imu_msg.header.stamp = now
                 imu_msg.header.frame_id = 'zed2_camera_center'
 
                 # Read left RGB image
