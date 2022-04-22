@@ -26,9 +26,9 @@ namespace navigator {
 namespace obstacle_drawer {
 
 ObstacleDrawer::ObstacleDrawer() : Node("obstacle_drawer_node") {
-    this->obstacle_marker_array_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("obstacle_marker_array", 10);
+    this->obstacle_marker_array_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("/visualizations", 10);
     this->obstacles_subscription = this->create_subscription<voltron_msgs::msg::Obstacle3DArray>(
-        "nova_obstacle_array", 10, std::bind(&ObstacleDrawer::draw_obstacles, this, _1));
+        "/obstacle_array_3d", 10, std::bind(&ObstacleDrawer::draw_obstacles, this, _1));
 }
 
 void ObstacleDrawer::draw_obstacles(const voltron_msgs::msg::Obstacle3DArray::SharedPtr msg) const {
@@ -48,18 +48,45 @@ void ObstacleDrawer::draw_obstacles(const voltron_msgs::msg::Obstacle3DArray::Sh
 
         // adjust color of bboxes by class
         switch (obstacle.label) {
-            case navigator::obstacle_classes::OBSTACLE_CLASS::VEHICLE:  // blue for vehicles
+            case navigator::obstacle_classes::OBSTACLE_CLASS::PERSON:   // yellow for pedestrians
+                marker.scale.x = 0.1;
+                marker.color.r = 1.0;
+                marker.color.g = 1.0;
+                marker.color.b = 0.0;
+                marker.color.a = 1.0;
+                break;
+            case navigator::obstacle_classes::OBSTACLE_CLASS::BICYCLE:   // red for bicycles
+                marker.scale.x = 0.1;
+                marker.color.r = 1.0;
+                marker.color.g = 0.0;
+                marker.color.b = 0.0;
+                marker.color.a = 1.0;
+                break;
+            case navigator::obstacle_classes::OBSTACLE_CLASS::CAR:  // blue for vehicles
                 marker.scale.x = 0.2;
                 marker.color.r = 0.0;
                 marker.color.g = 0.0;
                 marker.color.b = 1.0;
                 marker.color.a = 1.0;
                 break;
-            case navigator::obstacle_classes::OBSTACLE_CLASS::PEDESTRIAN:   // yellow for pedestrians
+            case navigator::obstacle_classes::OBSTACLE_CLASS::MOTORBIKE:   // green for motorbikes
                 marker.scale.x = 0.1;
-                marker.color.r = 1.0;
+                marker.color.r = 0.0;
                 marker.color.g = 1.0;
                 marker.color.b = 0.0;
+                marker.color.a = 1.0;
+                break;
+            case navigator::obstacle_classes::OBSTACLE_CLASS::BUS:   // orange for buses
+                marker.scale.x = 0.1;
+                marker.color.r = 1.0;
+                marker.color.g = 0.9;
+                marker.color.b = 0.0;
+                marker.color.a = 1.0;
+                break;
+            case navigator::obstacle_classes::OBSTACLE_CLASS::TRUCK:   // purple for trucks
+                marker.color.r = 1.0;
+                marker.color.g = 0.0;
+                marker.color.b = 0.5;
                 marker.color.a = 1.0;
                 break;
             default:    // unrecognized objects should be just invisible if alpha is 0.0
