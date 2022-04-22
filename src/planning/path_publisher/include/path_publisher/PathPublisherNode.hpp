@@ -25,11 +25,13 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 #include <voltron_msgs/msg/final_path.hpp>
 
-class RouteItem {
+class PathSection {
 public:
-	RouteItem(std::string road_id, int lane_id) : road_id(road_id), lane_id(lane_id) {}
-	std::string road_id;
-	int lane_id;
+    std::string road_id;
+    int lane_id;
+    double lanesection;
+    PathSection(std::string road_id, int lane_id, double lanesection) : road_id(road_id), lane_id(lane_id), lanesection(lanesection) {}
+    PathSection(std::string road_id, int lane_id) : road_id(road_id), lane_id(lane_id), lanesection(0) {}
 };
 
 class PathPublisherNode : public rclcpp::Node {
@@ -54,6 +56,6 @@ private:
 	voltron_msgs::msg::FinalPath route1;
 
 	void publish_paths_viz(voltron_msgs::msg::FinalPath path);
-	voltron_msgs::msg::FinalPath generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, navigator::opendrive::OpenDriveMapPtr map);
+	voltron_msgs::msg::FinalPath generate_path(std::vector<PathSection> &route_info, navigator::opendrive::OpenDriveMapPtr map);
 	void switch_path(voltron_msgs::msg::FinalPath path);
 };
