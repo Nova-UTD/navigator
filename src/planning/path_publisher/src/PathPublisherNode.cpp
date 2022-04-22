@@ -25,77 +25,133 @@ using visualization_msgs::msg::MarkerArray;
 using voltron_msgs::msg::FinalPath;
 using namespace std::chrono_literals;
 
+#define MAP_PARAM "map_xodr_file_path"
+#define SPEED_PARAM "cruising_speed_ms"
+
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
-	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town10/Town10HD_Opt.xodr");
-	this->declare_parameter<double>("path_resolution", 2.0);
-	paths_pub = this->create_publisher<FinalPath>("paths", 1);
-	odom_sub = this->create_subscription<Odometry>("/odometry/filtered", 1, [this](Odometry::SharedPtr msg) {
-		cached_odom = msg;
-	});
-	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
+	// Declare parameters
+	this->declare_parameter<std::string>(MAP_PARAM, "data/maps/demo2/Demo2_map.xodr");
+	this->declare_parameter<double>(SPEED_PARAM, 10.0);
 
-	auto route_1_road_ids = std::vector<std::string>{
-		"20","875","21","630","3",
-		"0","10","17","7","90",
-		"6","735","5","516","4",
-		"8","1"//,"675","2","566"
+	std::string xodr_path;
+	this->get_parameter<std::string>(MAP_PARAM, xodr_path);
+	this->get_parameter<double>(SPEED_PARAM, cruising_speed);
+
+	paths_pub = this->create_publisher<FinalPath>("paths", 1);
+	
+	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
+    
+	/*auto route_1_road_ids = std::vector<std::string>{
+		"21","39","57","584","7","693","6","509","5","4",
+        "686","601","34","532","35","359","40","634","50","10","9","976",
+        "36","210","46","436","59","168","60","464","61","559","62",
+        "352","24","467","20","920",
 	};
 	auto route_1_lane_ids = std::vector<int> {
-		-1, -1, -1, -1, -2,
-		-2, -2, -2, 2, 2,
-		2, 2, 2, 2, 2,
-		-2, -2, //-2, -2, -2
-	};
-	this->go_road_ids = std::set<std::string> {
-		"6", "5", "675", "2", "3"
-	};
-	this->stop_road_ids = std::set<std::string> {
-		"90", "735", "566"
-	};
-	auto route_2_road_ids = std::vector<std::string>{
-		"3",
-		"0","10","17","7","90",
-		"6","735","5","516","4",
-		"8","1","675","2","566"
-	};
-	auto route_2_lane_ids = std::vector<int> {
-		-2,
-		-2, -2, -2, 2, 2,
-		2, 2, 2, 2, 2,
-		-2, -2, -2, -2, -2
-	};
-	auto empty_set = std::set<std::string>{};
+		-1,-1,-1,-1,1,1,1,1,1,1,
+        1,-1,-1,-1,-1,-1,1,1,-3,-3,-3,-1,
+        -1,-1,1,1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,
+	};*/
+    auto route_info = std::vector<PathSection> {
+        PathSection("42", -1),
+        PathSection("21", 1),
+        PathSection("80", 1),
+        PathSection("540", 1),
+        PathSection("79", 1),
+        PathSection("756", 1),
+        PathSection("119", -1, 0),
+        PathSection("119", -1, 70.91),
+        PathSection("967", -1),
+        PathSection("73", 1, 35.33),
+        PathSection("73", 2, 0),
+        PathSection("342", 1),
+        PathSection("104", -1),
+        PathSection("945", -1),
+        PathSection("105", -1),
+        PathSection("875", -1),
+        PathSection("39", -1),
+        PathSection("739", -1),
+        PathSection("76", -1, 0),
+        PathSection("76", -1, 0.39),
+        PathSection("76", -1, 55.67),
+        PathSection("403", -1),
+        PathSection("7", -4),
+        PathSection("7", -4),
+        PathSection("7", -4),
+        PathSection("417", -1),
+        PathSection("61", -1),
+        PathSection("825", -1),
+        PathSection("99", 4, 83.14),
+        PathSection("99", 5, 60.17),
+        PathSection("99", 5, 53.57),
+        PathSection("99", 4, 3.75),
+        PathSection("99", 4, 0),
+        PathSection("562", 1),
+        PathSection("43", -1, 0),
+        PathSection("43", -1, 53.94),
+        PathSection("919", -1),
+        PathSection("47", -1, 0),
+        PathSection("47", -1, 24.30),
+        PathSection("47", -1, 33.00),
+        PathSection("47", -2, 53.36),
+        PathSection("47", -2, 64.47),
+        PathSection("261", -1),
+        PathSection("86", -1, 0),
+        PathSection("86", -1, 37.88),
+        PathSection("110", -1),
+        PathSection("679", -1),
+        PathSection("111", -1),
+        PathSection("534", -1, 0),
+        PathSection("534", -2, 4.09),
+        PathSection("112", -2),
+        PathSection("688", -1),
+        PathSection("55", 1),
+        PathSection("180", 1), //maybe 186
+        PathSection("54", 1),
+        PathSection("982", 1),
+        PathSection("17", -1),
+        PathSection("257", -1),
+        PathSection("18", -1),
+        PathSection("102", -1),
+        PathSection("19", -1),
+        PathSection("924", -1),
+        PathSection("20", -1),
+        PathSection("839", -1),
+        PathSection("83", -3),
+        PathSection("28", -3),
+        PathSection("0", -3),
+        PathSection("130", -1),
+    };
 
+    for (auto s : route_info) {
+        all_ids.insert(s.road_id);
+    }
 	path_pub_timer = this->create_wall_timer(0.5s, std::bind(&PathPublisherNode::generatePaths, this));
 
 	// Read map from file, using our path param
-	std::string xodr_path = this->get_parameter("xodr_path").as_string();
-	path_resolution = this->get_parameter("path_resolution").as_double();
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-	map = new odr::OpenDriveMap(xodr_path, {true, true, true, false, true});
+	map = navigator::opendrive::load_map(xodr_path)->map;
 
 	
 
-	this->route1 = generate_path(route_1_road_ids, route_1_lane_ids, map, stop_road_ids);
-	this->route2 = generate_path(route_2_road_ids, route_2_lane_ids, map, stop_road_ids);
-	this->route2_nonstop = generate_path(route_2_road_ids, route_2_lane_ids, map, empty_set);
+	this->route1 = generate_path(route_info, map);
 	this->path = this->route1;
 }
 
-voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, odr::OpenDriveMap *map, std::set<std::string> &stop_roads)
+voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSection> &route_info, navigator::opendrive::OpenDriveMapPtr map)
 {
 	std::vector<odr::Vec3D> route;
 	FinalPath costed_path;
 	double step = 0.25;
-	for (size_t i = 0; i < road_ids.size(); i++) {
-		std::string id = road_ids[i];
-		int lane_id = lane_ids[i];
+	for (auto& section : route_info) {
+		std::string id = section.road_id;
+		int lane_id = section.lane_id;
 		auto road = map->roads[id];
 		//there is only one lanesection per road on this map
-		std::shared_ptr<odr::LaneSection> lanesection = *(road->get_lanesections().begin());
+		std::shared_ptr<odr::LaneSection> lanesection = road->get_lanesection(section.lanesection);
 		odr::LaneSet laneset = lanesection->get_lanes();
-		//RCLCPP_INFO(this->get_logger(), "There are %d lanes for road %s", laneset.size(), id.c_str());
 		std::shared_ptr<odr::Lane> lane = nullptr;
         //loop through the laneset to find a pointer to the lane.
 		for (auto l : laneset) {
@@ -105,15 +161,14 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::s
 			}
 		}
 		if (lane == nullptr) {
-			RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s (i=%d)", id.c_str(), i);
+			RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s", id.c_str());
 			continue;
 		}
 		odr::Line3D centerline = navigator::opendrive::get_centerline_as_xy(*lane, lanesection->s0, lanesection->get_end(), step, lane_id>0);
 
-		double speed = stop_roads.count(id) == 0 ? 5 : 0;
 		for (odr::Vec3D point : centerline) {
 			route.push_back(point);
-			costed_path.speeds.push_back(speed);
+			costed_path.speeds.push_back(cruising_speed);
 		}
 	}
 	RCLCPP_INFO(this->get_logger(), "generated path");
@@ -142,6 +197,7 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 	marker.header.frame_id = "map";
 	// marker.header.stamp = this->now();
 	marker.ns = "path_pub_viz";
+    marker.frame_locked = true;
 	marker.id = 1;
 
 	// Add data contents
@@ -158,50 +214,15 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 
 	// Add path to array
 	marker_array.markers.push_back(marker);
-	RCLCPP_INFO(this->get_logger(), "path viz");
+	// RCLCPP_INFO(this->get_logger(), "path viz");
 
 	viz_pub->publish(marker_array);
 }
 
 
 void PathPublisherNode::generatePaths() {
-	// Wait until odometry data is available
-	if (cached_odom == nullptr) {
-		RCLCPP_WARN(get_logger(), "Odometry not yet received, skipping...");
-		return;
-	}
-	Point current_pos = cached_odom->pose.pose.position;
-
-	auto twist = cached_odom->twist.twist.linear;
-	double speed = std::sqrt(twist.x*twist.x+twist.y*twist.y);
 
 	paths_pub->publish(this->path);
 	publish_paths_viz(this->path);
-	RCLCPP_INFO(this->get_logger(), "publish path, speed %.2f", speed);
-
-
-	auto currentLane = navigator::opendrive::get_lane_from_xy_with_route(map, current_pos.x, current_pos.y, all_ids);
-	if (currentLane == nullptr) {
-		RCLCPP_WARN(get_logger(), "Lane could not be located.");
-		if (speed < 0.5) {
-			//we are hit a stop sign in an unkown lane, so go again
-			this->path = this->route2_nonstop;
-		}
-		return;
-	}
-	auto currentRoadId = currentLane->road.lock()->id;
 	
-	RCLCPP_INFO(get_logger(), "Road %s, Current lane: %i", currentRoadId.c_str(), currentLane->id);
-	if (currentRoadId == "10" && this->path == this->route1) {
-		RCLCPP_INFO(get_logger(), "SWITCHED PATH");
-		this->path = this->route2;
-	}
-	if (this->path == this->route2 && speed < 0.5) {
-		this->path = this->route2_nonstop; //disable the stop lane now that we have stopped.
-		RCLCPP_INFO(get_logger(), "DONE STOPPING");
-	}
-	if (this->path == this->route2_nonstop && this->go_road_ids.count(currentRoadId) == 1 && speed > 3) {
-		this-> path = this->route2; //we are past the stop lane, so we can enable it again
-		RCLCPP_INFO(get_logger(), "ENABLE STOPPING");
-	}
 }

@@ -20,10 +20,10 @@ endif()
 find_package(ament_cmake_auto REQUIRED) # The greatest package in history
 ament_auto_find_build_dependencies() # Find dependencies listed in package.xml
 
-# Build a static library
+# Build a shared library
 file(GLOB_RECURSE source_filenames "src/*.cpp") # Find all source files in src/
 if(source_filenames) # If we have any source files
-  ament_auto_add_library(${PROJECT_NAME}_lib STATIC DIRECTORY src) # Then make a library
+  ament_auto_add_library(${PROJECT_NAME}_lib SHARED DIRECTORY src) # Then make a library
 endif()
 
 # Build all executables

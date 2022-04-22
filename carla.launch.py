@@ -156,7 +156,7 @@ def generate_launch_description():
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        arguments=[path.join(launch_dir, "data", "voltron.urdf")]
+        arguments=[path.join(launch_dir, "data", "hail_bopp.urdf")]
     )
     
     visuals = Node(
@@ -241,21 +241,41 @@ def generate_launch_description():
         package='motion_planner',
         name='motion_planner_node',
         namespace='planning',
-        executable='motion_planner_exe',
+        executable='motion_planner',
         output='screen',
         remappings=[
             ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
+        ],
+        parameters=[
+            (path.join(param_dir,"planning","motion_planner.param.yaml"))
+        ],
+    )
+    behavior_planner = Node(
+        package='nova_behavior_planner',
+        name='behavior_planner',
+        namespace='planning',
+        executable='BehaviorPlannerLaunch',
+        output='screen',
+        parameters=[
+            (path.join(param_dir,"planning","path_publisher.param.yaml"))
+        ],
+        remappings=[
+            
         ]
     )
-    motion_planner_visuals = Node(
-        package='motion_planner_visuals',
-        name='motion_planner_visuals_node',
+    obstacle_zoner = Node(
+        package='obstacle_zoner',
+        name='obstacle_zoner',
         namespace='planning',
-        executable='motion_planner_visuals_exe',
+        executable='ObstacleZonerLaunch',
         output='screen',
-        remappings = [
-            ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
-        ]
+    )
+    zone_fusion = Node(
+        package='zone_fusion',
+        name='zone_fusion',
+        namespace='planning',
+        executable='ZoneFusionLaunch',
+        output='screen',
     )
     lane_planner = Node(
         package='lane_planner_nodes',
@@ -300,7 +320,6 @@ def generate_launch_description():
         package='map_publishers',
         executable='lanelet_loader'
     )
-    
     return LaunchDescription([
         # CONTROL
         unified_controller,
@@ -337,7 +356,9 @@ def generate_launch_description():
         # path_planner,
         # lane_planner,
         # parking_planner,
+        zone_fusion,
+        obstacle_zoner,
+        behavior_planner,
         path_publisher,
-        # motion_planner,
-        # motion_planner_visuals
+        motion_planner
     ])

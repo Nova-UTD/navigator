@@ -47,7 +47,8 @@ using namespace std::chrono_literals;
 OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node")
 {
 	// Handle parameters
-	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town07/Town07_Opt.xodr");
+	// this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town07/Town07_Opt.xodr");
+	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/demo2/Demo2_map.xodr");
 	this->declare_parameter<double>("draw_detail", 1.0);
 	this->declare_parameter<double>("nearby_search_radius", 20.0);
 
@@ -66,7 +67,7 @@ OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node")
 	// Read map from file, using our path param
 	std::string xodr_path = this->get_parameter("xodr_path").as_string();
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-	odr_map = navigator::opendrive::load_map(xodr_path);
+	odr_map = navigator::opendrive::load_map(xodr_path)->map;
 
 	generateMapMarkers();
 }

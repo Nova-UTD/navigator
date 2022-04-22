@@ -5,6 +5,9 @@ from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration, Command
 from launch_ros.actions import Node
 
+import subprocess
+
+bag_dir = 
 
 def generate_launch_description():
 
@@ -26,6 +29,9 @@ def generate_launch_description():
         parameters=[],
         arguments="/home/main/voltron/assets/bags/18_12_21/rosbag2_2021_12_18-17_59_24"
     )
+
+    # run a bag
+    bag_process = subprocess.run("ros bag play /mnt/sda1/bags/april16/rosbag2_2022_04_16-22_02_11".split())
 
     # print("urdf_file_name : {}".format(xacro_path))
 

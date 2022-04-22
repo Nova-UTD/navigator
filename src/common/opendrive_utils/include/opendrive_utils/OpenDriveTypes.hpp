@@ -10,6 +10,7 @@
 #pragma once
 
 #include "OpenDriveMap.h"
+#include <unordered_map>
 
 namespace navigator
 {
@@ -62,6 +63,33 @@ namespace navigator
                 // Predecessor and successor guarenteed to be in correct driving direction.
                 std::vector<LaneIdentifier> predecessors;
                 std::vector<LaneIdentifier> successors;
+            };
+
+            //not parsed by libopendrive, so we add them ourselves
+            struct Signal
+            {
+                std::string id;
+                //"205" for yield
+                //"206" for stop
+                //should be replaced by enum
+                std::string type;
+                std::string name;
+                //relative to road
+                double s;
+                double t;
+                //does the signal change? ex: traffic lights = yes, stop signs = no
+                std::string dynamic;
+                //"+" applies to traffic going in positive direction, "-" for negative direction, "none" for both
+                std::string orientation;
+                //id of parent road
+                std::string road;
+            };
+            //stores the libopendrive map, as well as the other information they don't parse that we need (ex: singals)
+            struct MapInfo
+            {
+                OpenDriveMapPtr map;
+                //key is road id, value is list of all signals on that road
+                std::unordered_map<std::string, std::vector<Signal>> signals;
             };
         }
     }
