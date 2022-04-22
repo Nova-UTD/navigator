@@ -11,7 +11,7 @@ ObstacleZonerNode::ObstacleZonerNode() : rclcpp::Node("obstacle_zoner") {
 
   this->zone_publisher = this->create_publisher<ZoneArray>("obstacle_zone_array", 10);
 
-  this->perception_subscription = this->create_subscription<Obstacle3DArray>("/objects", 8, std::bind(&ObstacleZonerNode::zone_perception, this, _1));
+  this->perception_subscription = this->create_subscription<Obstacle3DArray>("/sensors/zed/obstacle_array_3d", 8, std::bind(&ObstacleZonerNode::zone_perception, this, _1));
   this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
   this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }

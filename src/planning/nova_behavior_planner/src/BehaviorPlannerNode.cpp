@@ -16,7 +16,7 @@ using std::placeholders::_1;
 using namespace Nova::BehaviorPlanner;
 
 BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {  
-  std::string xodr_path = "data/maps/town07/Town07_Opt.xodr";
+  std::string xodr_path = "data/maps/demo2/Demo2_map.xodr";
   this->current_state = LANEKEEPING;
   this->reached_zone = false;
   this->stop_ticks = 0;
@@ -34,13 +34,13 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
   this->final_zone_publisher = this->create_publisher<ZoneArray>("zone_array", 10);
 
   this->odometry_subscription = this->create_subscription
-    <Odometry>("/carla/odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
+    <Odometry>("/sensors/gnss/odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
 
   this->path_subscription = this->create_subscription
     <FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
 
   this->obstacles_subscription = this->create_subscription
-    <Obstacles>("/objects", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
+    <Obstacles>("/sensors/zed/obstacle_array_3d", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
 
   this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
   this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -93,6 +93,7 @@ std::array<geometry_msgs::msg::Point, 8> BehaviorPlannerNode::transform_obstacle
 void BehaviorPlannerNode::send_message() {
   if (this->current_path == nullptr) return;
   update_state();
+  RCLCPP_INFO(this->get_logger(), "X " + std::to_string(current_position_x) + "   Y " + std::to_string(current_position_y));
   final_zone_publisher->publish(this->final_zones);
 }
 
@@ -100,7 +101,7 @@ void BehaviorPlannerNode::send_message() {
 void BehaviorPlannerNode::update_state() {
   switch(current_state) {
     case LANEKEEPING:
-      RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
+      // RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
       
       if (upcoming_intersection()) {
         if (final_zones.zones[0].max_speed == STOP_SPEED) {
@@ -111,7 +112,7 @@ void BehaviorPlannerNode::update_state() {
       }
       break;
     case YIELDING:
-      RCLCPP_INFO(this->get_logger(), "current state: YIELDING");
+      // RCLCPP_INFO(this->get_logger(), "current state: YIELDING");
       
       if (reached_desired_velocity(YIELD_SPEED)) yield_ticks += 1;
       if (yield_ticks >= 5) {
@@ -120,7 +121,7 @@ void BehaviorPlannerNode::update_state() {
       }
       break;
     case STOPPING:
-      RCLCPP_INFO(this->get_logger(), "current state: STOPPING");
+      // RCLCPP_INFO(this->get_logger(), "current state: STOPPING");
       
       if (is_stopped()) stop_ticks += 1;
       if (stop_ticks >= 20) {
@@ -129,7 +130,7 @@ void BehaviorPlannerNode::update_state() {
       }
       break;
     case STOPPED:
-      RCLCPP_INFO(this->get_logger(), "current state: STOPPED");
+      // RCLCPP_INFO(this->get_logger(), "current state: STOPPED");
       
       if (!obstacles_present()) {
         if (final_zones.zones.size()) {
@@ -141,7 +142,7 @@ void BehaviorPlannerNode::update_state() {
       }
       break;
     case WAITING_AT_JUNCTION:
-      RCLCPP_INFO(this->get_logger(), "current state: WAITING_AT_JUNCTION");
+      // RCLCPP_INFO(this->get_logger(), "current state: WAITING_AT_JUNCTION");
 
       if (obs_with_ROW.size() != 0) {
         // check if any of the ID obstacles are gone and remove from ID array
@@ -151,7 +152,7 @@ void BehaviorPlannerNode::update_state() {
       }
       break;
     case IN_JUNCTION:
-      RCLCPP_INFO(this->get_logger(), "current state: IN_JUNCTION");
+      // RCLCPP_INFO(this->get_logger(), "current state: IN_JUNCTION");
 
       if (obstacles_present(true) && final_zones.zones.size()) {
         final_zones.zones[0].max_speed = STOP_SPEED;
@@ -323,6 +324,8 @@ bool BehaviorPlannerNode::upcoming_intersection() {
       closest_pt_idx = i;
     }
   }
+
+  RCLCPP_INFO(this->get_logger(), std::to_string(closest_pt_idx));
 
   // each path-point spaced 25 cm apart, doing 400 pts gives us total coverage of 
   // 10000 cm or 100 meters

@@ -31,7 +31,7 @@ using namespace std::chrono_literals;
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
 	// Declare parameters
-	this->declare_parameter<std::string>(MAP_PARAM, "data/maps/town07/Town07_Opt.xodr");
+	this->declare_parameter<std::string>(MAP_PARAM, "data/maps/demo2/Demo2_map.xodr");
 	this->declare_parameter<double>(SPEED_PARAM, 10.0);
 
 	std::string xodr_path;

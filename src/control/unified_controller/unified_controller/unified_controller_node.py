@@ -12,12 +12,10 @@ from rclpy.node import Node
 from nav_msgs.msg import Odometry
 import math
 
-from std_msgs.msg import String, Header
-from geometry_msgs.msg import PoseStamped, Point, PoseWithCovarianceStamped, PointStamped, Quaternion, Vector3
-from nav_msgs.msg import Path
-from visualization_msgs.msg import Marker
-import tf2_ros
-import collections
+from geometry_msgs.msg import Vector3
+
+# For noise testing only
+# from numpy import random
 
 def quaternion_to_euler(x, y, z, w):
         import math
@@ -140,10 +138,37 @@ class UnifiedController(Node):
     stamp_time : float = 0.0
     current_path_index : int
 
+    # Moving average variables
+    last_steering_position : float = 0.0
+    last_throttle_position : float = 0.0
+    last_brake_position : float = 1.0
+
+    STEERING_LAST_WEIGHT = 0.25 # weight of the last steering position in the moving average. i.e for 0.25
+    # the output is 0.25 * last_steering_position + 0.75 * current_steering_position 
+    THROTTLE_LAST_WEIGHT = 0.25
+
     def paths_cb(self, msg: Trajectory):
+        
         self.cached_path = msg
 
     def odom_cb(self, msg: Odometry):
+        # # For noise testing only
+        # POS_NOISE_MAG = 0.0
+        # msg.pose.pose.position.x += POS_NOISE_MAG * random.uniform(-1, 1)
+        # msg.pose.pose.position.y += POS_NOISE_MAG * random.uniform(-1, 1)
+        # msg.pose.pose.position.z += POS_NOISE_MAG * random.uniform(-1, 1)
+
+        # VEL_NOISE_MAG = 0.0
+        # msg.twist.twist.linear.x += VEL_NOISE_MAG * random.uniform(-1, 1)
+        # msg.twist.twist.linear.y += VEL_NOISE_MAG * random.uniform(-1, 1)
+        # msg.twist.twist.linear.z += VEL_NOISE_MAG * random.uniform(-1, 1)
+
+        # HEADING_NOISE_MAG = 0.00
+        # msg.pose.pose.orientation.x += HEADING_NOISE_MAG * random.uniform(-1, 1)
+        # msg.pose.pose.orientation.y += HEADING_NOISE_MAG * random.uniform(-1, 1)
+        # msg.pose.pose.orientation.z += HEADING_NOISE_MAG * random.uniform(-1, 1)
+        # msg.pose.pose.orientation.w += HEADING_NOISE_MAG * random.uniform(-1, 1)
+
         self.cached_odometry = msg
 
     def update_state(self):
@@ -181,9 +206,13 @@ class UnifiedController(Node):
 
         self.update_state()
 
+        # get lookahead distances based on reachable path
+        reachable_dist = self.reachable_distance(self.current_path_index, max(self.STEERING_LOOKEAHAD_DISTANCE, self.VELOCITY_LOOKEAHED_DISTANCE))
+        v_look_dist = min(self.VELOCITY_LOOKEAHED_DISTANCE, reachable_dist)
+        s_look_dist = min(self.STEERING_LOOKEAHAD_DISTANCE, reachable_dist)
 
         # Get goal steering angle
-        steering_lookahead: TrajectoryPoint = self.point_at_distance(self.current_path_index, self.STEERING_LOOKEAHAD_DISTANCE)
+        steering_lookahead: TrajectoryPoint = self.point_at_distance(self.current_path_index, s_look_dist)
         vector_to_lookahead = (steering_lookahead.y - self.position.y, steering_lookahead.x - self.position.x)
         goal_steering_angle = self.pure_pursuit(self.heading_theta, vector_to_lookahead)  
 
@@ -191,11 +220,29 @@ class UnifiedController(Node):
         goal_steering_angle = max(goal_steering_angle, -self.MAX_STEERING_ANGLE)
 
         # Get throttle and brake
-        dist_to_v_look = self.reachable_distance(self.current_path_index, self.VELOCITY_LOOKEAHED_DISTANCE)
-        v_look = self.point_at_distance(self.current_path_index, dist_to_v_look)
+        v_look = self.point_at_distance(self.current_path_index, v_look_dist)
         target_velocity = v_look.vx
         throttle, brake = self.calculate_throttle_brake(target_velocity, self.stamp_time)
 
+        # apply moving average to steering and throttle
+        steering_angle = self.last_steering_position * self.STEERING_LAST_WEIGHT + goal_steering_angle * (1 - self.STEERING_LAST_WEIGHT)
+        steering_angle = min(max(steering_angle, -self.MAX_STEERING_ANGLE), self.MAX_STEERING_ANGLE)
+        self.last_steering_position = steering_angle
+
+        throttle = self.last_throttle_position * self.THROTTLE_LAST_WEIGHT + throttle * (1 - self.THROTTLE_LAST_WEIGHT)
+        brake = self.last_brake_position * self.THROTTLE_LAST_WEIGHT + brake * (1 - self.THROTTLE_LAST_WEIGHT)
+        
+        self.last_throttle_position = throttle
+        self.last_brake_position = brake
+        if(self.last_brake_position < 0.05):
+            self.last_brake_position = 0.0
+        if(self.last_throttle_position < 0.05):
+            self.last_throttle_position = 0.0
+        
+        if(brake > 0.0):
+            throttle = 0.0
+
+        # publish commands
         self.throttle_pub.publish(PeddlePosition(
             data= float(throttle)
         ))
@@ -206,7 +253,7 @@ class UnifiedController(Node):
 
         self.steering_pub.publish(SteeringPosition(
             # Coordinate system is flipped from what I was doing math with
-            data= -float(goal_steering_angle)
+            data= -float(steering_angle)
         ))
     
     def closest_point_index(self, pos) -> int:
@@ -379,7 +426,7 @@ class UnifiedController(Node):
         # Subscribe to odometry
         self.odom_sub = self.create_subscription(
             Odometry,
-            '/carla/odom',
+            '/sensors/gnss/odom',
             self.odom_cb,
             10
         )
