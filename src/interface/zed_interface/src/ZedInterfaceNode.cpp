@@ -38,12 +38,14 @@ ZedInterfaceNode::ZedInterfaceNode() : rclcpp::Node("zed_interface") {
     init_parameters.svo_real_time_mode = true;
 
     auto returned_state = zed.open(init_parameters);
+    RCLCPP_INFO(this->get_logger(), "camera opened");
     if (returned_state != sl::ERROR_CODE::SUCCESS) {
         RCLCPP_ERROR(this->get_logger(), "Could not transform base_link to map: %s", sl::toString(returned_state));
     }
 
     sl::PositionalTrackingParameters tracking_params;
     zed.enablePositionalTracking(tracking_params);
+    RCLCPP_INFO(this->get_logger(), "tracking enabled");
 
     sl::BatchParameters batch_parameters;
     batch_parameters.enable = false;
@@ -53,7 +55,7 @@ ZedInterfaceNode::ZedInterfaceNode() : rclcpp::Node("zed_interface") {
     //# Defines if the object detection will track objects across images flow.
     obj_param.enable_tracking = true;
     zed.enableObjectDetection(obj_param);
-
+    RCLCPP_INFO(this->get_logger(), "object detection enabled");
     
     double detection_confidence = 60;
     obj_runtime_param.detection_confidence_threshold = detection_confidence;
@@ -65,10 +67,11 @@ ZedInterfaceNode::ZedInterfaceNode() : rclcpp::Node("zed_interface") {
     obj_runtime_param.object_class_detection_confidence_threshold[sl::OBJECT_CLASS::VEHICLE] = detection_confidence;
 
     timer_ = this->create_wall_timer(30ms, std::bind(&ZedInterfaceNode::update_camera, this));
-
+    RCLCPP_INFO(this->get_logger(), "wall timer");
 }
 
 void ZedInterfaceNode::update_camera() {
+    RCLCPP_INFO(this->get_logger(), "start outgoing camera");
     sl::RuntimeParameters runtime;
     sl::Pose camera_pose;
     sl::Transform pose_data;
@@ -86,9 +89,13 @@ void ZedInterfaceNode::update_camera() {
         } else {
             RCLCPP_WARN(this->get_logger(), "Positional tracking not available");
         }
+        RCLCPP_INFO(this->get_logger(), "about to pub");
         publish_zed_img(image);
+        RCLCPP_INFO(this->get_logger(), "pub zed img");
         publish_depth_img(depth);
+        RCLCPP_INFO(this->get_logger(), "pub depth img");
         publish_object_boxes(objects);
+        RCLCPP_INFO(this->get_logger(), "pub obj boxes");
     }
 
 }
