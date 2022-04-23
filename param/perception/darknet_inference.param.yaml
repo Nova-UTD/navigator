@@ -1,0 +1,7 @@
+/**:
+  ros__parameters:
+    config_file: "data/perception/yolov4.cfg"
+    weights_file: "data/perception/yolov4.weights"
+    names_file: "data/perception/coco.names"
+    config_file: "data/perception/yolov4.cfg"
+    publish_labeled_image: False

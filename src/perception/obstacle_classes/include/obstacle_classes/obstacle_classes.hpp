@@ -18,7 +18,7 @@ namespace navigator
 namespace obstacle_classes
 {
 
-enum OBSTACLE_CLASS : uint8_t { VEHICLE, PEDESTRIAN };
+enum OBSTACLE_CLASS : uint8_t { PERSON, BICYCLE, CAR, MOTORBIKE, BUS, TRUCK };
 
 std::string get_class_string(OBSTACLE_CLASS cls);
 
