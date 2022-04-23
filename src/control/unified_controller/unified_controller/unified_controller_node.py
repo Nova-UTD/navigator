@@ -110,8 +110,6 @@ class UnifiedController(Node):
     # before zone boundaries.
     STEERING_LOOKEAHAD_DISTANCE = 7 # meters
 
-    tb_controller : PIDController
-
     # Pid constants
     KP_TB = 1.0
     KI_TB = 0.0
@@ -121,9 +119,9 @@ class UnifiedController(Node):
     KP_THROTTLE = 0.25
     KP_BRAKE = 0.45
 
+    MAX_ACCEPTABLE_MESSAGE_DELAY = 0.5 # seconds
 
-    STATE_ACCEL = 0 # 0 for neither, 1 for accel, -1 for decel
-
+    tb_controller : PIDController
 
     cached_odometry: Odometry = None
     cached_path: Trajectory = None
@@ -198,13 +196,36 @@ class UnifiedController(Node):
 
         self.current_path_index = self.closest_point_index(self.position)
 
+    def publish_commands(self, throttle, brake, steering):
+          # publish commands
+        self.throttle_pub.publish(PeddlePosition(
+            data= float(throttle)
+        ))
+
+        self.brake_pub.publish(PeddlePosition(
+            data= float(brake)
+        ))
+
+        self.steering_pub.publish(SteeringPosition(
+            # Coordinate system is flipped from what I was doing math with
+            data= -float(steering)
+        ))
+
 
     def generate_commands(self):
 
         if (self.cached_odometry is None) or (self.cached_path is None) or (len(self.cached_path.points) == 0):
+            self.publish_commands(0, 0, 1)
             return
 
         self.update_state()
+
+        current_time = self.get_clock().now().seconds_nanoseconds()
+        current_time = current_time[0] + current_time[1]/1e9
+        if abs(current_time - self.stamp_time) > self.MAX_ACCEPTABLE_MESSAGE_DELAY:
+            self.publish_commands(0, 0, 1)
+            self.get_logger().error("Time between messages exceeds acceptable limit: EMERGENCY STOP")
+            return
 
         # get lookahead distances based on reachable path
         reachable_dist = self.reachable_distance(self.current_path_index, max(self.STEERING_LOOKEAHAD_DISTANCE, self.VELOCITY_LOOKEAHED_DISTANCE))
@@ -242,19 +263,8 @@ class UnifiedController(Node):
         if(brake > 0.0):
             throttle = 0.0
 
-        # publish commands
-        self.throttle_pub.publish(PeddlePosition(
-            data= float(throttle)
-        ))
-
-        self.brake_pub.publish(PeddlePosition(
-            data= float(brake)
-        ))
-
-        self.steering_pub.publish(SteeringPosition(
-            # Coordinate system is flipped from what I was doing math with
-            data= -float(steering_angle)
-        ))
+        self.publish_commands(throttle, brake, steering_angle)
+      
     
     def closest_point_index(self, pos) -> int:
         """
