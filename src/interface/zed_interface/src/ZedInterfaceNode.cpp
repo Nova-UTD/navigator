@@ -66,7 +66,7 @@ ZedInterfaceNode::ZedInterfaceNode() : rclcpp::Node("zed_interface") {
     obj_runtime_param.object_class_detection_confidence_threshold[sl::OBJECT_CLASS::ANIMAL] = detection_confidence;
     obj_runtime_param.object_class_detection_confidence_threshold[sl::OBJECT_CLASS::VEHICLE] = detection_confidence;
 
-    timer_ = this->create_wall_timer(30ms, std::bind(&ZedInterfaceNode::update_camera, this));
+    timer_ = this->create_wall_timer(250ms, std::bind(&ZedInterfaceNode::update_camera, this));
     RCLCPP_INFO(this->get_logger(), "wall timer");
 }
 
@@ -89,13 +89,10 @@ void ZedInterfaceNode::update_camera() {
         } else {
             RCLCPP_WARN(this->get_logger(), "Positional tracking not available");
         }
-        RCLCPP_INFO(this->get_logger(), "about to pub");
         publish_zed_img(image);
-        RCLCPP_INFO(this->get_logger(), "pub zed img");
         publish_depth_img(depth);
-        RCLCPP_INFO(this->get_logger(), "pub depth img");
         publish_object_boxes(objects);
-        RCLCPP_INFO(this->get_logger(), "pub obj boxes");
+        RCLCPP_INFO(this->get_logger(), "publish");
     }
 
 }

@@ -81,18 +81,18 @@ def generate_launch_description():
             ("target", "steering_target"),
             ("measurement", "real_steering_angle")])
 
-    gps = Node(
-        package = 'gnss_parser',
-        executable = 'gnss_parser_node_exe',
-        remappings = [
             
-    
+    zed_interface = Node (
+        package = 'zed_interface',
+        executable = 'zed_interface_exe'
+    )
     return LaunchDescription([
         serial,
         servo_throttle,
         servo_brake,
-        can,
+        epas_can,
         epas_reporter,
         epas_controller,
         steering_pid,
+        zed_interface
     ])
