@@ -15,7 +15,7 @@ def generate_launch_description():
 
     launch_path = path.realpath(__file__)
     launch_dir = path.dirname(launch_path)
-    param_dir = path.join(launch_dir,"param")
+    param_dir = path.join(launch_dir,"../param")
 
     serial = Node(
         package = 'serial',
@@ -67,7 +67,7 @@ def generate_launch_description():
         executable = 'controller',
         remappings = [
             ("epas_translator_steering_power", "steering_power"),
-            ("epas_translator_outgoing_can_frames", "outgoing_can_frames"),
+            ("epas_translator_outgoing_can_frames", "outgoing_can"),
             ("epas_translator_enable", "steering_enable")])
 
     steering_pid = Node(

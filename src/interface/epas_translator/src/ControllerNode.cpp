@@ -58,7 +58,7 @@ void ControllerNode::send_control_message() {
 void ControllerNode::update_power(const std_msgs::msg::Float32::SharedPtr message) {
   float f_power = (message->data * 128) + 127;
   if(f_power < 0) f_power = 0;
-  if(f_power > 255) f_power = 255;
+  if(f_power > 127) f_power = 127;
   this->power = (uint8_t) f_power;
 }
 
