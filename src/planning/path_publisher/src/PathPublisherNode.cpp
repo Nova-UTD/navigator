@@ -78,8 +78,8 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
         PathSection("76", -1, 55.67),
         PathSection("403", -1),
         PathSection("7", -4),
-        PathSection("7", -4),
-        PathSection("7", -4),
+        PathSection("7", -4, 31.55),
+        PathSection("7", -4, 36.77),
         PathSection("417", -1),
         PathSection("61", -1),
         PathSection("825", -1),
@@ -112,9 +112,9 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
         PathSection("54", 1),
         PathSection("982", 1),
         PathSection("17", -1),
-        PathSection("257", -1),
+        PathSection("254", -1),
         PathSection("18", -1),
-        PathSection("102", -1),
+        PathSection("1002", -1),
         PathSection("19", -1),
         PathSection("924", -1),
         PathSection("20", -1),
@@ -164,6 +164,11 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSe
 			RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s", id.c_str());
 			continue;
 		}
+        if (lanesection == nullptr) {
+			RCLCPP_WARN(this->get_logger(), "NO LANESECTION FOR ROAD %s", id.c_str());
+			continue;
+		}
+        RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s", id.c_str());
 		odr::Line3D centerline = navigator::opendrive::get_centerline_as_xy(*lane, lanesection->s0, lanesection->get_end(), step, lane_id>0);
 
 		for (odr::Vec3D point : centerline) {
