@@ -7,6 +7,7 @@
  * License:   MIT License
  */
 
+#include <iomanip>
 #include "servo/ServoNode.hpp"
 using namespace navigator::servo;
 
@@ -39,6 +40,8 @@ void ServoNode::new_position(std_msgs::msg::Float32::SharedPtr position) {
   std::stringstream message_data;
   message_data << this->params.prefix;
   message_data << std::hex;
+  message_data << std::setfill('0');
+  message_data << std::setw(2);
   message_data << as_integer;
   std_msgs::msg::String message;
   message.data = message_data.str();
