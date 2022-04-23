@@ -16,6 +16,8 @@ namespace servo {
 
 struct servo_params {
   std::string prefix;
+  int min;
+  int max;
 };
 
 }

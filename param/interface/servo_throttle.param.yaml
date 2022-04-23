@@ -2,3 +2,5 @@
 /**:
   ros__parameters:
     prefix: t
+    min: 5
+    max: 175

@@ -13,6 +13,10 @@ using namespace navigator::servo;
 ServoNode::ServoNode() : rclcpp::Node("servo") {
   this->declare_parameter("prefix");
   this->params.prefix = this->get_parameter("prefix").as_string();
+  this->declare_parameter("min");
+  this->params.min = this->get_parameter("min").as_int();
+  this->declare_parameter("max");
+  this->params.max = this->get_parameter("max").as_int();
   this->init();
 }
 
@@ -30,7 +34,8 @@ void ServoNode::init() {
 }
 
 void ServoNode::new_position(std_msgs::msg::Float32::SharedPtr position) {
-  int as_integer = std::clamp(position->data, 0.0f, 1.0f) * 180;
+  int as_integer = std::lerp
+    (this->params.min, this->params.max, std::clamp(position->data, 0.0f, 1.0f));
   std::stringstream message_data;
   message_data << this->params.prefix;
   message_data << std::hex;

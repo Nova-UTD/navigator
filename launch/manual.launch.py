@@ -65,8 +65,6 @@ def generate_launch_description():
     epas_controller = Node(
         package = 'epas_translator',
         executable = 'controller',
-        parameters = [
-            (path.join(param_dir,"interface","epas_controller.param.yaml"))],
         remappings = [
             ("epas_translator_steering_power", "steering_power"),
             ("epas_translator_outgoing_can_frames", "outgoing_can_frames"),
@@ -105,13 +103,13 @@ def generate_launch_description():
             ("joy_control_input", "/joy")])
     
     return LaunchDescription([
-        #serial,
-        #servo_throttle,
-        #servo_brake,
-        #can,
-        #epas_reporter,
-        #epas_controller,
-        #steering_pid,
+        serial,
+        servo_throttle,
+        servo_brake,
+        can,
+        epas_reporter,
+        epas_controller,
+        steering_pid,
         joy,
         joy_control
     ])
