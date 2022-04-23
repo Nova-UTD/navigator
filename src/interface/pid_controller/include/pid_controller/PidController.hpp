@@ -31,7 +31,7 @@ private:
   float KP;
   float KI;
   float KD;
-  float time_delta_cap_seconds;
+  float integral_cap;
 
   float target;
   float measurement;

@@ -23,13 +23,13 @@ PidControllerNode::PidControllerNode() : rclcpp::Node("pid_controller") {
   this->declare_parameter("KP");
   this->declare_parameter("KI");
   this->declare_parameter("KD");
-  this->declare_parameter("time_delta_cap_seconds");
+  this->declare_parameter("integral_cap");
   float KP = this->get_parameter("KP").as_double();
   float KI = this->get_parameter("KI").as_double();
   float KD = this->get_parameter("KD").as_double();
-  float time_delta_cap_seconds = this->get_parameter("time_delta_cap_seconds").as_double();
+  float integral_cap = this->get_parameter("integral_cap").as_double();
   this->controller = std::make_unique
-    <PidController>(KP, KI, KD, time_delta_cap_seconds);
+    <PidController>(KP, KI, KD, integral_cap);
   this->steering_control_publisher = this->create_publisher<std_msgs::msg::Float32>
     ("output", 8);
   this->command_subscription = this->create_subscription
