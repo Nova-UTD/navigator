@@ -47,7 +47,7 @@ private:
     void publish_object_boxes(sl::Objects objects);
     void publish_pose(sl::Pose pose);
 
-
+    rclcpp::TimerBase::SharedPtr timer_{nullptr};
 };
 }
 }

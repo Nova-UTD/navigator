@@ -11,11 +11,14 @@
 
 #include "cv_bridge/cv_bridge.h"
 
+#include <chrono>
+
 
 using namespace navigator::zed_interface;
 using namespace geometry_msgs::msg;
 using namespace sensor_msgs::msg;
 using namespace voltron_msgs::msg;
+using namespace std::chrono_literals;
 
 ZedInterfaceNode::ZedInterfaceNode() : rclcpp::Node("zed_interface") {
     this->pose_pub = this->create_publisher<PoseWithCovarianceStamped>("/sensors/zed/pose", 10);
@@ -61,7 +64,7 @@ ZedInterfaceNode::ZedInterfaceNode() : rclcpp::Node("zed_interface") {
     obj_runtime_param.object_class_detection_confidence_threshold[sl::OBJECT_CLASS::ANIMAL] = detection_confidence;
     obj_runtime_param.object_class_detection_confidence_threshold[sl::OBJECT_CLASS::VEHICLE] = detection_confidence;
 
-    
+    timer_ = this->create_wall_timer(30ms, std::bind(&ZedInterfaceNode::update_camera, this));
 
 }
 
