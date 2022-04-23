@@ -16,7 +16,7 @@ using std::placeholders::_1;
 using namespace Nova::BehaviorPlanner;
 
 BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {  
-  std::string xodr_path = "data/maps/town07/Town07_Opt.xodr";
+  std::string xodr_path = "data/maps/demo2/Demo2_map.xodr";
   this->current_state = LANEKEEPING;
   this->reached_zone = false;
   this->stop_ticks = 0;
@@ -34,13 +34,13 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
   this->final_zone_publisher = this->create_publisher<ZoneArray>("zone_array", 10);
 
   this->odometry_subscription = this->create_subscription
-    <Odometry>("/carla/odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
+    <Odometry>("/sensors/gnss/odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
 
   this->path_subscription = this->create_subscription
     <FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
 
   this->obstacles_subscription = this->create_subscription
-    <Obstacles>("/objects", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
+    <Obstacles>("/sensors/zed/obstacle_array_3d", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
 
   this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
   this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);

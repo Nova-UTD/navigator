@@ -14,7 +14,8 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "voltron_msgs/msg/can_frame.hpp" // CAN messages
-#include "std_msgs/msg/float32.hpp" // UInt8 messages
+#include "std_msgs/msg/float32.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 typedef uint32_t can_id_t;
 typedef uint64_t can_data_t;
@@ -44,11 +45,16 @@ public:
 private:
   void send_control_message();
   void update_power(const std_msgs::msg::Float32::SharedPtr message);
+  void enable(const std_msgs::msg::Bool::SharedPtr message);
 
   uint8_t power = 255/2;
   rclcpp::Publisher<voltron_msgs::msg::CanFrame>::SharedPtr can_publisher;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr power_subscription;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr enable_subscription;
   rclcpp::TimerBase::SharedPtr control_timer;
+
+  std::chrono::time_point<std::chrono::system_clock> last_enabled;
+  bool enabled = false;
 };
 }
 }
