@@ -19,21 +19,72 @@ from std_msgs.msg import String, Header, ColorRGBA
 from geometry_msgs.msg import PoseStamped, Polygon, Point32, Point
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker, MarkerArray
-from voltron_msgs.msg import CostedPaths, CostedPath, Zone, ZoneArray
+from voltron_msgs.msg import CostedPaths, CostedPath, Zone, ZoneArray, Obstacle3DArray, Obstacle3D, Trajectory
 import math
+
 
 class NovaVizNode(Node):
 
     def __init__(self):
         super().__init__('nova_viz_node')
-        self.costed_paths_sub = self.create_subscription(CostedPaths, '/planning/paths', self.paths_cb, 10)
+
+        self.get_logger().info("woo")
+        # self.trajectory_sub = self.create_subscription(
+        #     Trajectory, '/planning/outgoing_trajectory', self.motion_paths_cb, 10)
+
+        self.zones_viz_pub = self.create_publisher(
+            MarkerArray, '/viz/zones', 10)
+        self.trajectory_viz_pub = self.create_publisher(
+            MarkerArray, '/viz/trajectory', 10)
+        self.zones_sub = self.create_subscription(
+            ZoneArray, '/planning/zone_array', self.zones_cb, 10)
+        self.costed_paths_sub = self.create_subscription(
+            CostedPaths, '/planning/paths', self.paths_cb, 10)
         self.path_viz_pub = self.create_publisher(Marker, '/viz/path', 10)
 
+        self.obst_3d_sub = self.create_subscription(
+            Obstacle3DArray, '/sensors/zed/obstacle_array_3d', self.obst_3d_cb, 10)
+        self.obst_3d_marker_pub = self.create_publisher(
+            MarkerArray, '/viz/obstacles_3d', 10)
+
         self.zones_pub = self.create_publisher(ZoneArray, '/zones', 10)
-        self.zones_viz_pub = self.create_publisher(MarkerArray, '/viz/zones', 10)
-        self.zones_sub = self.create_subscription(ZoneArray, '/zones', self.zones_cb, 10)
+        self.zones_viz_pub = self.create_publisher(
+            MarkerArray, '/viz/zones', 10)
+        self.zones_sub = self.create_subscription(
+            ZoneArray, '/zones', self.zones_cb, 10)
 
         self.zone_pub_timer = self.create_timer(1.0, self.publish_test_zones)
+
+    def obst_3d_cb(self, msg: Obstacle3DArray):
+        # self.get_logger().info(f"Received {len(msg.obstacles)} obstacles")
+        if len(msg.obstacles) < 1:
+            return
+
+        markers = MarkerArray()
+        obstacle_color = ColorRGBA(
+            r=1.0,
+            g=0.0,
+            b=1.0,
+            a=1.0
+        )
+
+        for obst in msg.obstacles:
+            obst: Obstacle3D
+            obst_marker = Marker()
+            obst_marker.header = msg.header
+            obst_marker.id = obst.id
+            obst_marker.ns = 'obstacles_3d'
+            obst_marker.frame_locked = True
+            obst_marker.type = obst_marker.LINE_STRIP
+            obst_marker.scale.x = 1.0
+            obst_marker.scale.y = 1.0
+            obst_marker.color = obstacle_color
+            obst_marker.lifetime.sec = 0
+            obst_marker.lifetime.nanosec = 70000000  # .7 seconds, arbitrary
+
+            obst_marker.points = obst.bounding_box.corners
+            markers.markers.append(obst_marker)
+        self.obst_3d_marker_pub.publish(markers)
 
     def publish_test_zones(self):
         zone = Zone()
@@ -56,7 +107,7 @@ class NovaVizNode(Node):
         pt.y = -10.0
         zone.poly.points.append(pt)
 
-        self.get_logger().info("PUBLISHING: "+str(zone.poly.points))
+        # self.get_logger().info("PUBLISHING: "+str(zone.poly.points))
 
         zone.max_speed = 0.0
         zone.cost = 0.0
@@ -77,19 +128,19 @@ class NovaVizNode(Node):
         line_strip.type = Marker.LINE_STRIP
         line_strip.ns = 'paths'
         line_strip.color = ColorRGBA(
-            r = 0.0,
-            g = 1.0,
-            b = 0.0,
-            a = 1.0
+            r=0.0,
+            g=1.0,
+            b=0.0,
+            a=1.0
         )
-        line_strip.pose.position.z = 0.6 # Offset from road surface
-        line_strip.scale.x = 0.5 # Meters wide.
+        line_strip.pose.position.z = 0.6  # Offset from road surface
+        line_strip.scale.x = 0.5  # Meters wide.
         line_strip.frame_locked = True
         line_strip.points = msg.paths[0].points
         self.path_viz_pub.publish(line_strip)
 
     def zones_cb(self, msg: ZoneArray):
-        self.get_logger().info("Received {} zones".format(len(msg.zones)))
+        # self.get_logger().info("Received {} zones".format(len(msg.zones)))
         marker_array = MarkerArray()
         for idx, zone in enumerate(msg.zones):
             zone_marker = Marker()
@@ -110,19 +161,20 @@ class NovaVizNode(Node):
 
             points = []
             for point32 in zone.poly.points:
-                self.get_logger().info(str(point32))
+                # self.get_logger().info(str(point32))
                 pt = Point()
                 pt.x = point32.x
                 pt.y = point32.y
                 pt.z = point32.z
                 points.append(pt)
 
-            self.get_logger().info(str(points))
+            # self.get_logger().info(str(points))
             zone_marker.points = points
-            zone_marker.points.append(points[0]) # Complete the loop
+            zone_marker.points.append(points[0])  # Complete the loop
             marker_array.markers.append(zone_marker)
-        
+
         self.zones_viz_pub.publish(marker_array)
+
 
 def main(args=None):
     rclpy.init(args=args)

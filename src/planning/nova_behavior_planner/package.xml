@@ -9,12 +9,17 @@
 
   <buildtool_depend>nova_auto_package</buildtool_depend>
 
-  <build_depend>nav_msgs</build_depend>
-  <depend>autoware_auto_msgs</depend>
-  <depend>voltron_msgs</depend>
   <depend>rclcpp</depend>
   <depend>libopendrive</depend>
   <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>opendrive_utils</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>visualization_msgs</depend>
+  <depend>voltron_msgs</depend>
+  <depend>zone_lib</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

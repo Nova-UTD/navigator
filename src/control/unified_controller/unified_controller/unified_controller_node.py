@@ -3,98 +3,418 @@
 # Unified Controller for Throttle, Brake, and Steering
 # Nova 2022 - https://github.com/Nova-UTD/navigator/
 # Will Heitman - Will.Heitman@utdallas.edu
+# Egan Johnson - Egan.Johnson@utdallas.edu
 
 from typing import List
-from voltron_msgs.msg import Trajectory, PeddlePosition, SteeringPosition
+from voltron_msgs.msg import Trajectory, TrajectoryPoint, PeddlePosition, SteeringPosition
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 import math
 
-from std_msgs.msg import String, Header
-from geometry_msgs.msg import PoseStamped, Point, PoseWithCovarianceStamped, PointStamped, Quaternion
-from nav_msgs.msg import Path
-from visualization_msgs.msg import Marker
-import tf2_ros
-import collections
+from geometry_msgs.msg import Vector3
+
+# For noise testing only
+# from numpy import random
+
+def quaternion_to_euler(x, y, z, w):
+        import math
+        t0 = +2.0 * (w * x + y * z)
+        t1 = +1.0 - 2.0 * (x * x + y * y)
+        X = math.atan2(t0, t1)
+
+        t2 = +2.0 * (w * y - z * x)
+        t2 = +1.0 if t2 > +1.0 else t2
+        t2 = -1.0 if t2 < -1.0 else t2
+        Y = math.asin(t2)
+
+        t3 = +2.0 * (w * z + x * y)
+        t4 = +1.0 - 2.0 * (y * y + z * z)
+        Z = math.atan2(t3, t4)
+
+        return X, Y, Z
+
+def yield_arrays_consecutively(arr1, arr2, arr1_start = 0, arr2_start = 0):
+    for i in range(arr1_start, len(arr1)):
+        yield arr1[i]
+    for i in range(arr2_start, len(arr2)):
+        yield arr2[i]
+
+class PIDController():
+    kp = 0
+    ki = 0
+    kd = 0
+
+    integral = 0
+    last_error = 0
+    last_time = 0
+
+    max_integral = 1
+
+    def __init__(self, kp, ki, kd, max_integral):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.max_integral = max_integral
+    
+   
+    def reset(self, time):
+        """
+            Resets the controller to an initial state, to prevent
+            the controller from making a jump at the start of a new
+            sequence.
+        """
+        self.integral = 0
+        self.last_error = 0
+        self.last_time = time
+
+    def update(self, time, error):
+        """
+            Updates the controller with the given error and returns
+            the control signal.
+        """
+        dt = time - self.last_time
+        if dt == 0:
+            return 0
+        self.integral += error * dt
+        if self.integral > self.max_integral:
+            self.integral = self.max_integral
+        elif self.integral < -self.max_integral:
+            self.integral = -self.max_integral
+        derivative = (error - self.last_error) / dt
+        self.last_error = error
+        self.last_time = time
+        return (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
+
+    
 
 class UnifiedController(Node):
 
-    cached_odometry = Odometry()
-    cached_path = Trajectory()
-    a_offset = 40
-    b_offset = 4
-    pointA_idx = 40
-    pointB_idx = pointA_idx+1
+    VEHICLE_MASS_KG = 769.0
+    ENGINE_POWER_W = 6500.0
+    WHEEL_FRICTION_COEFFICIENT_LOWER = 0.4
+    WHEEL_FRICTION_COEFFICIENT_UPPER = 0.7
+    BRAKE_FORCE = WHEEL_FRICTION_COEFFICIENT_UPPER * VEHICLE_MASS_KG * 9.81 # a guess
+
+    WHEEL_BASE = 3.4
+    MAX_STEERING_ANGLE = 0.58294 # radians
+
+    MAX_SAFE_DECELERATION = 8 # m/s^2
+    MAX_COMFORTABLE_DECELERATION = 1 # m/s^2
+    MAX_COMFORTABLE_ACCELERATION = 1
+    MAX_LATERAL_ACCELERATION = 1.0 # radial acceleration on turns
+    TOP_SPEED = 9.0 # m/s
+
+    VELOCITY_LOOKEAHED_DISTANCE = 4 + 3.4 # the car tracks velocity this far ahead of the origin of its coordinate 
+    # system. I.e. if the origin is at the front of the car and lookeahead is 1 meter, the car will stop 1 meter
+    # before zone boundaries.
+    STEERING_LOOKEAHAD_DISTANCE = 7 # meters
+
+    tb_controller : PIDController
+
+    # Pid constants
+    KP_TB = 1.0
+    KI_TB = 0.0
+    KD_TB = 0.3
+    MAX_WINDUP_TB = 5
+
+    KP_THROTTLE = 0.25
+    KP_BRAKE = 0.45
+
+
+    STATE_ACCEL = 0 # 0 for neither, 1 for accel, -1 for decel
+
+
+    cached_odometry: Odometry = None
+    cached_path: Trajectory = None
+
+    # Update these variables once per loop for and use for 
+    # convienience in all methods
+    velocity : Vector3 
+    speed : float 
+    position : TrajectoryPoint # trajectory point for convenience working with combining the position and path points
+    heading_theta : float # 0 is x axis (?). In radians
+    path : List[TrajectoryPoint] # saved version of cached_path.points in case cached_path is updated mid-calculations
+    stamp_time : float = 0.0
+    current_path_index : int
+
+    # Moving average variables
+    last_steering_position : float = 0.0
+    last_throttle_position : float = 0.0
+    last_brake_position : float = 1.0
+
+    STEERING_LAST_WEIGHT = 0.25 # weight of the last steering position in the moving average. i.e for 0.25
+    # the output is 0.25 * last_steering_position + 0.75 * current_steering_position 
+    THROTTLE_LAST_WEIGHT = 0.25
 
     def paths_cb(self, msg: Trajectory):
+        
         self.cached_path = msg
 
+    def odom_cb(self, msg: Odometry):
+        # # For noise testing only
+        # POS_NOISE_MAG = 0.0
+        # msg.pose.pose.position.x += POS_NOISE_MAG * random.uniform(-1, 1)
+        # msg.pose.pose.position.y += POS_NOISE_MAG * random.uniform(-1, 1)
+        # msg.pose.pose.position.z += POS_NOISE_MAG * random.uniform(-1, 1)
+
+        # VEL_NOISE_MAG = 0.0
+        # msg.twist.twist.linear.x += VEL_NOISE_MAG * random.uniform(-1, 1)
+        # msg.twist.twist.linear.y += VEL_NOISE_MAG * random.uniform(-1, 1)
+        # msg.twist.twist.linear.z += VEL_NOISE_MAG * random.uniform(-1, 1)
+
+        # HEADING_NOISE_MAG = 0.00
+        # msg.pose.pose.orientation.x += HEADING_NOISE_MAG * random.uniform(-1, 1)
+        # msg.pose.pose.orientation.y += HEADING_NOISE_MAG * random.uniform(-1, 1)
+        # msg.pose.pose.orientation.z += HEADING_NOISE_MAG * random.uniform(-1, 1)
+        # msg.pose.pose.orientation.w += HEADING_NOISE_MAG * random.uniform(-1, 1)
+
+        self.cached_odometry = msg
+
+    def update_state(self):
+        """ Pulls information from cached messages and updates
+        state convenience variables """
+        odo : Odometry = self.cached_odometry
+        path : Trajectory = self.cached_path
+
+        self.path = path.points
+        new_stamp_time = odo.header.stamp.sec + odo.header.stamp.nanosec/1e9
+        if(abs(new_stamp_time - self.stamp_time) > 1):
+            self.tb_controller.reset(new_stamp_time)
+        self.stamp_time = new_stamp_time
+
+        self.velocity = odo.twist.twist.linear
+        self.speed = (self.velocity.x**2 + self.velocity.y**2)**0.5
+        
+        pos = odo.pose.pose.position
+        self.position = TrajectoryPoint(
+            x = pos.x,
+            y = pos.y, 
+            vx = self.speed,
+            vy = 0.0)
+
+        o = odo.pose.pose.orientation
+        self.heading_theta = quaternion_to_euler(o.x, o.y, o.z, o.w)[2]+(math.pi)
+
+        self.current_path_index = self.closest_point_index(self.position)
+
+
     def generate_commands(self):
-        path: Trajectory = self.cached_path
-        
 
-        throttle, brake, steering = (0.0, 0.0, 0.0)
-
-        if (len(path.points) == 0):
-            self.get_logger().warn("No path recieved.")
-            steering = 0.0
+        if (self.cached_odometry is None) or (self.cached_path is None) or (len(self.cached_path.points) == 0):
             return
-        else:# len(path.points) > self.pointB_idx:
-            self.pointA_idx = (self.a_offset + self.closest_point(path.points, self.cached_odometry.pose.pose.position)) % len(path.points)
-            self.pointB_idx = (self.pointA_idx + self.b_offset) % len(path.points)
-            steering_theta = self.get_theta(path.points[self.pointA_idx], path.points[self.pointB_idx], self.cached_odometry,
-                                            A=0.2, B=0.7, C=0.4)
-            steering = data=steering_theta * 0.5
-        
-            
 
-        current_twist = self.cached_odometry.twist.twist.linear
-        current_speed = math.sqrt(
-            current_twist.x ** 2 + current_twist.y ** 2
-        )
-        #self.get_logger().info("Received path with {} points".format(len(path.points)))
-        desired_speed = min(5.0 - 3*steering, path.points[self.pointA_idx].vx) # m/s
-        #self.get_logger().info(f"point A index {self.pointA_idx}, desired = {desired_speed}, current = {current_speed}")
-        
+        self.update_state()
 
-        if (current_speed < desired_speed):
-            throttle = 0.5
-            brake = 0.0
-        elif (current_speed - desired_speed > 0.5):
+        # get lookahead distances based on reachable path
+        reachable_dist = self.reachable_distance(self.current_path_index, max(self.STEERING_LOOKEAHAD_DISTANCE, self.VELOCITY_LOOKEAHED_DISTANCE))
+        v_look_dist = min(self.VELOCITY_LOOKEAHED_DISTANCE, reachable_dist)
+        s_look_dist = max(min(self.STEERING_LOOKEAHAD_DISTANCE, reachable_dist), self.STEERING_LOOKEAHAD_DISTANCE / 2)
+
+        # Get goal steering angle
+        steering_lookahead: TrajectoryPoint = self.point_at_distance(self.current_path_index, s_look_dist)
+        vector_to_lookahead = (steering_lookahead.y - self.position.y, steering_lookahead.x - self.position.x)
+        goal_steering_angle = self.pure_pursuit(self.heading_theta, vector_to_lookahead)  
+
+        goal_steering_angle = min(goal_steering_angle, self.MAX_STEERING_ANGLE)
+        goal_steering_angle = max(goal_steering_angle, -self.MAX_STEERING_ANGLE)
+
+        # Get throttle and brake
+        v_look = self.point_at_distance(self.current_path_index, v_look_dist)
+        target_velocity = v_look.vx
+        throttle, brake = self.calculate_throttle_brake(target_velocity, self.stamp_time)
+
+        # apply moving average to steering and throttle
+        steering_angle = self.last_steering_position * self.STEERING_LAST_WEIGHT + goal_steering_angle * (1 - self.STEERING_LAST_WEIGHT)
+        steering_angle = min(max(steering_angle, -self.MAX_STEERING_ANGLE), self.MAX_STEERING_ANGLE)
+        self.last_steering_position = steering_angle
+
+        throttle = self.last_throttle_position * self.THROTTLE_LAST_WEIGHT + throttle * (1 - self.THROTTLE_LAST_WEIGHT)
+        brake = self.last_brake_position * self.THROTTLE_LAST_WEIGHT + brake * (1 - self.THROTTLE_LAST_WEIGHT)
+        
+        self.last_throttle_position = throttle
+        self.last_brake_position = brake
+        if(self.last_brake_position < 0.05):
+            self.last_brake_position = 0.0
+        if(self.last_throttle_position < 0.05):
+            self.last_throttle_position = 0.0
+        
+        if(brake > 0.0):
             throttle = 0.0
-            brake = 0.3
 
+        # publish commands
         self.throttle_pub.publish(PeddlePosition(
-            data=throttle
+            data= float(throttle)
         ))
 
         self.brake_pub.publish(PeddlePosition(
-            data=brake
+            data= float(brake)
         ))
 
         self.steering_pub.publish(SteeringPosition(
-            data=steering
+            # Coordinate system is flipped from what I was doing math with
+            data= -float(steering_angle)
         ))
-
-        #self.get_logger().info("S: {}".format(steering))
-
-    def odom_cb(self, msg: Odometry):
-        self.cached_odometry = msg
-
-    def closest_point(self, path: List[Point], pos: Point) -> int:
+    
+    def closest_point_index(self, pos) -> int:
+        """
+        Returns the index of the closest point in the path to the given position
+        """
         min_dist: float = math.inf
         min_index = 0
-        for i in range(len(path)):
-            pt = path[i]
+        for i in range(len(self.path)):
+            pt = self.path[i]
             d = (pt.x-pos.x)**2+(pt.y-pos.y)**2
             if d < min_dist:
                 min_index = i
                 min_dist = d
         return min_index
+      
+    def point_at_distance(self, start_index: int, distance: float):
+        """
+        Returns the (point, speed) at the given distance, starting at the given index.
+
+        Unlike index_at_distance, interpolates between points, so the returned point
+        may not be a vertice but will have an arclength very close to given distance.
+
+        If we run out of path, returns the last point in the path.
+        """
+        overshoot_index, overshoot_distance = self.index_at_distance(start_index, distance)
+        overshoot_distance -= distance
+
+        # If overshoot is negative, we are at the end of the path
+        if overshoot_distance < 0:
+            # Return the last point with no interpolation
+            return self.path[-1]
+
+        undershoot_index = max(0, start_index - 1)
+
+        overshoot_point : TrajectoryPoint = self.path[overshoot_index]
+        undershoot_point : TrajectoryPoint= self.path[undershoot_index]
+
+        dx = overshoot_point.x - undershoot_point.x
+        dy = overshoot_point.y - undershoot_point.y
+        d = math.sqrt(dx*dx + dy*dy)
+
+        if(d < 0.01):
+            return undershoot_point
+
+        interpolation_coefficient = 1 - (overshoot_distance / d)
+
+        # "interpolated"
+        interpolated_speed = overshoot_point.vx
+        
+        interpolated_point = TrajectoryPoint(x = undershoot_point.x + interpolation_coefficient * dx,
+                                            y = undershoot_point.y + interpolation_coefficient * dy,
+                                            vx = interpolated_speed, vy = 0.0)
+       
+        return interpolated_point
+       
+
+    def reachable_distance(self, start_index: int, max_distance : float) -> float:
+        """
+            Finds what distance ahead of start_index is reachable in any amount of 
+            time. Anything following a period of 0 velocity or past the end of the
+            path is not reachable, so it will return the distance up to that point.
+
+            Stops searching at max_distance and returns that distance. 
+        """
+        distance = 0
+        prev_point = self.path[start_index]
+        for i in range(start_index +1, len(self.path)):
+            pi = self.path[i]
+            if(pi.vx == 0) and (prev_point.vx == 0):
+                break
+
+            distance += math.sqrt((pi.x - prev_point.x)**2 + (pi.y - prev_point.y)**2)
+            if distance > max_distance:
+                break
+        
+        return min(distance, max_distance)
+
+    def index_at_distance(self, start_index: int, distance: float):
+        """ Returns the index of the point at the given distance from the start point.
+            Returns (index, distance), where distance is the arc distance from the start point.
+            Since the path is discrete, this may be greater than the given distance.
+            If there is not enough path, return the last index and distance will be smaller than given.
+         """ 
+        path = self.path
+        dist_elapsed = 0
+        prev_point: TrajectoryPoint = path[start_index]
+        for i in range(1, len(path) - start_index - 1):
+            point_i: TrajectoryPoint = path[start_index + i]
+            dx = point_i.x - prev_point.x
+            dy = point_i.y - prev_point.y
+            d = math.sqrt(dx*dx + dy*dy)
+            dist_elapsed += d
+
+            if dist_elapsed >= distance:
+                return (start_index + i, dist_elapsed)
+            
+            prev_point = point_i
+        
+        return (len(path) - 1, dist_elapsed)
+
+
+    def steering_angle_to_wheel(self, angle: float) -> float:
+        """
+        Converts a steering angle to a steering position
+        """
+        return float(min(max(angle, -self.MAX_STEERING_ANGLE), self.MAX_STEERING_ANGLE))
+
+    def calculate_throttle_brake(self, target_v : float, odom_stamp: float):
+        """
+            Calculates the (throttle, brake) needed to reach the given speed, given the current speed,
+            the time to reach the goal speed, and the current throttle and brake positions.
+        """
+
+        self.get_logger().info("Calculating throttle/brake for target speed %f" % target_v)
+
+        # special case: full brake when stopped
+        if abs(target_v) < 0.2 and abs(self.speed) < 0.2:
+            self.tb_controller.reset(odom_stamp)
+            return (0.0, 1.0 - self.speed)
+
+        psudeo_force = target_v / self.TOP_SPEED
+        psudeo_force += self.tb_controller.update(odom_stamp, target_v - self.speed)
+
+        if psudeo_force > 0:
+            return (min(1, psudeo_force * self.KP_THROTTLE), 0) 
+        if psudeo_force <= 0:
+            return (0, min(1, -psudeo_force * self.KP_BRAKE))
+
+
+    def pure_pursuit(self, heading_angle, offset_vector):
+        """
+        Pure pursuit calculator
+        
+        heading_direction: the direction of the heading vector
+        offset_vector (x, y): vector from car origin to lookahead, in the same coordinate systems
+            as heading_direction
+
+        Reference
+        https://www.ri.cmu.edu/pub_files/pub3/coulter_r_craig_1992_1/coulter_r_craig_1992_1.pdf
+
+        Returns steering angle
+        """
+        # rotate offset by heading angle to get offset in the car's coordinate system
+        transformed_offset = [0, 0]
+        transformed_offset[0] = offset_vector[0] * math.cos(heading_angle) - offset_vector[1] * math.sin(heading_angle)
+        transformed_offset[1] = offset_vector[0] * math.sin(heading_angle) + offset_vector[1] * math.cos(heading_angle)
+
+        mag_offset = math.sqrt(offset_vector[0] * offset_vector[0] + offset_vector[1] * offset_vector[1])
+
+        curvature = 0
+        if(mag_offset > 0.01):
+            curvature = 2* transformed_offset[0] / mag_offset**2
+
+        # translate angle to 
+        return curvature * self.WHEEL_BASE
 
     def __init__(self):
         super().__init__('unified_controller_node')
+
+        self.tb_controller = PIDController(self.KP_TB, self.KI_TB, self.KD_TB, self.MAX_WINDUP_TB)
 
         # Subscribe to our path
         self.path_sub = self.create_subscription(
@@ -106,7 +426,7 @@ class UnifiedController(Node):
         # Subscribe to odometry
         self.odom_sub = self.create_subscription(
             Odometry,
-            '/carla/odom',
+            '/sensors/gnss/odom',
             self.odom_cb,
             10
         )
@@ -126,188 +446,8 @@ class UnifiedController(Node):
             '/command/steering_position',
             10
         )
-        self.command_viz_pub = self.create_publisher(
-            Marker,
-            '/command/viz',
-            10
-        )
 
         self.control_timer = self.create_timer(0.2, self.generate_commands)
-
-    def quaternion_to_euler(self, x, y, z, w):
-        import math
-        t0 = +2.0 * (w * x + y * z)
-        t1 = +1.0 - 2.0 * (x * x + y * y)
-        X = math.atan2(t0, t1)
-
-        t2 = +2.0 * (w * y - z * x)
-        t2 = +1.0 if t2 > +1.0 else t2
-        t2 = -1.0 if t2 < -1.0 else t2
-        Y = math.asin(t2)
-
-        t3 = +2.0 * (w * z + x * y)
-        t4 = +1.0 - 2.0 * (y * y + z * z)
-        Z = math.atan2(t3, t4)
-
-        return X, Y, Z
-
-    def get_theta(self, routept_A: Point, routept_B: Point, odom: Odometry, A, B, C):
-        Vector = collections.namedtuple('Vector', ['magnitude', 'angle'])
-        
-        current_heading_quat = odom.pose.pose.orientation;
-        
-        current_heading_rads = self.quaternion_to_euler(current_heading_quat.x, current_heading_quat.y, current_heading_quat.z, current_heading_quat.w)[2]+(math.pi)
-        # self.get_logger().info("\nHeading: {}\n".format(current_heading_rads))
-
-        # v0 simply represents our car's heading
-        v_0 = Vector(magnitude=1, angle=current_heading_rads) #unit vector
-        position = odom.pose.pose.position
-        VEHICLE_LENGTH = 2 # meters
-        position.x += VEHICLE_LENGTH * math.cos(current_heading_rads)
-        position.y += VEHICLE_LENGTH * math.sin(current_heading_rads)
-        
-        # v1 is vector from current pos to first route point
-        v_1_theta = math.atan2(routept_A.y-position.y, routept_A.x-position.x)
-        v_1 = Vector(magnitude=1, angle=v_1_theta)
-
-        # v2 is vector from first to second route point
-        v_2_theta = math.atan2(routept_B.y-routept_A.y,routept_B.x-routept_A.x)
-        v_2 = Vector(magnitude=1, angle=v_2_theta)
-
-        # multiply by our constants
-        v_0_mag = v_0.magnitude * A
-        v_1_mag = v_1.magnitude * B
-        v_2_mag = v_2.magnitude * C
-
-        # Calculate coordinates for each vector (I know there's a better way...)
-        v_1_x = v_1_mag*math.cos(v_1.angle)
-        v_2_x = v_2_mag*math.cos(v_2.angle)
-        v_0_x = v_0_mag*math.cos(v_0.angle)
-        v_1_y = v_1_mag*math.sin(v_1.angle)
-        v_2_y = v_2_mag*math.sin(v_2.angle)
-        v_0_y = v_0_mag*math.sin(v_0.angle)
-        # Now add
-        v_res_x = v_1_x+v_2_x+v_0_x
-        v_res_y = v_1_y+v_2_y+v_0_y
-        v_res_theta = math.atan2(v_res_y, v_res_x)
-        v_res_magnitude = math.sqrt(math.pow(v_res_x,2)+math.pow(v_res_y,2))
-
-        # Normalize
-        v_r_norm = Vector(magnitude=1, angle= v_res_theta)
-        v_r_norm_x = v_res_x/v_res_magnitude
-        v_r_norm_y = v_res_y/v_res_magnitude
-        v_0_norm_x = math.cos(v_0.angle)
-        v_0_norm_y = math.sin(v_0.angle)
-        # Dot product
-        dp = (v_r_norm_x*v_0_norm_x)+(v_r_norm_y*v_0_norm_y)
-        # self.get_logger().info("\nW: <{},{}>\n".format(v_r_norm_x,v_r_norm_y))
-        # RESULT
-        result_theta = v_res_theta-v_0.angle
-        if (result_theta>math.pi):
-            result_theta = result_theta-(2*math.pi)
-        if (result_theta<-math.pi):
-            result_theta = result_theta+(2*math.pi)
-        # self.get_logger().info("\n\Turn: {}\n".format(result_theta))
-        self.viz_vectors(v_0_x, v_0_y, v_1_x, v_1_y, v_2_x, v_2_y, odom.header, position.x, position.y, v_res_x, v_res_y)
-        return(result_theta*-1)
-        
-    def get_distance(pose: PoseWithCovarianceStamped, pt: Point):
-        current_pos = pose.pose.pose.position
-        return math.sqrt(math.pow((current_pos.x-pt.x),2)+math.pow((current_pos.y-pt.y),2))
-
-    def viz_vectors(self, v_0_x, v_0_y, v_1_x, v_1_y, v_2_x, v_2_y, header, o_x, o_y, v_r_x, v_r_y):
-        v_0_marker = Marker()
-        v_0_marker.header = header
-        v_0_marker.header.frame_id = "map"
-        v_0_marker.type = Marker.ARROW
-        v_0_marker.ns = 'steering_command_vectors'
-        v_0_marker.id = 3
-        v_0_marker.action = Marker.ADD
-        pa = Point()
-        pa.x = o_x
-        pa.y = o_y
-        pb = Point()
-        pb.x = v_0_x*10+o_x
-        pb.y = v_0_y*10+o_y
-        points = [pa, pb]
-        v_0_marker.points = points
-        v_0_marker.scale.x = 1.0
-        v_0_marker.scale.y = 2.0
-        v_0_marker.color.a = 1.0
-        v_0_marker.color.r = 1.0
-        v_0_marker.color.g = 0.0
-        v_0_marker.color.b = 1.0
-        self.command_viz_pub.publish(v_0_marker)
-
-        v_1_marker = Marker()
-        v_1_marker.header = header
-        v_1_marker.header.frame_id = "map"
-        v_1_marker.type = Marker.ARROW
-        v_1_marker.ns = 'steering_command_vectors'
-        v_1_marker.id = 4
-        v_1_marker.action = Marker.ADD
-        pc = Point()
-        pc.x = pb.x
-        pc.y = pb.y
-        pd = Point()
-        pd.x = v_1_x*10+pb.x
-        pd.y = v_1_y*10+pb.y
-        points = [pc, pd]
-        v_1_marker.points = points
-        v_1_marker.scale.x = 1.0
-        v_1_marker.scale.y = 2.0
-        v_1_marker.color.a = 1.0
-        v_1_marker.color.r = 0.0
-        v_1_marker.color.g = 0.0
-        v_1_marker.color.b = 1.0
-        self.command_viz_pub.publish(v_1_marker)
-
-        v_2_marker = Marker()
-        v_2_marker.header = header
-        v_2_marker.header.frame_id = "map"
-        v_2_marker.type = Marker.ARROW
-        v_2_marker.ns = 'steering_command_vectors'
-        v_2_marker.id = 5
-        v_2_marker.action = Marker.ADD
-        pe = Point()
-        pe.x = pd.x
-        pe.y = pd.y
-        pf = Point()
-        pf.x = v_2_x*10+pd.x
-        pf.y = v_2_y*10+pd.y
-        points = [pe, pf]
-        v_2_marker.points = points
-        v_2_marker.scale.x = 1.0
-        v_2_marker.scale.y = 2.0
-        v_2_marker.color.a = 1.0
-        v_2_marker.color.r = 1.0
-        v_2_marker.color.g = 0.0
-        v_2_marker.color.b = 0.0
-        self.command_viz_pub.publish(v_2_marker)
-
-        v_r_marker = Marker()
-        v_r_marker.header = header
-        v_r_marker.header.frame_id = "map"
-        v_r_marker.type = Marker.ARROW
-        v_r_marker.ns = 'steering_command_vectors'
-        v_r_marker.id = 6
-        v_r_marker.action = Marker.ADD
-        pg = Point()
-        pg.x = o_x
-        pg.y = o_y
-        ph = Point()
-        ph.x = v_r_x*10+o_x
-        ph.y = v_r_y*10+o_y
-        points = [pg, ph]
-        v_r_marker.points = points
-        v_r_marker.scale.x = 1.0
-        v_r_marker.scale.y = 2.0
-        v_r_marker.color.a = 1.0
-        v_r_marker.color.r = 0.0
-        v_r_marker.color.g = 1.0
-        v_r_marker.color.b = 0.0
-        self.command_viz_pub.publish(v_r_marker)
-
 
 
 def main(args=None):
