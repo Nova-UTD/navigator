@@ -4,13 +4,12 @@
   <name>gnss_parser</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="eg.co.johnson@gmail.com">ejohnson</maintainer>
+  <maintainer email="egan.johnson@utdallas.edu">Egan Johnson</maintainer>
   <license>TODO: License declaration</license>
 
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <depend>voltron_msgs</depend>
+  <depend>ros2_numpy</depend>
+
 
   <export>
     <build_type>ament_python</build_type>

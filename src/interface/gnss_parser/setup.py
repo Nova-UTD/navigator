@@ -13,13 +13,14 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='ejohnson',
-    maintainer_email='eg.co.johnson@gmail.com',
+    maintainer='Egan Johnson',
+    maintainer_email='egan.johnson@utdallas.edu',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'gnss_parser = gnss_parser.gnss_parser_node:main',
         ],
     },
 )
