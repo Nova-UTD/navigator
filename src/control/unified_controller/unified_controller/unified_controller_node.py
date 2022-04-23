@@ -209,7 +209,7 @@ class UnifiedController(Node):
         # get lookahead distances based on reachable path
         reachable_dist = self.reachable_distance(self.current_path_index, max(self.STEERING_LOOKEAHAD_DISTANCE, self.VELOCITY_LOOKEAHED_DISTANCE))
         v_look_dist = min(self.VELOCITY_LOOKEAHED_DISTANCE, reachable_dist)
-        s_look_dist = min(self.STEERING_LOOKEAHAD_DISTANCE, reachable_dist)
+        s_look_dist = max(min(self.STEERING_LOOKEAHAD_DISTANCE, reachable_dist), self.STEERING_LOOKEAHAD_DISTANCE / 2)
 
         # Get goal steering angle
         steering_lookahead: TrajectoryPoint = self.point_at_distance(self.current_path_index, s_look_dist)
