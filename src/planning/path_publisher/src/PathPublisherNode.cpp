@@ -27,16 +27,19 @@ using namespace std::chrono_literals;
 
 #define MAP_PARAM "map_xodr_file_path"
 #define SPEED_PARAM "cruising_speed_ms"
+#define SPEED_BUMP_PARAM "speed_bump_ms"
 
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
 	// Declare parameters
 	this->declare_parameter<std::string>(MAP_PARAM, "data/maps/demo2/Demo2_map.xodr");
 	this->declare_parameter<double>(SPEED_PARAM, 10.0);
+    this->declare_parameter<double>(SPEED_BUMP_PARAM, 2.0);
 
 	std::string xodr_path;
 	this->get_parameter<std::string>(MAP_PARAM, xodr_path);
 	this->get_parameter<double>(SPEED_PARAM, cruising_speed);
+    this->get_parameter<double>(SPEED_BUMP_PARAM, speed_bump_speed);
 
 	paths_pub = this->create_publisher<FinalPath>("paths", 1);
 	
@@ -116,7 +119,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
     for (auto s : route_info) {
         all_ids.insert(s.road_id);
     }
-	path_pub_timer = this->create_wall_timer(0.5s, std::bind(&PathPublisherNode::generatePaths, this));
+	path_pub_timer = this->create_wall_timer(10s, std::bind(&PathPublisherNode::generatePaths, this));
 
 	// Read map from file, using our path param
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
@@ -137,7 +140,6 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSe
 		std::string id = section.road_id;
 		int lane_id = section.lane_id;
 		auto road = map->roads[id];
-		//there is only one lanesection per road on this map
 		std::shared_ptr<odr::LaneSection> lanesection = road->get_lanesection(section.lanesection);
 		odr::LaneSet laneset = lanesection->get_lanes();
 		std::shared_ptr<odr::Lane> lane = nullptr;

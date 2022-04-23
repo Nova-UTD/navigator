@@ -44,6 +44,7 @@ public:
 private:
 	double path_resolution; // The sampling interval taken along a lane's centerline to form the path
 	double cruising_speed; // The speed at which the vehicle drives 
+    double speed_bump_speed; // the speed to slow down to over speed bumps
 
 	std::set<std::string> all_ids;
 	
