@@ -30,8 +30,10 @@ public:
     std::string road_id;
     int lane_id;
     double lanesection;
-    PathSection(std::string road_id, int lane_id, double lanesection) : road_id(road_id), lane_id(lane_id), lanesection(lanesection) {}
-    PathSection(std::string road_id, int lane_id) : road_id(road_id), lane_id(lane_id), lanesection(0) {}
+    double speed;
+    PathSection(std::string road_id, int lane_id, double lanesection, double max_speed) : road_id(road_id), lane_id(lane_id), lanesection(lanesection), speed(max_speed) {}
+    PathSection(std::string road_id, int lane_id, double lanesection) : road_id(road_id), lane_id(lane_id), lanesection(lanesection), speed(-1) {}
+    PathSection(std::string road_id, int lane_id) : road_id(road_id), lane_id(lane_id), lanesection(0), speed(-1) {}
 };
 
 class PathPublisherNode : public rclcpp::Node {

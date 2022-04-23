@@ -27,10 +27,13 @@ def generate_launch_description():
     launch_dir = path.dirname(launch_path)
     param_dir = path.join(launch_dir, "param")
     interface = "vcan0"
-
+    #/usr/loca/zed/get_python_api.py
     zed_unpacker = Node(
         package='bag_tools',
-        executable='zed_unpacker'
+        executable='zed_unpacker',
+        parameters=[{
+            'use_real_camera': 'true'
+        }]
     )
 
     urdf_publisher = Node(
@@ -51,8 +54,8 @@ def generate_launch_description():
     )
     # LIO-SAM only needs three inputs: IMU, Lidar, and GPS
     return LaunchDescription([
-        gnss_pub,
-        urdf_publisher,
-        viz,
+        #gnss_pub,
+        #urdf_publisher,
+        #viz,
         zed_unpacker
     ])

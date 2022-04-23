@@ -51,6 +51,7 @@ from scipy.spatial.transform import Rotation as R
 # ZED stuff
 import pyzed.sl as sl
 svo_path = "/home/main/voltron/assets/bags/april16/HD720_SN34750148_17-02-06_trimmed_3s5.svo"
+camera_id = 0
 zed = sl.Camera()
 USE_BATCHING = True
 
@@ -74,6 +75,7 @@ class ZedUnpacker(Node):
 
     def __init__(self):
         super().__init__('zed_unpacker')
+        self.declare_parameter('use_real_camera', 'true')
 
         # Create our publishers
         # self.road_cloud_sub = self.create_subscription(
@@ -103,7 +105,11 @@ class ZedUnpacker(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
         init_parameters = sl.InitParameters()
-        init_parameters.set_from_svo_file(svo_path)
+        if self.get_parameter('use_real_camera').get_parameter_value().string_value == 'true':
+            init_parameters.set_from_camera_id(camera_id)
+        else:
+            init_parameters.set_from_svo_file(svo_path)
+        
 
         # Use the ROS coordinate system for all measurements
         init_parameters.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Z_UP_X_FWD
@@ -111,11 +117,11 @@ class ZedUnpacker(Node):
         init_parameters.depth_minimum_distance = 1.0
         init_parameters.depth_minimum_distance = 40.0
         init_parameters.svo_real_time_mode = True
-
         zed = sl.Camera()
         status = zed.open(init_parameters)
         if status != sl.ERROR_CODE.SUCCESS:
             print(repr(status))
+            self.get_logger().error(f"{repr(status)}")
             exit()
 
         # Enable pos tracking
