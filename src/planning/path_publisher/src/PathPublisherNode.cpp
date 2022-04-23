@@ -42,18 +42,6 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	
 	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
     
-	/*auto route_1_road_ids = std::vector<std::string>{
-		"21","39","57","584","7","693","6","509","5","4",
-        "686","601","34","532","35","359","40","634","50","10","9","976",
-        "36","210","46","436","59","168","60","464","61","559","62",
-        "352","24","467","20","920",
-	};
-	auto route_1_lane_ids = std::vector<int> {
-		-1,-1,-1,-1,1,1,1,1,1,1,
-        1,-1,-1,-1,-1,-1,1,1,-3,-3,-3,-1,
-        -1,-1,1,1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,
-	};*/
     auto route_info = std::vector<PathSection> {
         PathSection("42", -1),
         PathSection("21", 1),
@@ -78,8 +66,8 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
         PathSection("76", -1, 55.67),
         PathSection("403", -1),
         PathSection("7", -4),
-        PathSection("7", -4),
-        PathSection("7", -4),
+        PathSection("7", -4, 31.55),
+        PathSection("7", -4, 36.77),
         PathSection("417", -1),
         PathSection("61", -1),
         PathSection("825", -1),
@@ -112,9 +100,9 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
         PathSection("54", 1),
         PathSection("982", 1),
         PathSection("17", -1),
-        PathSection("257", -1),
+        PathSection("254", -1),
         PathSection("18", -1),
-        PathSection("102", -1),
+        PathSection("1002", -1),
         PathSection("19", -1),
         PathSection("924", -1),
         PathSection("20", -1),
@@ -164,11 +152,17 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSe
 			RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s", id.c_str());
 			continue;
 		}
+        if (lanesection == nullptr) {
+			RCLCPP_WARN(this->get_logger(), "NO LANESECTION FOR ROAD %s", id.c_str());
+			continue;
+		}
+        RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s", id.c_str());
 		odr::Line3D centerline = navigator::opendrive::get_centerline_as_xy(*lane, lanesection->s0, lanesection->get_end(), step, lane_id>0);
 
 		for (odr::Vec3D point : centerline) {
 			route.push_back(point);
-			costed_path.speeds.push_back(cruising_speed);
+            //if a speed is defined, use that over the default cruising speed
+			costed_path.speeds.push_back(section.speed < 0 ? cruising_speed : section.speed);
 		}
 	}
 	RCLCPP_INFO(this->get_logger(), "generated path");

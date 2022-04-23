@@ -106,7 +106,7 @@ class ZedUnpacker(Node):
 
         init_parameters = sl.InitParameters()
         if self.get_parameter('use_real_camera').get_parameter_value().string_value == 'true':
-            init_parameters.set_from_camera_id(0)
+            init_parameters.set_from_camera_id(camera_id)
         else:
             init_parameters.set_from_svo_file(svo_path)
         

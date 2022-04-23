@@ -93,7 +93,6 @@ std::array<geometry_msgs::msg::Point, 8> BehaviorPlannerNode::transform_obstacle
 void BehaviorPlannerNode::send_message() {
   if (this->current_path == nullptr) return;
   update_state();
-  RCLCPP_INFO(this->get_logger(), "X " + std::to_string(current_position_x) + "   Y " + std::to_string(current_position_y));
   final_zone_publisher->publish(this->final_zones);
 }
 
@@ -101,7 +100,7 @@ void BehaviorPlannerNode::send_message() {
 void BehaviorPlannerNode::update_state() {
   switch(current_state) {
     case LANEKEEPING:
-      // RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
+      RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
       
       if (upcoming_intersection()) {
         if (final_zones.zones[0].max_speed == STOP_SPEED) {
@@ -112,7 +111,7 @@ void BehaviorPlannerNode::update_state() {
       }
       break;
     case YIELDING:
-      // RCLCPP_INFO(this->get_logger(), "current state: YIELDING");
+      RCLCPP_INFO(this->get_logger(), "current state: YIELDING");
       
       if (reached_desired_velocity(YIELD_SPEED)) yield_ticks += 1;
       if (yield_ticks >= 5) {
@@ -121,7 +120,7 @@ void BehaviorPlannerNode::update_state() {
       }
       break;
     case STOPPING:
-      // RCLCPP_INFO(this->get_logger(), "current state: STOPPING");
+      RCLCPP_INFO(this->get_logger(), "current state: STOPPING");
       
       if (is_stopped()) stop_ticks += 1;
       if (stop_ticks >= 20) {
@@ -130,7 +129,7 @@ void BehaviorPlannerNode::update_state() {
       }
       break;
     case STOPPED:
-      // RCLCPP_INFO(this->get_logger(), "current state: STOPPED");
+      RCLCPP_INFO(this->get_logger(), "current state: STOPPED");
       
       if (!obstacles_present()) {
         if (final_zones.zones.size()) {
@@ -142,7 +141,7 @@ void BehaviorPlannerNode::update_state() {
       }
       break;
     case WAITING_AT_JUNCTION:
-      // RCLCPP_INFO(this->get_logger(), "current state: WAITING_AT_JUNCTION");
+      RCLCPP_INFO(this->get_logger(), "current state: WAITING_AT_JUNCTION");
 
       if (obs_with_ROW.size() != 0) {
         // check if any of the ID obstacles are gone and remove from ID array
@@ -152,7 +151,7 @@ void BehaviorPlannerNode::update_state() {
       }
       break;
     case IN_JUNCTION:
-      // RCLCPP_INFO(this->get_logger(), "current state: IN_JUNCTION");
+      RCLCPP_INFO(this->get_logger(), "current state: IN_JUNCTION");
 
       if (obstacles_present(true) && final_zones.zones.size()) {
         final_zones.zones[0].max_speed = STOP_SPEED;
@@ -324,8 +323,6 @@ bool BehaviorPlannerNode::upcoming_intersection() {
       closest_pt_idx = i;
     }
   }
-
-  RCLCPP_INFO(this->get_logger(), std::to_string(closest_pt_idx));
 
   // each path-point spaced 25 cm apart, doing 400 pts gives us total coverage of 
   // 10000 cm or 100 meters
