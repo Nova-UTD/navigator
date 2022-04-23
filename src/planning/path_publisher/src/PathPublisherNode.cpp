@@ -42,18 +42,6 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	
 	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
     
-	/*auto route_1_road_ids = std::vector<std::string>{
-		"21","39","57","584","7","693","6","509","5","4",
-        "686","601","34","532","35","359","40","634","50","10","9","976",
-        "36","210","46","436","59","168","60","464","61","559","62",
-        "352","24","467","20","920",
-	};
-	auto route_1_lane_ids = std::vector<int> {
-		-1,-1,-1,-1,1,1,1,1,1,1,
-        1,-1,-1,-1,-1,-1,1,1,-3,-3,-3,-1,
-        -1,-1,1,1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,
-	};*/
     auto route_info = std::vector<PathSection> {
         PathSection("42", -1),
         PathSection("21", 1),
@@ -168,7 +156,8 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSe
 
 		for (odr::Vec3D point : centerline) {
 			route.push_back(point);
-			costed_path.speeds.push_back(cruising_speed);
+            //if a speed is defined, use that over the default cruising speed
+			costed_path.speeds.push_back(section.speed < 0 ? cruising_speed : section.speed);
 		}
 	}
 	RCLCPP_INFO(this->get_logger(), "generated path");
