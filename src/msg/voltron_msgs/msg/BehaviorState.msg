@@ -1,0 +1,9 @@
+uint8 LANEKEEPING = 0
+uint8 STOPPING = 1
+uint8 YIELDING = 2
+uint8 STOPPED = 3
+uint8 WAITING_AT_JUNCTION = 4
+uint8 IN_JUNCTION = 5
+uint8 JUNCTION_MANUAL_DELAY = 6
+
+uint8 current_state

@@ -8,6 +8,7 @@
  */
 
 #include "zed_interface/ZedInterfaceNode.hpp"
+#include "zed_components/sl_tools.h"
 
 #include "cv_bridge/cv_bridge.h"
 
@@ -40,7 +41,7 @@ ZedInterfaceNode::ZedInterfaceNode() : rclcpp::Node("zed_interface") {
     auto returned_state = zed.open(init_parameters);
     RCLCPP_INFO(this->get_logger(), "camera opened");
     if (returned_state != sl::ERROR_CODE::SUCCESS) {
-        RCLCPP_ERROR(this->get_logger(), "Could not transform base_link to map: %s", sl::toString(returned_state));
+        RCLCPP_ERROR(this->get_logger(), "Could not transform map to map: %s", sl::toString(returned_state));
     }
 
     sl::PositionalTrackingParameters tracking_params;
@@ -66,12 +67,11 @@ ZedInterfaceNode::ZedInterfaceNode() : rclcpp::Node("zed_interface") {
     obj_runtime_param.object_class_detection_confidence_threshold[sl::OBJECT_CLASS::ANIMAL] = detection_confidence;
     obj_runtime_param.object_class_detection_confidence_threshold[sl::OBJECT_CLASS::VEHICLE] = detection_confidence;
 
-    timer_ = this->create_wall_timer(30ms, std::bind(&ZedInterfaceNode::update_camera, this));
+    timer_ = this->create_wall_timer(33.4ms, std::bind(&ZedInterfaceNode::update_camera, this));
     RCLCPP_INFO(this->get_logger(), "wall timer");
 }
 
 void ZedInterfaceNode::update_camera() {
-    RCLCPP_INFO(this->get_logger(), "start outgoing camera");
     sl::RuntimeParameters runtime;
     sl::Pose camera_pose;
     sl::Transform pose_data;
@@ -89,68 +89,27 @@ void ZedInterfaceNode::update_camera() {
         } else {
             RCLCPP_WARN(this->get_logger(), "Positional tracking not available");
         }
-        RCLCPP_INFO(this->get_logger(), "about to pub");
         publish_zed_img(image);
-        RCLCPP_INFO(this->get_logger(), "pub zed img");
         publish_depth_img(depth);
-        RCLCPP_INFO(this->get_logger(), "pub depth img");
         publish_object_boxes(objects);
-        RCLCPP_INFO(this->get_logger(), "pub obj boxes");
     }
 
-}
-
-//from https://github.com/stereolabs/zed-opencv/blob/master/cpp/src/main.cpp
-// Mapping between MAT_TYPE and CV_TYPE
-int getOCVtype(sl::MAT_TYPE type) {
-    int cv_type = -1;
-    switch (type) {
-        case sl::MAT_TYPE::F32_C1: cv_type = CV_32FC1; break;
-        case sl::MAT_TYPE::F32_C2: cv_type = CV_32FC2; break;
-        case sl::MAT_TYPE::F32_C3: cv_type = CV_32FC3; break;
-        case sl::MAT_TYPE::F32_C4: cv_type = CV_32FC4; break;
-        case sl::MAT_TYPE::U8_C1: cv_type = CV_8UC1; break;
-        case sl::MAT_TYPE::U8_C2: cv_type = CV_8UC2; break;
-        case sl::MAT_TYPE::U8_C3: cv_type = CV_8UC3; break;
-        case sl::MAT_TYPE::U8_C4: cv_type = CV_8UC4; break;
-        default: break;
-    }
-    return cv_type;
-}
-
-//from https://github.com/stereolabs/zed-opencv/blob/master/cpp/src/main.cpp
-cv::Mat slMat2cvMat(sl::Mat& input) {
-    // Since cv::Mat data requires a uchar* pointer, we get the uchar1 pointer from sl::Mat (getPtr<T>())
-    // cv::Mat and sl::Mat will share a single memory structure
-    return cv::Mat(input.getHeight(), input.getWidth(), getOCVtype(input.getDataType()), input.getPtr<sl::uchar1>(sl::MEM::CPU), input.getStepBytes(sl::MEM::CPU));
 }
 
 void ZedInterfaceNode::publish_zed_img(sl::Mat mat) {
-    cv::Mat img = slMat2cvMat(mat);
-    
-    cv_bridge::CvImage img_bridge;
-    sensor_msgs::msg::Image msg; // >> message to be sent
-
-    std_msgs::msg::Header header; // empty header
-    header.stamp = get_clock()->now(); // time
-    img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::RGB8, img);
-    img_bridge.toImageMsg(msg); // from cv_bridge to sensor_msgs::Image
-    msg.header.frame_id = "zed2_camera_center";
-    left_rgb_pub->publish(msg);
+    auto t = get_clock()->now();
+    auto image = sl_tools::imageToROSmsg(mat, "zed2_camera_center", t);
+    image->header.stamp = t;
+    image->header.frame_id = "zed2_camera_center";
+    left_rgb_pub->publish(*image);
 }
 
 void ZedInterfaceNode::publish_depth_img(sl::Mat mat) {
-    cv::Mat img = slMat2cvMat(mat);
-    
-    cv_bridge::CvImage img_bridge;
-    sensor_msgs::msg::Image msg; // >> message to be sent
-
-    std_msgs::msg::Header header; // empty header
-    header.stamp = get_clock()->now(); // time
-    img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::RGB8, img);
-    img_bridge.toImageMsg(msg); // from cv_bridge to sensor_msgs::Image
-    msg.header.frame_id = "zed2_camera_center";
-    depth_img_pub->publish(msg);
+    auto t = get_clock()->now();
+    auto image = sl_tools::imageToROSmsg(mat, "zed2_camera_center", t);
+    image->header.stamp = t;
+    image->header.frame_id = "zed2_camera_center";
+    depth_img_pub->publish(*image);
 }
 
 void ZedInterfaceNode::publish_object_boxes(sl::Objects objects) {
@@ -211,9 +170,9 @@ void ZedInterfaceNode::publish_object_boxes(sl::Objects objects) {
         obj_2d_array.obstacles.push_back(obj_2d_msg);
 
         obj_array.header.stamp = get_clock()->now();
-        obj_array.header.frame_id = "base_link";
+        obj_array.header.frame_id = "map";
         obj_2d_array.header.stamp = get_clock()->now();
-        obj_2d_array.header.frame_id = "base_link";
+        obj_2d_array.header.frame_id = "map";
 
         object_pub_3d->publish(obj_array);
         object_pub_2d->publish(obj_2d_array);
