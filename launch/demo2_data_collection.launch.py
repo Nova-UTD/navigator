@@ -14,7 +14,7 @@ from ament_index_python import get_package_share_directory
 def generate_launch_description():
 
     launch_path = path.realpath(__file__)
-    launch_dir = path.dirname(launch_path)
+    launch_dir = path.join(path.dirname(launch_path), '..')
     param_dir = path.join(launch_dir,"param")
     interface = "vcan0"
     map_name = "grandloop"
