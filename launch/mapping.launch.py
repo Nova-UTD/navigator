@@ -4,25 +4,21 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration, Command
 from launch_ros.actions import Node
+from os import path
 
 import subprocess
 
-bag_dir = 
+# bag_dir =
+
 
 def generate_launch_description():
-
-    share_dir = get_package_share_directory('lio_sam')
-    parameter_file = LaunchConfiguration('params_file')
-    xacro_path = os.path.join(share_dir, 'config', 'robot.urdf.xacro')
-    rviz_config_file = os.path.join(share_dir, 'config', 'rviz2.rviz')
+    launch_path = path.realpath(__file__)
+    launch_dir = path.dirname(launch_path)
+    param_dir = path.join(launch_dir, "param")
+    parameter_file = parameters = [
+        (path.join(param_dir, "mapping", "lio_sam.param.yaml"))]
     launch_path = os.path.realpath(__file__)
     launch_dir = os.path.dirname(launch_path)
-
-    params_declare = DeclareLaunchArgument(
-        'params_file',
-        default_value=os.path.join(
-            share_dir, 'config', 'params.yaml'),
-        description='FPath to the ROS2 parameters file to use.')
 
     bag_player = Node(
         executable='ros bag play',
@@ -31,12 +27,12 @@ def generate_launch_description():
     )
 
     # run a bag
-    bag_process = subprocess.run("ros bag play /mnt/sda1/bags/april16/rosbag2_2022_04_16-22_02_11".split())
+    # bag_process = subprocess.run(
+    #     "ros2 bag play /mnt/sda1/bags/april16/rosbag2_2022_04_16-22_02_11".split())
 
     # print("urdf_file_name : {}".format(xacro_path))
 
     return LaunchDescription([
-        params_declare,
         # Node(
         #     package='tf2_ros', # Fuse the map and odom frames
         #     executable='static_transform_publisher',
@@ -44,13 +40,13 @@ def generate_launch_description():
         #     parameters=[parameter_file],
         #     output='screen'
         #     ),
-                Node(
-            package='tf2_ros', # Fuse the map and odom frames
+        Node(
+            package='tf2_ros',  # Fuse the map and odom frames
             executable='static_transform_publisher',
             arguments='0.0 0.0 0.0 0.0 0.0 0.0 1.0 map odom'.split(' '),
             parameters=[parameter_file],
             output='screen'
-            ),
+        ),
         # Node(
         #     package='robot_state_publisher', # Publish robot URDF
         #     executable='robot_state_publisher',
@@ -91,6 +87,6 @@ def generate_launch_description():
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
-            arguments=[os.path.join(launch_dir, "data", "voltron.urdf")]
+            arguments=[os.path.join(launch_dir, "data", "hail_bopp.urdf")]
         )
     ])

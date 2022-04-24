@@ -174,6 +174,51 @@ def generate_launch_description():
             ("paths", "paths"),
             ("/sensors/zed/obstacle_array_3d", "zed_obstacles")])
 
+    """""""""
+    " LIDAR "
+    """""""""
+    lidar_driver_front = Node(
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        namespace='lidar_front',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_front.param.yaml"))]
+    )
+    lidar_pointcloud_front = Node(
+        package='velodyne_pointcloud',
+        executable='velodyne_convert_node',
+        namespace='lidar_front',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_front.param.yaml"))]
+    )
+    lidar_driver_rear = Node(
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        namespace='lidar_rear',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_rear.param.yaml"))]
+    )
+    lidar_pointcloud_rear = Node(
+        package='velodyne_pointcloud',
+        executable='velodyne_convert_node',
+        namespace='lidar_rear',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_rear.param.yaml"))]
+    )
+
+    lidar_fusion = Node(
+        package='lidar_fusion',
+        name='lidar_fusion_node',
+        executable='lidar_fusion_node',
+        remappings=[
+            ('/lidar_front', '/lidar_front/velodyne_points'),
+            ('/lidar_rear', '/lidar_rear/velodyne_points'),
+            ('/lidar_fused', '/lidar_fused')
+        ]
+    )
+
+    urdf_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        arguments=[path.join(launch_dir, "data", "hail_bopp.urdf")]
+    )
+
     # MISSING PIECES:
     # lidar
     # state estimation
@@ -182,22 +227,37 @@ def generate_launch_description():
     # visualization
     
     return LaunchDescription([
-        serial,
-        servo_throttle,
-        servo_brake,
+        # PERCEPTION
+        lidar_fusion,
+
+        # HARDWARE
+        # # Steering
         epas_can,
         epas_reporter,
         epas_controller,
         steering_pid,
+        lidar_driver_front,
+        lidar_pointcloud_front,
+        lidar_driver_rear,
+        lidar_pointcloud_rear,
+
+        # # Camera
         zed_interface,
         gnss_parser,
         vehicle_can,
         speedometer_reporter,
         speedometer_translator,
+
+        # BEHAVIOR
         path_publisher,
-        unified_controller,
         motion_planner,
         zone_fusion,
         obstacle_zoner,
         behavior_planner,
+
+        # CONTROL
+        unified_controller,
+
+        # MISC
+        urdf_publisher
     ])

@@ -1,6 +1,9 @@
-uint8 CAR=0
-uint8 BIKE=1
-uint8 PEDESTRIAN=2
+uint8 PERSON=0
+uint8 BICYCLE=1
+uint8 CAR=2
+uint8 MOTORBIKE=3
+uint8 BUS=4
+uint8 TRUCK=5
 uint8 OTHER=99
 
 # car, pedestrian, etc.
