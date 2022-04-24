@@ -219,7 +219,6 @@ float BehaviorPlannerNode::zone_point_distance(float x, float y) {
   // road is not an incoming road of this junction
   if (incoming_roads.find(road) == incoming_roads.end()) return 999;
 
-
   // valid ROW obstacle
 
   polygon_type zone_poly;
@@ -299,6 +298,8 @@ bool BehaviorPlannerNode::obstacles_present(bool in_junction) {
       }
       i += 1;
     }
+
+    RCLCPP_INFO(this->get_logger(), std::to_string(obs_with_ROW.size()));
 
   }
 
