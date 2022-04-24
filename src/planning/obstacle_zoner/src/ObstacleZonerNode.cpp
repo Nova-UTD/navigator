@@ -1,4 +1,6 @@
 #include "obstacle_zoner/ObstacleZonerNode.hpp"
+#include "eigen3/Eigen/Geometry"
+#include "eigen3/Eigen/Dense"
 #include <array>
 
 using std::placeholders::_1;
@@ -34,13 +36,24 @@ void ObstacleZonerNode::zone_perception(Obstacle3DArray::SharedPtr ptr) {
     update_tf();
     double tf_x = this->currentTf.transform.translation.x;
     double tf_y = this->currentTf.transform.translation.y;
-    
-    for (const auto& obstacle : ptr->obstacles) {
+    Eigen::Quaternion quat(this->currentTf.transform.rotation.w, this->currentTf.transform.rotation.x, this->currentTf.transform.rotation.y, this->currentTf.transform.rotation.z);
+    auto rot_mat = quat.toRotationMatrix();
+
+    for (size_t i = 0; i < rot_mat.size(); i++) {
+        // RCLCPP_INFO(this->get_logger(), std::to_string(rot_mat(i)));
+    }
+
+    for (const auto &obstacle : ptr->obstacles)
+    {
         std::array<geometry_msgs::msg::Point, 8> corners;
         //transform corner
         for (size_t i = 0; i < obstacle.bounding_box.corners.size(); i++) {
-            corners[i].x = obstacle.bounding_box.corners[i].x + tf_x;
-            corners[i].y = obstacle.bounding_box.corners[i].y + tf_y;
+            Eigen::Vector3d corner(obstacle.bounding_box.corners[i].x, obstacle.bounding_box.corners[i].y, 0);
+            auto rotated_corner = rot_mat*corner;
+            RCLCPP_INFO(this->get_logger(), std::to_string(obstacle.bounding_box.corners[i].x));
+            corners[i].x = rotated_corner[0] + tf_x;
+            corners[i].y = rotated_corner[1] + tf_y;
+            RCLCPP_INFO(this->get_logger(), std::to_string(corners[i].x));
         }
         Zone stop_zone;
         stop_zone.max_speed = 0;
@@ -80,7 +93,6 @@ void ObstacleZonerNode::zone_perception(Obstacle3DArray::SharedPtr ptr) {
         slow_zone.poly.points.push_back(extend_from_center(zone_padding+slow_extent, corners[3].x, corners[3].y, center_x, center_y));
         zones.zones.push_back(stop_zone);
         zones.zones.push_back(slow_zone);
-
     }
     this->zone_publisher->publish(zones);
 }

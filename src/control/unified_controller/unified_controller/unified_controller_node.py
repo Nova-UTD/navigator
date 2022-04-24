@@ -224,8 +224,9 @@ class UnifiedController(Node):
         current_time = current_time[0] + current_time[1]/1e9
         if abs(current_time - self.stamp_time) > self.MAX_ACCEPTABLE_MESSAGE_DELAY:
             # self.publish_commands(0, 0, 1)
-            self.get_logger().error("Time between messages exceeds acceptable limit: EMERGENCY STOP")
+            #self.get_logger().error("Time between messages exceeds acceptable limit: EMERGENCY STOP")
             # return
+            pass
 
         # get lookahead distances based on reachable path
         reachable_dist = self.reachable_distance(self.current_path_index, max(self.STEERING_LOOKEAHAD_DISTANCE, self.VELOCITY_LOOKEAHED_DISTANCE))
