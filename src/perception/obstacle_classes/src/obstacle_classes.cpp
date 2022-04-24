@@ -15,16 +15,31 @@ namespace obstacle_classes{
 std::string get_class_string(OBSTACLE_CLASS cls){
     switch (cls)
     {
-        case OBSTACLE_CLASS::PEDESTRIAN:
-            return "PEDESTRIAN";
+        case OBSTACLE_CLASS::PERSON:
+            return "PERSON";
             break;
 
-        case OBSTACLE_CLASS::VEHICLE:
-            return "VEHICLE";
+        case OBSTACLE_CLASS::BICYCLE:
+            return "BICYCLE";
+            break;
+        case OBSTACLE_CLASS::CAR:
+            return "CAR";
+            break;
+
+        case OBSTACLE_CLASS::MOTORBIKE:
+            return "MOTORBIKE";
+            break;
+
+        case OBSTACLE_CLASS::BUS:
+            return "BUS";
+            break;
+
+        case OBSTACLE_CLASS::TRUCK:
+            return "TRUCK";
             break;
 
         default:
-            return "UNKNOWN CLASS";
+            return "OTHER";
             break;
     }
 }

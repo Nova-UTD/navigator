@@ -1,8 +1,16 @@
-# Top left corner is [0,0]. Corners are pixel coordinates.
-# a ------ b
-# | Object |
-# d ------ c
-uint8[2] a
-uint8[2] b
-uint8[2] c
-uint8[2] d
+#  (x1, y1) 
+#      * ------- * 
+#      |         | 
+#      |         | 
+#      |         |
+#      * ------- *
+#             (x2, y2)
+
+# these are going to be b/w 0-1
+# you can get exact pixel values by
+# multiplying against image size x and size y
+
+float32 x1
+float32 y1
+float32 x2
+float32 y2
