@@ -1,5 +1,5 @@
 uint8 PERSON=0
-uint8 BICYLCLE=1
+uint8 BICYCLE=1
 uint8 CAR=2
 uint8 MOTORBIKE=3
 uint8 BUS=4

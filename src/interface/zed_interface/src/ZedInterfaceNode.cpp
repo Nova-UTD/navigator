@@ -119,13 +119,13 @@ void ZedInterfaceNode::publish_object_boxes(sl::Objects objects) {
         Obstacle3D obj_msg;
         Obstacle2D obj_2d_msg;
         if (object.label == sl::OBJECT_CLASS::PERSON) {
-                obj_msg.label = Obstacle3D::PEDESTRIAN;
-                obj_2d_msg.label = Obstacle3D::PEDESTRIAN;
+                obj_msg.label = Obstacle3D::PERSON;
+                obj_2d_msg.label = Obstacle3D::PERSON;
         }
         else if (object.label == sl::OBJECT_CLASS::VEHICLE) {
             if (object.sublabel == sl::OBJECT_SUBCLASS::BICYCLE) {
-                obj_msg.label = Obstacle3D::BIKE;
-                obj_2d_msg.label = Obstacle3D::BIKE;
+                obj_msg.label = Obstacle3D::BICYCLE;
+                obj_2d_msg.label = Obstacle3D::BICYCLE;
             }
             else {
                 obj_msg.label = Obstacle3D::CAR;
@@ -158,14 +158,10 @@ void ZedInterfaceNode::publish_object_boxes(sl::Objects objects) {
         obj_array.obstacles.push_back(obj_msg);
         if (object.bounding_box_2d.size() == 4) {
             //enough for corners of bbox 2d
-            obj_2d_msg.bounding_box.a[0] = object.bounding_box_2d[0][0];
-            obj_2d_msg.bounding_box.a[1] = object.bounding_box_2d[0][1];
-            obj_2d_msg.bounding_box.b[0] = object.bounding_box_2d[1][0];
-            obj_2d_msg.bounding_box.b[1] = object.bounding_box_2d[1][1];
-            obj_2d_msg.bounding_box.c[0] = object.bounding_box_2d[2][0];
-            obj_2d_msg.bounding_box.c[1] = object.bounding_box_2d[2][1];
-            obj_2d_msg.bounding_box.d[0] = object.bounding_box_2d[3][0];
-            obj_2d_msg.bounding_box.d[1] = object.bounding_box_2d[3][1];   
+            obj_2d_msg.bounding_box.x1 = object.bounding_box_2d[0][0];
+            obj_2d_msg.bounding_box.y1 = object.bounding_box_2d[0][1];
+            obj_2d_msg.bounding_box.x2 = object.bounding_box_2d[2][0];
+            obj_2d_msg.bounding_box.y2 = object.bounding_box_2d[2][1];
         }
         obj_2d_array.obstacles.push_back(obj_2d_msg);
 
