@@ -76,7 +76,7 @@ class ZedUnpacker(Node):
 
     def __init__(self):
         super().__init__('zed_unpacker')
-        self.declare_parameter('use_real_camera', 'true')
+        self.declare_parameter('use_real_camera', 'false')
 
         # Create our publishers
         # self.road_cloud_sub = self.create_subscription(
@@ -116,7 +116,6 @@ class ZedUnpacker(Node):
             init_parameters.set_from_camera_id(camera_id)
         else:
             init_parameters.set_from_svo_file(svo_path)
-        
 
         # Use the ROS coordinate system for all measurements
         init_parameters.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Z_UP_X_FWD
@@ -175,7 +174,7 @@ class ZedUnpacker(Node):
 
                 imu_msg = Imu()
                 now = self.get_clock().now().to_msg()
-                self.get_logger().info(f"{now.nanosec}")
+                # self.get_logger().info(f"{now.nanosec}")
 
                 # now.nanosec = int(now.nanosec-2e8)
                 if now.nanosec - 5e8 < 0:
@@ -231,7 +230,7 @@ class ZedUnpacker(Node):
                     rotation = R.from_quat(new_quat).as_euler(
                         'xyz')[2]-R.from_quat(self.prev_quat).as_euler('xyz')[2]
                     imu_msg.angular_velocity.z = rotation/(dt*1e-9)
-                    self.get_logger().info(f"{rotation/(dt*1e-9)}")
+                    # self.get_logger().info(f"{rotation/(dt*1e-9)}")
                     self.prev_t = timestamp.get_nanoseconds()
                 self.prev_quat = R.from_rotvec(
                     camera_pose.get_rotation_vector()).as_quat()
@@ -348,20 +347,20 @@ class ZedUnpacker(Node):
             obj_array.obstacles.append(obj_msg)
 
             # Finally, add 2D box
-            bbox_msg_2d = BoundingBox2D()
-            corners = []
-            if len(object.bounding_box_2d[:] == 4):
-                corners = object.bounding_box_2d[:]
-                bbox_msg_2d.a[0] = corners[0][0].item()
-                bbox_msg_2d.a[1] = corners[0][1].item()
-                bbox_msg_2d.b[0] = corners[1][0].item()
-                bbox_msg_2d.b[1] = corners[1][1].item()
-                bbox_msg_2d.c[0] = corners[2][0].item()
-                bbox_msg_2d.c[1] = corners[2][1].item()
-                bbox_msg_2d.d[0] = corners[3][0].item()
-                bbox_msg_2d.d[1] = corners[3][1].item()
-            obj_2d_msg.bounding_box = bbox_msg_2d
-            obj_2d_array.obstacles.append(obj_2d_msg)
+            # bbox_msg_2d = BoundingBox2D()
+            # corners = []
+            # if len(object.bounding_box_2d[:] == 4):
+            #     corners = object.bounding_box_2d[:]
+            #     bbox_msg_2d.x1[0] = corners[0][0].item()
+            #     bbox_msg_2d.x1[1] = corners[0][1].item()
+            #     bbox_msg_2d.b[0] = corners[1][0].item()
+            #     bbox_msg_2d.b[1] = corners[1][1].item()
+            #     bbox_msg_2d.c[0] = corners[2][0].item()
+            #     bbox_msg_2d.c[1] = corners[2][1].item()
+            #     bbox_msg_2d.d[0] = corners[3][0].item()
+            #     bbox_msg_2d.d[1] = corners[3][1].item()
+            # obj_2d_msg.bounding_box = bbox_msg_2d
+            # obj_2d_array.obstacles.append(obj_2d_msg)
 
         obj_array.header.stamp = self.get_clock().now().to_msg()
         obj_array.header.frame_id = 'base_link'
