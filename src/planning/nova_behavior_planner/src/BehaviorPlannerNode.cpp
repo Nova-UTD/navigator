@@ -208,6 +208,20 @@ float BehaviorPlannerNode::zone_point_distance(float x, float y) {
     return false;
   }
 
+  auto lane = navigator::opendrive::get_lane_from_xy(map, x, y);
+  
+  // obstacle not on lane so is not ROW obstacle
+  if (lane == nullptr) return 999;
+
+  std::string road = lane->road.lock()->id;
+  auto incoming_roads = navigator::opendrive::get_incoming_roads(map, junction_ids[0]);
+
+  // road is not an incoming road of this junction
+  if (incoming_roads.find(road) == incoming_roads.end()) return 999;
+
+
+  // valid ROW obstacle
+
   polygon_type zone_poly;
   point_type p(x, y);
 
@@ -272,13 +286,13 @@ bool BehaviorPlannerNode::obstacles_present(bool in_junction) {
   for (Obstacle obs : current_obstacles->obstacles) {
     std::array<geometry_msgs::msg::Point, 8> corners = transform_obstacle(obs);
     
-    size_t i = 0; // last 4 corners of Carla are nonsense for some reason
+    size_t i = 0; // only use 4 corners (2D)
     for (const auto& point : corners) {
       if (i < 4 && point_in_zone(point.x, point.y)) {
         // obstacle is already inside zone
         obs_in_junction = true;
       } else if (i < 4 && !in_junction && zone_point_distance(point.x, point.y) < 1.0) {
-        // obstacle is outside zone (assume they have right-of-way)
+        // obstacle is nearby zone (assume they have right-of-way)
         // don't care about this property if we are already inside junction
         obs_with_ROW.push_back(obs.id);
         break;
@@ -291,6 +305,7 @@ bool BehaviorPlannerNode::obstacles_present(bool in_junction) {
   return obs_in_junction || (obs_with_ROW.size() != 0);
 }
 
+// TODO: switch from set distance to just checking if obstacle is gone from view
 void BehaviorPlannerNode::check_right_of_way() {
   
   this->update_tf();
@@ -341,6 +356,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
   bool zones_made = false;
   std::unordered_set<std::string> seen_junctions;
   final_zones.zones.clear();
+
   // find point on path closest to current location
   size_t closest_pt_idx = 0;
   float min_distance = -1;
@@ -393,6 +409,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
         //we are under the effect of a signal and in a junction that we haven't seen before
         //make a zone for this junction:
         seen_junctions.insert(junction);
+        junction_ids.push_back(junction);
         zones_made = true;
         Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
         switch(current_signal) {

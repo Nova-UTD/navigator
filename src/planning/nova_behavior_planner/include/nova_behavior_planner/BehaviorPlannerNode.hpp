@@ -105,6 +105,7 @@ private:
     int yield_ticks;
     int delay_ticks; // for manual delay
     std::vector<int> obs_with_ROW; // holds IDs of obstacles with right-of-way
+    std::vector<std::string> junction_ids; // holds IDs of upcoming junctions
 
     // pub/sub functions
     void update_current_speed(Odometry::SharedPtr ptr);
