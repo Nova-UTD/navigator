@@ -37,7 +37,7 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
   this->current_state_publisher = this->create_publisher<BehaviorState>("current_state", 10);
 
   this->odometry_subscription = this->create_subscription
-    <Odometry>("/sensors/gnss/odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
+    <Odometry>("/gnss_odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
 
   this->path_subscription = this->create_subscription
     <FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
