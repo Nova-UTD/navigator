@@ -14,8 +14,8 @@ from ament_index_python import get_package_share_directory
 def generate_launch_description():
 
     launch_path = path.realpath(__file__)
-    launch_dir = path.dirname(launch_path)
-    param_dir = path.join(launch_dir,"../param")
+    launch_dir = path.join(path.dirname(launch_path), '..')
+    param_dir = path.join(launch_dir,"param")
 
     serial = Node(
        package = 'serial',
@@ -89,7 +89,7 @@ def generate_launch_description():
         package = 'gnss_parser',
         executable = 'gnss_parser',
         remappings = [
-            ("/sensors/gnss/odom", "gnss_odom"),
+            ("/sensors/gnss/odom", "/sensors/gnss/odom"),
             ("/serial/gnss", "serial_incoming_lines")])
 
     
@@ -219,9 +219,38 @@ def generate_launch_description():
         arguments=[path.join(launch_dir, "data", "hail_bopp.urdf")]
     )
 
+    odr_viz = Node(
+        package='odr_visualizer',
+        executable='visualizer',
+        parameters=[
+            (path.join(param_dir,"mapping","odr.param.yaml"))
+        ],
+        output='screen',
+        remappings=[
+            ("/map","/odr_map")
+        ]
+    )
+
+    odom_bl_link = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=[
+            '0.0','0.0','0.0','0.0','0.0','0.0','1.0','odom','base_link'
+        ]
+    )
+
+    map_odom_ukf = Node(
+        package='robot_localization',
+        executable='ukf_node',
+        name='localization_map_odom',
+        parameters=["/home/wheitman/navigator/param/atlas/map_odom.param.yaml"],
+        remappings=[
+            ("/odom0", "/gnss_odom"),
+            ("/imu0", "/sensors/zed/imu")
+        ]
+    )
+
     # MISSING PIECES:
-    # lidar
-    # state estimation
     # obstacle detection
     # base link transform?
     # visualization
@@ -232,21 +261,21 @@ def generate_launch_description():
 
         # HARDWARE
         # # Steering
-        epas_can,
-        epas_reporter,
-        epas_controller,
-        steering_pid,
-        lidar_driver_front,
-        lidar_pointcloud_front,
-        lidar_driver_rear,
-        lidar_pointcloud_rear,
+        # epas_can,
+        # epas_reporter,
+        # epas_controller,
+        # steering_pid,
+        # lidar_driver_front,
+        # lidar_pointcloud_front,
+        # lidar_driver_rear,
+        # lidar_pointcloud_rear,
 
         # # Camera
-        zed_interface,
-        gnss_parser,
-        vehicle_can,
-        speedometer_reporter,
-        speedometer_translator,
+        # zed_interface,
+        # gnss_parser,
+        # vehicle_can,
+        # speedometer_reporter,
+        # speedometer_translator,
 
         # BEHAVIOR
         path_publisher,
@@ -255,9 +284,14 @@ def generate_launch_description():
         obstacle_zoner,
         behavior_planner,
 
+        # STATE ESTIMATION
+        map_odom_ukf,
+
         # CONTROL
         unified_controller,
 
         # MISC
+        odr_viz,
+        odom_bl_link,
         urdf_publisher
     ])

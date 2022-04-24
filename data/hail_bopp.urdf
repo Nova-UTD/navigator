@@ -52,13 +52,6 @@
     <origin xyz="0.0 0.0 1.0" rpy="0 0 0"/>
   </joint>
 
-  <link name="odom"/>
-  <joint name="temp_join" type="fixed">
-    <parent link="base_link"/>
-    <child link="odom"/>
-    <origin xyz="0.0 0.0 1.0" rpy="0 0 0"/>
-  </joint>
-
   <link name="gnss"/>
 
   <!-- This specifies where our GNSS sensor is located relative to our rear axle. WSH. -->
