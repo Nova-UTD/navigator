@@ -158,7 +158,7 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSe
 			RCLCPP_WARN(this->get_logger(), "NO LANESECTION FOR ROAD %s", id.c_str());
 			continue;
 		}
-        RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s", id.c_str());
+
 		odr::Line3D centerline = navigator::opendrive::get_centerline_as_xy(*lane, lanesection->s0, lanesection->get_end(), step, lane_id>0);
 
 		for (odr::Vec3D point : centerline) {

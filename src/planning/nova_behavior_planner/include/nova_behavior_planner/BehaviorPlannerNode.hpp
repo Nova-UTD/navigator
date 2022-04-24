@@ -3,16 +3,18 @@
 #include <array>
 #include <vector>
 #include "rclcpp/rclcpp.hpp"
+#include <nav_msgs/msg/odometry.hpp>
+#include <geometry_msgs/msg/point.hpp>
+#include <std_msgs/msg/bool.hpp>
+
 #include "voltron_msgs/msg/final_path.hpp"
-#include "voltron_msgs/msg/costed_paths.hpp"
-#include "voltron_msgs/msg/costed_path.hpp"
 #include "voltron_msgs/msg/zone_array.hpp"
 #include "voltron_msgs/msg/zone.hpp"
+#include "voltron_msgs/msg/bounding_box3_d.hpp"
+#include "voltron_msgs/msg/behavior_state.hpp"
 #include "voltron_msgs/msg/obstacle3_d_array.hpp"
 #include "voltron_msgs/msg/obstacle3_d.hpp"
-#include "voltron_msgs/msg/bounding_box3_d.hpp"
-#include <geometry_msgs/msg/point.hpp>
-#include <nav_msgs/msg/odometry.hpp>
+
 #include "nova_behavior_planner/BehaviorPlanner.hpp"
 #include "nova_behavior_planner/BehaviorStates.hpp"
 
@@ -21,7 +23,6 @@
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 
-// libOpenDRIVE stuff
 #include "OpenDriveMap.h"
 #include "pugixml/pugixml.hpp"
 #include "Lanes.h"
@@ -31,19 +32,16 @@
 #include "zone_lib/zone.hpp"
 
 using namespace std::chrono_literals;
+using Bool = std_msgs::msg::Bool;
 using FinalPath = voltron_msgs::msg::FinalPath;
-using CostedPath = voltron_msgs::msg::CostedPath;
-using CostedPaths = voltron_msgs::msg::CostedPaths;
 using Odometry = nav_msgs::msg::Odometry;
 using ZoneArray = voltron_msgs::msg::ZoneArray;
 using Zone = voltron_msgs::msg::Zone;
 using BoundingBox = voltron_msgs::msg::BoundingBox3D;
-
-// temp perception
+using BehaviorState = voltron_msgs::msg::BehaviorState;
 using Obstacles = voltron_msgs::msg::Obstacle3DArray;
 using Obstacle = voltron_msgs::msg::Obstacle3D;
 
-// Boost
 using Point = geometry_msgs::msg::Point;
 typedef boost::geometry::model::d2::point_xy<double> point_type;
 typedef boost::geometry::model::polygon<point_type> polygon_type;
@@ -72,13 +70,16 @@ private:
 
     // pub/sub
     rclcpp::Publisher<ZoneArray>::SharedPtr final_zone_publisher;
+    rclcpp::Publisher<BehaviorState>::SharedPtr current_state_publisher;
     rclcpp::Subscription<Odometry>::SharedPtr odometry_subscription;
     rclcpp::Subscription<FinalPath>::SharedPtr path_subscription;
     rclcpp::Subscription<Obstacles>::SharedPtr obstacles_subscription;
+    rclcpp::Subscription<Bool>::SharedPtr button_subscription;
     
     rclcpp::TimerBase::SharedPtr control_timer;
     FinalPath::SharedPtr current_path;
     Obstacles::SharedPtr current_obstacles;
+    bool button_pressed;
     ZoneArray final_zones;
 
     // odr
@@ -102,12 +103,14 @@ private:
     bool reached_zone;
     int stop_ticks;
     int yield_ticks;
+    int delay_ticks; // for manual delay
     std::vector<int> obs_with_ROW; // holds IDs of obstacles with right-of-way
 
     // pub/sub functions
     void update_current_speed(Odometry::SharedPtr ptr);
     void update_current_path(FinalPath::SharedPtr ptr);
     void update_current_obstacles(Obstacles::SharedPtr ptr);
+    void update_button(Bool::SharedPtr ptr);
     void update_tf();
     std::array<geometry_msgs::msg::Point, 8> transform_obstacle(const Obstacle& obstacle);
     void send_message();
