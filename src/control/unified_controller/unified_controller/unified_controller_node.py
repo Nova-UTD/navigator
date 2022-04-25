@@ -129,7 +129,7 @@ class UnifiedController(Node):
         current_heading: float = self.get_heading_theta()
         odom_time = self.get_odom_time()
 
-        self.get_logger().info("Current speed: %f" % current_speed)
+        # self.get_logger().info("Current speed: %f" % current_speed)
 
         # Find lookahead information
         steering_lookahead: TrajectoryPoint = self.point_at_distance(current_path_index, self.STEERING_LOOKEAHAD_DISTANCE)
@@ -145,7 +145,7 @@ class UnifiedController(Node):
         # Print strait-line distance to lookahead
         distance = (steering_lookahead.x - current_pos.x)**2 + (steering_lookahead.y - current_pos.y)**2
         distance = math.sqrt(distance)
-        self.get_logger().info("Distance to lookahead: %f" % distance)
+        # self.get_logger().info("Distance to lookahead: %f" % distance)
 
         # limit steering angle based on current velocity and vehicle limits
         max_steering_angle = self.MAX_STEERING_ANGLE

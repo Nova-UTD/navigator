@@ -127,6 +127,8 @@ private:
     bool upcoming_intersection();
     SignalType classify_signal(const navigator::opendrive::Signal& signal);
 
+    std::vector<std::string> junction_ids; // holds IDs of upcoming junctions
+
 
 };
 

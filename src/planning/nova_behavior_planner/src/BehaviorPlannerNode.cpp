@@ -181,6 +181,19 @@ float BehaviorPlannerNode::zone_point_distance(float x, float y) {
     return false;
   }
 
+  auto lane = navigator::opendrive::get_lane_from_xy(map, x, y);
+  
+  // obstacle not on lane so is not ROW obstacle
+  if (lane == nullptr) return 999;
+
+  std::string road = lane->road.lock()->id;
+  auto incoming_roads = navigator::opendrive::get_incoming_roads(map, junction_ids[0]);
+
+  // road is not an incoming road of this junction
+  if (incoming_roads.find(road) == incoming_roads.end()) return 999;
+
+  // valid ROW obstacle
+
   polygon_type zone_poly;
   point_type p(x, y);
 
@@ -364,6 +377,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
       //we are under the effect of a signal and in a junction that we haven't seen before
       //make a zone for this junction:
       seen_junctions.insert(junction);
+      junction_ids.push_back(junction);
       zones_made = true;
       Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
       switch(current_signal) {
@@ -379,10 +393,6 @@ bool BehaviorPlannerNode::upcoming_intersection() {
               break;
       }
       final_zones.zones.push_back(zone);
-    } else if (current_signal == SignalType::SpeedBump && junction == "-1") {
-      // we are at a speedbump road
-      zones_made = true;
-      Zone zone = navigator::zones_lib::to_zone_msg()
     }
   }
 

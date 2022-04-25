@@ -184,6 +184,16 @@ class ScenarioManager:
         car_loc2 = carla.Transform(carla.Location(x=-120, y=-36, z=20), carla.Rotation(yaw=180))
         self.add_vehicles(autopilot=True, spawn_points=[car_loc, car_loc2])
 
+    def car_parked_near_junction(self):
+        self.reset_vars()
+        self.ego_spawn = (-152, -60.2, 20)
+
+        self.sim_bridge.world = self.sim_bridge.client.load_world(self.world)
+        self.setup_ego(self.ego_spawn[0], self.ego_spawn[1], self.ego_spawn[2], self.ego_yaw)
+
+        car_loc = carla.Transform(carla.Location(x=-160, y=-27, z=20), carla.Rotation(yaw=180))
+        self.add_vehicles(autopilot=False, spawn_points=[car_loc])
+
 
     '''
     EGO STARTING BEHAVIORS

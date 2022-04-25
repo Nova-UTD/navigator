@@ -627,7 +627,7 @@ class SimBridgeNode(Node):
         self.client.set_timeout(20.0)
         
         scenario_manager = sc.ScenarioManager(self)
-        scenario_manager.car_stopped_at_stop_junction()
+        scenario_manager.car_parked_near_junction()
 
         self.get_logger().info("Started scenario!")
         
