@@ -28,6 +28,7 @@ void ObstacleZonerNode::update_tf() {
 		return;
 	}
 }
+
 //generates two zones per object.
 //  1. stop zone - centered on obstacle's bounding box center. size: bounding box size + zone_padding
 //  2. slow zone - centered on obstacle's bounding box center. size: bounding box size + zone_padding + slow_zone
