@@ -15,8 +15,9 @@ get_filename_component(directory_name ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 project(${directory_name})
 
 find_package(ZED 3 REQUIRED)
+find_package(CUDA REQUIRED)
 find_package(nova_auto_package REQUIRED)
-include_directories(${ZED_INCLUDE_DIRS})
+include_directories(${ZED_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
 link_directories(${ZED_LIBRARY_DIR})
 
 nova_auto_package()
