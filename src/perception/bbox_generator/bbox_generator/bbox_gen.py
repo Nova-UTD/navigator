@@ -3,7 +3,6 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image, PointCloud2
 from voltron_msgs.msg import Obstacle2DArray, Obstacle3D, Obstacle3DArray
 from geometry_msgs.msg import Point
-import message_filters
 import ros2_numpy as rnp
 
 import numpy as np
@@ -18,7 +17,7 @@ CENTER_Y = 356.9830
 
 DEPTH_MAX = 20.0
 RANGE_MAX = 60.0
-SEARCH_RADIUS = 1.0
+SEARCH_RADIUS = 1.5
 
 INTRINSIC_MATRIX = np.array([
     [FOCAL_X, 0, CENTER_X, 0],
@@ -29,8 +28,8 @@ INTRINSIC_MATRIX = np.array([
 
 EXTRINSIC_MATRIX = np.array([
     [0, -1, 0, 0],
-    [0, 0, -1, 1],
-    [1, 0, 0, 0],
+    [0, 0, -1, 1.5],
+    [1, 0, 0, 0.5],
     [0, 0, 0, 1]
 ])
 
@@ -52,17 +51,6 @@ class BBoxGeneratorNode(Node):
     def __init__(self):
         super().__init__('bbox_gen_node')
 
-        # self.depth_sub = message_filters.Subscriber(
-        #     self, Image, '/depth_image')
-        # self.obstacles_2d_sub = message_filters.Subscriber(
-        #     self, Obstacle2DArray, '/obstacle_array_2d')
-        # self.sync = message_filters.ApproximateTimeSynchronizer(
-        #     fs=[self.depth_sub, self.obstacles_2d_sub],
-        #     queue_size=1,
-        #     slop=1/10.0
-        # )
-        # self.sync.registerCallback(self.bbox_gen_cb)
-
         self.obstacle_array_2d_cb = self.create_subscription(
             Obstacle2DArray,
             '/obstacle_array_2d',
@@ -73,7 +61,7 @@ class BBoxGeneratorNode(Node):
         self.depth_image = None
         self.depth_sub = self.create_subscription(
             Image,
-            '/sensors/zed/depth_img',
+            '/depth_image',
             self.depth_image_cb,
             10
         )
@@ -95,7 +83,6 @@ class BBoxGeneratorNode(Node):
     # generate 3-d bounding box from 2-d bounding boxes
     def bbox_gen_cb(self, obstacles_2d: Obstacle2DArray):
         self.get_logger().info('got bbox_gen_cb')
-        print(self.depth_image)
         if type(self.depth_image) != np.ndarray:
             return
         else:
@@ -110,7 +97,11 @@ class BBoxGeneratorNode(Node):
             y2 = int(obstacle.bounding_box.y2 * IMAGE_SIZE_Y)
 
             # get the approx min depth of bounding box
-            min_depth = np.percentile(depth_image[y1:y2, x1:x2], 5)
+            bbox_depth = depth_image[y1:y2, x1:x2]
+            bbox_depth = bbox_depth[np.isfinite(bbox_depth)]
+            if bbox_depth.size == 0:
+                continue
+            min_depth = np.percentile(bbox_depth, 5)
             bbox_3d = np.zeros((8, 3))
 
             # if the obstacle is further than max depth of camera
@@ -189,13 +180,13 @@ class BBoxGeneratorNode(Node):
 
     # cache depth image
     def depth_image_cb(self, depth_msg: Image):
-        self.get_logger().info('got depth')
+        # self.get_logger().info('got depth')
         self.depth_image = rnp.numpify(depth_msg)
 
     # expects transformed, fused lidar point clouds
     # filters the point cloud and caches it as a K-d Tree
     def lidar_cb(self, lidar_msg: PointCloud2):
-        self.get_logger().info('got lidar_cb')
+        # self.get_logger().info('got lidar_cb')
         pcd = rnp.numpify(lidar_msg)
         if lidar_msg.header.frame_id != 'base_link':
             # something is wrong with frame_id
@@ -203,7 +194,7 @@ class BBoxGeneratorNode(Node):
             return
 
         # remove the floor
-        pcd = pcd[pcd['z'] > 0.2]
+        pcd = pcd[pcd['z'] > 0.0]
 
         # get it into kdtree data format
         x, y, z = pcd['x'], pcd['y'], pcd['z']
