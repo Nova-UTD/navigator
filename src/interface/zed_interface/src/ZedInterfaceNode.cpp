@@ -25,6 +25,7 @@ ZedInterfaceNode::ZedInterfaceNode() : rclcpp::Node("zed_interface") {
     this->pose_pub = this->create_publisher<PoseWithCovarianceStamped>("/sensors/zed/pose", 10);
     this->left_rgb_pub = this->create_publisher<Image>("sensors/zed/left_rgb", 10);
     this->depth_img_pub = this->create_publisher<Image>("sensors/zed/depth_img", 10);
+    this->imu_pub = this->create_publisher<Imu>("sensors/zed/imu", 10);
     this->object_pub_3d = this->create_publisher<Obstacle3DArray>("sensors/zed/obstacle_array_3d", 10);
     this->object_pub_2d = this->create_publisher<Obstacle2DArray>("sensors/zed/obstacle_array_2d", 10);
 
@@ -78,11 +79,14 @@ void ZedInterfaceNode::update_camera() {
     sl::Mat image;
     sl::Mat depth;
     sl::Objects objects;
+    sl::SensorsData sensors_data;
 
     if (zed.grab(runtime) == sl::ERROR_CODE::SUCCESS) {
         zed.retrieveImage(image, sl::VIEW::LEFT);
         zed.retrieveMeasure(depth, sl::MEASURE::DEPTH);
         zed.retrieveObjects(objects, obj_runtime_param);
+        zed.getSensorsData(sensors_data, sl::TIME_REFERENCE::CURRENT);
+
         auto tracking_state = zed.getPosition(camera_pose, sl::REFERENCE_FRAME::WORLD);
         if (tracking_state == sl::POSITIONAL_TRACKING_STATE::OK) {
             publish_pose(camera_pose);
@@ -92,6 +96,7 @@ void ZedInterfaceNode::update_camera() {
         publish_zed_img(image);
         publish_depth_img(depth);
         publish_object_boxes(objects);
+        publish_imu(sensors_data);
     }
 
 }
@@ -111,6 +116,56 @@ void ZedInterfaceNode::publish_depth_img(sl::Mat mat) {
     image->header.frame_id = "zed2_camera_center";
     depth_img_pub->publish(*image);
 }
+
+void ZedInterfaceNode::publish_imu(sl::SensorsData sd) {
+    
+    auto t = get_clock()->now();
+    Imu imu_data;
+
+    imu_data.header.stamp = t;
+    imu_data.header.frame_id = "zed2_camera_center";
+
+    imu_data.orientation.x = sd.imu.pose.getOrientation()[0];
+    imu_data.orientation.y = sd.imu.pose.getOrientation()[1];
+    imu_data.orientation.z = sd.imu.pose.getOrientation()[2];
+    imu_data.orientation.w = sd.imu.pose.getOrientation()[3];
+
+    imu_data.angular_velocity.x = sd.imu.angular_velocity[0] * DEG2RAD;
+    imu_data.angular_velocity.y = sd.imu.angular_velocity[1] * DEG2RAD;
+    imu_data.angular_velocity.z = sd.imu.angular_velocity[2] * DEG2RAD;
+
+    imu_data.linear_acceleration.x = sd.imu.linear_acceleration[0];
+    imu_data.linear_acceleration.y = sd.imu.linear_acceleration[1];
+    imu_data.linear_acceleration.z = sd.imu.linear_acceleration[2];
+
+
+    for (int i = 0; i < 3; ++i) {
+        int r = 0;
+
+        if (i == 0) {
+            r = 0;
+        } else if (i == 1) {
+            r = 1;
+        } else {
+            r = 2;
+        }
+
+        imu_data.orientation_covariance[i * 3 + 0] = sd.imu.pose_covariance.r[r * 3 + 0] * DEG2RAD * DEG2RAD;
+        imu_data.orientation_covariance[i * 3 + 1] = sd.imu.pose_covariance.r[r * 3 + 1] * DEG2RAD * DEG2RAD;
+        imu_data.orientation_covariance[i * 3 + 2] = sd.imu.pose_covariance.r[r * 3 + 2] * DEG2RAD * DEG2RAD;
+
+        imu_data.linear_acceleration_covariance[i * 3 + 0] = sd.imu.linear_acceleration_covariance.r[r * 3 + 0];
+        imu_data.linear_acceleration_covariance[i * 3 + 1] = sd.imu.linear_acceleration_covariance.r[r * 3 + 1];
+        imu_data.linear_acceleration_covariance[i * 3 + 2] = sd.imu.linear_acceleration_covariance.r[r * 3 + 2];
+
+        imu_data.angular_velocity_covariance[i * 3 + 0] = sd.imu.angular_velocity_covariance.r[r * 3 + 0] * DEG2RAD * DEG2RAD;
+        imu_data.angular_velocity_covariance[i * 3 + 1] = sd.imu.angular_velocity_covariance.r[r * 3 + 1] * DEG2RAD * DEG2RAD;
+        imu_data.angular_velocity_covariance[i * 3 + 2] = sd.imu.angular_velocity_covariance.r[r * 3 + 2] * DEG2RAD * DEG2RAD;
+    }
+    
+    imu_pub->publish(imu_data);
+}
+
 
 void ZedInterfaceNode::publish_object_boxes(sl::Objects objects) {
     Obstacle3DArray obj_array;
