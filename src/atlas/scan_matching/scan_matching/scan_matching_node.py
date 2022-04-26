@@ -69,6 +69,9 @@ Publish to ROS:
 
 '''
 
+gnss_logfile = open("frames/gnss_log.csv", 'w')
+gnss_logfile.write("x,y,z,qx,qy,qz,qw\n")
+
 
 class ScanMatchingNode(Node):
 
@@ -94,9 +97,10 @@ class ScanMatchingNode(Node):
         # Publish the map periodically
 
         self.map_pub_timer = self.create_timer(5, self.publish_map)
+        self.lidar_save_timer = self.create_timer(1, self.save_lidar)
 
         self.lidar_sub = self.create_subscription(
-            PointCloud2, '/lidar_front/velodyne_points', self.lidar_cb, 10)
+            PointCloud2, '/lidar_fused', self.lidar_cb, 10)
 
         self.gnss_sub = self.create_subscription(
             Odometry, '/sensors/gnss/odom', self.gnss_cb, 10)
@@ -107,9 +111,26 @@ class ScanMatchingNode(Node):
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.initial_guess = None
+        self.cached_lidar_arr = np.array([])
+        self.lidar_save_idx = 0
 
     def publish_map(self):
         self.publish_cloud_from_array(self.pcd_map, 'map', self.map_pub)
+
+    def save_lidar(self):
+        if self.cached_lidar_arr.shape[0] <= 0:
+            return
+        pcd = open3d.geometry.PointCloud()
+        pcd.points = open3d.utility.Vector3dVector(self.cached_lidar_arr)
+        self.get_logger().info(f"Writing frame {self.lidar_save_idx}")
+        open3d.io.write_point_cloud(
+            f"frames/frame{self.lidar_save_idx}.pcd", pcd, write_ascii=True)
+
+        pos = self.initial_guess.pose.pose.position
+        rot = self.initial_guess.pose.pose.orientation
+        gnss_logfile.write(
+            f"{pos.x},{pos.y},{pos.z},{rot.x},{rot.y},{rot.z},{rot.w}\n")
+        self.lidar_save_idx += 1
 
     def gnss_cb(self, msg: Odometry):
         self.initial_guess = msg
@@ -120,57 +141,62 @@ class ScanMatchingNode(Node):
                 "Initial guess from GNSS not yet received, skipping alignment.")
             return
 
-        self.get_logger().info("Trying alignment")
+        # self.get_logger().info("Trying alignment")
 
         # Convert PointCloud2 to np array
         lidar_arr_dtype = rnp.numpify(msg)
+
         lidar_list = [lidar_arr_dtype['x'],
                       lidar_arr_dtype['y'], lidar_arr_dtype['z']]
         lidar_arr = np.array(lidar_list).T.reshape(-1,
                                                    3)
         lidar_arr = lidar_arr[~np.isnan(lidar_arr).any(axis=1)]
+
+        # Cache lidar for debug
+        self.cached_lidar_arr = lidar_arr
+
         # lidar_arr = pygicp.downsample(lidar_arr, )
         # Transform lidar from base_link->map
-        map_pos = self.initial_guess.pose.pose.position
-        # lidar_arr[:, 0] += map_pos.x
-        # lidar_arr[:, 1] += map_pos.y
-        # lidar_arr[:, 2] += map_pos.z
-        quat_msg = self.initial_guess.pose.pose.orientation
-        rot_matrix = R.from_quat([quat_msg.x, quat_msg.y, quat_msg.z, quat_msg.w]
-                                 ).as_dcm()
-        tf_matrix = [rot_matrix[0, 0], rot_matrix[0, 1], rot_matrix[0, 2], map_pos.x,
-                     rot_matrix[1, 0], rot_matrix[1,
-                                                  1], rot_matrix[1, 2], map_pos.y,
-                     rot_matrix[2, 0], rot_matrix[2,
-                                                  1], rot_matrix[2, 2], map_pos.z,
-                     0, 0, 0, 1]
-        np_tf_matrix = np.array(tf_matrix).reshape(4, 4)
-        matrix = pygicp.align_points(
-            self.pcd_map,
-            lidar_arr,
-            initial_guess=np_tf_matrix,
-            num_threads=4,
-            max_correspondence_distance=3.0
-        )
-        self.get_logger().info(f"{matrix}")
-        self.publish_cloud_from_array(lidar_arr, 'map', self.aligned_lidar_pub)
+        # map_pos = self.initial_guess.pose.pose.position
+        # # lidar_arr[:, 0] += map_pos.x
+        # # lidar_arr[:, 1] += map_pos.y
+        # # lidar_arr[:, 2] += map_pos.z
+        # quat_msg = self.initial_guess.pose.pose.orientation
+        # rot_matrix = R.from_quat([quat_msg.x, quat_msg.y, quat_msg.z, quat_msg.w]
+        #                          ).as_dcm()
+        # tf_matrix = [rot_matrix[0, 0], rot_matrix[0, 1], rot_matrix[0, 2], map_pos.x,
+        #              rot_matrix[1, 0], rot_matrix[1,
+        #                                           1], rot_matrix[1, 2], map_pos.y,
+        #              rot_matrix[2, 0], rot_matrix[2,
+        #                                           1], rot_matrix[2, 2], map_pos.z,
+        #              0, 0, 0, 1]
+        # np_tf_matrix = np.array(tf_matrix).reshape(4, 4)
+        # matrix = pygicp.align_points(
+        #     self.pcd_map,
+        #     lidar_arr,
+        #     initial_guess=np_tf_matrix,
+        #     num_threads=4,
+        #     max_correspondence_distance=3.0
+        # )
+        # self.get_logger().info(f"{matrix}")
+        # self.publish_cloud_from_array(lidar_arr, 'map', self.aligned_lidar_pub)
 
-        # Publish our transform result
-        tf = TransformStamped()
-        tf.header.stamp = self.get_clock().now().to_msg()
-        tf.header.frame_id = 'map'
-        tf.child_frame_id = 'base_link'
-        tf.transform.translation = Vector3(
-            x=matrix[0, 3],
-            y=matrix[1, 3],
-            z=matrix[2, 3]
-        )
-        self.get_logger().info(f"{tf.transform.translation}")
-        tf.transform.rotation = self.initial_guess.pose.pose.orientation
-        self.tf_broadcaster.sendTransform(tf)
+        # # Publish our transform result
+        # tf = TransformStamped()
+        # tf.header.stamp = self.get_clock().now().to_msg()
+        # tf.header.frame_id = 'map'
+        # tf.child_frame_id = 'base_link'
+        # tf.transform.translation = Vector3(
+        #     x=matrix[0, 3],
+        #     y=matrix[1, 3],
+        #     z=matrix[2, 3]
+        # )
+        # self.get_logger().info(f"{tf.transform.translation}")
+        # tf.transform.rotation = self.initial_guess.pose.pose.orientation
+        # self.tf_broadcaster.sendTransform(tf)
 
-        ps = PoseStamped()
-        return
+        # ps = PoseStamped()
+        # return
 
     def publish_cloud_from_array(self, arr, frame_id: str, publisher):
         data = np.zeros(arr.shape[0], dtype=[
@@ -201,6 +227,7 @@ def main(args=None):
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
     scan_matcher.destroy_node()
+    gnss_logfile.close()
     rclpy.shutdown()
 
 
