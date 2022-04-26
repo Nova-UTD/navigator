@@ -21,6 +21,7 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
   this->reached_zone = false;
   this->stop_ticks = 0;
   this->yield_ticks = 0;
+  this->delay_ticks = 0;
 
   // xml parsing
   RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
@@ -33,14 +34,19 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 
   this->final_zone_publisher = this->create_publisher<ZoneArray>("zone_array", 10);
 
+  this->current_state_publisher = this->create_publisher<BehaviorState>("current_state", 10);
+
   this->odometry_subscription = this->create_subscription
-    <Odometry>("/sensors/gnss/odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
+    <Odometry>("/gnss_odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
 
   this->path_subscription = this->create_subscription
     <FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
 
   this->obstacles_subscription = this->create_subscription
     <Obstacles>("/sensors/zed/obstacle_array_3d", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
+
+  this->button_subscription = this->create_subscription
+    <Bool>("/controller/buttonA", 8, std::bind(&BehaviorPlannerNode::update_button, this, _1));
 
   this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
   this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -66,6 +72,10 @@ void BehaviorPlannerNode::update_current_path(FinalPath::SharedPtr ptr) {
 
 void BehaviorPlannerNode::update_current_obstacles(Obstacles::SharedPtr ptr) {
   this->current_obstacles = ptr;
+}
+
+void BehaviorPlannerNode::update_button(Bool::SharedPtr ptr) {
+  button_pressed = ptr->data;
 }
 
 void BehaviorPlannerNode::update_tf() {
@@ -94,6 +104,9 @@ void BehaviorPlannerNode::send_message() {
   if (this->current_path == nullptr) return;
   update_state();
   final_zone_publisher->publish(this->final_zones);
+  BehaviorState publish_state;
+  publish_state.current_state = this->current_state;
+  current_state_publisher->publish(publish_state);
 }
 
 
@@ -101,7 +114,7 @@ void BehaviorPlannerNode::update_state() {
   switch(current_state) {
     case LANEKEEPING:
       RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
-      
+
       if (upcoming_intersection()) {
         if (final_zones.zones[0].max_speed == STOP_SPEED) {
           current_state = STOPPING;
@@ -121,9 +134,9 @@ void BehaviorPlannerNode::update_state() {
       break;
     case STOPPING:
       RCLCPP_INFO(this->get_logger(), "current state: STOPPING");
-      
+
       if (is_stopped()) stop_ticks += 1;
-      if (stop_ticks >= 20) {
+      if (stop_ticks >= 6) {
         stop_ticks = 0;
         current_state = STOPPED;
       }
@@ -134,7 +147,7 @@ void BehaviorPlannerNode::update_state() {
       if (!obstacles_present()) {
         if (final_zones.zones.size()) {
           final_zones.zones[0].max_speed = YIELD_SPEED;
-          current_state = IN_JUNCTION;
+          current_state = JUNCTION_MANUAL_DELAY;
         }
       } else if (obs_with_ROW.size() != 0) {
         current_state = WAITING_AT_JUNCTION;
@@ -147,7 +160,21 @@ void BehaviorPlannerNode::update_state() {
         // check if any of the ID obstacles are gone and remove from ID array
         check_right_of_way();
       } else {
-        current_state = IN_JUNCTION;
+        current_state = JUNCTION_MANUAL_DELAY;
+      }
+      break;
+    case JUNCTION_MANUAL_DELAY:
+      RCLCPP_INFO(this->get_logger(), "current state: Waiting for manual interference before entering junction");
+
+      // while button held down, restart delay timer and don't change state
+      if (button_pressed) {
+        delay_ticks = 0;
+      } else {
+        delay_ticks += 1;
+        if (delay_ticks >= 20) {
+          delay_ticks = 0;
+          current_state = IN_JUNCTION;
+        }
       }
       break;
     case IN_JUNCTION:
@@ -180,6 +207,19 @@ float BehaviorPlannerNode::zone_point_distance(float x, float y) {
     RCLCPP_INFO(this->get_logger(), "ERROR: in junction but no zones");
     return false;
   }
+
+  auto lane = navigator::opendrive::get_lane_from_xy(map, x, y);
+  
+  // obstacle not on lane so is not ROW obstacle
+  if (lane == nullptr) return 999;
+
+  std::string road = lane->road.lock()->id;
+  auto incoming_roads = navigator::opendrive::get_incoming_roads(map, junction_ids[0]);
+
+  // road is not an incoming road of this junction
+  if (incoming_roads.find(road) == incoming_roads.end()) return 999;
+
+  // valid ROW obstacle
 
   polygon_type zone_poly;
   point_type p(x, y);
@@ -245,23 +285,28 @@ bool BehaviorPlannerNode::obstacles_present(bool in_junction) {
   for (Obstacle obs : current_obstacles->obstacles) {
     std::array<geometry_msgs::msg::Point, 8> corners = transform_obstacle(obs);
     
-    size_t i = 0; // last 4 corners of Carla are nonsense for some reason
+    size_t i = 0; // only use 4 corners (2D)
     for (const auto& point : corners) {
       if (i < 4 && point_in_zone(point.x, point.y)) {
         // obstacle is already inside zone
         obs_in_junction = true;
-      } else if (i < 4 && !in_junction && zone_point_distance(point.x, point.y) < 5.0) {
-        // obstacle is outside zone (assume they have right-of-way)
+      } else if (i < 4 && !in_junction && zone_point_distance(point.x, point.y) < 1.0) {
+        // obstacle is nearby zone (assume they have right-of-way)
         // don't care about this property if we are already inside junction
         obs_with_ROW.push_back(obs.id);
         break;
       }
       i += 1;
     }
+
+    RCLCPP_INFO(this->get_logger(), std::to_string(obs_with_ROW.size()));
+
   }
+
   return obs_in_junction || (obs_with_ROW.size() != 0);
 }
 
+// TODO: switch from set distance to just checking if obstacle is gone from view
 void BehaviorPlannerNode::check_right_of_way() {
   
   this->update_tf();
@@ -303,7 +348,7 @@ bool BehaviorPlannerNode::reached_desired_velocity(float desired_velocity) {
 bool BehaviorPlannerNode::is_stopped() {
   float speed_dif = std::abs(STOP_SPEED - current_speed);
   float position_dif = std::abs(prev_position_x - current_position_x) + std::abs(prev_position_y - current_position_y);
-  return (speed_dif < 0.01 && position_dif < 0.01);
+  return (speed_dif < 0.25 && position_dif < 1.0);
 }
 
 bool BehaviorPlannerNode::upcoming_intersection() {
@@ -312,6 +357,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
   bool zones_made = false;
   std::unordered_set<std::string> seen_junctions;
   final_zones.zones.clear();
+
   // find point on path closest to current location
   size_t closest_pt_idx = 0;
   float min_distance = -1;
@@ -364,6 +410,7 @@ bool BehaviorPlannerNode::upcoming_intersection() {
         //we are under the effect of a signal and in a junction that we haven't seen before
         //make a zone for this junction:
         seen_junctions.insert(junction);
+        junction_ids.push_back(junction);
         zones_made = true;
         Zone zone = navigator::zones_lib::to_zone_msg(map->junctions[junction], map);
         switch(current_signal) {

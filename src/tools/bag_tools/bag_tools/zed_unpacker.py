@@ -27,7 +27,7 @@ Todos:
 import cv2
 import time
 from scipy import rand
-from sensor_msgs.msg import PointCloud2, Image
+from sensor_msgs.msg import PointCloud2, Image, Imu
 from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, PoseWithCovarianceStamped
 from voltron_msgs.msg import Obstacle3DArray, Obstacle3D, BoundingBox3D, BoundingBox2D, Obstacle2D, Obstacle2DArray
 from visualization_msgs.msg import Marker, MarkerArray
@@ -55,6 +55,7 @@ camera_id = 0
 zed = sl.Camera()
 USE_BATCHING = True
 
+
 # Image format conversion
 
 '''
@@ -75,7 +76,7 @@ class ZedUnpacker(Node):
 
     def __init__(self):
         super().__init__('zed_unpacker')
-        self.declare_parameter('use_real_camera', 'true')
+        self.declare_parameter('use_real_camera', 'false')
 
         # Create our publishers
         # self.road_cloud_sub = self.create_subscription(
@@ -83,6 +84,9 @@ class ZedUnpacker(Node):
         # )
         self.pose_pub = self.create_publisher(
             PoseWithCovarianceStamped, '/sensors/zed/pose', 10)
+
+        self.imu_pub = self.create_publisher(
+            Imu, '/sensors/zed/imu', 10)
 
         self.left_rgb_pub = self.create_publisher(
             Image, 'sensors/zed/left_rgb', 10
@@ -104,12 +108,14 @@ class ZedUnpacker(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
+        self.prev_t = None
+        self.prev_quat = None
+
         init_parameters = sl.InitParameters()
         if self.get_parameter('use_real_camera').get_parameter_value().string_value == 'true':
             init_parameters.set_from_camera_id(camera_id)
         else:
             init_parameters.set_from_svo_file(svo_path)
-        
 
         # Use the ROS coordinate system for all measurements
         init_parameters.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Z_UP_X_FWD
@@ -157,6 +163,7 @@ class ZedUnpacker(Node):
 
         py_translation = sl.Translation()
         pose_data = sl.Transform()
+        sensors_data = sl.SensorsData()
 
         image = sl.Mat()
         depth = sl.Mat()
@@ -164,12 +171,39 @@ class ZedUnpacker(Node):
         objects = sl.Objects()  # Structure containing all the detected objects
         while True:
             if zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
+
+                imu_msg = Imu()
+                now = self.get_clock().now().to_msg()
+                # self.get_logger().info(f"{now.nanosec}")
+
+                # now.nanosec = int(now.nanosec-2e8)
+                if now.nanosec - 5e8 < 0:
+                    now.nanosec = int(1e9 + now.nanosec - 5e8)
+                    now.sec = int(now.sec - 1)
+                imu_msg.header.stamp = now
+                imu_msg.header.frame_id = 'zed2_camera_center'
+
                 # Read left RGB image
                 zed.retrieve_image(image, sl.VIEW.LEFT)
                 # Retrieve depth matrix. Depth is aligned on the left RGB image
                 zed.retrieve_measure(depth, sl.MEASURE.DEPTH)
                 # Retrieve colored point cloud
                 zed.retrieve_measure(point_cloud, sl.MEASURE.XYZRGBA)
+                # Get IMU readings
+                zed.get_sensors_data(sensors_data, sl.TIME_REFERENCE.IMAGE)
+                linear_acceleration = sensors_data.get_imu_data().get_linear_acceleration()
+                # self.get_logger().info(" \t Acceleration: [ {0} {1} {2} ] [m/sec^2]".format(
+                #     linear_acceleration[0], linear_acceleration[1], linear_acceleration[2]))
+
+                imu_msg.linear_acceleration = Vector3(
+                    x=linear_acceleration[0],
+                    y=linear_acceleration[1],
+                    z=linear_acceleration[2]
+                )
+
+                angular_velocity = sensors_data.get_imu_data().get_angular_velocity()
+                # self.get_logger().info(" \t Angular Velocities: [ {0} {1} {2} ] [deg/sec]".format(
+                #     angular_velocity[0], angular_velocity[1], angular_velocity[2]))
 
                 # Retrieve the detected objects
                 zed.retrieve_objects(objects, obj_runtime_param)
@@ -187,9 +221,24 @@ class ZedUnpacker(Node):
                 else:
                     self.get_logger().warning("Positional tracking not available.")
 
+                if (self.prev_t is None):
+                    self.prev_t = timestamp.get_nanoseconds()
+                else:
+                    dt = timestamp.get_nanoseconds() - self.prev_t
+                    rotation = camera_pose.get_rotation_vector()
+                    new_quat = R.from_rotvec(rotation).as_quat()  # [x,y,z,w]
+                    rotation = R.from_quat(new_quat).as_euler(
+                        'xyz')[2]-R.from_quat(self.prev_quat).as_euler('xyz')[2]
+                    imu_msg.angular_velocity.z = rotation/(dt*1e-9)
+                    # self.get_logger().info(f"{rotation/(dt*1e-9)}")
+                    self.prev_t = timestamp.get_nanoseconds()
+                self.prev_quat = R.from_rotvec(
+                    camera_pose.get_rotation_vector()).as_quat()
+
                 self.publish_zed_img(image)
                 self.publish_depth_img(depth)
                 self.publish_object_boxes(objects)
+                self.imu_pub.publish(imu_msg)
 
                 # Disable for now... It's too slow
                 # self.publish_depth_cloud(point_cloud)
@@ -298,20 +347,20 @@ class ZedUnpacker(Node):
             obj_array.obstacles.append(obj_msg)
 
             # Finally, add 2D box
-            bbox_msg_2d = BoundingBox2D()
-            corners = []
-            if len(object.bounding_box_2d[:] == 4):
-                corners = object.bounding_box_2d[:]
-                bbox_msg_2d.a[0] = corners[0][0].item()
-                bbox_msg_2d.a[1] = corners[0][1].item()
-                bbox_msg_2d.b[0] = corners[1][0].item()
-                bbox_msg_2d.b[1] = corners[1][1].item()
-                bbox_msg_2d.c[0] = corners[2][0].item()
-                bbox_msg_2d.c[1] = corners[2][1].item()
-                bbox_msg_2d.d[0] = corners[3][0].item()
-                bbox_msg_2d.d[1] = corners[3][1].item()
-            obj_2d_msg.bounding_box = bbox_msg_2d
-            obj_2d_array.obstacles.append(obj_2d_msg)
+            # bbox_msg_2d = BoundingBox2D()
+            # corners = []
+            # if len(object.bounding_box_2d[:] == 4):
+            #     corners = object.bounding_box_2d[:]
+            #     bbox_msg_2d.x1[0] = corners[0][0].item()
+            #     bbox_msg_2d.x1[1] = corners[0][1].item()
+            #     bbox_msg_2d.b[0] = corners[1][0].item()
+            #     bbox_msg_2d.b[1] = corners[1][1].item()
+            #     bbox_msg_2d.c[0] = corners[2][0].item()
+            #     bbox_msg_2d.c[1] = corners[2][1].item()
+            #     bbox_msg_2d.d[0] = corners[3][0].item()
+            #     bbox_msg_2d.d[1] = corners[3][1].item()
+            # obj_2d_msg.bounding_box = bbox_msg_2d
+            # obj_2d_array.obstacles.append(obj_2d_msg)
 
         obj_array.header.stamp = self.get_clock().now().to_msg()
         obj_array.header.frame_id = 'base_link'

@@ -27,7 +27,7 @@ Todos:
 from scipy import rand
 from sensor_msgs.msg import PointCloud2
 from scipy.spatial.transform import Rotation as R
-from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, Polygon, PolygonStamped, Point32
+from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, Polygon, PolygonStamped, Point32, PoseStamped
 from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D, PolygonArray
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import Odometry  # For GPS, ground truth
@@ -71,14 +71,26 @@ class GnssLogPublisher(Node):
         self.gnss_pub = self.create_publisher(
             Odometry, '/sensors/gnss/odom', 10)
 
+        self.initial_pose_pub = self.create_publisher(
+            PoseStamped, '/initial_pose', 10)
+
+        self.lidar_sub = self.create_subscription(
+            PointCloud2, '/lidar_front/velodyne_points', self.lidar_cb, 10)
+
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.tf_broadcaster = TransformBroadcaster(self)
         self.road_boundary = None
         self.gps_timer = self.create_timer(0.5, self.publish_next_gnss)
         self.log_file = open(gps_log_path, 'r').readlines()
         # outfile.write(f"x,y,z,u,v,speed,pos_acc,yaw_acc,speed_acc\n")
 
         self.idx = skip_time*2  # 2 hz
+        self.latest_stamp = None
+
+    def lidar_cb(self, msg: PointCloud2):
+        # self.get_logger().info(f"{msg.header.stamp}")
+        self.latest_stamp = msg.header.stamp
 
     def publish_next_gnss(self):
         if self.idx == len(self.log_file):
@@ -133,6 +145,17 @@ class GnssLogPublisher(Node):
                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         self.gnss_pub.publish(msg)
+
+        ps = PoseStamped()
+        ps.header.stamp = self.latest_stamp
+        ps.header.frame_id = 'map'
+        ps.pose = msg.pose.pose
+        self.initial_pose_pub.publish(ps)
+        # tf.transform.rotation = msg.pose.pose.orientation
+        # tf.header.stamp = self.latest_stamp
+        # tf.header.frame_id = 'odom'
+        # tf.child_frame_id = 'base_link'
+        # self.tf_broadcaster.sendTransform(tf)
         # u = speed*math.cos(yaw)
         # v = speed*math.sin(yaw)
 

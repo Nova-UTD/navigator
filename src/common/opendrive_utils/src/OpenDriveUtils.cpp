@@ -276,3 +276,14 @@ LanePtr navigator::opendrive::get_lane_from_xy_with_route(OpenDriveMapPtr map, d
     }
     return std::shared_ptr<odr::Lane>(); // No road found!
 }
+
+std::unordered_set<std::string> navigator::opendrive::get_incoming_roads(OpenDriveMapPtr map, std::string junction_id) {
+    std::shared_ptr<odr::Junction> junction = map->junctions[junction_id];
+    std::unordered_set<std::string> incoming_roads;
+
+    for (auto const& [connection_id, junction_connection] : junction->connections) {
+        incoming_roads.insert(junction_connection.incoming_road);
+    }
+
+    return incoming_roads;
+}

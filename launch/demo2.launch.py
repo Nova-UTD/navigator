@@ -14,17 +14,17 @@ from ament_index_python import get_package_share_directory
 def generate_launch_description():
 
     launch_path = path.realpath(__file__)
-    launch_dir = path.dirname(launch_path)
-    param_dir = path.join(launch_dir,"../param")
+    launch_dir = path.join(path.dirname(launch_path), '..')
+    param_dir = path.join(launch_dir,"param")
 
     serial = Node(
-        package = 'serial',
-        executable = 'serial',
-        parameters = [
-            (path.join(param_dir, "interface", "serial.param.yaml"))],
-        remappings = [
-            ("serial_incoming_lines", "serial_incoming_lines"),
-            ("serial_outgoing_lines", "serial_outgoing_lines")])
+       package = 'serial',
+       executable = 'serial',
+       parameters = [
+           (path.join(param_dir, "interface", "serial.param.yaml"))],
+       remappings = [
+           ("serial_incoming_lines", "serial_incoming_lines"),
+           ("serial_outgoing_lines", "serial_outgoing_lines")])
     
     servo_throttle = Node(
         package = 'servo',
@@ -80,12 +80,16 @@ def generate_launch_description():
             ("output", "steering_power"),
             ("target", "steering_target"),
             ("measurement", "real_steering_angle")])
-
+            
+    zed_interface = Node (
+        package = 'zed_interface',
+        executable = 'zed_interface_exe'
+    )
     gnss_parser = Node(
         package = 'gnss_parser',
-        executable = 'gnss_parser_node_exe',
+        executable = 'gnss_parser',
         remappings = [
-            ("/sensors/gnss/odom", "gnss_odom"),
+            ("/sensors/gnss/odom", "/sensors/gnss/odom"),
             ("/serial/gnss", "serial_incoming_lines")])
 
     
@@ -119,7 +123,7 @@ def generate_launch_description():
         package='path_publisher',
         executable='publisher',
         parameters=[
-            (path.join(param_dir,"planning","path_publisher.param.yaml"))]
+            (path.join(param_dir,"planning","path_publisher.param.yaml"))],
         remappings=[
             ("paths", "paths"),
             ("path_pub_viz", "path_pub_viz")])
@@ -170,30 +174,124 @@ def generate_launch_description():
             ("paths", "paths"),
             ("/sensors/zed/obstacle_array_3d", "zed_obstacles")])
 
+    """""""""
+    " LIDAR "
+    """""""""
+    lidar_driver_front = Node(
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        namespace='lidar_front',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_front.param.yaml"))]
+    )
+    lidar_pointcloud_front = Node(
+        package='velodyne_pointcloud',
+        executable='velodyne_convert_node',
+        namespace='lidar_front',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_front.param.yaml"))]
+    )
+    lidar_driver_rear = Node(
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        namespace='lidar_rear',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_rear.param.yaml"))]
+    )
+    lidar_pointcloud_rear = Node(
+        package='velodyne_pointcloud',
+        executable='velodyne_convert_node',
+        namespace='lidar_rear',
+        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_rear.param.yaml"))]
+    )
+
+    lidar_fusion = Node(
+        package='lidar_fusion',
+        name='lidar_fusion_node',
+        executable='lidar_fusion_node',
+        remappings=[
+            ('/lidar_front', '/lidar_front/velodyne_points'),
+            ('/lidar_rear', '/lidar_rear/velodyne_points'),
+            ('/lidar_fused', '/lidar_fused')
+        ]
+    )
+
+    urdf_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        arguments=[path.join(launch_dir, "data", "hail_bopp.urdf")]
+    )
+
+    odr_viz = Node(
+        package='odr_visualizer',
+        executable='visualizer',
+        parameters=[
+            (path.join(param_dir,"mapping","odr.param.yaml"))
+        ],
+        output='screen',
+        remappings=[
+            ("/map","/odr_map")
+        ]
+    )
+
+    odom_bl_link = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=[
+            '0.0','0.0','0.0','0.0','0.0','0.0','1.0','odom','base_link'
+        ]
+    )
+
+    map_odom_ukf = Node(
+        package='robot_localization',
+        executable='ukf_node',
+        name='localization_map_odom',
+        parameters=["/home/wheitman/navigator/param/atlas/map_odom.param.yaml"],
+        remappings=[
+            ("/odom0", "/gnss_odom"),
+            ("/imu0", "/sensors/zed/imu")
+        ]
+    )
+
     # MISSING PIECES:
-    # zed
-    # lidar
-    # state estimation
     # obstacle detection
     # base link transform?
     # visualization
     
     return LaunchDescription([
-        serial,
-        servo_throttle,
-        servo_brake,
-        epas_can,
-        epas_reporter,
-        epas_controller,
-        steering_pid,
-        gnss_parser,
-        vehicle_can,
-        speedometer_reporter,
-        speedometer_translator,
+        # PERCEPTION
+        lidar_fusion,
+
+        # HARDWARE
+        # # Steering
+        # epas_can,
+        # epas_reporter,
+        # epas_controller,
+        # steering_pid,
+        # lidar_driver_front,
+        # lidar_pointcloud_front,
+        # lidar_driver_rear,
+        # lidar_pointcloud_rear,
+
+        # # Camera
+        # zed_interface,
+        # gnss_parser,
+        # vehicle_can,
+        # speedometer_reporter,
+        # speedometer_translator,
+
+        # BEHAVIOR
         path_publisher,
-        unified_controller,
         motion_planner,
         zone_fusion,
         obstacle_zoner,
         behavior_planner,
+
+        # STATE ESTIMATION
+        map_odom_ukf,
+
+        # CONTROL
+        unified_controller,
+
+        # MISC
+        odr_viz,
+        odom_bl_link,
+        urdf_publisher
     ])

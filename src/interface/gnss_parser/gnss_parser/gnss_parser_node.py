@@ -10,6 +10,7 @@ from nav_msgs.msg import Odometry  # For GPS, ground truth
 from std_msgs.msg import String as StringMsg
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
+from geometry_msgs.msg import PoseStamped
 
 lat0 = 32.989487
 lon0 = -96.750437
@@ -31,6 +32,8 @@ class GnssParserNode(Node):
 
         self.gnss_pub = self.create_publisher(
             Odometry, '/sensors/gnss/odom', 10)
+
+        self.pose_pub = self.create_publisher(PoseStamped, '/initial_pose', 10)
 
         self.string_data_sub = self.create_subscription(
             StringMsg, '/serial/gnss', self.string_data_callback, 10)
@@ -98,6 +101,11 @@ class GnssParserNode(Node):
                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         self.gnss_pub.publish(msg)
+
+        ps = PoseStamped()
+        ps.header = msg.header
+        ps.pose = msg.pose.pose
+        self.pose_pub.publish(ps)
         # u = speed*math.cos(yaw)
         # v = speed*math.sin(yaw)
 

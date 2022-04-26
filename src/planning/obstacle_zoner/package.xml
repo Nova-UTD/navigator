@@ -16,6 +16,7 @@
   <depend>zone_lib</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
+  <depend>eigen</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

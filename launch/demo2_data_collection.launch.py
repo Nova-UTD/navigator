@@ -14,7 +14,7 @@ from ament_index_python import get_package_share_directory
 def generate_launch_description():
 
     launch_path = path.realpath(__file__)
-    launch_dir = path.dirname(launch_path)
+    launch_dir = path.join(path.dirname(launch_path), '..')
     param_dir = path.join(launch_dir,"param")
     interface = "vcan0"
     map_name = "grandloop"
@@ -97,7 +97,7 @@ def generate_launch_description():
         name='localization_map_odom',
         parameters=[(path.join(param_dir,"atlas","map_odom.param.yaml"))],
         remappings=[
-            ("/odom0", "/sensors/gnss/odom"),
+            ("/odom0", "/gnss_odom"),
             ("/imu0", "/imu_primary/data"),
             ("/twist0", "/can/speedometer_twist")
         ]
