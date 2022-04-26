@@ -250,6 +250,23 @@ def generate_launch_description():
         ]
     )
 
+    pcl_localization = Node(
+        package='pcl_localization_ros2',
+        executable='pcl_localization_node',
+        remappings=[
+            #inputs
+            ('/cloud', '/lidar_fused'),
+            #('/odom', '/sensors/gnss/odom'),
+            ('/imu', '/sensors/zed/imu'),
+            ('/initialpose', '/sensors/gnss/odom'),
+            #output
+            ('/pcl_pose', '/pose/ndt'),
+        ],
+        #keeping default parameter path for now
+        #it broke when I moved it for some reason
+        parameters=[path.join(launch_dir, "src", "atlas", "pcl_localization_ros2", "param", "localization.yaml")]
+    )
+
     # MISSING PIECES:
     # obstacle detection
     # base link transform?
@@ -286,6 +303,7 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         map_odom_ukf,
+        pcl_localization,
 
         # CONTROL
         unified_controller,
@@ -293,5 +311,5 @@ def generate_launch_description():
         # MISC
         odr_viz,
         odom_bl_link,
-        urdf_publisher
+        urdf_publisher,
     ])

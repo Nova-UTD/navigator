@@ -51,10 +51,10 @@ void ObstacleZonerNode::zone_perception(Obstacle3DArray::SharedPtr ptr) {
         for (size_t i = 0; i < obstacle.bounding_box.corners.size(); i++) {
             Eigen::Vector3d corner(obstacle.bounding_box.corners[i].x, obstacle.bounding_box.corners[i].y, 0);
             auto rotated_corner = rot_mat*corner;
-            RCLCPP_INFO(this->get_logger(), std::to_string(obstacle.bounding_box.corners[i].x));
+            //RCLCPP_INFO(this->get_logger(), std::to_string(obstacle.bounding_box.corners[i].x));
             corners[i].x = rotated_corner[0] + tf_x;
             corners[i].y = rotated_corner[1] + tf_y;
-            RCLCPP_INFO(this->get_logger(), std::to_string(corners[i].x));
+            //RCLCPP_INFO(this->get_logger(), std::to_string(corners[i].x));
         }
         Zone stop_zone;
         stop_zone.max_speed = 0;

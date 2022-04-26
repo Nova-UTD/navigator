@@ -85,6 +85,6 @@ def generate_launch_description():
         obstacle_detector_2d,
         lidar_fusion,
         obstacle_drawer,
-        # bbox_gen,
-        # pcd_gen,
+        #pcd_gen,
+        bbox_gen,
     ])

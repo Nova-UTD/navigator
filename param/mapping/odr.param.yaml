@@ -1,5 +1,5 @@
 /**:
   ros__parameters:
-    xodr_path: "data/maps/demo2/Demo2_map.xodr"
+    xodr_path: "data/maps/grand_loop/demo2MapFinal.xodr"
     draw_detail: 1.0
     nearby_search_radius: 20.0
