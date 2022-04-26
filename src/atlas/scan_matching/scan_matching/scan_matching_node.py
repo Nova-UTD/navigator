@@ -90,9 +90,9 @@ class ScanMatchingNode(Node):
             f"Map loaded with shape {map_cloud.shape}")
 
         # Choose initial estimate for frame 7
-        initial_trans = initial_estimates[7, 0:3]
-        initial_quat = initial_estimates[7, 3:7]
-        print(initial_quat)
+        initial_trans = initial_estimates[30, 0:3]
+        initial_quat = initial_estimates[30, 3:7]
+        # print(initial_quat)
         rot_matrix = R.from_quat(initial_quat).as_dcm()
         initial_T = np.zeros((4, 4))
         initial_T[0:3, 0:3] = rot_matrix
@@ -101,36 +101,59 @@ class ScanMatchingNode(Node):
 
         # try alignment >:o
         moving_file = o3d.io.read_point_cloud(
-            '/home/main/navigator-2/frames/frame7.pcd')
+            '/home/main/navigator-2/frames/frame30.pcd')
         moving = np.asarray(moving_file.points)
+
+        moving = moving[moving[:, 0] > -50]
+        moving = moving[moving[:, 0] < 50]
+        moving = moving[moving[:, 1] > -50]
+        moving = moving[moving[:, 1] < 50]
 
         self.align(moving, map_cloud, initial_T)
 
     def align(self, moving, fixed, initial_T):
         # Downsample our input
-        moving = pygicp.downsample(moving, 0.25)
+        print(moving.shape)
+        moving = pygicp.downsample(moving, 2.0)
+        print(moving.shape)
+
+        # Transform by initial tf
+        moving_o3d = o3d.geometry.PointCloud()
+        moving_o3d.points = o3d.utility.Vector3dVector(moving)
+        moving_o3d = moving_o3d.transform(initial_T)
 
         gicp = pygicp.FastGICP()
         gicp.set_input_target(fixed)
         gicp.set_input_source(moving)
+        # gicp.set_correspondence_randomness(1000)
+        # gicp.set_resolution(2.0)
         matrix = gicp.align(
             initial_guess=initial_T
         )
 
-        # Transform by final rotation
-        moving_o3d = o3d.geometry.PointCloud()
-        moving_o3d.points = o3d.utility.Vector3dVector(moving)
-        moving_o3d = moving_o3d.transform(matrix)
+        # matrix = gicp.align(
+        #     initial_guess=matrix
+        # )
+
+        print(dir(gicp))
+
+        # Transform by final tf
+        moving_o3d_result = o3d.geometry.PointCloud()
+        moving_o3d_result.points = o3d.utility.Vector3dVector(moving)
+        moving_o3d_result = moving_o3d_result.transform(matrix)
+
+        # Transform
 
         # rot = R.from_dcm(matrix[])
 
         fixed_o3d = o3d.geometry.PointCloud()
         fixed_o3d.points = o3d.utility.Vector3dVector(fixed)
         fixed_o3d.paint_uniform_color([0.9, 0.1, 0.1])
-        moving_o3d = o3d.geometry.PointCloud()
-        moving_o3d.points = o3d.utility.Vector3dVector(moving)
         moving_o3d.paint_uniform_color([0.1, 0.9, 0.1])
-        o3d.visualization.draw_geometries([fixed_o3d, moving_o3d])
+        moving_o3d_result.paint_uniform_color([0.1, 0.1, 0.9])
+        o3d.visualization.draw_geometries(
+            [fixed_o3d, moving_o3d, moving_o3d_result])
+        print(gicp.get_fitness_score())
 
     def publish_map(self):
         self.publish_cloud_from_array(self.pcd_map, 'map', self.map_pub)
