@@ -81,23 +81,31 @@ class ScanMatchingNode(Node):
             '/home/main/navigator-2/data/maps/grand_loop/grand_loop.pcd')
         map_cloud = np.asarray(map_file.points)
 
-        self.pcd_source = pygicp.downsample(map_cloud, 0.25)
+        self.pcd_map = pygicp.downsample(map_cloud, 0.25)
         self.get_logger().info(
-            f"Map loaded with shape {self.pcd_source.shape}")
-        print(self.pcd_source)
+            f"Map loaded with shape {self.pcd_map.shape}")
+        print(self.pcd_map)
 
         self.map_pub = self.create_publisher(PointCloud2, '/map/pcd', 1)
+        self.aligned_lidar_pub = self.create_publisher(
+            PointCloud2, '/atlas/aligned_lidar', 1)
 
-        # Publish the map ONCE
-        self.publish_cloud_from_array(self.pcd_source, 'map')
+        # Publish the map periodically
+
+        self.map_pub_timer = self.create_timer(10, self.publish_map)
 
         self.lidar_sub = self.create_subscription(
-            PointCloud2, '/lidar_fused', self.lidar_cb, 10)
+            PointCloud2, '/lidar_front/velodyne_points', self.lidar_cb, 10)
 
         self.gnss_sub = self.create_subscription(
             Odometry, '/sensors/gnss/odom', self.gnss_cb, 10)
 
+        self.tf_broadcaster = TransformBroadcaster(self)
+
         self.initial_guess = None
+
+    def publish_map(self):
+        self.publish_cloud_from_array(self.pcd_map, 'map', self.map_pub)
 
     def gnss_cb(self, msg: Odometry):
         self.initial_guess = msg
@@ -106,10 +114,46 @@ class ScanMatchingNode(Node):
         if self.initial_guess is None:
             self.get_logger().warning(
                 "Initial guess from GNSS not yet received, skipping alignment.")
+            return
 
         self.get_logger().info("Trying alignment")
 
-    def publish_cloud_from_array(self, arr, frame_id: str):
+        # Convert PointCloud2 to np array
+        lidar_arr_dtype = rnp.numpify(msg)
+        lidar_list = [lidar_arr_dtype['x'],
+                      lidar_arr_dtype['y'], lidar_arr_dtype['z']]
+        lidar_arr = np.array(lidar_list).T.reshape(-1,
+                                                   3)
+        lidar_arr = lidar_arr[~np.isnan(lidar_arr).any(axis=1)]
+        lidar_arr = pygicp.downsample(lidar_arr, 0.1)
+
+        # Transform lidar from base_link->map
+        map_pos = self.initial_guess.pose.pose.position
+        lidar_arr[:, 0] += map_pos.x
+        lidar_arr[:, 1] += map_pos.y
+        lidar_arr[:, 2] += map_pos.z
+
+        gicp = pygicp.FastGICP()
+        gicp.set_input_source(lidar_arr)
+        gicp.set_input_target(self.pcd_map)
+        matrix = gicp.align()
+
+        self.publish_cloud_from_array(lidar_arr, 'map', self.aligned_lidar_pub)
+
+        # Publish our transform result
+        tf = TransformStamped()
+        tf.header.stamp = self.get_clock().now().to_msg()
+        tf.header.frame_id = 'map'
+        tf.child_frame_id = 'odom'
+        tf.transform.translation = Vector3(
+            x=self.initial_guess.pose.pose.position.x,
+            y=self.initial_guess.pose.pose.position.y,
+            z=self.initial_guess.pose.pose.position.z
+        )
+        tf.transform.rotation = self.initial_guess.pose.pose.orientation
+        self.tf_broadcaster.sendTransform(tf)
+
+    def publish_cloud_from_array(self, arr, frame_id: str, publisher):
         data = np.zeros(arr.shape[0], dtype=[
             ('x', np.float32),
             ('y', np.float32),
@@ -125,7 +169,7 @@ class ScanMatchingNode(Node):
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = frame_id
 
-        self.map_pub.publish(msg)
+        publisher.publish(msg)
 
 
 def main(args=None):
