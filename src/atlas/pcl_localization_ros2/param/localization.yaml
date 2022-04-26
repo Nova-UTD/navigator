@@ -22,4 +22,4 @@ pcl_localization:
     use_imu: false
     enable_debug: true
     gps_dist_recenter_threshold: 5.0
-    fitness_recenter_threshold: 20.0
+    fitness_recenter_threshold: 50.0

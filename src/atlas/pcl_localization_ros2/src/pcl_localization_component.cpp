@@ -431,8 +431,8 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   double d = std::sqrt(dx*dx+dy*dy+dz*dz);
   if (d > gps_dist_recenter_threshold || registration_->getFitnessScore() > fitness_recenter_threshold)
   {
-      RCLCPP_WARN(get_logger(), "Too distant from GPS signal or too much fitness, recentering: %f (gps dist: %f) (fitness: %f)"
-        , d, fitness_recenter_threshold, registration_->getFitnessScore());
+      RCLCPP_WARN(get_logger(), "Too distant from GPS signal or too much fitness, recentering: (gps dist: %f) (fitness: %f)"
+        , d, registration_->getFitnessScore());
       ignore_initial_pose = false;
       return;
   }
