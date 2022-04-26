@@ -52,6 +52,9 @@ LidarObstacleDetectorNode::LidarObstacleDetectorNode() : rclcpp::Node("lidar_obs
     // Subscribe to lidar
     lidar_sub = this->create_subscription<PointCloud2>("lidar_points", 10, std::bind(&LidarObstacleDetectorNode::lidar_callback, this, std::placeholders::_1));
 
+    // Publish zones
+    zone_pub = this->create_publisher<voltron_msgs::msg::ZoneArray>("zones", 10);
+
     // Transform tree
     this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -62,16 +65,26 @@ int LidarObstacleDetectorNode::to_nearest_obstacle_index(double angle){
 }
 
 void LidarObstacleDetectorNode::lidar_callback(const PointCloud2::SharedPtr msg){
+    if(msg == nullptr){
+        RCLCPP_ERROR(this->get_logger(), "Received nullptr");
+        return;
+    }
+    if(msg->header.frame_id != "base_link"){
+        RCLCPP_ERROR(this->get_logger(), "Received PointCloud2 with frame_id %s", msg->header.frame_id.c_str());
+        return;
+    }
+
     pcl::PCLPointCloud2 pcl_cloud;
     pcl_conversions::toPCL(*msg, pcl_cloud);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr lidar_cloud;
-    pcl::fromPCLPointCloud2(pcl_cloud, *lidar_cloud);
+    pcl::PointCloud<pcl::PointXYZ> lidar_cloud;
+    pcl::fromPCLPointCloud2(pcl_cloud, lidar_cloud);
+
 
     nearest_obstacles = std::vector<double>(fov_segments, std::numeric_limits<double>::infinity());
 
     // TODO: do we need to transform based on frame?
 
-    for(auto p_it= lidar_cloud->points.begin(); p_it != lidar_cloud->points.end(); p_it++){
+    for(auto p_it= lidar_cloud.points.begin(); p_it != lidar_cloud.points.end(); p_it++){
         pcl::PointXYZ p = *p_it;
         // X is forward
         if(p.x >0 && p.z < max_obstacle_height){
@@ -87,10 +100,12 @@ void LidarObstacleDetectorNode::lidar_callback(const PointCloud2::SharedPtr msg)
             nearest_obstacles[cell] = std::min(nearest_obstacles[cell], r);
         }
     }
+
+    publish_zones();
 }
 
 void LidarObstacleDetectorNode::publish_zones(){
-
+    RCLCPP_INFO(this->get_logger(), "Publishing zones");
     update_tf();
 
     ZoneArray zones;
@@ -139,6 +154,7 @@ void LidarObstacleDetectorNode::publish_zones(){
     }
     
     this->zone_pub->publish(zones);
+    RCLCPP_INFO(this->get_logger(), "Published %d zones", zones.zones.size());
 }
 
 void LidarObstacleDetectorNode::update_tf() {
