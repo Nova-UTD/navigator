@@ -1,3 +1,4 @@
+#define USE_VGICP_CUDA 1
 #include <fast_gicp/ndt/ndt_cuda.hpp>
 #include <fast_gicp/ndt/impl/ndt_cuda_impl.hpp>
 

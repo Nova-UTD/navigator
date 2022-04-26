@@ -8,12 +8,12 @@ PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
   declare_parameter("base_frame_id", "base_link");
   declare_parameter("registration_method", "NDT");
   declare_parameter("ndt_resolution", 1.0);
+  declare_parameter("max_iterations", 35.0);
   declare_parameter("ndt_step_size", 0.1);
   declare_parameter("trans_epsilon", 0.01);
   declare_parameter("voxel_leaf_size", 0.2);
   declare_parameter("scan_max_range", 100.0);
   declare_parameter("scan_min_range", 1.0);
-  declare_parameter("scan_period", 0.1);
   declare_parameter("use_pcd_map", false);
   declare_parameter("map_path", "/map/map.pcd");
   declare_parameter("set_initial_pose", false);
@@ -25,21 +25,16 @@ PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
   declare_parameter("initial_pose_qz", 0.0);
   declare_parameter("initial_pose_qw", 1.0);
   declare_parameter("gps_dist_recenter_threshold", 2.0);
-  declare_parameter("use_odom", false);
   declare_parameter("use_imu", false);
   declare_parameter("enable_debug", false);
 
-  rclcpp_lifecycle::State state;
   on_configure(state);
   on_activate(state);
 }
 
-using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
-
 CallbackReturn PCLLocalization::on_configure(const rclcpp_lifecycle::State &)
 {
   RCLCPP_INFO(get_logger(), "Configuring");
-  ignore_initial_pose = false;
   initializeParameters();
   initializePubSub();
   initializeRegistration();
@@ -59,22 +54,22 @@ CallbackReturn PCLLocalization::on_activate(const rclcpp_lifecycle::State &)
 
   if (set_initial_pose_)
   {
-      RCLCPP_WARN(get_logger(), "INITIAL POSE REMOVED");
-      // auto msg = std::make_shared<geometry_msgs::msg::PoseStamped>();
+    RCLCPP_WARN(get_logger(), "INITIAL POSE REMOVED");
+    // auto msg = std::make_shared<geometry_msgs::msg::PoseStamped>();
 
-      // msg->header.stamp = now();
-      // msg->header.frame_id = global_frame_id_;
-      // msg->pose.position.x = initial_pose_x_;
-      // msg->pose.position.y = initial_pose_y_;
-      // msg->pose.position.z = initial_pose_z_;
-      // msg->pose.orientation.x = initial_pose_qx_;
-      // msg->pose.orientation.y = initial_pose_qy_;
-      // msg->pose.orientation.z = initial_pose_qz_;
-      // msg->pose.orientation.w = initial_pose_qw_;
+    // msg->header.stamp = now();
+    // msg->header.frame_id = global_frame_id_;
+    // msg->pose.position.x = initial_pose_x_;
+    // msg->pose.position.y = initial_pose_y_;
+    // msg->pose.position.z = initial_pose_z_;
+    // msg->pose.orientation.x = initial_pose_qx_;
+    // msg->pose.orientation.y = initial_pose_qy_;
+    // msg->pose.orientation.z = initial_pose_qz_;
+    // msg->pose.orientation.w = initial_pose_qw_;
 
-      // path_.poses.push_back(*msg);
+    // path_.poses.push_back(*msg);
 
-      // initialPoseReceived(msg);
+    // initialPoseReceived(msg);
   }
 
   if (use_pcd_map_)
@@ -122,7 +117,6 @@ CallbackReturn PCLLocalization::on_cleanup(const rclcpp_lifecycle::State &)
   initial_map_pub_.reset();
   path_pub_.reset();
   pose_pub_.reset();
-  odom_sub_.reset();
   cloud_sub_.reset();
 
   return CallbackReturn::SUCCESS;
@@ -150,12 +144,12 @@ void PCLLocalization::initializeParameters()
   get_parameter("base_frame_id", base_frame_id_);
   get_parameter("registration_method", registration_method_);
   get_parameter("ndt_resolution", ndt_resolution_);
+  get_parameter("max_iterations", max_iterations_);
   get_parameter("ndt_step_size", ndt_step_size_);
   get_parameter("trans_epsilon", trans_epsilon_);
   get_parameter("voxel_leaf_size", voxel_leaf_size_);
   get_parameter("scan_max_range", scan_max_range_);
   get_parameter("scan_min_range", scan_min_range_);
-  get_parameter("scan_period", scan_period_);
   get_parameter("use_pcd_map", use_pcd_map_);
   get_parameter("map_path", map_path_);
   get_parameter("set_initial_pose", set_initial_pose_);
@@ -166,7 +160,6 @@ void PCLLocalization::initializeParameters()
   get_parameter("initial_pose_qy", initial_pose_qy_);
   get_parameter("initial_pose_qz", initial_pose_qz_);
   get_parameter("initial_pose_qw", initial_pose_qw_);
-  get_parameter("use_odom", use_odom_);
   get_parameter("use_imu", use_imu_);
   get_parameter("enable_debug", enable_debug_);
   get_parameter("gps_dist_recenter_threshold", fitness_recenter_threshold);
@@ -199,10 +192,6 @@ void PCLLocalization::initializePubSub()
       "map", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable(),
       std::bind(&PCLLocalization::mapReceived, this, std::placeholders::_1));
 
-  odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
-      "odom", rclcpp::SensorDataQoS(),
-      std::bind(&PCLLocalization::odomReceived, this, std::placeholders::_1));
-
   cloud_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
       "cloud", rclcpp::SensorDataQoS(),
       std::bind(&PCLLocalization::cloudReceived, this, std::placeholders::_1));
@@ -226,21 +215,19 @@ void PCLLocalization::initializeRegistration()
     ndt->setStepSize(ndt_step_size_);
     ndt->setResolution(ndt_resolution_);
     ndt->setTransformationEpsilon(trans_epsilon_);
+    ndt->setMaximumIterations(35);
     registration_ = ndt;
   }
 
   voxel_grid_filter_.setLeafSize(voxel_leaf_size_, voxel_leaf_size_, voxel_leaf_size_);
 }
 
-//changed form posestamped to odom msg
+// changed form posestamped to odom msg
 void PCLLocalization::initialPoseReceived(nav_msgs::msg::Odometry::SharedPtr odom_msg)
 {
-    if (ignore_initial_pose)
-        return;
-    ignore_initial_pose = true;
-        geometry_msgs::msg::PoseStamped msg;
-    msg.header = odom_msg->header;
-    msg.pose = odom_msg->pose.pose;
+  geometry_msgs::msg::PoseStamped msg;
+  msg.header = odom_msg->header;
+  msg.pose = odom_msg->pose.pose;
   RCLCPP_INFO(get_logger(), "initialPoseReceived");
   if (msg.header.frame_id != global_frame_id_)
   {
@@ -249,9 +236,6 @@ void PCLLocalization::initialPoseReceived(nav_msgs::msg::Odometry::SharedPtr odo
   }
   initialpose_recieved_ = true;
   corrent_pose_stamped_ = msg;
-  pose_pub_->publish(corrent_pose_stamped_);
-  if (enable_debug_)
-      RCLCPP_INFO(get_logger(), "pose_pub (intial state)");
 }
 
 void PCLLocalization::mapReceived(sensor_msgs::msg::PointCloud2::SharedPtr msg)
@@ -282,59 +266,6 @@ void PCLLocalization::mapReceived(sensor_msgs::msg::PointCloud2::SharedPtr msg)
   map_recieved_ = true;
 }
 
-void PCLLocalization::odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg)
-{
-  if (!use_odom_)
-  {
-    return;
-  }
-  if (enable_debug_)
-    RCLCPP_INFO(get_logger(), "odomReceived");
-  prev_odom = msg;
-
-      double current_odom_received_time = msg->header.stamp.sec +
-                                          msg->header.stamp.nanosec * 1e-9;
-  double dt_odom = current_odom_received_time - last_odom_received_time_;
-  last_odom_received_time_ = current_odom_received_time;
-  if (dt_odom > 1.0 /* [sec] */)
-  {
-    RCLCPP_WARN(this->get_logger(), "odom time interval is too large");
-    return;
-  }
-  if (dt_odom < 0.0 /* [sec] */)
-  {
-    RCLCPP_WARN(this->get_logger(), "odom time interval is negative");
-    return;
-  }
-
-  tf2::Quaternion previous_quat_tf;
-  double roll, pitch, yaw;
-  tf2::fromMsg(corrent_pose_stamped_.pose.orientation, previous_quat_tf);
-  tf2::Matrix3x3(previous_quat_tf).getRPY(roll, pitch, yaw);
-
-  roll += msg->twist.twist.angular.x * dt_odom;
-  pitch += msg->twist.twist.angular.y * dt_odom;
-  yaw += msg->twist.twist.angular.z * dt_odom;
-
-  Eigen::Quaterniond quat_eig =
-      Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()) *
-      Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
-      Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
-
-  geometry_msgs::msg::Quaternion quat_msg = tf2::toMsg(quat_eig);
-
-  Eigen::Vector3d odom{
-      msg->twist.twist.linear.x,
-      msg->twist.twist.linear.y,
-      msg->twist.twist.linear.z};
-  Eigen::Vector3d delta_position = quat_eig.matrix() * dt_odom * odom;
-
-  corrent_pose_stamped_.pose.position.x += delta_position.x();
-  corrent_pose_stamped_.pose.position.y += delta_position.y();
-  corrent_pose_stamped_.pose.position.z += delta_position.z();
-  corrent_pose_stamped_.pose.orientation = quat_msg;
-}
-
 void PCLLocalization::imuReceived(sensor_msgs::msg::Imu::ConstSharedPtr msg)
 {
   if (!use_imu_)
@@ -342,7 +273,7 @@ void PCLLocalization::imuReceived(sensor_msgs::msg::Imu::ConstSharedPtr msg)
     return;
   }
   if (enable_debug_)
-      RCLCPP_INFO(get_logger(), "imuReceived");
+    RCLCPP_INFO(get_logger(), "imuReceived");
   double roll, pitch, yaw;
   tf2::Quaternion orientation;
   tf2::fromMsg(msg->orientation, orientation);
@@ -369,7 +300,7 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
     return;
   }
   if (enable_debug_)
-      RCLCPP_INFO(get_logger(), "cloudReceived");
+    RCLCPP_INFO(get_logger(), "cloudReceived");
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
   pcl::fromROSMsg(*msg, *cloud_ptr);
 
@@ -411,32 +342,31 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
     RCLCPP_WARN(get_logger(), "The registration didn't converge.");
     return;
   }
-
   Eigen::Matrix4f final_transformation = registration_->getFinalTransformation();
 
-  
-      Eigen::Matrix3d rot_mat = final_transformation.block<3, 3>(0, 0).cast<double>();
+  Eigen::Matrix3d rot_mat = final_transformation.block<3, 3>(0, 0).cast<double>();
   Eigen::Quaterniond quat_eig(rot_mat);
   geometry_msgs::msg::Quaternion quat_msg = tf2::toMsg(quat_eig);
-
   corrent_pose_stamped_.header.stamp = msg->header.stamp;
   corrent_pose_stamped_.pose.position.x = static_cast<double>(final_transformation(0, 3));
   corrent_pose_stamped_.pose.position.y = static_cast<double>(final_transformation(1, 3));
   corrent_pose_stamped_.pose.position.z = static_cast<double>(final_transformation(2, 3));
   corrent_pose_stamped_.pose.orientation = quat_msg;
-  double dx = (corrent_pose_stamped_.pose.position.x - prev_odom->pose.pose.position.x);
-  double dy = (corrent_pose_stamped_.pose.position.y - prev_odom->pose.pose.position.y);
-  double dz = (corrent_pose_stamped_.pose.position.z - prev_odom->pose.pose.position.z);
-  double d = std::sqrt(dx*dx+dy*dy+dz*dz);
-  if (d > fitness_recenter_threshold)
+  if (prev_odom)
   {
+    double dx = (corrent_pose_stamped_.pose.position.x - prev_odom->pose.pose.position.x);
+    double dy = (corrent_pose_stamped_.pose.position.y - prev_odom->pose.pose.position.y);
+    double dz = (corrent_pose_stamped_.pose.position.z - prev_odom->pose.pose.position.z);
+    double d = std::sqrt(dx * dx + dy * dy + dz * dz);
+    if (d > fitness_recenter_threshold)
+    {
       RCLCPP_WARN(get_logger(), "Too distant from GPS signal, recentering: %f %f", d, fitness_recenter_threshold);
-      ignore_initial_pose = false;
       return;
+    }
   }
   pose_pub_->publish(corrent_pose_stamped_);
   if (enable_debug_)
-      RCLCPP_INFO(get_logger(), "pose_pub (cloud)");
+    RCLCPP_INFO(get_logger(), "pose_pub (cloud)");
 
   geometry_msgs::msg::TransformStamped transform_stamped;
   transform_stamped.header.stamp = msg->header.stamp;

@@ -1,3 +1,4 @@
+#define USE_VGICP_CUDA 1
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
@@ -19,7 +20,7 @@
 namespace py = pybind11;
 
 fast_gicp::NeighborSearchMethod search_method(const std::string& neighbor_search_method) {
-  if(neighbor_search_method == "DIRECT1") {
+  if (neighbor_search_method == "DIRECT1") {
     return fast_gicp::NeighborSearchMethod::DIRECT1;
   } else if (neighbor_search_method == "DIRECT7") {
     return fast_gicp::NeighborSearchMethod::DIRECT7;
@@ -37,7 +38,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr eigen2pcl(const Eigen::Matrix<double, -1, 3>
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
   cloud->resize(points.rows());
 
-  for(int i=0; i<points.rows(); i++) {
+  for (int i = 0; i < points.rows(); i++) {
     cloud->at(i).getVector3fMap() = points.row(i).cast<float>();
   }
   return cloud;
@@ -54,7 +55,7 @@ Eigen::Matrix<double, -1, 3> downsample(const Eigen::Matrix<double, -1, 3>& poin
   voxelgrid.filter(*filtered);
 
   Eigen::Matrix<float, -1, 3> filtered_points(filtered->size(), 3);
-  for(int i=0; i<filtered->size(); i++) {
+  for (int i = 0; i < filtered->size(); i++) {
     filtered_points.row(i) = filtered->at(i).getVector3fMap();
   }
 
@@ -72,12 +73,11 @@ Eigen::Matrix4d align_points(
   int num_threads,
   const std::string& neighbor_search_method,
   double neighbor_search_radius,
-  const Eigen::Matrix4f& initial_guess
-) {
+  const Eigen::Matrix4f& initial_guess) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud = eigen2pcl(target);
   pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud = eigen2pcl(source);
 
-  if(downsample_resolution > 0.0) {
+  if (downsample_resolution > 0.0) {
     pcl::ApproximateVoxelGrid<pcl::PointXYZ> voxelgrid;
     voxelgrid.setLeafSize(downsample_resolution, downsample_resolution, downsample_resolution);
 
@@ -93,7 +93,7 @@ Eigen::Matrix4d align_points(
 
   std::shared_ptr<fast_gicp::LsqRegistration<pcl::PointXYZ, pcl::PointXYZ>> reg;
 
-  if(method == "GICP") {
+  if (method == "GICP") {
     std::shared_ptr<fast_gicp::FastGICP<pcl::PointXYZ, pcl::PointXYZ>> gicp(new fast_gicp::FastGICP<pcl::PointXYZ, pcl::PointXYZ>);
     gicp->setMaxCorrespondenceDistance(max_correspondence_distance);
     gicp->setCorrespondenceRandomness(k_correspondences);
@@ -152,7 +152,10 @@ using NDTCuda = fast_gicp::NDTCuda<pcl::PointXYZ, pcl::PointXYZ>;
 PYBIND11_MODULE(pygicp, m) {
   m.def("downsample", &downsample, "downsample points");
 
-  m.def("align_points", &align_points, "align two point sets",
+  m.def(
+    "align_points",
+    &align_points,
+    "align two point sets",
     py::arg("target"),
     py::arg("source"),
     py::arg("method") = "GICP",
@@ -163,57 +166,54 @@ PYBIND11_MODULE(pygicp, m) {
     py::arg("num_threads") = 0,
     py::arg("neighbor_search_method") = "DIRECT1",
     py::arg("neighbor_search_radius") = 1.5,
-    py::arg("initial_guess") = Eigen::Matrix4f::Identity()
-  );
+    py::arg("initial_guess") = Eigen::Matrix4f::Identity());
 
   py::class_<LsqRegistration, std::shared_ptr<LsqRegistration>>(m, "LsqRegistration")
-    .def("set_input_target", [] (LsqRegistration& reg, const Eigen::Matrix<double, -1, 3>& points) { reg.setInputTarget(eigen2pcl(points)); })
-    .def("set_input_source", [] (LsqRegistration& reg, const Eigen::Matrix<double, -1, 3>& points) { reg.setInputSource(eigen2pcl(points)); })
+    .def("set_input_target", [](LsqRegistration& reg, const Eigen::Matrix<double, -1, 3>& points) { reg.setInputTarget(eigen2pcl(points)); })
+    .def("set_input_source", [](LsqRegistration& reg, const Eigen::Matrix<double, -1, 3>& points) { reg.setInputSource(eigen2pcl(points)); })
     .def("swap_source_and_target", &LsqRegistration::swapSourceAndTarget)
     .def("get_final_hessian", &LsqRegistration::getFinalHessian)
     .def("get_final_transformation", &LsqRegistration::getFinalTransformation)
-    .def("get_fitness_score", [] (LsqRegistration& reg, const double max_range) { return reg.getFitnessScore(max_range); })
-    .def("align",
-      [] (LsqRegistration& reg, const Eigen::Matrix4f& initial_guess) { 
+    .def("get_fitness_score", [](LsqRegistration& reg, const double max_range) { return reg.getFitnessScore(max_range); })
+    .def(
+      "align",
+      [](LsqRegistration& reg, const Eigen::Matrix4f& initial_guess) {
         pcl::PointCloud<pcl::PointXYZ> aligned;
         reg.align(aligned, initial_guess);
         return reg.getFinalTransformation();
-      }, py::arg("initial_guess") = Eigen::Matrix4f::Identity()
-    )
-  ;
+      },
+      py::arg("initial_guess") = Eigen::Matrix4f::Identity());
 
   py::class_<FastGICP, LsqRegistration, std::shared_ptr<FastGICP>>(m, "FastGICP")
     .def(py::init())
     .def("set_num_threads", &FastGICP::setNumThreads)
     .def("set_correspondence_randomness", &FastGICP::setCorrespondenceRandomness)
-    .def("set_max_correspondence_distance", &FastGICP::setMaxCorrespondenceDistance)
-  ;
+    .def("set_max_correspondence_distance", &FastGICP::setMaxCorrespondenceDistance);
 
   py::class_<FastVGICP, FastGICP, std::shared_ptr<FastVGICP>>(m, "FastVGICP")
     .def(py::init())
     .def("set_resolution", &FastVGICP::setResolution)
-    .def("set_neighbor_search_method", [](FastVGICP& vgicp, const std::string& method) { vgicp.setNeighborSearchMethod(search_method(method)); })
-  ;
+    .def("set_neighbor_search_method", [](FastVGICP& vgicp, const std::string& method) { vgicp.setNeighborSearchMethod(search_method(method)); });
 
 #ifdef USE_VGICP_CUDA
   py::class_<FastVGICPCuda, LsqRegistration, std::shared_ptr<FastVGICPCuda>>(m, "FastVGICPCuda")
     .def(py::init())
     .def("set_resolution", &FastVGICPCuda::setResolution)
-    .def("set_neighbor_search_method",
-      [](FastVGICPCuda& vgicp, const std::string& method, double radius) { vgicp.setNeighborSearchMethod(search_method(method), radius); }
-      , py::arg("method") = "DIRECT1", py::arg("radius") = 1.5
-    )
-    .def("set_correspondence_randomness", &FastVGICPCuda::setCorrespondenceRandomness)
-  ;
+    .def(
+      "set_neighbor_search_method",
+      [](FastVGICPCuda& vgicp, const std::string& method, double radius) { vgicp.setNeighborSearchMethod(search_method(method), radius); },
+      py::arg("method") = "DIRECT1",
+      py::arg("radius") = 1.5)
+    .def("set_correspondence_randomness", &FastVGICPCuda::setCorrespondenceRandomness);
 
   py::class_<NDTCuda, LsqRegistration, std::shared_ptr<NDTCuda>>(m, "NDTCuda")
     .def(py::init())
-    .def("set_neighbor_search_method",
-      [](NDTCuda& ndt, const std::string& method, double radius) { ndt.setNeighborSearchMethod(search_method(method), radius); }
-      , py::arg("method") = "DIRECT1", py::arg("radius") = 1.5
-    )
-    .def("set_resolution", &NDTCuda::setResolution)
-  ;
+    .def(
+      "set_neighbor_search_method",
+      [](NDTCuda& ndt, const std::string& method, double radius) { ndt.setNeighborSearchMethod(search_method(method), radius); },
+      py::arg("method") = "DIRECT1",
+      py::arg("radius") = 1.5)
+    .def("set_resolution", &NDTCuda::setResolution);
 #endif
 
 #ifdef VERSION_INFO

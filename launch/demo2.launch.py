@@ -1,4 +1,5 @@
 from os import name, path, environ
+from tkinter import E
 
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import IncludeLaunchDescription
@@ -244,7 +245,7 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=["/home/wheitman/navigator/param/atlas/map_odom.param.yaml"],
+        parameters=["/home/main/navigator-2/param/atlas/map_odom.param.yaml"],
         remappings=[
             ("/odom0", "/gnss_odom"),
             ("/imu0", "/sensors/zed/imu")
@@ -256,6 +257,19 @@ def generate_launch_description():
         executable='scan_matching_node'
     )
 
+    pcl_localization = Node(
+        package='pcl_localization_ros2',
+        executable='pcl_localization_node',
+        remappings=[
+            ('/cloud', '/lidar_fused'),
+            ('/imu', '/sensors/zed/imu'),
+            ('/initialpose', '/sensors/gnss/odom'),
+            ('/pcl_pose', '/pose/ndt2')
+        ],
+        parameters=[
+            '/home/main/navigator-2/src/atlas/pcl_localization_ros2/param/localization.yaml']
+    )
+
     # MISSING PIECES:
     # obstacle detection
     # base link transform?
@@ -263,7 +277,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         # PERCEPTION
-        lidar_fusion,
+        # lidar_fusion,
 
         # HARDWARE
         # # Steering
@@ -284,21 +298,23 @@ def generate_launch_description():
         # speedometer_translator,
 
         # BEHAVIOR
-        path_publisher,
-        motion_planner,
-        zone_fusion,
-        obstacle_zoner,
-        behavior_planner,
+        # path_publisher,
+        # motion_planner,
+        # zone_fusion,
+        # obstacle_zoner,
+        # behavior_planner,
 
         # STATE ESTIMATION
         # map_odom_ukf,
+        pcl_localization,
         scan_matcher,
 
+
         # CONTROL
-        unified_controller,
+        # unified_controller,
 
         # MISC
         # odr_viz,
-        odom_bl_link,
-        urdf_publisher,
+        # odom_bl_link,
+        # urdf_publisher,
     ])

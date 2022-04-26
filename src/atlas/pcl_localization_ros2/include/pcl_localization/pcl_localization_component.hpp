@@ -29,7 +29,7 @@ using namespace std::chrono_literals;
 class PCLLocalization : public rclcpp_lifecycle::LifecycleNode
 {
 public:
-  explicit PCLLocalization(const rclcpp::NodeOptions & options);
+  explicit PCLLocalization(const rclcpp::NodeOptions &options);
 
   using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
@@ -37,15 +37,14 @@ public:
   CallbackReturn on_activate(const rclcpp_lifecycle::State &);
   CallbackReturn on_deactivate(const rclcpp_lifecycle::State &);
   CallbackReturn on_cleanup(const rclcpp_lifecycle::State &);
-  CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
-  CallbackReturn on_error(const rclcpp_lifecycle::State & state);
+  CallbackReturn on_shutdown(const rclcpp_lifecycle::State &state);
+  CallbackReturn on_error(const rclcpp_lifecycle::State &state);
 
   void initializeParameters();
   void initializePubSub();
   void initializeRegistration();
   void initialPoseReceived(nav_msgs::msg::Odometry::SharedPtr odom_msg);
   void mapReceived(sensor_msgs::msg::PointCloud2::SharedPtr msg);
-  void odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg);
   void imuReceived(sensor_msgs::msg::Imu::ConstSharedPtr msg);
   void cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);
   // void gnssReceived();
@@ -55,17 +54,15 @@ public:
   rclcpp::Subscription<nav_msgs::msg::Odometry>::ConstSharedPtr
       initial_pose_sub_;
   rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseStamped>::SharedPtr
-    pose_pub_;
+      pose_pub_;
   rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>::SharedPtr
-    path_pub_;
+      path_pub_;
   rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-    initial_map_pub_;
+      initial_map_pub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::ConstSharedPtr
-    map_sub_;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::ConstSharedPtr
-    odom_sub_;
+      map_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::ConstSharedPtr
-    cloud_sub_;
+      cloud_sub_;
 
   pcl::Registration<pcl::PointXYZI, pcl::PointXYZI>::Ptr registration_;
   pcl::VoxelGrid<pcl::PointXYZI> voxel_grid_filter_;
@@ -82,8 +79,8 @@ public:
   std::string registration_method_;
   double scan_max_range_;
   double scan_min_range_;
-  double scan_period_;
   double ndt_resolution_;
+  double max_iterations_;
   double ndt_step_size_;
   double trans_epsilon_;
   double voxel_leaf_size_;
@@ -101,13 +98,9 @@ public:
 
   nav_msgs::msg::Odometry::ConstSharedPtr prev_odom;
 
-  bool use_odom_{false};
   double last_odom_received_time_;
   bool use_imu_{false};
   bool enable_debug_{false};
-
-  bool ignore_initial_pose;
-
   // imu
   LidarUndistortion lidar_undistortion_;
 };
