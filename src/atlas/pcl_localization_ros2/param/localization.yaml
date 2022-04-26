@@ -1,6 +1,6 @@
 pcl_localization:
   ros__parameters:
-    registration_method: "NDT"
+    registration_method: "GICP"
     ndt_resolution: 3.0
     ndt_step_size: 0.1
     transform_epsilon: 0.01
@@ -18,7 +18,8 @@ pcl_localization:
     initial_pose_qy: 0.0
     initial_pose_qz: 0.0
     initial_pose_qw: 1.0
-    use_odom: true
-    use_imu: true
+    use_odom: false
+    use_imu: false
     enable_debug: true
-    gps_dist_recenter_threshold: 2.0
+    gps_dist_recenter_threshold: 5.0
+    fitness_recenter_threshold: 20.0

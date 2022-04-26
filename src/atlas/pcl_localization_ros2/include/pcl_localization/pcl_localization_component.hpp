@@ -98,6 +98,7 @@ public:
   double initial_pose_qz_;
   double initial_pose_qw_;
   double fitness_recenter_threshold;
+  double gps_dist_recenter_threshold;
 
   nav_msgs::msg::Odometry::ConstSharedPtr prev_odom;
 

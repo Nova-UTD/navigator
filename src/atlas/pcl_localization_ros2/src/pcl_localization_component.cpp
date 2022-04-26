@@ -25,6 +25,7 @@ PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
   declare_parameter("initial_pose_qz", 0.0);
   declare_parameter("initial_pose_qw", 1.0);
   declare_parameter("gps_dist_recenter_threshold", 2.0);
+  declare_parameter("fitness_recenter_threshold", 2.0);
   declare_parameter("use_odom", false);
   declare_parameter("use_imu", false);
   declare_parameter("enable_debug", false);
@@ -169,10 +170,11 @@ void PCLLocalization::initializeParameters()
   get_parameter("use_odom", use_odom_);
   get_parameter("use_imu", use_imu_);
   get_parameter("enable_debug", enable_debug_);
-  get_parameter("gps_dist_recenter_threshold", fitness_recenter_threshold);
+  get_parameter("gps_dist_recenter_threshold", gps_dist_recenter_threshold);
+  get_parameter("fitness_recenter_threshold", fitness_recenter_threshold);
 
   RCLCPP_INFO(get_logger(), "map_path %s", map_path_.c_str());
-  RCLCPP_INFO(get_logger(), "recenter_threshold %f", fitness_recenter_threshold);
+  RCLCPP_INFO(get_logger(), "fitness recenter_threshold %f", fitness_recenter_threshold);
 }
 
 void PCLLocalization::initializePubSub()
@@ -249,6 +251,7 @@ void PCLLocalization::initialPoseReceived(nav_msgs::msg::Odometry::SharedPtr odo
   }
   initialpose_recieved_ = true;
   corrent_pose_stamped_ = msg;
+  prev_odom = odom_msg;
   pose_pub_->publish(corrent_pose_stamped_);
   if (enable_debug_)
       RCLCPP_INFO(get_logger(), "pose_pub (intial state)");
@@ -372,7 +375,6 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
       RCLCPP_INFO(get_logger(), "cloudReceived");
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
   pcl::fromROSMsg(*msg, *cloud_ptr);
-
   if (use_imu_)
   {
     double received_time = msg->header.stamp.sec +
@@ -383,7 +385,6 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>());
   voxel_grid_filter_.setInputCloud(cloud_ptr);
   voxel_grid_filter_.filter(*filtered_cloud_ptr);
-
   double r;
   pcl::PointCloud<pcl::PointXYZI> tmp;
   for (const auto &p : filtered_cloud_ptr->points)
@@ -411,7 +412,6 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
     RCLCPP_WARN(get_logger(), "The registration didn't converge.");
     return;
   }
-
   Eigen::Matrix4f final_transformation = registration_->getFinalTransformation();
 
   
@@ -424,15 +424,18 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   corrent_pose_stamped_.pose.position.y = static_cast<double>(final_transformation(1, 3));
   corrent_pose_stamped_.pose.position.z = static_cast<double>(final_transformation(2, 3));
   corrent_pose_stamped_.pose.orientation = quat_msg;
+  if (prev_odom != nullptr) {
   double dx = (corrent_pose_stamped_.pose.position.x - prev_odom->pose.pose.position.x);
   double dy = (corrent_pose_stamped_.pose.position.y - prev_odom->pose.pose.position.y);
   double dz = (corrent_pose_stamped_.pose.position.z - prev_odom->pose.pose.position.z);
   double d = std::sqrt(dx*dx+dy*dy+dz*dz);
-  if (d > fitness_recenter_threshold)
+  if (d > gps_dist_recenter_threshold || registration_->getFitnessScore() > fitness_recenter_threshold)
   {
-      RCLCPP_WARN(get_logger(), "Too distant from GPS signal, recentering: %f %f", d, fitness_recenter_threshold);
+      RCLCPP_WARN(get_logger(), "Too distant from GPS signal or too much fitness, recentering: %f (gps dist: %f) (fitness: %f)"
+        , d, fitness_recenter_threshold, registration_->getFitnessScore());
       ignore_initial_pose = false;
       return;
+  }
   }
   pose_pub_->publish(corrent_pose_stamped_);
   if (enable_debug_)

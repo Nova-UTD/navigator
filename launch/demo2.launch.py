@@ -256,7 +256,7 @@ def generate_launch_description():
         remappings=[
             #inputs
             ('/cloud', '/lidar_fused'),
-            ('/odom', '/sensors/gnss/odom'),
+            #('/odom', '/sensors/gnss/odom'),
             ('/imu', '/sensors/zed/imu'),
             ('/initialpose', '/sensors/gnss/odom'),
             #output
