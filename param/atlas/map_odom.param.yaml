@@ -26,8 +26,8 @@
         false,
       ]
 
-    pose0: "/atlas/odom" # Angular vel, linear acc
-    pose0_config:
+    odom1: "/atlas/odom" # Angular vel, linear acc
+    odom1_config:
       [
         true,
         true,
