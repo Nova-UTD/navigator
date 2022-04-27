@@ -32,8 +32,8 @@ using namespace std::chrono_literals;
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
 	// Declare parameters
-	this->declare_parameter<std::string>(MAP_PARAM, "data/maps/demo2/Demo2_map.xodr");
-	this->declare_parameter<double>(SPEED_PARAM, 10.0);
+    this->declare_parameter<std::string>(MAP_PARAM, "data/maps/grand_loop/grand_loop.xodr");
+    this->declare_parameter<double>(SPEED_PARAM, 10.0);
     this->declare_parameter<double>(SPEED_BUMP_PARAM, 2.0);
 
 	std::string xodr_path;
@@ -47,7 +47,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
     
     auto route_info = std::vector<PathSection> {
         PathSection("81", -1),
-        PathSection("1014", -1),
+        PathSection("953", -1),
         PathSection("82", -1),
         // PathSection("957", -1),
 

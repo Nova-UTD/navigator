@@ -15,41 +15,36 @@ using std::placeholders::_1;
 
 using namespace Nova::BehaviorPlanner;
 
-BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {  
-  std::string xodr_path = "data/maps/demo2/Demo2_map.xodr";
-  this->current_state = LANEKEEPING;
-  this->reached_zone = false;
-  this->stop_ticks = 0;
-  this->yield_ticks = 0;
-  this->delay_ticks = 0;
+BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
+    std::string xodr_path = "data/maps/grand_loop/grand_loop.xodr";
+    this->current_state = LANEKEEPING;
+    this->reached_zone = false;
+    this->stop_ticks = 0;
+    this->yield_ticks = 0;
+    this->delay_ticks = 0;
 
-  // xml parsing
-  RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-  std::shared_ptr<navigator::opendrive::MapInfo> map_info = navigator::opendrive::load_map(xodr_path);
-  this->map = map_info->map;
-  this->map_info = map_info;
+    // xml parsing
+    RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
+    std::shared_ptr<navigator::opendrive::MapInfo> map_info = navigator::opendrive::load_map(xodr_path);
+    this->map = map_info->map;
+    this->map_info = map_info;
 
-  this->control_timer = this->create_wall_timer
-    (message_frequency, std::bind(&BehaviorPlannerNode::send_message, this));
+    this->control_timer = this->create_wall_timer(message_frequency, std::bind(&BehaviorPlannerNode::send_message, this));
 
-  this->final_zone_publisher = this->create_publisher<ZoneArray>("zone_array", 10);
+    this->final_zone_publisher = this->create_publisher<ZoneArray>("zone_array", 10);
 
-  this->current_state_publisher = this->create_publisher<BehaviorState>("current_state", 10);
+    this->current_state_publisher = this->create_publisher<BehaviorState>("current_state", 10);
 
-  this->odometry_subscription = this->create_subscription
-    <Odometry>("/gnss_odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
+    this->odometry_subscription = this->create_subscription<Odometry>("/gnss_odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
 
-  this->path_subscription = this->create_subscription
-    <FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
+    this->path_subscription = this->create_subscription<FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
 
-  this->obstacles_subscription = this->create_subscription
-    <Obstacles>("/sensors/zed/obstacle_array_3d", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
+    this->obstacles_subscription = this->create_subscription<Obstacles>("/sensors/zed/obstacle_array_3d", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
 
-  this->button_subscription = this->create_subscription
-    <Bool>("/controller/buttonA", 8, std::bind(&BehaviorPlannerNode::update_button, this, _1));
+    this->button_subscription = this->create_subscription<Bool>("/controller/buttonA", 8, std::bind(&BehaviorPlannerNode::update_button, this, _1));
 
-  this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
-  this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+    this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+    this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
 BehaviorPlannerNode::~BehaviorPlannerNode() {}
