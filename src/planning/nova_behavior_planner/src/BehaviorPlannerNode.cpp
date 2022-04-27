@@ -15,13 +15,13 @@ using std::placeholders::_1;
 
 using namespace Nova::BehaviorPlanner;
 
-BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
-    std::string xodr_path = "data/maps/grand_loop/grand_loop.xodr";
-    this->current_state = LANEKEEPING;
-    this->reached_zone = false;
-    this->stop_ticks = 0;
-    this->yield_ticks = 0;
-    this->delay_ticks = 0;
+BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {  
+  std::string xodr_path = "data/maps/grand_loop/grand_loop.xodr";
+  this->current_state = LANEKEEPING;
+  this->reached_zone = false;
+  this->stop_ticks = 0;
+  this->yield_ticks = 0;
+  this->delay_ticks = 0;
 
     // xml parsing
     RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);

@@ -275,10 +275,29 @@ def generate_launch_description():
     # obstacle detection
     # base link transform?
     # visualization
+
+    lidar_obstacle_detector = Node(
+        package='lidar_obstacle_detector',
+        name='lidar_obstacle_detector_node',
+        executable='lidar_obstacle_detector_node_exe',
+        remappings=[
+            ("lidar_points", "/lidar_fused"),
+            ("/zones", "/planning/zones"),
+        ],
+        parameters=[(path.join(param_dir,"perception","lidar_obstacle_detector_node.param.yaml"))],
+    )
+
+    visuals = Node(
+        package='vt_viz',
+        name='vt_viz_node',
+        executable='vt_viz_exe',
+    )
+
     
     return LaunchDescription([
         # PERCEPTION
-        ##lidar_fusion,
+        lidar_fusion,
+        lidar_obstacle_detector,
 
         # HARDWARE
         # # Steering
@@ -299,22 +318,23 @@ def generate_launch_description():
         # speedometer_translator,
 
         # BEHAVIOR
-        ##path_publisher,
-        ##motion_planner,
-        ##zone_fusion,
-        ##obstacle_zoner,
-        ##behavior_planner,
+        path_publisher,
+        motion_planner,
+        zone_fusion,
+        obstacle_zoner,
+        behavior_planner,
 
         # STATE ESTIMATION
-        ##map_odom_ukf,
-        #pcl_localization,
+        map_odom_ukf,
+        pcl_localization,
 
         # CONTROL
-        ##unified_controller,
+        unified_controller,
 
         # MISC
-        ##odr_viz,
-        ##odom_bl_link,
-        ##urdf_publisher,
-        landmark_localizer
+        # landmark_localizer
+        odr_viz,
+        odom_bl_link,
+        urdf_publisher,
+        visuals
     ])

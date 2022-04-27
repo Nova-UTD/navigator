@@ -31,7 +31,7 @@ LidarObstacleDetectorNode::LidarObstacleDetectorNode() : rclcpp::Node("lidar_obs
     this->declare_parameter("max_obstacle_height", 4.0);
     this->declare_parameter("fov_angle", 2*M_PI/3);
     this->declare_parameter("fov_segments", 30);
-    this->declare_parameter("zone_padding", 1.5);
+    this->declare_parameter("zone_padding", 0.5);
 
     // Read parameters
     this->get_parameter("min_obstacle_height", min_obstacle_height);
@@ -119,7 +119,7 @@ void LidarObstacleDetectorNode::publish_zones(){
         double a_r = (i+1)*angle_resolution - fov_angle/2; // right angle without padding
         double r = nearest_obstacles[i];
 
-        double a_padding = acos(zone_padding/r);
+        double a_padding = asin(zone_padding/r);
         a_l -= a_padding;
         a_r += a_padding;
 

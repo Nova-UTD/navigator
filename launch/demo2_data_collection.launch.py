@@ -314,6 +314,19 @@ def generate_launch_description():
             ('nova_obstacle_array', '/obstacles/array')
         ]
     )
+
+    lidar_obstacle_detector = Node(
+        package='lidar_obstacle_detector',
+        name='lidar_obstacle_detector_node',
+        executable='lidar_obstacle_detector_node_exe',
+        remappings=[
+            ("lidar_points", "/lidar_fused"),
+            ("/planning/zones", "obstacle_zone_array"),
+        ],
+        parameters=[(path.join(param_dir,"perception","lidar_obstacle_detector.param.yaml"))],
+    )
+
+
     
     # VIZ
     lanelet_visualizer = Node(
@@ -360,5 +373,6 @@ def generate_launch_description():
         obstacle_zoner,
         behavior_planner,
         path_publisher,
-        motion_planner
+        motion_planner,
+        lidar_obstacle_detector
     ])

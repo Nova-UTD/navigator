@@ -1,0 +1,9 @@
+/lidar_obstacle_detector_node:
+  ros__parameters:
+    fov_angle: 2.0943951023931953
+    fov_segments: 30
+    incline_rate: 0.05
+    max_obstacle_height: 4.0
+    min_obstacle_height: 0.05
+    use_sim_time: false
+    zone_padding: 0.5
