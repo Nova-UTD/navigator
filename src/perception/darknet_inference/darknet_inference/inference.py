@@ -29,19 +29,30 @@ class DarknetInferenceNode(Node):
     def __init__(self):
         super().__init__('darknet_inference_node')
 
+        # param declarations
         self.declare_parameter(
             'config_file', 'data/perception/yolov4.cfg')
         self.declare_parameter(
             'weights_file', 'data/perception/yolov4.weights')
         self.declare_parameter(
             'names_file', 'data/perception/coco.names')
+        self.declare_parameter('publish_labeled_image', False)
+        self.declare_parameter('confidence_threshold', 0.4)
+        self.declare_parameter('nms_threshold', 0.4)
 
+        # param initializations
         self.config_file = self.get_parameter(
             'config_file').get_parameter_value().string_value
         self.weights_file = self.get_parameter(
             'weights_file').get_parameter_value().string_value
         self.names_file = self.get_parameter(
             'names_file').get_parameter_value().string_value
+        self.pub_image = self.get_parameter(
+            'publish_labeled_image').get_parameter_value().bool_value
+        self.conf_thresh = self.get_parameter(
+            'confidence_threshold').get_parameter_value().double_value
+        self.nms_thresh = self.get_parameter(
+            'nms_threshold').get_parameter_value().double_value
 
         self.model = Darknet(self.config_file)
         self.model.load_weights(self.weights_file)
@@ -63,9 +74,6 @@ class DarknetInferenceNode(Node):
             10
         )
 
-        self.declare_parameter('publish_labeled_image', False)
-        self.pub_image = self.get_parameter(
-            'publish_labeled_image').get_parameter_value().bool_value
         if self.pub_image:
             self.labeled_image_pub = self.create_publisher(
                 Image,
@@ -83,7 +91,7 @@ class DarknetInferenceNode(Node):
         sized = cv2.cvtColor(sized, cv2.COLOR_BGR2RGB)
 
         # inference, the 2 last args are confidence threshold and NMS threshold
-        boxes = do_detect(self.model, sized, 0.4, 0.4, cuda)[0]
+        boxes = do_detect(self.model, sized, self.conf_thresh, self.nms_thresh, cuda)[0]
 
         # filter based on class
         filtered = []

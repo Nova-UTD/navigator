@@ -25,8 +25,8 @@ INTRINSIC_MATRIX = np.array([
 
 EXTRINSIC_MATRIX = np.array([
     [0, -1, 0, 0],
-    [0, 0, -1, 1],
-    [1, 0, 0, 0],
+    [0, 0, -1, 1.5],
+    [1, 0, 0, 0.5],
     [0, 0, 0, 1]
 ])
 
@@ -41,7 +41,7 @@ class PointCloudGenNode(Node):
 
         self.depth_sub = self.create_subscription(
             Image,
-            '/depth_image',
+            '/sensors/zed/depth_img',
             self.depth_cb,
             10
         )
