@@ -258,13 +258,18 @@ def generate_launch_description():
             ('/cloud', '/lidar_fused'),
             #('/odom', '/sensors/gnss/odom'),
             ('/imu', '/sensors/zed/imu'),
-            ('/initialpose', '/sensors/gnss/odom'),
+            # ('/initialpose', '/sensors/gnss/odom'),
             #output
             ('/pcl_pose', '/pose/ndt'),
         ],
         #keeping default parameter path for now
         #it broke when I moved it for some reason
         parameters=[path.join(launch_dir, "src", "atlas", "pcl_localization_ros2", "param", "localization.yaml")]
+    )
+
+    scan_matcher = Node(
+        package = 'scan_matching',
+        executable = 'scan_matching_node'
     )
 
     # MISSING PIECES:
@@ -302,11 +307,12 @@ def generate_launch_description():
         behavior_planner,
 
         # STATE ESTIMATION
-        map_odom_ukf,
+        # map_odom_ukf,
         pcl_localization,
+        scan_matcher,
 
         # CONTROL
-        unified_controller,
+        # unified_controller,
 
         # MISC
         odr_viz,

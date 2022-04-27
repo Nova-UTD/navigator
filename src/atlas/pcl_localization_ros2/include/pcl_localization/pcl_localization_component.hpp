@@ -43,7 +43,7 @@ public:
   void initializeParameters();
   void initializePubSub();
   void initializeRegistration();
-  void initialPoseReceived(nav_msgs::msg::Odometry::SharedPtr odom_msg);
+  void initialPoseReceived(geometry_msgs::msg::PoseStamped::SharedPtr msg);
   void mapReceived(sensor_msgs::msg::PointCloud2::SharedPtr msg);
   void odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg);
   void imuReceived(sensor_msgs::msg::Imu::ConstSharedPtr msg);
@@ -52,8 +52,8 @@ public:
 
   tf2_ros::TransformBroadcaster broadcaster_;
 
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::ConstSharedPtr
-      initial_pose_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::ConstSharedPtr
+    initial_pose_sub_;
   rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseStamped>::SharedPtr
     pose_pub_;
   rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>::SharedPtr
@@ -97,17 +97,11 @@ public:
   double initial_pose_qy_;
   double initial_pose_qz_;
   double initial_pose_qw_;
-  double fitness_recenter_threshold;
-  double gps_dist_recenter_threshold;
-
-  nav_msgs::msg::Odometry::ConstSharedPtr prev_odom;
 
   bool use_odom_{false};
   double last_odom_received_time_;
   bool use_imu_{false};
   bool enable_debug_{false};
-
-  bool ignore_initial_pose;
 
   // imu
   LidarUndistortion lidar_undistortion_;
