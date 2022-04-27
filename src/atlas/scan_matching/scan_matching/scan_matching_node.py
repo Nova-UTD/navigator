@@ -83,7 +83,7 @@ class ScanMatchingNode(Node):
         # Read our map
         self.get_logger().info("Reading map...")
         map_file = o3d.io.read_point_cloud(
-            '/home/main/navigator-2/data/maps/grand_loop/grand_loop.pcd')
+            'data/maps/grand_loop/grand_loop.pcd')
         self.map_cloud = np.asarray(map_file.points)
 
         # Get our initial estimates from GNSS log
