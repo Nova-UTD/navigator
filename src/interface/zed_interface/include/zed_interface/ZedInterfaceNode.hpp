@@ -13,6 +13,7 @@
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 
 #include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 
 #include "std_msgs/msg/header.hpp"
 
@@ -26,6 +27,8 @@
 namespace navigator {
 namespace  zed_interface {
 
+constexpr float DEG2RAD = 0.017453293;
+
 class ZedInterfaceNode : public rclcpp::Node {
 public:
   ZedInterfaceNode();
@@ -35,6 +38,7 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr left_rgb_pub;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr depth_img_pub;
+    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub;
     rclcpp::Publisher<voltron_msgs::msg::Obstacle3DArray>::SharedPtr object_pub_3d;
     rclcpp::Publisher<voltron_msgs::msg::Obstacle2DArray>::SharedPtr object_pub_2d;
 
@@ -44,6 +48,7 @@ private:
     void update_camera();
     void publish_zed_img(sl::Mat mat);
     void publish_depth_img(sl::Mat mat);
+    void publish_imu(sl::SensorsData sd);
     void publish_object_boxes(sl::Objects objects);
     void publish_pose(sl::Pose pose);
 

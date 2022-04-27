@@ -257,19 +257,6 @@ def generate_launch_description():
         executable='scan_matching_node'
     )
 
-    pcl_localization = Node(
-        package='pcl_localization_ros2',
-        executable='pcl_localization_node',
-        remappings=[
-            ('/cloud', '/lidar_fused'),
-            ('/imu', '/sensors/zed/imu'),
-            ('/initialpose', '/sensors/gnss/odom'),
-            ('/pcl_pose', '/pose/ndt2')
-        ],
-        parameters=[
-            '/home/main/navigator-2/src/atlas/pcl_localization_ros2/param/localization.yaml']
-    )
-
     # MISSING PIECES:
     # obstacle detection
     # base link transform?
