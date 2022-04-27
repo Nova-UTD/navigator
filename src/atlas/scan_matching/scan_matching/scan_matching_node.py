@@ -25,6 +25,7 @@ Todos:
 '''
 
 from re import S
+from unittest import result
 import cv2
 import time
 from scipy import rand
@@ -69,6 +70,9 @@ Publish to ROS:
 
 '''
 
+# gnssfile = open('frames/gnss_log_full.csv', 'w')
+# gnssfile.write("x,y,z,qx,qy,qz,qw\n")
+
 
 class ScanMatchingNode(Node):
 
@@ -80,16 +84,20 @@ class ScanMatchingNode(Node):
         self.get_logger().info("Reading map...")
         map_file = o3d.io.read_point_cloud(
             '/home/main/navigator-2/data/maps/grand_loop/grand_loop.pcd')
-        map_cloud = np.asarray(map_file.points)
+        self.map_cloud = np.asarray(map_file.points)
 
         # Get our initial estimates from GNSS log
-        initial_estimates = np.genfromtxt('frames/gnss_log.csv', delimiter=',')
+        initial_estimates = np.genfromtxt(
+            'frames/gnss_log_full.csv', delimiter=',')
         print(initial_estimates)
 
         self.get_logger().info(
-            f"Map loaded with shape {map_cloud.shape}")
+            f"Map loaded with shape {self.map_cloud.shape}")
 
-        frame = 10
+        self.map_pub = self.create_publisher(PointCloud2, '/map/pcd', 1)
+        self.map_pub_timer = self.create_timer(5, self.publish_map)
+
+        frame = 40
 
         # Choose initial estimate for frame 7
         initial_trans = initial_estimates[frame, 0:3]
@@ -111,55 +119,66 @@ class ScanMatchingNode(Node):
         moving = moving[moving[:, 1] > -50]
         moving = moving[moving[:, 1] < 50]
 
-        self.align(moving, map_cloud, initial_T)
+        # self.align(moving, map_cloud, initial_T)
+
+        self.lidar_sub = self.create_subscription(
+            PointCloud2, '/lidar_fused', self.lidar_cb, 10)
+
+        self.gnss_sub = self.create_subscription(
+            Odometry, '/sensors/gnss/odom', self.gnss_cb, 10)
+        self.cached_gnss = None
+
+        self.result_odom_pub = self.create_publisher(
+            Odometry, '/atlas/odom', 10)
+
+        # self.lidar_save_timer = self.create_timer(5, self.save_lidar)
+        # self.lidar_save_idx = 0
 
     def align(self, moving, fixed, initial_T):
         # Downsample our input
         print(fixed.shape, moving.shape)
         #fixed = pygicp.downsample(fixed, 2.0)
-        moving = pygicp.downsample(moving, 3.0)
+
         print(fixed.shape, moving.shape)
 
         # Transform by initial tf
         moving_o3d = o3d.geometry.PointCloud()
         moving_o3d.points = o3d.utility.Vector3dVector(moving)
         moving_o3d = moving_o3d.transform(initial_T)
+        moving_full = moving
 
-        gicp = pygicp.FastGICP()
+        moving = pygicp.downsample(moving, 3.0)
+
+        gicp = pygicp.NDTCuda()
         gicp.set_input_target(fixed)
         gicp.set_input_source(moving)
         # gicp.set_correspondence_randomness(1000)
-        # gicp.set_resolution(2.0)
+        gicp.set_resolution(2.0)
         matrix = gicp.align(
             initial_guess=initial_T
         )
 
-        # matrix = gicp.align(
-        #     initial_guess=matrix
-        # )
-
         print(dir(gicp))
 
         # Transform by final tf
-        moving_o3d_result = o3d.geometry.PointCloud()
-        moving_o3d_result.points = o3d.utility.Vector3dVector(moving)
-        moving_o3d_result = moving_o3d_result.transform(matrix)
+        # moving_o3d_result = o3d.geometry.PointCloud()
+        # moving_o3d_result.points = o3d.utility.Vector3dVector(moving_full)
+        # moving_o3d_result = moving_o3d_result.transform(matrix)
 
         # Transform
 
-        # rot = R.from_dcm(matrix[])
+        # fixed_o3d = o3d.geometry.PointCloud()
+        # fixed_o3d.points = o3d.utility.Vector3dVector(fixed)
+        # fixed_o3d.paint_uniform_color([0.9, 0.1, 0.1])
+        # moving_o3d.paint_uniform_color([0.1, 0.9, 0.1])
+        # moving_o3d_result.paint_uniform_color([0.1, 0.1, 0.9])
+        # o3d.visualization.draw_geometries(
+        #     [fixed_o3d, moving_o3d, moving_o3d_result])
 
-        fixed_o3d = o3d.geometry.PointCloud()
-        fixed_o3d.points = o3d.utility.Vector3dVector(fixed)
-        fixed_o3d.paint_uniform_color([0.9, 0.1, 0.1])
-        moving_o3d.paint_uniform_color([0.1, 0.9, 0.1])
-        moving_o3d_result.paint_uniform_color([0.1, 0.1, 0.9])
-        o3d.visualization.draw_geometries(
-            [fixed_o3d, moving_o3d, moving_o3d_result])
-        print(gicp.get_fitness_score())
+        return matrix
 
     def publish_map(self):
-        self.publish_cloud_from_array(self.pcd_map, 'map', self.map_pub)
+        self.publish_cloud_from_array(self.map_cloud, 'map', self.map_pub)
 
     def save_lidar(self):
         if self.cached_lidar_arr.shape[0] <= 0:
@@ -170,77 +189,77 @@ class ScanMatchingNode(Node):
         o3d.io.write_point_cloud(
             f"frames/frame{self.lidar_save_idx}.pcd", pcd, write_ascii=True)
 
-        pos = self.initial_guess.pose.pose.position
-        rot = self.initial_guess.pose.pose.orientation
-        gnss_logfile.write(
+        pos = self.cached_gnss.pose.pose.position
+        rot = self.cached_gnss.pose.pose.orientation
+        gnssfile.write(
             f"{pos.x},{pos.y},{pos.z},{rot.x},{rot.y},{rot.z},{rot.w}\n")
         self.lidar_save_idx += 1
 
     def gnss_cb(self, msg: Odometry):
-        self.initial_guess = msg
+        self.cached_gnss = msg
 
     def lidar_cb(self, msg: PointCloud2):
-        if self.initial_guess is None:
+
+        # Check if our initial guess is available
+        if self.cached_gnss is None:
             self.get_logger().warning(
                 "Initial guess from GNSS not yet received, skipping alignment.")
             return
 
-        # self.get_logger().info("Trying alignment")
+        self.get_logger().info("Trying alignment")
 
-        # Convert PointCloud2 to np array
+        # Prepare up our input cloud
         lidar_arr_dtype = rnp.numpify(msg)
 
         lidar_list = [lidar_arr_dtype['x'],
                       lidar_arr_dtype['y'], lidar_arr_dtype['z']]
-        lidar_arr = np.array(lidar_list).T.reshape(-1,
-                                                   3)
-        lidar_arr = lidar_arr[~np.isnan(lidar_arr).any(axis=1)]
+        moving = np.array(lidar_list).T.reshape(-1, 3)
+        moving = moving[~np.isnan(moving).any(axis=1)]
 
-        # Cache lidar for debug
-        self.cached_lidar_arr = lidar_arr
+        # Filter out faraway points
+        moving = moving[moving[:, 0] > -50]
+        moving = moving[moving[:, 0] < 50]
+        moving = moving[moving[:, 1] > -50]
+        moving = moving[moving[:, 1] < 50]
 
-        lidar_arr = pygicp.downsample(lidar_arr, 0.1)
-        # Transform lidar from base_link->map
-        map_pos = self.initial_guess.pose.pose.position
-        # lidar_arr[:, 0] += map_pos.x
-        # lidar_arr[:, 1] += map_pos.y
-        # lidar_arr[:, 2] += map_pos.z
-        quat_msg = self.initial_guess.pose.pose.orientation
-        rot_matrix = R.from_quat([quat_msg.x, quat_msg.y, quat_msg.z, quat_msg.w]
-                                 ).as_dcm()
-        tf_matrix = [rot_matrix[0, 0], rot_matrix[0, 1], rot_matrix[0, 2], map_pos.x,
-                     rot_matrix[1, 0], rot_matrix[1,
-                                                  1], rot_matrix[1, 2], map_pos.y,
-                     rot_matrix[2, 0], rot_matrix[2,
-                                                  1], rot_matrix[2, 2], map_pos.z,
-                     0, 0, 0, 1]
-        np_tf_matrix = np.array(tf_matrix).reshape(4, 4)
-        matrix = pygicp.align_points(
-            self.pcd_map,
-            lidar_arr,
-            initial_guess=np_tf_matrix,
-            num_threads=4,
-            max_correspondence_distance=3.0
-        )
-        self.get_logger().info(f"{matrix}")
-        self.publish_cloud_from_array(lidar_arr, 'map', self.aligned_lidar_pub)
+        # Prepare our initial guess
+        pos = self.cached_gnss.pose.pose.position
+        rot = self.cached_gnss.pose.pose.orientation
+        initial_trans = np.array([
+            pos.x, pos.y, pos.z
+        ])
+        initial_quat = np.array([
+            rot.x, rot.y, rot.z, rot.w
+        ])
+        rot_matrix = R.from_quat(initial_quat).as_dcm()
+        initial_T = np.zeros((4, 4))
+        initial_T[0:3, 0:3] = rot_matrix
+        initial_T[0:3, 3] = initial_trans.T
+        initial_T[3, 3] = 1.0
 
-        # Publish our transform result
-        tf = TransformStamped()
-        tf.header.stamp = self.get_clock().now().to_msg()
-        tf.header.frame_id = 'map'
-        tf.child_frame_id = 'base_link'
-        tf.transform.translation = Vector3(
-            x=matrix[0, 3],
-            y=matrix[1, 3],
-            z=matrix[2, 3]
-        )
-        self.get_logger().info(f"{tf.transform.translation}")
-        tf.transform.rotation = self.initial_guess.pose.pose.orientation
-        self.tf_broadcaster.sendTransform(tf)
+        print(initial_T)
 
-        ps = PoseStamped()
-        return
+        # try alignment >:o
+
+        result_matrix = self.align(moving, self.map_cloud, initial_T)
+        self.get_logger().info(f"{result_matrix}")
+
+        result_odom = Odometry()
+        result_odom.pose.pose.position.x = result_matrix[0, 3].item()
+        result_odom.pose.pose.position.y = result_matrix[1, 3].item()
+        result_odom.pose.pose.position.z = result_matrix[2, 3].item()
+
+        result_quat = R.from_dcm(result_matrix[0:3, 0:3]).as_quat()
+        result_odom.pose.pose.orientation.x = result_quat[0].item()
+        result_odom.pose.pose.orientation.y = result_quat[1].item()
+        result_odom.pose.pose.orientation.z = result_quat[2].item()
+        result_odom.pose.pose.orientation.w = result_quat[3].item()
+
+        result_odom.header.stamp = self.get_clock().now().to_msg()
+        result_odom.header.frame_id = 'map'
+        result_odom.child_frame_id = 'odom'
+
+        self.result_odom_pub.publish(result_odom)
 
     def publish_cloud_from_array(self, arr, frame_id: str, publisher):
         data = np.zeros(arr.shape[0], dtype=[
@@ -271,7 +290,7 @@ def main(args=None):
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
     scan_matcher.destroy_node()
-    gnss_logfile.close()
+    gnssfile.close()
     rclpy.shutdown()
 
 
