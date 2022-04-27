@@ -89,9 +89,11 @@ class ScanMatchingNode(Node):
         self.get_logger().info(
             f"Map loaded with shape {map_cloud.shape}")
 
+        frame = 10
+
         # Choose initial estimate for frame 7
-        initial_trans = initial_estimates[30, 0:3]
-        initial_quat = initial_estimates[30, 3:7]
+        initial_trans = initial_estimates[frame, 0:3]
+        initial_quat = initial_estimates[frame, 3:7]
         # print(initial_quat)
         rot_matrix = R.from_quat(initial_quat).as_dcm()
         initial_T = np.zeros((4, 4))
@@ -101,7 +103,7 @@ class ScanMatchingNode(Node):
 
         # try alignment >:o
         moving_file = o3d.io.read_point_cloud(
-            '/home/main/navigator-2/frames/frame30.pcd')
+            '/home/main/navigator-2/frames/frame' + str(frame) + '.pcd')
         moving = np.asarray(moving_file.points)
 
         moving = moving[moving[:, 0] > -50]
@@ -113,9 +115,10 @@ class ScanMatchingNode(Node):
 
     def align(self, moving, fixed, initial_T):
         # Downsample our input
-        print(moving.shape)
-        moving = pygicp.downsample(moving, 2.0)
-        print(moving.shape)
+        print(fixed.shape, moving.shape)
+        #fixed = pygicp.downsample(fixed, 2.0)
+        moving = pygicp.downsample(moving, 3.0)
+        print(fixed.shape, moving.shape)
 
         # Transform by initial tf
         moving_o3d = o3d.geometry.PointCloud()
