@@ -8,17 +8,19 @@ import rclpy
 from tf2_ros.transform_broadcaster import TransformBroadcaster
 from tf2_ros.transform_listener import TransformListener
 import tf2_py
+import tf2_ros
 from tf2_ros.buffer import Buffer
 import tf2_msgs
 from tf2_ros import TransformException, TransformStamped
 
 #msgs
 from nav_msgs.msg import Odometry  # For GPS
-from geometry_msgs.msg import Pose, Point, Quaternion
+from geometry_msgs.msg import Pose, Point, Quaternion, TransformStamped
 from voltron_msgs.msg import Obstacle3D
 
 import math
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 from itertools import combinations
 
 
@@ -30,6 +32,8 @@ class LandmarkLocalizerNode(Node):
         self.load_landmarks()
         self.initPubSub()
         self.max_landmark_difference = 5.0 #only correct if a known landmark is less than x meters from the observed
+        self.corners_to_use = [0,3,4,7] #bounding box corners (should be facing the car to be more reliable) (not if this is correct)
+        
 
     def load_landmarks(self):
         self.landmarks = {}
@@ -53,26 +57,28 @@ class LandmarkLocalizerNode(Node):
         #TODO: tf landmark_msg from base_link using GNSS
         landmark_msg_tf = tf_gnss(landmar_msg)
         map_landmark, distance_from_observed = self.closest_landmark(landmark_msg)
-        if (map_landmark == None):
+        if map_landmark == None:
             self.get_logger().warn(f"No map landmark to compare!")
             return
-        if(distance_from_observed >= self.max_landmark_difference)
+        if distance_from_observed >= self.max_landmark_difference:
             self.get_logger().warn(f"Observed landmark too far ({distance_from_observed} m) from map landmark!")
             return
         #compute correction using base_link landmark
         rot_mat = self.compute_rot(landmark_msg, map_landmark)
         trans = self.compute_trans(landmark_msg, map_landmark, rot_mat)
+        #publish tf
+        self.calc_pub_tf(rot_mat, trans)
+
         
     #computes the inverse rotation matrix by comparing the difference of pairs of points from each landmark
     #bl landmark is in base_link, map_landmark is in map
     #b = point on bl_landmark, m=point on map_landmark, R rotatation matrix
     #R*(b_i - b_j) = (m_i - m_j)
     def compute_rot(self, bl_landmark, map_landmark):
-        corners_to_use = [0,3,4,7]
         sum_mat = np.zeros((3,3))
         num_mat = 0
         #im sure this could be made into a numpy 2 liner
-        for i,j in combinations(corners_to_use, 2)
+        for i,j in combinations(self.corners_to_use, 2):
             #compute all pairs of offset vectors
             b_i = bl_landmark.bounding_box.corners[i]
             b_j = bl_landmark.bounding_box.corners[j]
@@ -87,12 +93,37 @@ class LandmarkLocalizerNode(Node):
         return sum_mat/num_mat
     
     #should just construct a tf from the supplied parameters
-    def calc_tf(self, rot_mat, trans):
-        pass
+    def calc_pub_tf(self, rot_mat, trans):
+        rot_q = R.from_matrix(rot_mat).as_quat() #x,y,z,w
+        br = tf2_ros.TransformBroadcaster()
+        t = geometry_msgs.msg.TransformStamped()
+   
+        t.header.stamp = rospy.Time.now()
+        t.header.frame_id = "base_link"
+        t.child_frame_id = "landmark_tf"
+        t.transform.translation.x = trans.x
+        t.transform.translation.y = trans.y
+        t.transform.translation.z = trans.z
+        t.transform.rotation.x = rot_q[0]
+        t.transform.rotation.y = rot_q[1]
+        t.transform.rotation.z = rot_q[2]
+        t.transform.rotation.w = rot_q[3]
+    
+        br.sendTransform(t)
 
     #R(bl + trans) = map
+    # => trans = R'*map - bl
     def compute_trans(self, bl_landmark, map_landmark, rot_mat):
-        pass
+        inverse_rot = np.linalg.inv(rot_mat)
+        sum_t = np.zeros(3)
+        for i in self.corners_to_use:
+            b_i = bl_landmark.bounding_box.corners[i]
+            m_i = map_landmark.bounding_box.corners[i]
+            bl = np.array([b_i[0], b_i[1], b_i[2]])
+            mp = np.array([m_i[0], m_i[1], m_i[2]])
+            sum_t += inverse_rot.dot(mp) - bl
+        return sum_t/len(self.corners_to_use)
+
     
     def rotation_matrix_from_vectors(vec1, vec2):
         """ Find the rotation matrix that aligns vec1 to vec2
