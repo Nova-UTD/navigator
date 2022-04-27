@@ -277,7 +277,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         # PERCEPTION
-        # lidar_fusion,
+        lidar_fusion,
 
         # HARDWARE
         # # Steering
@@ -305,8 +305,8 @@ def generate_launch_description():
         # behavior_planner,
 
         # STATE ESTIMATION
-        # map_odom_ukf,
-        pcl_localization,
+        map_odom_ukf,
+        # pcl_localization,
         scan_matcher,
 
 
@@ -316,5 +316,5 @@ def generate_launch_description():
         # MISC
         # odr_viz,
         # odom_bl_link,
-        # urdf_publisher,
+        urdf_publisher,
     ])
