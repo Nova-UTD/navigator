@@ -147,10 +147,11 @@ class ScanMatchingNode(Node):
         moving_o3d = moving_o3d.transform(initial_T)
         moving_full = moving
 
-        moving = pygicp.downsample(moving, 3.0)
+        moving = pygicp.downsample(moving, 2.0)
 
-        gicp = pygicp.NDTCuda()
+        gicp = pygicp.FastVGICPCuda()
         gicp.set_input_target(fixed)
+        gicp.set_neighbor_search_method("DIRECT27")
         gicp.set_input_source(moving)
         # gicp.set_correspondence_randomness(1000)
         gicp.set_resolution(2.0)
@@ -254,6 +255,16 @@ class ScanMatchingNode(Node):
         result_odom.pose.pose.orientation.y = result_quat[1].item()
         result_odom.pose.pose.orientation.z = result_quat[2].item()
         result_odom.pose.pose.orientation.w = result_quat[3].item()
+
+        pos_acc = 1.5
+        yaw_acc = 10.0
+
+        result_odom.pose.covariance = [pos_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, pos_acc, 0.0, 0.0, 0.0, 0.0,
+                                       0.0, 0.0, pos_acc, 0.0, 0.0, 0.0,
+                                       0.0, 0.0, 0.0, yaw_acc, 0.0, 0.0,
+                                       0.0, 0.0, 0.0, 0.0, yaw_acc, 0.0,
+                                       0.0, 0.0, 0.0, 0.0, 0.0, yaw_acc]
 
         result_odom.header.stamp = self.get_clock().now().to_msg()
         result_odom.header.frame_id = 'map'

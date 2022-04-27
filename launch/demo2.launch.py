@@ -245,7 +245,7 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=["/home/main/navigator-2/param/atlas/map_odom.param.yaml"],
+        parameters=[(path.join(param_dir, "atlas", "map_odom.param.yaml"))],
         remappings=[
             ("/odom0", "/gnss_odom"),
             ("/imu0", "/sensors/zed/imu")
