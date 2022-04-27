@@ -252,23 +252,36 @@ def generate_launch_description():
         ]
     )
 
-    scan_matcher = Node(
-        package='scan_matching',
-        executable='scan_matching_node'
+    localization_param_dir = LaunchConfiguration(
+        'localization_param_dir',
+        default=path.join(
+            get_package_share_directory('pcl_localization_ros2'),
+            'param',
+            'localization.yaml')
     )
 
     pcl_localization = Node(
+        node_name='pcl_localization',
         package='pcl_localization_ros2',
-        executable='pcl_localization_node',
-        remappings=[
-            ('/cloud', '/lidar_fused'),
-            ('/imu', '/sensors/zed/imu'),
-            # ('/initialpose', '/sensors/gnss/odom'),
-            ('/pcl_pose', '/pose/ndt2')
-        ],
-        parameters=[
-            '/home/main/navigator-2/src/atlas/pcl_localization_ros2/param/localization.yaml']
+        node_executable='pcl_localization_node',
+        remappings=[('/cloud','/lidar_fused')],
+        parameters=[localization_param_dir],
+        output='screen'
     )
+
+    # pcl_localization = Node(
+    #     package='pcl_localization_ros2',
+    #     executable='pcl_localization_node',
+    #     remappings=[
+    #         ('/cloud', '/lidar_fused'),
+    #         ('/map','/map/pcd'),
+    #         ('/imu', '/sensors/zed/imu'),
+    #         # ('/initialpose', '/sensors/gnss/odom'),
+    #         ('/pcl_pose', '/pose/ndt2')
+    #     ],
+    #     parameters=[
+    #         '/home/wheitman/navigator/src/atlas/pcl_localization_ros2/param/localization.yaml']
+    # )
 
     scan_matcher = Node(
         package = 'scan_matching',
@@ -311,7 +324,7 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         # map_odom_ukf,
-        pcl_localization,
+        # pcl_localization,
         scan_matcher,
 
         # CONTROL

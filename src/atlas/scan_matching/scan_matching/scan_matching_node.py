@@ -100,36 +100,36 @@ class ScanMatchingNode(Node):
         frame = 40
 
         # Choose initial estimate for frame 7
-        initial_trans = initial_estimates[frame, 0:3]
-        initial_quat = initial_estimates[frame, 3:7]
-        # print(initial_quat)
-        rot_matrix = R.from_quat(initial_quat).as_dcm()
-        initial_T = np.zeros((4, 4))
-        initial_T[0:3, 0:3] = rot_matrix
-        initial_T[0:3, 3] = initial_trans.T
-        initial_T[3, 3] = 1.0
+        # initial_trans = initial_estimates[frame, 0:3]
+        # initial_quat = initial_estimates[frame, 3:7]
+        # # print(initial_quat)
+        # rot_matrix = R.from_quat(initial_quat).as_dcm()
+        # initial_T = np.zeros((4, 4))
+        # initial_T[0:3, 0:3] = rot_matrix
+        # initial_T[0:3, 3] = initial_trans.T
+        # initial_T[3, 3] = 1.0
 
         # try alignment >:o
-        moving_file = o3d.io.read_point_cloud(
-            '/home/main/navigator-2/frames/frame' + str(frame) + '.pcd')
-        moving = np.asarray(moving_file.points)
+        # moving_file = o3d.io.read_point_cloud(
+        #     '/home/main/navigator-2/frames/frame' + str(frame) + '.pcd')
+        # moving = np.asarray(moving_file.points)
 
-        moving = moving[moving[:, 0] > -50]
-        moving = moving[moving[:, 0] < 50]
-        moving = moving[moving[:, 1] > -50]
-        moving = moving[moving[:, 1] < 50]
+        # moving = moving[moving[:, 0] > -50]
+        # moving = moving[moving[:, 0] < 50]
+        # moving = moving[moving[:, 1] > -50]
+        # moving = moving[moving[:, 1] < 50]
 
         # self.align(moving, map_cloud, initial_T)
 
-        self.lidar_sub = self.create_subscription(
-            PointCloud2, '/lidar_fused', self.lidar_cb, 10)
+        # self.lidar_sub = self.create_subscription(
+        #     PointCloud2, '/lidar_fused', self.lidar_cb, 10)
 
-        self.gnss_sub = self.create_subscription(
-            Odometry, '/sensors/gnss/odom', self.gnss_cb, 10)
-        self.cached_gnss = None
+        # self.gnss_sub = self.create_subscription(
+        #     Odometry, '/sensors/gnss/odom', self.gnss_cb, 10)
+        # self.cached_gnss = None
 
-        self.result_odom_pub = self.create_publisher(
-            Odometry, '/atlas/odom', 10)
+        # self.result_odom_pub = self.create_publisher(
+        #     Odometry, '/atlas/odom', 10)
 
         # self.lidar_save_timer = self.create_timer(5, self.save_lidar)
         # self.lidar_save_idx = 0

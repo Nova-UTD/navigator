@@ -45,7 +45,7 @@ def generate_launch_description():
         node_name='pcl_localization',
         package='pcl_localization_ros2',
         node_executable='pcl_localization_node',
-        remappings=[('/cloud','/points_raw')],
+        remappings=[('/cloud','/lidar_fused'),('imu','/sensors/zed/imu'),('/odom','/sensors/gnss/odom'),('/map','/map/pcd')],
         parameters=[localization_param_dir],
         output='screen')
 
