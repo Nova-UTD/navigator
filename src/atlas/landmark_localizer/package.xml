@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>landmark_localizer</name>
+  <version>0.0.1</version>
+  <description>Nodes for calculating the car's position based on GPS data and landmarks</description>
+  <maintainer email="jim3moore@gmail.com">Jim Moore</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>nova_auto_package</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>nav_msgs</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

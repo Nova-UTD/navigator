@@ -267,6 +267,10 @@ def generate_launch_description():
         parameters=[path.join(launch_dir, "src", "atlas", "pcl_localization_ros2", "param", "localization.yaml")]
     )
 
+    landmark_localizer = Node(
+        package = 'landmark_localizer',
+        executable = 'landmark_localizer_node'
+    )
     # MISSING PIECES:
     # obstacle detection
     # base link transform?
@@ -274,7 +278,7 @@ def generate_launch_description():
     
     return LaunchDescription([
         # PERCEPTION
-        lidar_fusion,
+        #lidar_fusion,
 
         # HARDWARE
         # # Steering
@@ -295,21 +299,22 @@ def generate_launch_description():
         # speedometer_translator,
 
         # BEHAVIOR
-        path_publisher,
-        motion_planner,
-        zone_fusion,
-        obstacle_zoner,
-        behavior_planner,
+        #path_publisher,
+        #motion_planner,
+        #zone_fusion,
+        #obstacle_zoner,
+        #behavior_planner,
 
         # STATE ESTIMATION
-        map_odom_ukf,
-        pcl_localization,
+        #map_odom_ukf,
+        #pcl_localization,
 
         # CONTROL
-        unified_controller,
+        #unified_controller,
 
         # MISC
-        odr_viz,
-        odom_bl_link,
-        urdf_publisher,
+        #odr_viz,
+        #odom_bl_link,
+        #urdf_publisher,
+        landmark_localizer
     ])
