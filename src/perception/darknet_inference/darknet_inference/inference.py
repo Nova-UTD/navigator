@@ -17,7 +17,9 @@ COCO_TO_NOVA = {
     2:  2,  # car
     3:  3,  # motorbike
     5:  4,  # bus
-    7:  5   # truck
+    7:  5,  # truck
+    10: 6,  # fire hydrants
+    11: 7,  # stop signs
 }
 
 # use the last gpu if more than one, else use the first one
@@ -118,19 +120,21 @@ class DarknetInferenceNode(Node):
             obstacle.bounding_box.y2 = y2.item()
             obstacle_array.obstacles.append(obstacle)
 
+        
+        # publish labeled image
+        if self.pub_image:
+            labeled_image_msg: Image = rnp.msgify(
+                Image, labeled_image, encoding='8UC3')
+            labeled_image_msg.header.stamp = self.get_clock().now().to_msg()
+            labeled_image_msg.header.frame_id = 'labeled_image'
+            self.labeled_image_pub.publish(labeled_image_msg)
+
         if len(obstacle_array.obstacles) != 0:
             # publish obstacles
             obstacle_array.header.frame_id = 'base_link'
             obstacle_array.header.stamp = self.get_clock().now().to_msg()
             self.obstacle_array_pub.publish(obstacle_array)
 
-            # publish labeled image
-            if self.pub_image:
-                labeled_image_msg: Image = rnp.msgify(
-                    Image, labeled_image, encoding='8UC3')
-                labeled_image_msg.header.stamp = self.get_clock().now().to_msg()
-                labeled_image_msg.header.frame_id = 'labeled_image'
-                self.labeled_image_pub.publish(labeled_image_msg)
         else:
             return
 

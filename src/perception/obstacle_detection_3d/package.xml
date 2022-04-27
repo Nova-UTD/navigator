@@ -1,11 +1,16 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>bbox_generator</name>
+  <name>obstacle_detection_3d</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="rae3840924@gmail.com">rarnab</maintainer>
   <license>TODO: License declaration</license>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>voltron_msgs</exec_depend>
+  <exec_depend>ros2_numpy</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
