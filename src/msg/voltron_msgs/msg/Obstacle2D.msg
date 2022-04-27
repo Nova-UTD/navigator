@@ -4,6 +4,8 @@ uint8 CAR=2
 uint8 MOTORBIKE=3
 uint8 BUS=4
 uint8 TRUCK=5
+uint8 FIRE_HYDRANT=6
+uint8 STOP_SIGN=7
 uint8 OTHER=99
 
 # car, pedestrian, etc.
