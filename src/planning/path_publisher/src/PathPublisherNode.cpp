@@ -46,6 +46,8 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
     
     auto route_info = std::vector<PathSection> {
+		PathSection("81", -1),
+		PathSection("953", -1),
         PathSection("82", -1),
         PathSection("919", -1),
         PathSection("105", -1),
@@ -53,11 +55,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
         PathSection("39", -1),
         PathSection("663", -1),
         PathSection("78", -1),
-        PathSection("663", -1),
         PathSection("337", -1),
-        PathSection("7", -1, 0),
-        PathSection("7", -1, 27.96),
-        PathSection("7", -1, 33.18),
         PathSection("7", -1),
         PathSection("465", -1),
         PathSection("63", -1),
@@ -82,8 +80,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
         PathSection("998", -1),
         PathSection("110", -1),
         PathSection("689", -1),
-        PathSection("111", -1, 0),
-        PathSection("111", -2, 106.88),
+        PathSection("111", -1),
         PathSection("219", -2),
         PathSection("113", -2),
         PathSection("609", -1),
@@ -91,9 +88,53 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
         PathSection("390", 1),
         PathSection("55", 1, 263.97),
         PathSection("55", 1, 0),
-
-
+		PathSection("788", 1),
+		PathSection("17", -1),
+		PathSection("181", -1),
+		PathSection("18", -1),
+		PathSection("275", -1),
+		PathSection("19", -1),
+		PathSection("814", -1),
+		PathSection("809", -1),
+		PathSection("83", -3),
+		PathSection("28", -3),
+		PathSection("0", -3),
+		PathSection("150", -1),
+		PathSection("42", -1),
+		PathSection("21", 1),
+		PathSection("80", 1),
+		PathSection("497", 1),
+		PathSection("79", 1),
+		PathSection("960", 1),
+		PathSection("120", -1, 0),
+		PathSection("120", -1, 67.88),
+		PathSection("75", 1, 38.16),
+		PathSection("75", 2, 0),
+		PathSection("827", 1),
+		PathSection("103", -1),
+		PathSection("141", -1),
+		PathSection("40", 1),
+		PathSection("955", 1),
+		PathSection("81", 1),
     };
+
+	auto mini_route_info = std::vector<PathSection> {
+		PathSection("81", -1),
+		PathSection("953", -1),
+        PathSection("82", -1),
+        PathSection("929", -1),
+        PathSection("104", 2),
+        PathSection("128", 1),
+		PathSection("40", 1),
+		PathSection("955", 1),
+		PathSection("81", 1),
+	};
+
+	auto mini_test_route_info = std::vector<PathSection> {
+		PathSection("81", -1),
+		PathSection("953", -1),
+        PathSection("82", -1),
+	};
 
     for (auto s : route_info) {
         all_ids.insert(s.road_id);
@@ -104,9 +145,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
 	map = navigator::opendrive::load_map(xodr_path)->map;
 
-	
-
-	this->route1 = generate_path(route_info, map);
+	this->route1 = generate_path(mini_test_route_info, map);
 	this->path = this->route1;
 }
 
