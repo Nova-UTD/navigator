@@ -47,10 +47,10 @@ def generate_launch_description():
         ]
     )
 
-    bbox_gen = Node(
-        package='bbox_generator',
-        executable='bbox_gen_node',
-        name='bbox_gen_node',
+    obstacle_detector_3d = Node(
+        package='obstacle_detection_3d',
+        executable='obstacle_detection_3d_node',
+        name='obstacle_detection_3d_node',
         parameters=[(path.join(param_dir, "perception", "front_camera.param.yaml"))],
         remappings=[
             ('/depth_image', '/sensors/zed/depth_img'),
@@ -85,8 +85,9 @@ def generate_launch_description():
     return LaunchDescription([
         urdf_publisher,
         obstacle_detector_2d,
+        obstacle_detector_3d,
         lidar_fusion,
         obstacle_drawer,
         #pcd_gen,
-        bbox_gen,
+
     ])

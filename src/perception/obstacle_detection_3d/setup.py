@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'bbox_generator'
+package_name = 'obstacle_detection_3d'
 
 setup(
     name=package_name,
@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'bbox_gen_node = bbox_generator.bbox_gen:main',
+            'obstacle_detection_3d_node = obstacle_detection_3d.inference:main',
         ],
     },
 )

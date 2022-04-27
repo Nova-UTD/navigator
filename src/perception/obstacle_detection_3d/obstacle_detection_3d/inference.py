@@ -29,10 +29,10 @@ CLASS_X = {
 }
 
 
-class BBoxGeneratorNode(Node):
+class ObstacleDetection3DNode(Node):
 
     def __init__(self):
-        super().__init__('bbox_gen_node')
+        super().__init__('obstacle_detector_3d_node')
 
         # parameter declarations
         self.declare_parameter('image_size_x', 1280)
@@ -96,7 +96,7 @@ class BBoxGeneratorNode(Node):
         self.obstacle_array_2d_cb = self.create_subscription(
             Obstacle2DArray,
             '/obstacle_array_2d',
-            self.bbox_gen_cb,
+            self.inference_3d,
             10
         )
 
@@ -129,7 +129,8 @@ class BBoxGeneratorNode(Node):
         )
 
     # generate 3-d bounding box from 2-d bounding boxes
-    def bbox_gen_cb(self, obstacles_2d: Obstacle2DArray):
+    # or generate 3-d landmark positions
+    def inference_3d(self, obstacles_2d: Obstacle2DArray):
         if type(self.depth_image) != np.ndarray:
             return
         else:
@@ -277,11 +278,11 @@ class BBoxGeneratorNode(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    bbox_gen_node = BBoxGeneratorNode()
+    obstacle_detection_3d_node = ObstacleDetection3DNode()
 
-    rclpy.spin(bbox_gen_node)
+    rclpy.spin(obstacle_detection_3d_node)
 
-    bbox_gen_node.destroy_node()
+    obstacle_detection_3d_node.destroy_node()
     rclpy.shutdown()
 
 
