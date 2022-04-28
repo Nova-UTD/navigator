@@ -55,6 +55,7 @@ private:
 
   std::chrono::time_point<std::chrono::system_clock> last_enabled;
   bool enabled = false;
+  bool needs_enable = false;
 };
 }
 }

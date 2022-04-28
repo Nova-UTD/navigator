@@ -22,6 +22,8 @@ using namespace Voltron::EpasSteering;
 can_id_t can_message_3_identifier = 0x296;
 
 ControllerNode::ControllerNode() : Node("steering_controller") {
+  this->declare_parameter("needs_enable");
+  this->needs_enable = this->get_parameter("needs_enable").as_bool();
   this->can_publisher = this->create_publisher<voltron_msgs::msg::CanFrame>
     ("epas_translator_outgoing_can_frames", 8);
   this->power_subscription = this->create_subscription<std_msgs::msg::Float32>
@@ -38,12 +40,14 @@ ControllerNode::ControllerNode() : Node("steering_controller") {
 ControllerNode::~ControllerNode() {}
 
 void ControllerNode::send_control_message() {
-  if(!enabled) return;
-  std::chrono::duration<double> time_since_enable
-    = std::chrono::system_clock::now() - this->last_enabled;
-  int ms_since_enabled = std::chrono::duration_cast
-    <std::chrono::milliseconds>(time_since_enable).count();
-  if(ms_since_enabled > 250) return;
+  if(this->needs_enable) {
+    if(!enabled) return;
+    std::chrono::duration<double> time_since_enable
+      = std::chrono::system_clock::now() - this->last_enabled;
+    int ms_since_enabled = std::chrono::duration_cast
+      <std::chrono::milliseconds>(time_since_enable).count();
+    if(ms_since_enabled > 250) return;
+  }
   
   auto message = voltron_msgs::msg::CanFrame();
   message.identifier = can_message_3_identifier;

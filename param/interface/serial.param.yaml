@@ -1,4 +1,4 @@
 ---
 /**:
   ros__parameters:
-    device_name: /dev/ttyUSB0
+    device_name: /dev/ttyACM0
