@@ -28,11 +28,10 @@ if (OPENMP_FOUND)
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-if(BUILD_VGICP_CUDA)
-  find_package(CUDA REQUIRED)
-  include_directories(${CUDA_INCLUDE_DIRS})
-  link_directories(${CUDA_LIBRARY_DIRS})
-endif()
+find_package(CUDA REQUIRED)
+include_directories(${CUDA_INCLUDE_DIRS})
+link_directories(${CUDA_LIBRARY_DIRS})
+add_compile_definitions(USE_VGICP_CUDA=1)
 
 ###################################
 ## catkin specific configuration ##

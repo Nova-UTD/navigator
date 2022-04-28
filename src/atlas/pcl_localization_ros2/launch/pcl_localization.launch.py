@@ -35,19 +35,21 @@ def generate_launch_description():
         arguments=['0', '0', '0', '0', '0', '0', '1', 'odom', 'imu_link']
     )
 
-    localization_param_dir = launch.substitutions.LaunchConfiguration(
-        'localization_param_dir',
-        default=os.path.join(
-            get_package_share_directory('pcl_localization_ros2'),
-            'param',
-            'localization.yaml'))
+    # localization_param_dir = launch.substitutions.LaunchConfiguration(
+    #    'localization_param_dir',
+    #    default=os.path.join(
+    #        get_package_share_directory('pcl_localization_ros2'),
+    #        'param',
+    #        'localization.yaml'))
 
     pcl_localization = launch_ros.actions.LifecycleNode(
         node_name='pcl_localization',
         package='pcl_localization_ros2',
         node_executable='pcl_localization_node',
-        remappings=[('/cloud', '/lidar_fused')],
-        parameters=[localization_param_dir],
+        remappings=[('/cloud', '/lidar_fused'), ('/map', '/map/pcd'),
+                    ('/odom', '/odometry/filtered')],
+        parameters=[
+            "/home/main/navigator-2/src/atlas/pcl_localization_ros2/param/localization.yaml"],
         output='screen')
 
     to_inactive = launch.actions.EmitEvent(

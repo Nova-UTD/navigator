@@ -1,4 +1,5 @@
 from os import name, path, environ
+from tkinter import E
 
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import IncludeLaunchDescription
@@ -11,102 +12,106 @@ from launch_ros.actions import Node
 
 from ament_index_python import get_package_share_directory
 
+
 def generate_launch_description():
 
     launch_path = path.realpath(__file__)
     launch_dir = path.join(path.dirname(launch_path), '..')
-    param_dir = path.join(launch_dir,"param")
+    param_dir = path.join(launch_dir, "param")
 
     serial = Node(
-       package = 'serial',
-       executable = 'serial',
-       parameters = [
-           (path.join(param_dir, "interface", "serial.param.yaml"))],
-       remappings = [
-           ("serial_incoming_lines", "serial_incoming_lines"),
-           ("serial_outgoing_lines", "serial_outgoing_lines")])
-    
+        package='serial',
+        executable='serial',
+        parameters=[
+            (path.join(param_dir, "interface", "serial.param.yaml"))],
+        remappings=[
+            ("serial_incoming_lines", "serial_incoming_lines"),
+            ("serial_outgoing_lines", "serial_outgoing_lines")])
+
     servo_throttle = Node(
-        package = 'servo',
-        executable = 'servo',
-        parameters = [
+        package='servo',
+        executable='servo',
+        parameters=[
             (path.join(param_dir, "interface", "servo_throttle.param.yaml"))],
-        remappings = [
+        remappings=[
             ("servo_commands", "serial_outgoing_lines"),
             ("servo_positions", "throttle_position")])
 
     servo_brake = Node(
-        package = 'servo',
-        executable = 'servo',
-        parameters = [
+        package='servo',
+        executable='servo',
+        parameters=[
             (path.join(param_dir, "interface", "servo_brake.param.yaml"))],
-        remappings = [
+        remappings=[
             ("servo_commands", "serial_outgoing_lines"),
             ('servo_positions', 'brake_position')])
 
     epas_can = Node(
-        package = 'can_interface',
-        executable = 'interface',
-        remappings = [
+        package='can_interface',
+        executable='interface',
+        remappings=[
             ('can_interface_incoming_can_frames', 'epas_incoming_can'),
             ('can_interface_outgoing_can_frames', 'epas_outgoing_can')],
-        arguments = ['can0'])
+        arguments=['can0'])
 
-    
     epas_reporter = Node(
-        package = 'epas_translator',
-        executable = 'reporter',
-        parameters = [
-            (path.join(param_dir,"interface","epas_reporter.param.yaml"))],
-        remappings = [
+        package='epas_translator',
+        executable='reporter',
+        parameters=[
+            (path.join(param_dir, "interface", "epas_reporter.param.yaml"))],
+        remappings=[
             ("epas_translator_incoming_can_frames", "epas_incoming_can"),
             ("epas_translator_real_steering_angle", "real_steering_angle")])
 
     epas_controller = Node(
-        package = 'epas_translator',
-        executable = 'controller',
-        remappings = [
+        package='epas_translator',
+        executable='controller',
+        remappings=[
             ("epas_translator_steering_power", "steering_power"),
             ("epas_translator_outgoing_can_frames", "epas_outgoing_can"),
             ("epas_translator_enable", "steering_enable")])
 
     steering_pid = Node(
-        package = 'pid_controller',
-        executable = 'pid_controller',
-        parameters = [
+        package='pid_controller',
+        executable='pid_controller',
+        parameters=[
             (path.join
-             (param_dir,"interface","steering_pid_controller.param.yaml"))],
-        remappings = [
+             (param_dir, "interface", "steering_pid_controller.param.yaml"))],
+        remappings=[
             ("output", "steering_power"),
             ("target", "steering_target"),
             ("measurement", "real_steering_angle")])
-            
-    zed_interface = Node (
-        package = 'zed_interface',
-        executable = 'zed_interface_exe'
+
+    zed_interface = Node(
+        package='zed_interface',
+        executable='zed_interface_exe'
     )
     gnss_parser = Node(
-        package = 'gnss_parser',
-        executable = 'gnss_parser',
-        remappings = [
+        package='gnss_parser',
+        executable='gnss_parser',
+        remappings=[
             ("/sensors/gnss/odom", "/sensors/gnss/odom"),
             ("/serial/gnss", "serial_incoming_lines")])
 
-    
+    gnss_log_publisher = Node(
+        package='bag_tools',
+        executable='gnss_log_publisher',
+        remappings=[
+            ("/sensors/gnss/odom", "/sensors/gnss/odom")])
+
     vehicle_can = Node(
-        package = 'can_interface',
-        executable = 'interface',
-        remappings = [
+        package='can_interface',
+        executable='interface',
+        remappings=[
             ('can_interface_incoming_can_frames', 'vehicle_incoming_can'),
             ('can_interface_outgoing_can_frames', 'vehicle_outgoing_can')],
-        arguments = ['can1'])
+        arguments=['can1'])
 
-    
     speedometer_reporter = Node(
         package='can_translation',
         executable='float_reporter',
         parameters=[(path.join
-                     (param_dir,"interface","speedometer_reporter.param.yaml"))],
+                     (param_dir, "interface", "speedometer_reporter.param.yaml"))],
         remappings=[
             ("incoming_can_frames", "vehicle_incoming_can"),
             ("result_topic", "vehicle_speedometer")])
@@ -118,12 +123,11 @@ def generate_launch_description():
             ("velocity_topic", "vehicle_speedometer"),
             ("twist_topic", "speedometer_odom")])
 
-
     path_publisher = Node(
         package='path_publisher',
         executable='publisher',
         parameters=[
-            (path.join(param_dir,"planning","path_publisher.param.yaml"))],
+            (path.join(param_dir, "planning", "path_publisher.param.yaml"))],
         remappings=[
             ("paths", "paths"),
             ("path_pub_viz", "path_pub_viz")])
@@ -147,7 +151,7 @@ def generate_launch_description():
             ("/planning/zones", "zones"),
             ("/sensors/gnss/odom", "odometry")],
         parameters=[
-            (path.join(param_dir,"planning","motion_planner.param.yaml"))])
+            (path.join(param_dir, "planning", "motion_planner.param.yaml"))])
 
     zone_fusion = Node(
         package='zone_fusion',
@@ -168,7 +172,7 @@ def generate_launch_description():
         package='nova_behavior_planner',
         executable='BehaviorPlannerLaunch',
         parameters=[
-            (path.join(param_dir,"planning","path_publisher.param.yaml"))],
+            (path.join(param_dir, "planning", "path_publisher.param.yaml"))],
         remappings=[
             ("/sensors/gnss/odom", "odometry"),
             ("paths", "paths"),
@@ -181,25 +185,29 @@ def generate_launch_description():
         package='velodyne_driver',
         executable='velodyne_driver_node',
         namespace='lidar_front',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_front.param.yaml"))]
+        parameters=[(path.join(launch_dir, "param", "perception",
+                               "lidar_driver_front.param.yaml"))]
     )
     lidar_pointcloud_front = Node(
         package='velodyne_pointcloud',
         executable='velodyne_convert_node',
         namespace='lidar_front',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_front.param.yaml"))]
+        parameters=[(path.join(launch_dir, "param", "perception",
+                               "lidar_pointcloud_front.param.yaml"))]
     )
     lidar_driver_rear = Node(
         package='velodyne_driver',
         executable='velodyne_driver_node',
         namespace='lidar_rear',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_rear.param.yaml"))]
+        parameters=[
+            (path.join(launch_dir, "param", "perception", "lidar_driver_rear.param.yaml"))]
     )
     lidar_pointcloud_rear = Node(
         package='velodyne_pointcloud',
         executable='velodyne_convert_node',
         namespace='lidar_rear',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_rear.param.yaml"))]
+        parameters=[(path.join(launch_dir, "param", "perception",
+                               "lidar_pointcloud_rear.param.yaml"))]
     )
 
     lidar_fusion = Node(
@@ -223,11 +231,11 @@ def generate_launch_description():
         package='odr_visualizer',
         executable='visualizer',
         parameters=[
-            (path.join(param_dir,"mapping","odr.param.yaml"))
+            (path.join(param_dir, "mapping", "odr.param.yaml"))
         ],
         output='screen',
         remappings=[
-            ("/map","/odr_map")
+            ("/map", "/odr_map")
         ]
     )
 
@@ -235,7 +243,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0.0','0.0','0.0','0.0','0.0','0.0','1.0','odom','base_link'
+            '0.0', '0.0', '0.0', '0.0', '0.0', '0.0', '1.0', 'odom', 'base_link'
         ]
     )
 
@@ -243,28 +251,12 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=["/home/wheitman/navigator/param/atlas/map_odom.param.yaml"],
-        remappings=[
-            ("/odom0", "/gnss_odom"),
-            ("/imu0", "/sensors/zed/imu")
-        ]
+        parameters=[(path.join(param_dir, "atlas", "map_odom.param.yaml"))],
     )
 
-    pcl_localization = Node(
-        package='pcl_localization_ros2',
-        executable='pcl_localization_node',
-        remappings=[
-            #inputs
-            ('/cloud', '/lidar_fused'),
-            #('/odom', '/sensors/gnss/odom'),
-            ('/imu', '/sensors/zed/imu'),
-            ('/initialpose', '/sensors/gnss/odom'),
-            #output
-            ('/pcl_pose', '/pose/ndt'),
-        ],
-        #keeping default parameter path for now
-        #it broke when I moved it for some reason
-        parameters=[path.join(launch_dir, "src", "atlas", "pcl_localization_ros2", "param", "localization.yaml")]
+    scan_matcher = Node(
+        package='scan_matching',
+        executable='scan_matching_node'
     )
 
     landmark_localizer = Node(
@@ -311,13 +303,14 @@ def generate_launch_description():
     # obstacle detection
     # base link transform?
     # visualization
-    
+
     return LaunchDescription([
         # PERCEPTION
         lidar_fusion,
         obstacle_detector_2d,
         obstacle_detector_3d,
         obstacle_drawer,
+        # pcl_launch,
 
         # HARDWARE
         # # Steering
@@ -332,28 +325,30 @@ def generate_launch_description():
 
         # # Camera
         # zed_interface,
-        # gnss_parser,
+        gnss_parser,
         # vehicle_can,
         # speedometer_reporter,
         # speedometer_translator,
 
         # BEHAVIOR
-        ##path_publisher,
-        ##motion_planner,
-        ##zone_fusion,
-        ##obstacle_zoner,
-        ##behavior_planner,
+        # path_publisher,
+        # motion_planner,
+        # zone_fusion,
+        # obstacle_zoner,
+        # behavior_planner,
 
         # STATE ESTIMATION
         map_odom_ukf,
-        #pcl_localization,
+        scan_matcher,
+        # gnss_log_publisher,
+
 
         # CONTROL
-        ##unified_controller,
+        # unified_controller,
 
         # MISC
-        odr_viz,
-        odom_bl_link,
+        # odr_viz,
+        # odom_bl_link,
         urdf_publisher,
         landmark_localizer
     ])
