@@ -49,6 +49,7 @@ class PIDController():
     integral = 0
     last_error = 0
     last_time = 0
+    derivative = 0
 
     max_integral = 1
 
@@ -66,6 +67,7 @@ class PIDController():
             sequence.
         """
         self.integral = 0
+        self.derivative = 0
         self.last_error = 0
         self.last_time = time
 
@@ -75,17 +77,17 @@ class PIDController():
             the control signal.
         """
         dt = time - self.last_time
-        if dt == 0:
-            return 0
+        if dt > 0:
+            self.derivative = (error - self.last_error) / dt
         self.integral += error * dt
         if self.integral > self.max_integral:
             self.integral = self.max_integral
         elif self.integral < -self.max_integral:
             self.integral = -self.max_integral
-        derivative = (error - self.last_error) / dt
+        
         self.last_error = error
         self.last_time = time
-        return (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
+        return (self.kp * error) + (self.ki * self.integral) + (self.kd * self.derivative)
 
     
 
@@ -255,7 +257,6 @@ class UnifiedController(Node):
         throttle = self.last_throttle_position * self.THROTTLE_LAST_WEIGHT + throttle * (1 - self.THROTTLE_LAST_WEIGHT)
         brake = self.last_brake_position * self.THROTTLE_LAST_WEIGHT + brake * (1 - self.THROTTLE_LAST_WEIGHT)
         
-        # this.get_logger().info()
 
         self.last_throttle_position = throttle
         self.last_brake_position = brake
@@ -268,7 +269,8 @@ class UnifiedController(Node):
             throttle = 0.0
 
         self.publish_commands(throttle, brake, steering_angle)
-      
+
+        self.get_logger().info("Current velocity: %f Target velocity: %f Throttle: %f Brake: %f" %(self.speed, target_velocity, throttle,  brake))
     
     def closest_point_index(self, pos) -> int:
         """
@@ -389,13 +391,13 @@ class UnifiedController(Node):
             self.tb_controller.reset(odom_stamp)
             return (0.0, 1.0 - self.speed)
 
-        psudeo_force = target_v / self.TOP_SPEED
-        psudeo_force += self.tb_controller.update(odom_stamp, target_v - self.speed)
+        #psudeo_force = target_v / self.TOP_SPEED
+        psudeo_force = self.tb_controller.update(odom_stamp, target_v - self.speed)
 
         if psudeo_force > 0:
-            return (min(1, psudeo_force * self.KP_THROTTLE), 0) 
+            return (min(1.0, psudeo_force * self.KP_THROTTLE), 0.0) 
         if psudeo_force <= 0:
-            return (0, min(1, -psudeo_force * self.KP_BRAKE))
+            return (0.0, min(1.0, -psudeo_force * self.KP_BRAKE))
 
 
     def pure_pursuit(self, heading_angle, offset_vector):
