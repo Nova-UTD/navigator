@@ -61,15 +61,15 @@ void CurbLocalizerNode::publish_odom() {
     // find right curb centerline (left later)
 
     // curb detector looks ahead about 20m
-    odr::Lane lane;
+    navigator::opendrive::LanePtr lane;
     if (current_orientation == 1) { //placeholder
-        lane = navigator::opendrive::get_lane_from_xy(current_position_x + 20, current_position_y); 
+        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x + 20, current_position_y); 
     } else if (current_orientation == 2) {
-        lane = navigator::opendrive::get_lane_from_xy(current_position_x - 20, current_position_y);
+        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x - 20, current_position_y);
     } else if (current_orientation == 3) {
-        lane = navigator::opendrive::get_lane_from_xy(current_position_x, current_position_y + 20);
+        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x, current_position_y + 20);
     } else if (current_orientation == 4) {
-        lane = navigator::opendrive::get_lane_from_xy(current_position_x, current_position_y - 20);
+        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x, current_position_y - 20);
     }
 
 
