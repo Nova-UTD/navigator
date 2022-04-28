@@ -9,8 +9,13 @@
 
 # pragma once
 
-# include <rclcpp/rclcpp.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <opendrive_utils/OpenDriveUtils.hpp>
 
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 
 namespace navigator
 {
@@ -23,6 +28,22 @@ class CurbLocalizerNode : public rclcpp::Node
         CurbLocalizerNode();
 
     private:
+        rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr left_curb_points_sub;
+        void left_curb_points_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+        rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr right_curb_points_sub;
+        void right_curb_points_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+        rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_in_sub;
+        void odom_in_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
+
+        rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_out;
+
+        std::string map_file_path;
+        opendrive::OpenDriveMapPtr map;
+
+        pcl::PointCloud<pcl::PointXYZ> left_curb_points;
+        pcl::PointCloud<pcl::PointXYZ> right_curb_points;
+
+        std::shared_ptr<nav_msgs::msg::Odometry> odom_in;
 
 };
 }
