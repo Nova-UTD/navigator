@@ -194,6 +194,8 @@ class UnifiedController(Node):
         t = t[0] + t[1]/1e9
         self.time_between_updates = t - self.current_time
         self.current_time = t
+        if(self.time_between_updates > 1):
+            self.time_between_updates = 0
 
         self.velocity = odo.twist.twist.linear
         self.speed = (self.velocity.x**2 + self.velocity.y**2)**0.5
