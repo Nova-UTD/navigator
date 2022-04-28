@@ -16,13 +16,13 @@ scan_matcher:
     map_publish_period: 100.0
     num_targeted_cloud: 30
     set_initial_pose: true
-    initial_pose_x: -183.26844921679617
-    initial_pose_y: -395.9719077918244
-    initial_pose_z: -0.014967452019931216
+    initial_pose_x: -173.19412151241747
+    initial_pose_y: 30.456777493247237
+    initial_pose_z: -0.002422069227261403
     initial_pose_qx: 0.0
     initial_pose_qy: 0.0
-    initial_pose_qz: 0.7042216922691785
-    initial_pose_qw: 0.7099801462981443
+    initial_pose_qz: 0.7238698054713825
+    initial_pose_qw: -0.6899365947149223
     use_imu: false
     use_odom: false
     debug_flag: false

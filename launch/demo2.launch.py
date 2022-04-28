@@ -254,7 +254,25 @@ def generate_launch_description():
         parameters=[(path.join(param_dir, "atlas", "map_odom.param.yaml"))],
     )
 
-    scan_matcher = Node(
+    # scanmatcher_param = LaunchConfiguration(
+    #     'main_param_dir',
+    #     default=path.join(
+    #         get_package_share_directory('lidarslam'),
+    #         'param',
+    #         'lidarslam.yaml'))
+
+    scanmatcher = Node(
+        package='scanmatcher',
+        executable='scanmatcher_node',
+        parameters=[path.join(
+            get_package_share_directory('lidarslam'),
+            'param',
+            'lidarslam.yaml')],
+        remappings=[('/input_cloud','/lidar_fused')],
+        output='screen'
+        )
+
+    pcd_map_publisher = Node(
         package='scan_matching',
         executable='scan_matching_node'
     )
@@ -302,8 +320,10 @@ def generate_launch_description():
         # behavior_planner,
 
         # STATE ESTIMATION
-        map_odom_ukf,
-        scan_matcher,
+        # map_odom_ukf,
+        # scanmatcher_param,
+        scanmatcher,
+        pcd_map_publisher,
         # gnss_log_publisher,
 
 
