@@ -142,9 +142,9 @@ class UnifiedController(Node):
     last_throttle_position : float = 0.0
     last_brake_position : float = 1.0
 
-    STEERING_LAST_WEIGHT = 0.25 # weight of the last steering position in the moving average. i.e for 0.25
+    STEERING_LAST_WEIGHT = 0.0 # weight of the last steering position in the moving average. i.e for 0.25
     # the output is 0.25 * last_steering_position + 0.75 * current_steering_position 
-    THROTTLE_LAST_WEIGHT = 0.25
+    THROTTLE_LAST_WEIGHT = 0.0
 
     def paths_cb(self, msg: Trajectory):
         
