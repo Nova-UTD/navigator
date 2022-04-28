@@ -34,6 +34,10 @@ CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
         look_distance = 20.0;
     }
 
+    // Initialize the point clouds
+    this->left_curb_points = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    this->right_curb_points = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>); 
+
     // curb detector class also outputs all candidate pts if necessary
 
     this->left_curb_points_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("curb_points/left",
@@ -76,6 +80,9 @@ void CurbLocalizerNode::publish_odom() {
         {"81", "1"},
 		{"953", "1"}
     };
+    
+    double current_position_x = this->odom_in->pose.pose.position.x;
+    double current_position_y = this->odom_in->pose.pose.position.y;
 
     // get lane from current position
     std::shared_ptr<odr::Lane> current_lane = navigator::opendrive::get_lane_from_xy(map, current_position_x, current_position_y);
@@ -130,6 +137,12 @@ void CurbLocalizerNode::publish_odom() {
     odr::Line3D right_curb_line = navigator::opendrive::get_centerline_as_xy(*right_curb, target_lanesection->s0, target_lanesection->get_end(), 0.25, false);
     odr::Line3D left_curb_line = navigator::opendrive::get_centerline_as_xy(*left_curb, target_lanesection->s0, target_lanesection->get_end(), 0.25, true);
 
+    pcl::PointCloud<pcl::PointXYZ>::Ptr right_curb_points_map
+        = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // TODO: curb point cloud in map frame from curb centerline
+
+    Eigen::Vector3d displacement_right = find_translation(right_curb_points_map, right_curb_points);
 
     odom_out_pub->publish(*odom_out);
 }
@@ -177,6 +190,6 @@ Eigen::Vector3d CurbLocalizerNode::find_translation(const pcl::PointCloud<pcl::P
     icp.setInputTarget(truth);
     icp.align(*estimate);
 
-    Eigen::Vector3d translation = (icp.getFinalTransformation() * Eigen::Vector4d(0, 0, 0, 1)).block<3, 1>(0, 0);
+    Eigen::Vector3d translation = Eigen::Affine3d(icp.getFinalTransformation().cast<double>()).translation();
     return translation;
 }
