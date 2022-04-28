@@ -114,7 +114,7 @@ class UnifiedController(Node):
     # Pid constants
     KP_TB = 1.0
     KI_TB = 0.0
-    KD_TB = 0.3
+    KD_TB = 0.0 # 0.3
     MAX_WINDUP_TB = 5
 
     KP_THROTTLE = 0.25
@@ -142,9 +142,9 @@ class UnifiedController(Node):
     last_throttle_position : float = 0.0
     last_brake_position : float = 1.0
 
-    STEERING_LAST_WEIGHT = 0.25 # weight of the last steering position in the moving average. i.e for 0.25
+    STEERING_LAST_WEIGHT = 0.0 # weight of the last steering position in the moving average. i.e for 0.25
     # the output is 0.25 * last_steering_position + 0.75 * current_steering_position 
-    THROTTLE_LAST_WEIGHT = 0.25
+    THROTTLE_LAST_WEIGHT = 0.0
 
     def paths_cb(self, msg: Trajectory):
         
@@ -216,7 +216,7 @@ class UnifiedController(Node):
     def generate_commands(self):
 
         if (self.cached_odometry is None) or (self.cached_path is None) or (len(self.cached_path.points) == 0):
-            self.publish_commands(0, 0, 1)
+            self.publish_commands(0, 1, 0)
             return
 
         self.update_state()
@@ -255,6 +255,8 @@ class UnifiedController(Node):
         throttle = self.last_throttle_position * self.THROTTLE_LAST_WEIGHT + throttle * (1 - self.THROTTLE_LAST_WEIGHT)
         brake = self.last_brake_position * self.THROTTLE_LAST_WEIGHT + brake * (1 - self.THROTTLE_LAST_WEIGHT)
         
+        # this.get_logger().info()
+
         self.last_throttle_position = throttle
         self.last_brake_position = brake
         if(self.last_brake_position < 0.05):
