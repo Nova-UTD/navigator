@@ -15,7 +15,7 @@
   <depend>nav_msgs</depend>
   <depend>opendrive_utils</depend>
   <depend>PCL</depend>
-
+  <depend>lz4</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

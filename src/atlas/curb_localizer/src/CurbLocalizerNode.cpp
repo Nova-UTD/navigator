@@ -12,6 +12,11 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/conversions.h>
 #include <pcl/common/transforms.h>
+#include <pcl/registration/icp.h>
+
+// weird build stuff
+#include <pcl/search/impl/kdtree.hpp>
+#include <pcl/kdtree/impl/kdtree_flann.hpp>
 
 using namespace navigator::curb_localizer;
 
@@ -35,18 +40,20 @@ CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
         rclcpp::QoS(rclcpp::KeepLast(1)));
 }
 
-void convert_to_pcl(const sensor_msgs::msg::PointCloud2::SharedPtr msg, pcl::PointCloud<pcl::PointXYZ> &out_cloud) {
+void convert_to_pcl(const sensor_msgs::msg::PointCloud2::SharedPtr msg, pcl::PointCloud<pcl::PointXYZ>::Ptr out_cloud) {
     pcl::PCLPointCloud2 pcl_cloud;
     pcl_conversions::toPCL(*msg, pcl_cloud);
-    pcl::fromPCLPointCloud2(pcl_cloud, out_cloud);
+    pcl::fromPCLPointCloud2(pcl_cloud, *out_cloud);
 }
 
 void CurbLocalizerNode::left_curb_points_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg){
     convert_to_pcl(msg, this->left_curb_points);
+    flatten_cloud(this->left_curb_points, this->left_curb_points);
 }
 
 void CurbLocalizerNode::right_curb_points_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg){
     convert_to_pcl(msg, this->right_curb_points);
+    flatten_cloud(this->right_curb_points, this->right_curb_points);
 }
 
 void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPtr msg){
@@ -90,9 +97,9 @@ void CurbLocalizerNode::publish_odom() {
  * @param odom 
  * @param out_cloud 
  */
-void CurbLocalizerNode::transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
+void CurbLocalizerNode::transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
     const nav_msgs::msg::Odometry &odom,
-    pcl::PointCloud<pcl::PointXYZ> &out_cloud) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr out_cloud) {
 
     Eigen::Affine3d odom_pose;
     odom_pose.rotate(Eigen::Quaterniond(odom.pose.pose.orientation.w,
@@ -104,16 +111,28 @@ void CurbLocalizerNode::transform_points_to_odom(const pcl::PointCloud<pcl::Poin
         odom.pose.pose.position.y,
         odom.pose.pose.position.z));
 
-    pcl::transformPointCloud(in_cloud, out_cloud, odom_pose);
+    pcl::transformPointCloud(*in_cloud, *out_cloud, odom_pose);
 }
 
-void CurbLocalizerNode::flatten_cloud(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
-    pcl::PointCloud<pcl::PointXYZ> &out_cloud) {
+void CurbLocalizerNode::flatten_cloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr out_cloud) {
     // [ 1 0 0 ]   [ x ]   [ x ]
     // [ 0 1 0 ] * [ y ] = [ y ]
     // [ 0 0 0 ]   [ z ]   [ 0 ]
     Eigen::Affine3d projection_matrix = Eigen::Affine3d::Identity();
-    projection_matrix(3, 3) = 0;
+    projection_matrix(2, 2) = 0; // zero-indexed
 
-    pcl::transformPointCloud(in_cloud, out_cloud, projection_matrix);
+    pcl::transformPointCloud(*in_cloud, *out_cloud, projection_matrix);
+}
+
+Eigen::Vector3d CurbLocalizerNode::find_translation(const pcl::PointCloud<pcl::PointXYZ>::Ptr truth,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr estimate) {
+    
+    pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+    icp.setInputSource(estimate);
+    icp.setInputTarget(truth);
+    icp.align(*estimate);
+
+    Eigen::Vector3d translation = (icp.getFinalTransformation() * Eigen::Vector4d(0, 0, 0, 1)).block<3, 1>(0, 0);
+    return translation;
 }
