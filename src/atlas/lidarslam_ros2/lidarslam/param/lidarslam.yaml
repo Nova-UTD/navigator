@@ -28,13 +28,13 @@ scan_matcher:
     debug_flag: false
 
 graph_based_slam:
-    ros__parameters:
-      ndt_resolution: 5.0
-      ndt_num_threads: 1
-      voxel_leaf_size: 0.2
-      loop_detection_period: 500000
-      threshold_loop_closure_score: 2.5
-      distance_loop_closure: 100.0
-      range_of_searching_loop_closure: 20.0
-      search_submap_num: 4
-      use_save_map_in_loop: true
+  ros__parameters:
+    ndt_resolution: 5.0
+    ndt_num_threads: 1
+    voxel_leaf_size: 0.2
+    loop_detection_period: 500000
+    threshold_loop_closure_score: 2.5
+    distance_loop_closure: 100.0
+    range_of_searching_loop_closure: 20.0
+    search_submap_num: 4
+    use_save_map_in_loop: true

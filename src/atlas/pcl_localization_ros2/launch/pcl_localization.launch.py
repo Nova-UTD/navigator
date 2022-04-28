@@ -46,7 +46,7 @@ def generate_launch_description():
         node_name='pcl_localization',
         package='pcl_localization_ros2',
         node_executable='pcl_localization_node',
-        remappings=[('/cloud', '/lidar_fused_downsampled'), ('/map', '/map/pcd'),
+        remappings=[('/cloud', '/lidar_fused'), ('/map', '/map/pcd'),
                     ('/odom', '/odometry/filtered')],
         parameters=[
             "/home/main/navigator-2/src/atlas/pcl_localization_ros2/param/localization.yaml"],
