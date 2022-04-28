@@ -271,6 +271,42 @@ def generate_launch_description():
         package = 'landmark_localizer',
         executable = 'landmark_localizer_node'
     )
+
+    obstacle_detector_2d = Node(
+        package='darknet_inference',
+        executable='darknet_inference_node',
+        name='object_detector_2d_node',
+        parameters=[(path.join(param_dir, "perception",
+                               "darknet_inference.param.yaml"))],
+        remappings=[
+            ('/color_image', '/sensors/zed/left_rgb'),
+            ('/obstacle_array_2d', '/obstacle_array_2d'),
+        ]
+    )
+
+    obstacle_detector_3d = Node(
+        package='obstacle_detection_3d',
+        executable='obstacle_detection_3d_node',
+        name='obstacle_detection_3d_node',
+        parameters=[(path.join(param_dir, "perception", "front_camera.param.yaml"))],
+        remappings=[
+            ('/depth_image', '/sensors/zed/depth_img'),
+            ('/obstacle_array_2d', '/obstacle_array_2d'),
+            ('/lidar_fused', '/lidar_fused'),
+            ('/obstacle_array_3d', '/obstacle_array_3d'),
+            ('/landmarks', '/landmarks')
+        ]
+    )
+
+    obstacle_drawer = Node(
+        package='obstacle_drawer',
+        name='obstacle_drawer_node',
+        executable='obstacle_drawer_exe',
+        remappings=[
+            ('/visualizations', '/detections/visualizations'),
+            ('/obstacle_array_3d', '/obstacle_array_3d'),
+        ]
+    )
     # MISSING PIECES:
     # obstacle detection
     # base link transform?
@@ -278,7 +314,10 @@ def generate_launch_description():
     
     return LaunchDescription([
         # PERCEPTION
-        ##lidar_fusion,
+        lidar_fusion,
+        obstacle_detector_2d,
+        obstacle_detector_3d,
+        obstacle_drawer,
 
         # HARDWARE
         # # Steering
@@ -306,15 +345,15 @@ def generate_launch_description():
         ##behavior_planner,
 
         # STATE ESTIMATION
-        ##map_odom_ukf,
+        map_odom_ukf,
         #pcl_localization,
 
         # CONTROL
         ##unified_controller,
 
         # MISC
-        ##odr_viz,
-        ##odom_bl_link,
-        ##urdf_publisher,
+        odr_viz,
+        odom_bl_link,
+        urdf_publisher,
         landmark_localizer
     ])

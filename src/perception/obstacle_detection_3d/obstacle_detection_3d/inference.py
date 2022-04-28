@@ -82,7 +82,7 @@ class ObstacleDetection3DNode(Node):
         ])
 
         # matrix to transform to base link
-        rotation_matrix = R.from_euler('xyz', [rot_x, rot_y, rot_z], degrees=True).as_matrix()
+        rotation_matrix = R.from_euler('xyz', [rot_x, rot_y, rot_z], degrees=True).as_dcm()
         translation_vector = np.array([[trans_x], [trans_y], [trans_z]])
         bl_transform_matrix = np.concatenate([rotation_matrix, translation_vector], axis=1)
         bl_transform_matrix = np.concatenate((bl_transform_matrix,[[0,0,0,1]]), axis=0)
