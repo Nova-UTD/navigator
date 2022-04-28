@@ -7,6 +7,7 @@
 
 from typing import List
 from voltron_msgs.msg import Trajectory, TrajectoryPoint, PeddlePosition, SteeringPosition
+from std_msgs.msg import Float32
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
@@ -198,15 +199,15 @@ class UnifiedController(Node):
 
     def publish_commands(self, throttle, brake, steering):
           # publish commands
-        self.throttle_pub.publish(PeddlePosition(
+        self.throttle_pub.publish(Float32(
             data= float(throttle)
         ))
 
-        self.brake_pub.publish(PeddlePosition(
+        self.brake_pub.publish(Float32(
             data= float(brake)
         ))
 
-        self.steering_pub.publish(SteeringPosition(
+        self.steering_pub.publish(Float32(
             # Coordinate system is flipped from what I was doing math with
             data= -float(steering)
         ))
@@ -443,17 +444,17 @@ class UnifiedController(Node):
         )
         # Publishers for throttle, brake, and steering
         self.throttle_pub = self.create_publisher(
-            PeddlePosition,
+            Float32,
             '/command/throttle_position',
             10
         )
         self.brake_pub = self.create_publisher(
-            PeddlePosition,
+            Float32,
             '/command/brake_position',
             10
         )
         self.steering_pub = self.create_publisher(
-            SteeringPosition,
+            Float32,
             '/command/steering_position',
             10
         )
