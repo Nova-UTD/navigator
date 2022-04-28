@@ -2,39 +2,22 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, PointCloud2
 from voltron_msgs.msg import Obstacle2DArray, Obstacle3D, Obstacle3DArray
+from voltron_msgs.msg import Landmark, LandmarkArray
 from geometry_msgs.msg import Point
 import ros2_numpy as rnp
 
 import numpy as np
 from scipy.spatial import cKDTree
+from scipy.spatial.transform import Rotation as R
 
-IMAGE_SIZE_X = 1280
-IMAGE_SIZE_Y = 720
-FOCAL_X = 531.5750
-FOCAL_Y = 531.3700
-CENTER_X = 643.3700
-CENTER_Y = 356.9830
-
-DEPTH_MAX = 20.0
+DEPTH_MAX = 40.0
 RANGE_MAX = 60.0
-SEARCH_RADIUS = 1.5
+SEARCH_RADIUS = 1.0
 
-INTRINSIC_MATRIX = np.array([
-    [FOCAL_X, 0, CENTER_X, 0],
-    [0, FOCAL_Y, CENTER_Y, 0],
-    [0, 0, 1, 0],
-    [0, 0, 0, 1]
-])
-
-EXTRINSIC_MATRIX = np.array([
-    [0, -1, 0, 0],
-    [0, 0, -1, 1.5],
-    [1, 0, 0, 0.5],
-    [0, 0, 0, 1]
-])
-
-PROJECTION_MATRIX = np.matmul(INTRINSIC_MATRIX, EXTRINSIC_MATRIX)
-INV_PROJ = np.linalg.inv(PROJECTION_MATRIX)
+LANDMARKS = {
+    6:  'FIRE_HYDRANT',
+    7:  'STOP_SIGN'
+}
 
 CLASS_X = {
     0:  0.50,   # person
@@ -46,15 +29,74 @@ CLASS_X = {
 }
 
 
-class BBoxGeneratorNode(Node):
+class ObstacleDetection3DNode(Node):
 
     def __init__(self):
-        super().__init__('bbox_gen_node')
+        super().__init__('obstacle_detector_3d_node')
+
+        # parameter declarations
+        self.declare_parameter('image_size_x', 1280)
+        self.declare_parameter('image_size_y', 720)
+        self.declare_parameter('focal_x', 1280/2)
+        self.declare_parameter('focal_y', 720/2)
+        self.declare_parameter('center_x', 1280/2)
+        self.declare_parameter('center_y', 720/2)
+        self.declare_parameter('rotation_x', 0.0)
+        self.declare_parameter('rotation_y', 0.0)
+        self.declare_parameter('rotation_z', 0.0)
+        self.declare_parameter('translation_x', 0.0)
+        self.declare_parameter('translation_y', 0.0)
+        self.declare_parameter('translation_z', 0.0)
+
+        # get image resolution
+        self.image_size_x = self.get_parameter('image_size_x').get_parameter_value().integer_value
+        self.image_size_y = self.get_parameter('image_size_y').get_parameter_value().integer_value
+
+        # get intrinsics
+        focal_x = self.get_parameter('focal_x').get_parameter_value().double_value
+        focal_y = self.get_parameter('focal_y').get_parameter_value().double_value
+        center_x = self.get_parameter('center_x').get_parameter_value().double_value
+        center_y = self.get_parameter('center_y').get_parameter_value().double_value
+
+        intrinsic_matrix = np.array([
+            [focal_x, 0, center_x, 0],
+            [0, focal_y, center_y, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ])
+
+        # get extrinsics
+        rot_x = self.get_parameter('rotation_x').get_parameter_value().double_value
+        rot_y = self.get_parameter('rotation_y').get_parameter_value().double_value
+        rot_z = self.get_parameter('rotation_z').get_parameter_value().double_value
+        trans_x = self.get_parameter('translation_x').get_parameter_value().double_value
+        trans_y = self.get_parameter('translation_y').get_parameter_value().double_value
+        trans_z = self.get_parameter('translation_z').get_parameter_value().double_value
+
+        # matrix to convert to ros coordinate frame convention
+        camera_to_world_matrix = np.array([
+            [0, -1, 0, 0],
+            [0, 0, -1, 0],
+            [1, 0, 0, 0],
+            [0, 0, 0, 1]
+        ])
+
+        # matrix to transform to base link
+        rotation_matrix = R.from_euler('xyz', [rot_x, rot_y, rot_z], degrees=True).as_matrix()
+        translation_vector = np.array([[trans_x], [trans_y], [trans_z]])
+        bl_transform_matrix = np.concatenate([rotation_matrix, translation_vector], axis=1)
+        bl_transform_matrix = np.concatenate((bl_transform_matrix,[[0,0,0,1]]), axis=0)
+
+        extrinsic_matrix = np.matmul(camera_to_world_matrix, bl_transform_matrix)
+
+        # calculate projection matrix and its inverse
+        projection_matrix = np.matmul(intrinsic_matrix, extrinsic_matrix)
+        self.inv_proj_matrix = np.linalg.inv(projection_matrix)
 
         self.obstacle_array_2d_cb = self.create_subscription(
             Obstacle2DArray,
             '/obstacle_array_2d',
-            self.bbox_gen_cb,
+            self.inference_3d,
             10
         )
 
@@ -80,21 +122,28 @@ class BBoxGeneratorNode(Node):
             10
         )
 
+        self.landmark_pub = self.create_publisher(
+            LandmarkArray,
+            '/landmarks',
+            10
+        )
+
     # generate 3-d bounding box from 2-d bounding boxes
-    def bbox_gen_cb(self, obstacles_2d: Obstacle2DArray):
-        self.get_logger().info('got bbox_gen_cb')
+    # or generate 3-d landmark positions
+    def inference_3d(self, obstacles_2d: Obstacle2DArray):
         if type(self.depth_image) != np.ndarray:
             return
         else:
             depth_image = self.depth_image
 
         obstacles_3d_array = Obstacle3DArray()
+        landmark_array = LandmarkArray()
         for index, obstacle in enumerate(obstacles_2d.obstacles):
             # get the bounding box in pixels
-            x1 = int(obstacle.bounding_box.x1 * IMAGE_SIZE_X)
-            y1 = int(obstacle.bounding_box.y1 * IMAGE_SIZE_Y)
-            x2 = int(obstacle.bounding_box.x2 * IMAGE_SIZE_X)
-            y2 = int(obstacle.bounding_box.y2 * IMAGE_SIZE_Y)
+            x1 = int(obstacle.bounding_box.x1 * self.image_size_x)
+            y1 = int(obstacle.bounding_box.y1 * self.image_size_y)
+            x2 = int(obstacle.bounding_box.x2 * self.image_size_x)
+            y2 = int(obstacle.bounding_box.y2 * self.image_size_y)
 
             # get the approx min depth of bounding box
             bbox_depth = depth_image[y1:y2, x1:x2]
@@ -103,6 +152,23 @@ class BBoxGeneratorNode(Node):
                 continue
             min_depth = np.percentile(bbox_depth, 5)
             bbox_3d = np.zeros((8, 3))
+
+            # publish landmarks by themselves
+            if obstacle.label in LANDMARKS:
+                if (min_depth <= DEPTH_MAX):    # if within range of depth camera
+                    center_pixel_x = (x2+x1) // 2
+                    center_pixel_y = (y2+y1) // 2
+                    center_pixel = np.array(
+                            [center_pixel_x, center_pixel_y, 1, 1/min_depth]).reshape(4, -1)
+                    center_point = np.matmul(self.inv_proj_matrix, center_pixel) * min_depth
+                    landmark = Landmark()
+                    landmark.center_point.x = center_point[0].item()
+                    landmark.center_point.y = center_point[1].item()
+                    landmark.center_point.z = center_point[2].item()
+                    landmark.label = obstacle.label
+                    landmark.confidence = obstacle.confidence
+                    landmark_array.landmarks.append(landmark)
+                continue
 
             # if the obstacle is further than max depth of camera
             if (min_depth > DEPTH_MAX):
@@ -116,7 +182,7 @@ class BBoxGeneratorNode(Node):
                         # project the center pixel of 2D bbox for different depth values
                         center_pixel = np.array(
                             [center_pixel_x, center_pixel_y, 1, 1/z]).reshape(4, -1)
-                        proj_point = np.matmul(INV_PROJ, center_pixel) * z
+                        proj_point = np.matmul(self.inv_proj_matrix, center_pixel) * z
                         proj_point = np.transpose(proj_point[:-1, :], (1, 0))
 
                         # get the nearest neighbor points to the projected center pixel within a radius
@@ -133,7 +199,6 @@ class BBoxGeneratorNode(Node):
                         continue
                     #min_depth = np.percentile(largest_cluster[:, 0], 10)
                     min_depth = largest_cluster[:, 0].min()
-                    print(proj_point, largest_cluster)
 
                 else:   # lidar data doesn't exist
                     continue
@@ -144,7 +209,7 @@ class BBoxGeneratorNode(Node):
             pixel_array = np.stack([xx, yy, np.ones_like(
                 xx), 1/(depth_array+1e-3)]).reshape(4, -1)
             bbox_3d_front = np.matmul(
-                INV_PROJ, pixel_array) * depth_array.flatten()
+                self.inv_proj_matrix, pixel_array) * depth_array.flatten()
             bbox_3d_front = np.transpose(
                 bbox_3d_front[:-1, :], (1, 0)).astype(np.float32)
 
@@ -174,9 +239,15 @@ class BBoxGeneratorNode(Node):
 
             obstacles_3d_array.obstacles.append(obstacle_3d)
 
-        obstacles_3d_array.header.frame_id = 'base_link'
-        obstacles_3d_array.header.stamp = self.get_clock().now().to_msg()
-        self.obstacles_3d_pub.publish(obstacles_3d_array)
+        if len(obstacles_3d_array.obstacles) != 0:
+            obstacles_3d_array.header.frame_id = 'base_link'
+            obstacles_3d_array.header.stamp = self.get_clock().now().to_msg()
+            self.obstacles_3d_pub.publish(obstacles_3d_array)
+
+        if len(landmark_array.landmarks) != 0:
+            landmark_array.header.frame_id = 'base_link'
+            landmark_array.header.stamp = self.get_clock().now().to_msg()
+            self.landmark_pub.publish(landmark_array)
 
     # cache depth image
     def depth_image_cb(self, depth_msg: Image):
@@ -207,11 +278,11 @@ class BBoxGeneratorNode(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    bbox_gen_node = BBoxGeneratorNode()
+    obstacle_detection_3d_node = ObstacleDetection3DNode()
 
-    rclpy.spin(bbox_gen_node)
+    rclpy.spin(obstacle_detection_3d_node)
 
-    bbox_gen_node.destroy_node()
+    obstacle_detection_3d_node.destroy_node()
     rclpy.shutdown()
 
 

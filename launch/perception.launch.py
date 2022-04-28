@@ -7,8 +7,8 @@ from launch_ros.actions import Node
 def generate_launch_description():
 
     launch_path = path.realpath(__file__)
-    launch_dir = path.dirname(launch_path)
-    param_dir = path.join(launch_dir, "param")
+    launch_dir = path.join(path.dirname(launch_path), '..')
+    param_dir = path.join(launch_dir,"param")
 
     # BRIDGING
     carla_sim_bridge = Node(
@@ -47,15 +47,17 @@ def generate_launch_description():
         ]
     )
 
-    bbox_gen = Node(
-        package='bbox_generator',
-        executable='bbox_gen_node',
-        name='bbox_gen_node',
+    obstacle_detector_3d = Node(
+        package='obstacle_detection_3d',
+        executable='obstacle_detection_3d_node',
+        name='obstacle_detection_3d_node',
+        parameters=[(path.join(param_dir, "perception", "front_camera.param.yaml"))],
         remappings=[
             ('/depth_image', '/sensors/zed/depth_img'),
             ('/obstacle_array_2d', '/obstacle_array_2d'),
             ('/lidar_fused', '/lidar_fused'),
             ('/obstacle_array_3d', '/obstacle_array_3d'),
+            ('/landmarks', '/landmarks')
         ]
     )
 
@@ -83,8 +85,9 @@ def generate_launch_description():
     return LaunchDescription([
         urdf_publisher,
         obstacle_detector_2d,
+        obstacle_detector_3d,
         lidar_fusion,
         obstacle_drawer,
         #pcd_gen,
-        bbox_gen,
+
     ])
