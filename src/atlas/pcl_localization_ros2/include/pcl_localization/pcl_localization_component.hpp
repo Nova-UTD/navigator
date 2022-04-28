@@ -17,6 +17,7 @@
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "rclcpp_lifecycle/lifecycle_publisher.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -29,7 +30,7 @@ using namespace std::chrono_literals;
 class PCLLocalization : public rclcpp_lifecycle::LifecycleNode
 {
 public:
-  explicit PCLLocalization(const rclcpp::NodeOptions & options);
+  explicit PCLLocalization(const rclcpp::NodeOptions &options);
 
   using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
@@ -37,13 +38,13 @@ public:
   CallbackReturn on_activate(const rclcpp_lifecycle::State &);
   CallbackReturn on_deactivate(const rclcpp_lifecycle::State &);
   CallbackReturn on_cleanup(const rclcpp_lifecycle::State &);
-  CallbackReturn on_shutdown(const rclcpp_lifecycle::State & state);
-  CallbackReturn on_error(const rclcpp_lifecycle::State & state);
+  CallbackReturn on_shutdown(const rclcpp_lifecycle::State &state);
+  CallbackReturn on_error(const rclcpp_lifecycle::State &state);
 
   void initializeParameters();
   void initializePubSub();
   void initializeRegistration();
-  void initialPoseReceived(geometry_msgs::msg::PoseStamped::SharedPtr msg);
+  void initialPoseReceived(geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
   void mapReceived(sensor_msgs::msg::PointCloud2::SharedPtr msg);
   void odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg);
   void imuReceived(sensor_msgs::msg::Imu::ConstSharedPtr msg);
@@ -52,25 +53,25 @@ public:
 
   tf2_ros::TransformBroadcaster broadcaster_;
 
-  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::ConstSharedPtr
-    initial_pose_sub_;
-  rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseStamped>::SharedPtr
-    pose_pub_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::ConstSharedPtr
+      initial_pose_sub_;
+  rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
+      pose_pub_;
   rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>::SharedPtr
-    path_pub_;
+      path_pub_;
   rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-    initial_map_pub_;
+      initial_map_pub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::ConstSharedPtr
-    map_sub_;
+      map_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::ConstSharedPtr
-    odom_sub_;
+      odom_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::ConstSharedPtr
-    cloud_sub_;
+      cloud_sub_;
 
   pcl::Registration<pcl::PointXYZI, pcl::PointXYZI>::Ptr registration_;
   pcl::VoxelGrid<pcl::PointXYZI> voxel_grid_filter_;
-  geometry_msgs::msg::PoseStamped corrent_pose_stamped_;
-  nav_msgs::msg::Path path_;
+  geometry_msgs::msg::PoseWithCovarianceStamped current_pose_stamped_;
+  // nav_msgs::msg::Path path_;
 
   bool map_recieved_{false};
   bool initialpose_recieved_{false};
@@ -102,6 +103,10 @@ public:
   double last_odom_received_time_;
   bool use_imu_{false};
   bool enable_debug_{false};
+
+  double latest_fitness_score = 99.0;
+  double fitness_gnss_threshold;
+  double dist_gnss_threshold;
 
   // imu
   LidarUndistortion lidar_undistortion_;

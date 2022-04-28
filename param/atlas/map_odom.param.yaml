@@ -26,8 +26,8 @@
         false,
       ]
 
-    odom1: "/atlas/odom" # Angular vel, linear acc
-    odom1_config:
+    pose1: "/pcl_pose" # Angular vel, linear acc
+    pose1_config:
       [
         true,
         true,
@@ -38,13 +38,15 @@
         false,
         false,
         false,
-        true,
-        true,
-        true,
+        false,
+        false,
+        false,
         false,
         false,
         false,
       ]
+
+    imu0: "/sensors/zed/imu"
     imu0_config:
       [
         false,
@@ -64,9 +66,22 @@
         true,
       ]
 
-    imu0: "/sensors/zed/imu"
-
-    # twist0: "/twist0" # Only use x velocity (speedometer)
-    # twist0_config: [false, false, false, false, false, false,
-    #                true, false, false, true, true, false,
-    #                false, false, false]
+    # twist0: "/can/speedometer_twist" # Only use x velocity (speedometer)
+    # twist0_config:
+    #   [
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     true,
+    #     false,
+    #     false,
+    #     true,
+    #     true,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #   ]

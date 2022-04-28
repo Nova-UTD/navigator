@@ -245,48 +245,24 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=["/home/main/navigator-2/param/atlas/map_odom.param.yaml"],
+        parameters=[(path.join(param_dir, "atlas", "map_odom.param.yaml"))],
         remappings=[
             ("/odom0", "/gnss_odom"),
             ("/imu0", "/sensors/zed/imu")
         ]
     )
 
-    localization_param_dir = LaunchConfiguration(
-        'localization_param_dir',
-        default=path.join(
-            get_package_share_directory('pcl_localization_ros2'),
-            'param',
-            'localization.yaml')
-    )
-
-    pcl_localization = Node(
-        node_name='pcl_localization',
-        package='pcl_localization_ros2',
-        node_executable='pcl_localization_node',
-        remappings=[('/cloud','/lidar_fused')],
-        parameters=[localization_param_dir],
-        output='screen'
-    )
-
-    # pcl_localization = Node(
-    #     package='pcl_localization_ros2',
-    #     executable='pcl_localization_node',
-    #     remappings=[
-    #         ('/cloud', '/lidar_fused'),
-    #         ('/map','/map/pcd'),
-    #         ('/imu', '/sensors/zed/imu'),
-    #         # ('/initialpose', '/sensors/gnss/odom'),
-    #         ('/pcl_pose', '/pose/ndt2')
-    #     ],
-    #     parameters=[
-    #         '/home/wheitman/navigator/src/atlas/pcl_localization_ros2/param/localization.yaml']
-    # )
-
     scan_matcher = Node(
-        package = 'scan_matching',
-        executable = 'scan_matching_node'
+        package='scan_matching',
+        executable='scan_matching_node'
     )
+
+    # pcl_launch = IncludeLaunchDescription(
+    #     launch_description_source=PythonLaunchDescriptionSource([
+    #         get_package_share_directory('pcl_localization_ros2'),
+    #         '/launch/pcl_localization.launch.py'
+    #     ])
+    # )
 
     # MISSING PIECES:
     # obstacle detection
@@ -296,6 +272,7 @@ def generate_launch_description():
     return LaunchDescription([
         # PERCEPTION
         lidar_fusion,
+        # pcl_launch,
 
         # HARDWARE
         # # Steering
@@ -323,9 +300,9 @@ def generate_launch_description():
         # behavior_planner,
 
         # STATE ESTIMATION
-        # map_odom_ukf,
-        # pcl_localization,
+        map_odom_ukf,
         scan_matcher,
+
 
         # CONTROL
         # unified_controller,
