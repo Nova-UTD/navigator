@@ -1,4 +1,6 @@
 #include <pcl_localization/pcl_localization_component.hpp>
+#include <exception>
+
 PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
     : rclcpp_lifecycle::LifecycleNode("pcl_localization", options),
       broadcaster_(this)
@@ -199,6 +201,10 @@ void PCLLocalization::initializePubSub()
   cloud_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
       "cloud", rclcpp::SensorDataQoS(),
       std::bind(&PCLLocalization::cloudReceived, this, std::placeholders::_1));
+
+  // TF2
+  tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+  transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
 void PCLLocalization::initializeRegistration()
@@ -275,21 +281,6 @@ void PCLLocalization::odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg)
   auto gps_pos = msg->pose.pose.position;
   auto pcd_pos = current_pose_stamped_.pose.pose.position;
   bool fitnessOk = latest_fitness_score < fitness_gnss_threshold;
-  bool distOk = sqrt((pcd_pos.x - gps_pos.x) * (pcd_pos.x - gps_pos.x) + (pcd_pos.y - gps_pos.y) * (pcd_pos.y - gps_pos.y) + (pcd_pos.z - gps_pos.z) * (pcd_pos.z - gps_pos.z)) < dist_gnss_threshold;
-  if (fitnessOk && distOk)
-  {
-
-    RCLCPP_INFO(get_logger(), "Odom received, but fitness score is OK.");
-    return;
-  }
-  if (!fitnessOk)
-  {
-    RCLCPP_INFO(get_logger(), "Fitness score exceeded threshold. Corrected with GNSS pose");
-  }
-  if (!distOk)
-  {
-    RCLCPP_INFO(get_logger(), "Dist exceeded threshold. Corrected with GNSS pose");
-  }
 
   // double current_odom_received_time = msg->header.stamp.sec +
   //                                     msg->header.stamp.nanosec * 1e-9;
@@ -396,9 +387,23 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   pcl::PointCloud<pcl::PointXYZI>::Ptr tmp_ptr(new pcl::PointCloud<pcl::PointXYZI>(tmp));
   registration_->setInputSource(tmp_ptr);
 
-  Eigen::Affine3d affine;
-  tf2::fromMsg(current_pose_stamped_.pose.pose, affine);
-  Eigen::Matrix4f init_guess = affine.matrix().cast<float>();
+  // tf2::fromMsg(current_pose_stamped_.pose.pose, affine);
+  Eigen::Matrix4f init_guess;
+  try
+  {
+
+    auto tf = tf_buffer_->lookupTransform("map", "odom", this->get_clock()->now()).transform;
+    Eigen::Isometry3d iso = tf2::transformToEigen(tf);
+    init_guess = iso.matrix().cast<float>();
+    RCLCPP_WARN(get_logger(), "Use ukf");
+  }
+  catch (const std::exception &e)
+  {
+    Eigen::Affine3d affine;
+    tf2::fromMsg(current_pose_stamped_.pose.pose, affine);
+    init_guess = affine.matrix().cast<float>();
+    RCLCPP_WARN(get_logger(), "Use gnss");
+  }
 
   pcl::PointCloud<pcl::PointXYZI>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZI>);
   rclcpp::Clock system_clock;
