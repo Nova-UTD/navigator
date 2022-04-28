@@ -107,6 +107,8 @@ class UnifiedController(Node):
     MAX_COMFORTABLE_ACCELERATION = 1
     MAX_LATERAL_ACCELERATION = 1.0 # radial acceleration on turns
     TOP_SPEED = 9.0 # m/s
+    MAX_THROTTLE = 0.5
+    THROTTLE_RAMP = 0.3 # 1 / throttle_ramp = seconds to reach max throttle from 0
 
     VELOCITY_LOOKEAHED_DISTANCE = 4 + 3.4 # the car tracks velocity this far ahead of the origin of its coordinate 
     # system. I.e. if the origin is at the front of the car and lookeahead is 1 meter, the car will stop 1 meter
@@ -143,6 +145,10 @@ class UnifiedController(Node):
     last_steering_position : float = 0.0
     last_throttle_position : float = 0.0
     last_brake_position : float = 1.0
+    
+    current_time : float = 0.0
+    time_between_updates: float = 0.0
+    last_published_throttle : float = 0.0
 
     STEERING_LAST_WEIGHT = 0.0 # weight of the last steering position in the moving average. i.e for 0.25
     # the output is 0.25 * last_steering_position + 0.75 * current_steering_position 
@@ -183,6 +189,11 @@ class UnifiedController(Node):
         if(abs(new_stamp_time - self.stamp_time) > 1):
             self.tb_controller.reset(new_stamp_time)
         self.stamp_time = new_stamp_time
+        
+        t = self.get_clock().now().seconds_nanoseconds()
+        t = t[0] + t[1]/1e9
+        self.time_between_updates = t - self.current_time
+        self.current_time = t
 
         self.velocity = odo.twist.twist.linear
         self.speed = (self.velocity.x**2 + self.velocity.y**2)**0.5
@@ -201,9 +212,12 @@ class UnifiedController(Node):
 
     def publish_commands(self, throttle, brake, steering):
           # publish commands
+        thr = min((throttle, self.MAX_THROTTLE, self.last_published_throttle + self.THROTTLE_RAMP * self.time_between_updates))
+        thr = max((thr, 0.0))
         self.throttle_pub.publish(Float32(
-            data= float(throttle)
+            data= float(thr)
         ))
+        self.last_published_throttle = thr
 
         self.brake_pub.publish(Float32(
             data= float(brake)
@@ -223,9 +237,7 @@ class UnifiedController(Node):
 
         self.update_state()
 
-        current_time = self.get_clock().now().seconds_nanoseconds()
-        current_time = current_time[0] + current_time[1]/1e9
-        if abs(current_time - self.stamp_time) > self.MAX_ACCEPTABLE_MESSAGE_DELAY:
+        if abs(self.current_time - self.stamp_time) > self.MAX_ACCEPTABLE_MESSAGE_DELAY:
             # self.publish_commands(0, 0, 1)
             #self.get_logger().error("Time between messages exceeds acceptable limit: EMERGENCY STOP")
             # return
