@@ -16,20 +16,22 @@
 using namespace navigator::curb_localizer;
 
 CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
-    this->declare_parameter<std::string>("map_file_path", "SET_FILE_PATH.xodr");
+    this->declare_parameter<std::string>("map_file_path", "data/maps/grand_loop/grand_loop.xodr");
     this->map_file_path = this->get_parameter("map_file_path").as_string();
     this->map = opendrive::load_map(this->map_file_path)->map;
 
-    this->left_curb_points_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("left_curb_points",
+    // curb detector class also outputs all candidate pts if necessary
+
+    this->left_curb_points_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("curb_points/left",
         rclcpp::QoS(rclcpp::KeepLast(1)),
         std::bind(&CurbLocalizerNode::left_curb_points_callback, this, std::placeholders::_1));
-    this->right_curb_points_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("right_curb_points",
+    this->right_curb_points_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("curb_points/right",
         rclcpp::QoS(rclcpp::KeepLast(1)),
         std::bind(&CurbLocalizerNode::right_curb_points_callback, this, std::placeholders::_1));
-    this->odom_in_sub = this->create_subscription<nav_msgs::msg::Odometry>("odom_in",
+    this->odom_in_sub = this->create_subscription<nav_msgs::msg::Odometry>("/sensors/gnss/odom",
         rclcpp::QoS(rclcpp::KeepLast(1)),
         std::bind(&CurbLocalizerNode::odom_in_callback, this, std::placeholders::_1));
-    this->odom_out = this->create_publisher<nav_msgs::msg::Odometry>("odom_out",
+    this->odom_out_pub = this->create_publisher<nav_msgs::msg::Odometry>("odom_out",
         rclcpp::QoS(rclcpp::KeepLast(1)));
 }
 
@@ -49,6 +51,36 @@ void CurbLocalizerNode::right_curb_points_callback(const sensor_msgs::msg::Point
 
 void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPtr msg){
     this->odom_in = msg;
+    this->current_position_x = msg->pose.pose.position.x;
+    this->current_position_y = msg->pose.pose.position.y;
+    publish_odom();
+}
+
+void CurbLocalizerNode::publish_odom() {
+    
+    // find right curb centerline (left later)
+
+    // curb detector looks ahead about 20m
+    odr::Lane lane;
+    if (current_orientation == 1) { //placeholder
+        lane = navigator::opendrive::get_lane_from_xy(current_position_x + 20, current_position_y); 
+    } else if (current_orientation == 2) {
+        lane = navigator::opendrive::get_lane_from_xy(current_position_x - 20, current_position_y);
+    } else if (current_orientation == 3) {
+        lane = navigator::opendrive::get_lane_from_xy(current_position_x, current_position_y + 20);
+    } else if (current_orientation == 4) {
+        lane = navigator::opendrive::get_lane_from_xy(current_position_x, current_position_y - 20);
+    }
+
+
+
+
+
+
+
+
+
+    odom_out_pub->publish(*odom_out);
 }
 
 /**
@@ -93,7 +125,7 @@ void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
  *      vector that will move the point to the curb linestring
  *  4. The odometry translation is the average point translation
  *  5. The confidence of the translation is some measure of how
- *    consitent the translation vector is- vectors pointing in 
+ *    consistent the translation vector is- vectors pointing in 
  *      different directions are more likely to be wrong. 
  *      Try confidence 
  *          C = ||sum(displacement vectors)|| / sum(||displacement vectors||),

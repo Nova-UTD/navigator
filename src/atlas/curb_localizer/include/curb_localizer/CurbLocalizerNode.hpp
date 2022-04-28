@@ -17,6 +17,8 @@
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 
+#include "Lanes.h"
+
 namespace navigator
 {
 namespace curb_localizer
@@ -35,7 +37,7 @@ class CurbLocalizerNode : public rclcpp::Node
         rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_in_sub;
         void odom_in_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
 
-        rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_out;
+        rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_out_pub;
 
         std::string map_file_path;
         opendrive::OpenDriveMapPtr map;
@@ -44,6 +46,13 @@ class CurbLocalizerNode : public rclcpp::Node
         pcl::PointCloud<pcl::PointXYZ> right_curb_points;
 
         std::shared_ptr<nav_msgs::msg::Odometry> odom_in;
+        std::shared_ptr<nav_msgs::msg::Odometry> odom_out;
+        float current_position_x;
+        float current_position_y;
+        float current_orientation;
+
+
+        void publish_odom();
 
         void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
             const nav_msgs::msg::Odometry &odom,
