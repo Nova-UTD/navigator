@@ -49,3 +49,29 @@ void CurbLocalizerNode::right_curb_points_callback(const sensor_msgs::msg::Point
 void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPtr msg){
     this->odom_in = msg;
 }
+
+/**
+ * Algorithm:
+ *  1. Start with GPS estimate of current position 
+ *  2. Find left, right curb linestrings
+ *      a. Find current lane
+ *      b. Find current road
+ *      c. ????
+ *          i. Behavior near intersections/end of road warrents
+ *              a few extra ??
+ *      d. get descriptions of the curb
+ *      e. a lot of parsing?
+ *      f. linestring
+ *      (may be able to assume lane boundary is curb since we are
+ *      in the rightmost lane. Need ability to get next road for full curb)
+ *  3. For each point in the cloud, find the minumum translation
+ *      vector that will move the point to the curb linestring
+ *  4. The odometry translation is the average point translation
+ *  5. The confidence of the translation is some measure of how
+ *    consitent the translation vector is- vectors pointing in 
+ *      different directions are more likely to be wrong. 
+ *      Try confidence 
+ *          C = ||sum(displacement vectors)|| / sum(||displacement vectors||),
+ *      or maybe C^2
+ * 
+ */
