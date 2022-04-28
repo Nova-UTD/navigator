@@ -54,8 +54,9 @@ lon0 = -96.750437
 alt0 = 196.0
 skip_time = 14  # seconds
 
-gps_log_path = "/home/main/voltron/assets/bags/april16/putty20220416170158.log"
-# outfile = open("converted_gps.csv", 'w')
+# gps_log_path = "/home/main/voltron/assets/bags/april16/putty20220416170158.log"
+outfile = open("converted_gps.csv", 'w')
+outfile.write("x,y\n")
 
 
 class GnssLogPublisher(Node):
@@ -71,6 +72,9 @@ class GnssLogPublisher(Node):
         self.gnss_pub = self.create_publisher(
             Odometry, '/sensors/gnss/odom', 10)
 
+        self.gnss_sub = self.create_subscription(
+            Odometry, '/sensors/gnss/odom', self.gnss_cb, 10)
+
         self.initial_pose_pub = self.create_publisher(
             PoseStamped, '/initial_pose', 10)
 
@@ -82,75 +86,80 @@ class GnssLogPublisher(Node):
         self.tf_broadcaster = TransformBroadcaster(self)
         self.road_boundary = None
         self.gps_timer = self.create_timer(0.5, self.publish_next_gnss)
-        self.log_file = open(gps_log_path, 'r').readlines()
+        # self.log_file = open(gps_log_path, 'r').readlines()
         # outfile.write(f"x,y,z,u,v,speed,pos_acc,yaw_acc,speed_acc\n")
 
         self.idx = skip_time*2  # 2 hz
         self.latest_stamp = None
+
+    def gnss_cb(self, msg: Odometry):
+        self.get_logger().info("Received GNSS")
+        pos = msg.pose.pose.position
+        outfile.write(f"{pos.x},{pos.y}\n")
 
     def lidar_cb(self, msg: PointCloud2):
         # self.get_logger().info(f"{msg.header.stamp}")
         self.latest_stamp = msg.header.stamp
 
     def publish_next_gnss(self):
-        if self.idx == len(self.log_file):
-            self.idx = skip_time*2  # Loop infinitely
-        line = self.log_file[self.idx]
-        parts = line.split()
+        # if self.idx == len(self.log_file):
+        # self.idx = skip_time*2  # Loop infinitely
+        # line = self.log_file[self.idx]
+        # parts = line.split()
         # print(parts)
-        lat = int(parts[0])/1e7
-        lon = int(parts[1])/1e7
-        alt = alt0
+        # lat = int(parts[0])/1e7
+        # lon = int(parts[1])/1e7
+        # alt = alt0
 
-        x, y, z = pm.geodetic2enu(lat, lon, alt, lat0, lon0, alt0)
-        compass_yaw = float(parts[2])/1e5
-        yaw_deg = (compass_yaw-90)*-1
-        if yaw_deg < 0.0:
-            yaw_deg += 360.0
-        elif yaw_deg > 360.0:
-            yaw_deg -= 360.0
-        yaw = yaw_deg * math.pi/180.0
-        speed = float(parts[3])/1000
+        # x, y, z = pm.geodetic2enu(lat, lon, alt, lat0, lon0, alt0)
+        # compass_yaw = float(parts[2])/1e5
+        # yaw_deg = (compass_yaw-90)*-1
+        # if yaw_deg < 0.0:
+        #     yaw_deg += 360.0
+        # elif yaw_deg > 360.0:
+        #     yaw_deg -= 360.0
+        # yaw = yaw_deg * math.pi/180.0
+        # speed = float(parts[3])/1000
 
-        msg = Odometry()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = "map"
-        # Should this be base_link? Doesn't make a huge difference.
-        msg.child_frame_id = "odom"
-        msg.pose.pose.position.x = x
-        msg.pose.pose.position.y = y
-        msg.pose.pose.position.z = z
-        msg.pose.pose.orientation.w = math.cos(yaw/2)
-        msg.pose.pose.orientation.z = math.sin(yaw/2)
+        # msg = Odometry()
+        # msg.header.stamp = self.get_clock().now().to_msg()
+        # msg.header.frame_id = "map"
+        # # Should this be base_link? Doesn't make a huge difference.
+        # msg.child_frame_id = "odom"
+        # msg.pose.pose.position.x = x
+        # msg.pose.pose.position.y = y
+        # msg.pose.pose.position.z = z
+        # msg.pose.pose.orientation.w = math.cos(yaw/2)
+        # msg.pose.pose.orientation.z = math.sin(yaw/2)
 
-        msg.twist.twist.linear.x = speed*math.cos(yaw)
-        msg.twist.twist.linear.y = speed*math.sin(yaw)
+        # msg.twist.twist.linear.x = speed*math.cos(yaw)
+        # msg.twist.twist.linear.y = speed*math.sin(yaw)
 
-        pos_acc = float(parts[4])/1e7
-        yaw_acc = float(parts[5])/1e5
-        speed_acc = float(parts[6])/1e3  # TODO: verify these scales...
+        # pos_acc = float(parts[4])/1e7
+        # yaw_acc = float(parts[5])/1e5
+        # speed_acc = float(parts[6])/1e3  # TODO: verify these scales...
 
-        msg.pose.covariance = [pos_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
-                               0.0, pos_acc, 0.0, 0.0, 0.0, 0.0,
-                               0.0, 0.0, pos_acc, 0.0, 0.0, 0.0,
-                               0.0, 0.0, 0.0, yaw_acc, 0.0, 0.0,
-                               0.0, 0.0, 0.0, 0.0, yaw_acc, 0.0,
-                               0.0, 0.0, 0.0, 0.0, 0.0, yaw_acc]
+        # msg.pose.covariance = [pos_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
+        #                        0.0, pos_acc, 0.0, 0.0, 0.0, 0.0,
+        #                        0.0, 0.0, pos_acc, 0.0, 0.0, 0.0,
+        #                        0.0, 0.0, 0.0, yaw_acc, 0.0, 0.0,
+        #                        0.0, 0.0, 0.0, 0.0, yaw_acc, 0.0,
+        #                        0.0, 0.0, 0.0, 0.0, 0.0, yaw_acc]
 
-        msg.twist.covariance = [speed_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                0.0, speed_acc, 0.0, 0.0, 0.0, 0.0,
-                                0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        # msg.twist.covariance = [speed_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
+        #                         0.0, speed_acc, 0.0, 0.0, 0.0, 0.0,
+        #                         0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        #                         0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        #                         0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        #                         0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-        self.gnss_pub.publish(msg)
+        # self.gnss_pub.publish(msg)
 
-        ps = PoseStamped()
-        ps.header.stamp = self.latest_stamp
-        ps.header.frame_id = 'map'
-        ps.pose = msg.pose.pose
-        self.initial_pose_pub.publish(ps)
+        # ps = PoseStamped()
+        # ps.header.stamp = self.latest_stamp
+        # ps.header.frame_id = 'map'
+        # ps.pose = msg.pose.pose
+        # self.initial_pose_pub.publish(ps)
         # tf.transform.rotation = msg.pose.pose.orientation
         # tf.header.stamp = self.latest_stamp
         # tf.header.frame_id = 'odom'

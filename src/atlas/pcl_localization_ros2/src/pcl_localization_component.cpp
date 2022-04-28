@@ -389,21 +389,9 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
 
   // tf2::fromMsg(current_pose_stamped_.pose.pose, affine);
   Eigen::Matrix4f init_guess;
-  try
-  {
-
-    auto tf = tf_buffer_->lookupTransform("map", "odom", this->get_clock()->now()).transform;
-    Eigen::Isometry3d iso = tf2::transformToEigen(tf);
-    init_guess = iso.matrix().cast<float>();
-    RCLCPP_WARN(get_logger(), "Use ukf");
-  }
-  catch (const std::exception &e)
-  {
-    Eigen::Affine3d affine;
-    tf2::fromMsg(current_pose_stamped_.pose.pose, affine);
-    init_guess = affine.matrix().cast<float>();
-    RCLCPP_WARN(get_logger(), "Use gnss");
-  }
+  Eigen::Affine3d affine;
+  tf2::fromMsg(current_pose_stamped_.pose.pose, affine);
+  init_guess = affine.matrix().cast<float>();
 
   pcl::PointCloud<pcl::PointXYZI>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZI>);
   rclcpp::Clock system_clock;

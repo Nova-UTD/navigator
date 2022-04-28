@@ -93,6 +93,12 @@ def generate_launch_description():
             ("/sensors/gnss/odom", "/sensors/gnss/odom"),
             ("/serial/gnss", "serial_incoming_lines")])
 
+    gnss_log_publisher = Node(
+        package='bag_tools',
+        executable='gnss_log_publisher',
+        remappings=[
+            ("/sensors/gnss/odom", "/sensors/gnss/odom")])
+
     vehicle_can = Node(
         package='can_interface',
         executable='interface',
@@ -246,10 +252,6 @@ def generate_launch_description():
         executable='ukf_node',
         name='localization_map_odom',
         parameters=[(path.join(param_dir, "atlas", "map_odom.param.yaml"))],
-        remappings=[
-            ("/odom0", "/gnss_odom"),
-            ("/imu0", "/sensors/zed/imu")
-        ]
     )
 
     scan_matcher = Node(
@@ -287,7 +289,7 @@ def generate_launch_description():
 
         # # Camera
         # zed_interface,
-        # gnss_parser,
+        gnss_parser,
         # vehicle_can,
         # speedometer_reporter,
         # speedometer_translator,
@@ -302,6 +304,7 @@ def generate_launch_description():
         # STATE ESTIMATION
         map_odom_ukf,
         scan_matcher,
+        # gnss_log_publisher,
 
 
         # CONTROL

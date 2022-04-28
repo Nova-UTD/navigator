@@ -10,7 +10,7 @@ pcl_localization:
     scan_period: 0.1
     use_pcd_map: false
     map_path: "/home/main/navigator-2/data/maps/grand_loop/grand_loop.pcd"
-    set_initial_pose: true
+    set_initial_pose: false
     initial_pose_x: -167.2391822215378
     initial_pose_y: 95.10477333449926
     initial_pose_z: -0.0029020091934057746
@@ -19,7 +19,7 @@ pcl_localization:
     initial_pose_qz: 0.6853907477913105
     initial_pose_qw: 0.7281754753093983
     use_odom: true
-    use_imu: true
-    enable_debug: false
+    use_imu: false
+    enable_debug: true
     fitness_gnss_threshold: 55.0
     dist_gnss_threshold: 5.0
