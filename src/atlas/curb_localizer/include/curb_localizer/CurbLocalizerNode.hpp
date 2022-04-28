@@ -54,10 +54,12 @@ class CurbLocalizerNode : public rclcpp::Node
 
         void publish_odom();
 
-        void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
+        static void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
             const nav_msgs::msg::Odometry &odom,
             pcl::PointCloud<pcl::PointXYZ> &out_cloud);
-
+        // Projects the cloud onto the XY plane.
+        static void flatten_cloud(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
+            pcl::PointCloud<pcl::PointXYZ> &out_cloud);
 
 };
 }

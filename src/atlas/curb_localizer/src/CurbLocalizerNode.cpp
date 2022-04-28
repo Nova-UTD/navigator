@@ -90,7 +90,7 @@ void CurbLocalizerNode::publish_odom() {
  * @param odom 
  * @param out_cloud 
  */
-void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
+void CurbLocalizerNode::transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
     const nav_msgs::msg::Odometry &odom,
     pcl::PointCloud<pcl::PointXYZ> &out_cloud) {
 
@@ -107,29 +107,13 @@ void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
     pcl::transformPointCloud(in_cloud, out_cloud, odom_pose);
 }
 
-/**
- * Algorithm:
- *  1. Start with GPS estimate of current position 
- *  2. Find left, right curb linestrings
- *      a. Find current lane
- *      b. Find current road
- *      c. ????
- *          i. Behavior near intersections/end of road warrents
- *              a few extra ??
- *      d. get descriptions of the curb
- *      e. a lot of parsing?
- *      f. linestring
- *      (may be able to assume lane boundary is curb since we are
- *      in the rightmost lane. Need ability to get next road for full curb)
- *  3. For each point in the cloud, find the minumum translation
- *      vector that will move the point to the curb linestring
- *  4. The odometry translation is the average point translation
- *  5. The confidence of the translation is some measure of how
- *    consistent the translation vector is- vectors pointing in 
- *      different directions are more likely to be wrong. 
- *      Try confidence 
- *          C = ||sum(displacement vectors)|| / sum(||displacement vectors||),
- *      or maybe ||sum_vec||^2 / sum(||displacement vectors||^2)
- * 
- * 
- */
+void CurbLocalizerNode::flatten_cloud(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
+    pcl::PointCloud<pcl::PointXYZ> &out_cloud) {
+    // [ 1 0 0 ]   [ x ]   [ x ]
+    // [ 0 1 0 ] * [ y ] = [ y ]
+    // [ 0 0 0 ]   [ z ]   [ 0 ]
+    Eigen::Affine3d projection_matrix = Eigen::Affine3d::Identity();
+    projection_matrix(3, 3) = 0;
+
+    pcl::transformPointCloud(in_cloud, out_cloud, projection_matrix);
+}
