@@ -68,7 +68,7 @@ void JoyControlNode::update(sensor_msgs::msg::Joy::SharedPtr state) {
   brake_message.data = this->brake_init && enable ?
     (raw_brake * -0.5) + 0.5 : 0.0;
   steering_message.data = enable ?
-    raw_steering * this->params.max_steering_angle : 0.0;
+    raw_steering * this->params.max_steering_angle * -1 : 0.0;
   
   this->throttle_publisher->publish(throttle_message);
   this->brake_publisher->publish(brake_message);
