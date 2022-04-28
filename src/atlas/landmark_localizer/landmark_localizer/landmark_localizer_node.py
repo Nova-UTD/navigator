@@ -16,7 +16,7 @@ from tf2_ros import TransformException, TransformStamped
 #msgs
 from nav_msgs.msg import Odometry  # For GPS
 from geometry_msgs.msg import Pose, Point, Quaternion, TransformStamped
-from voltron_msgs.msg import Obstacle3D
+from voltron_msgs.msg import Obstacle3D, Landmark
 
 import math
 import numpy as np
@@ -35,44 +35,27 @@ class LandmarkLocalizerNode(Node):
         self.max_landmark_difference = 5.0 #only correct if a known landmark is less than x meters from the observed
         self.corners_to_use = [0,4] #we need to find two corners that correspond between the boxes. they should be distinct in the x/y plane
         #cube with center = 1.5
-        obs = Obstacle3D()
-        obs.id = 0
-        obs.bounding_box.center.position.x = -0.5
-        obs.bounding_box.center.position.y = 1.5
-        obs.bounding_box.center.position.z = 0.5
-        obs.bounding_box.corners[4].x = 0.5
-        obs.bounding_box.corners[4].y = 1.5
-        obs.bounding_box.corners[7].x = 0.5
-        obs.bounding_box.corners[7].y = 1.5
-        obs.bounding_box.corners[0].x = 0.5
-        obs.bounding_box.corners[0].y = 2.5
-        obs.bounding_box.corners[3].x = 0.5
-        obs.bounding_box.corners[3].y = 2.5
-        self.landmark_cb(obs)
+        l = Landmark()
+        l.center_point.x = 2
+        l.center_point.y = 3
+        l.center_point.z = 4
+        self.landmark_cb(l)
 
     def load_landmarks(self):
         self.landmarks = {}
-        obs = Obstacle3D()
-        obs.bounding_box.center.position.x = 1.5
-        obs.bounding_box.center.position.y = 0.5
-        obs.bounding_box.center.position.z = 0.5
-        obs.bounding_box.corners[4].x = 1.0
-        obs.bounding_box.corners[4].y = 0.0
-        obs.bounding_box.corners[7].x = 1.0
-        obs.bounding_box.corners[7].y = 0.0
-        obs.bounding_box.corners[0].x = 2.0
-        obs.bounding_box.corners[0].y = 0.0
-        obs.bounding_box.corners[3].x = 2.0
-        obs.bounding_box.corners[3].y = 0.0
-        self.landmarks[0] = [obs]
-        #thinking a dict of List[Obstacle3D]. we can assign an id for the sign (the key of the dict) and record the bounding box
+        l = Landmark()
+        l.center_point.x = 1
+        l.center_point.y = 2
+        l.center_point.z = 3
+        self.landmarks[0] = [l]
+        #thinking a dict of List[Landmark]. we can assign an id for the sign (the key of the dict) and record the bounding box
         pass
 
     def initPubSub(self):
         self.gnss_sub = self.create_subscription(
             Odometry, '/sensors/gnss/odom', self.gnss_cb, 10)
         self.landmark_sub = self.create_subscription(
-            Obstacle3D, 'xxx', self.landmark_cb, 10)
+            LandmarkArray, '/landmarks', self.landmark_cb, 10)
         self.corrected_pub = self.create_publisher(
             Pose, '/corrected_gnss', 10)
 
@@ -194,7 +177,8 @@ class LandmarkLocalizerNode(Node):
     def gnss_cb(self, msg):
         self.gnss = msg
     def landmark_cb(self, msg):
-        self.correct(msg)
+        for l in msg.landmarks:
+            self.correct(msg)
 
 def main(args=None):
     rclpy.init(args=args)
