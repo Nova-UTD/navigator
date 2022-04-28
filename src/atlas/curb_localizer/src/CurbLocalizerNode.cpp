@@ -22,8 +22,17 @@ using namespace navigator::curb_localizer;
 
 CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
     this->declare_parameter<std::string>("map_file_path", "data/maps/grand_loop/grand_loop.xodr");
+    this->declare_parameter<double>("curb_look_distance", 20.0);
+
+
     this->map_file_path = this->get_parameter("map_file_path").as_string();
     this->map = opendrive::load_map(this->map_file_path)->map;
+
+    this->get_parameter("curb_look_distance", this->look_distance);
+    if(look_distance <= 0.0){
+        RCLCPP_ERROR(this->get_logger(), "look_distance must be positive");
+        look_distance = 20.0;
+    }
 
     // curb detector class also outputs all candidate pts if necessary
 
@@ -58,25 +67,32 @@ void CurbLocalizerNode::right_curb_points_callback(const sensor_msgs::msg::Point
 
 void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPtr msg){
     this->odom_in = msg;
-    this->current_position_x = msg->pose.pose.position.x;
-    this->current_position_y = msg->pose.pose.position.y;
     publish_odom();
 }
 
 void CurbLocalizerNode::publish_odom() {
     
+    double current_position_x = this->odom_in->pose.pose.position.x;
+    double current_position_y = this->odom_in->pose.pose.position.y;
+
+    // I don't think we need this
+    double current_orientation = Eigen::Quaterniond(this->odom_in->pose.pose.orientation.w,
+        this->odom_in->pose.pose.orientation.x,
+        this->odom_in->pose.pose.orientation.y,
+        this->odom_in->pose.pose.orientation.z).toRotationMatrix().eulerAngles(0, 1, 2)[2];
+
     // find right curb centerline (left later)
 
     // curb detector looks ahead about 20m
     navigator::opendrive::LanePtr lane;
     if (current_orientation == 1) { //placeholder
-        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x + 20, current_position_y); 
+        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x + look_distance, current_position_y); 
     } else if (current_orientation == 2) {
-        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x - 20, current_position_y);
+        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x - look_distance, current_position_y);
     } else if (current_orientation == 3) {
-        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x, current_position_y + 20);
+        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x, current_position_y + look_distance);
     } else if (current_orientation == 4) {
-        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x, current_position_y - 20);
+        lane = navigator::opendrive::get_lane_from_xy(this->map, current_position_x, current_position_y - look_distance);
     }
 
 

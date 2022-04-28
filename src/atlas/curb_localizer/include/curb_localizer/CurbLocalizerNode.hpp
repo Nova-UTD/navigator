@@ -39,6 +39,8 @@ class CurbLocalizerNode : public rclcpp::Node
 
         rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_out_pub;
 
+        double look_distance; // meters to look ahead and behind the car for the curb
+
         std::string map_file_path;
         opendrive::OpenDriveMapPtr map;
 
@@ -47,10 +49,6 @@ class CurbLocalizerNode : public rclcpp::Node
 
         std::shared_ptr<nav_msgs::msg::Odometry> odom_in;
         std::shared_ptr<nav_msgs::msg::Odometry> odom_out;
-        float current_position_x;
-        float current_position_y;
-        float current_orientation;
-
 
         void publish_odom();
 
