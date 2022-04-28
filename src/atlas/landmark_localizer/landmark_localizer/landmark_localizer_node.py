@@ -15,8 +15,8 @@ from tf2_ros import TransformException, TransformStamped
 
 #msgs
 from nav_msgs.msg import Odometry  # For GPS
-from geometry_msgs.msg import Pose, Point, Quaternion, TransformStamped
-from voltron_msgs.msg import Obstacle3D, Landmark
+from geometry_msgs.msg import PoseWithCovarianceStamped, Point, Quaternion, TransformStamped
+from voltron_msgs.msg import Obstacle3D, Landmark, LandmarkArray
 
 import math
 import numpy as np
@@ -29,24 +29,29 @@ class LandmarkLocalizerNode(Node):
     def __init__(self):
         super().__init__('landmark_localizer')
         self.get_logger().info("Hello, world!")
-        self.gnss = 1 #gps estimate
+        self.gnss = Odometry() #gps estimate
+        self.gnss.pose.pose.position.x = 2.0
+        self.gnss.pose.pose.position.y = 2.0
+        self.gnss.pose.pose.position.z = 2.0
         self.load_landmarks()
         self.initPubSub()
         self.max_landmark_difference = 5.0 #only correct if a known landmark is less than x meters from the observed
         self.corners_to_use = [0,4] #we need to find two corners that correspond between the boxes. they should be distinct in the x/y plane
         #cube with center = 1.5
+        arr = LandmarkArray()
         l = Landmark()
-        l.center_point.x = 2
-        l.center_point.y = 3
-        l.center_point.z = 4
-        self.landmark_cb(l)
+        l.center_point.x = 0.0
+        l.center_point.y = 1.0
+        l.center_point.z = 2.0
+        arr.landmarks = [l]
+        self.landmark_cb(arr)
 
     def load_landmarks(self):
         self.landmarks = {}
         l = Landmark()
-        l.center_point.x = 1
-        l.center_point.y = 2
-        l.center_point.z = 3
+        l.center_point.x = 1.0
+        l.center_point.y = 2.0
+        l.center_point.z = 3.0
         self.landmarks[0] = [l]
         #thinking a dict of List[Landmark]. we can assign an id for the sign (the key of the dict) and record the bounding box
         pass
@@ -57,7 +62,7 @@ class LandmarkLocalizerNode(Node):
         self.landmark_sub = self.create_subscription(
             LandmarkArray, '/landmarks', self.landmark_cb, 10)
         self.corrected_pub = self.create_publisher(
-            Pose, '/corrected_gnss', 10)
+            PoseWithCovarianceStamped, '/corrected_gnss', 10)
 
     #called when we recieve a new landmark
     #compares its position to the closest map landmark of that same type 
@@ -75,12 +80,10 @@ class LandmarkLocalizerNode(Node):
             self.get_logger().warn(f"Observed landmark too far ({distance_from_observed} m) from map landmark!")
             return
         #compute correction using base_link landmark
-        rot_mat = self.compute_rot(landmark_msg, map_landmark)
-        trans = self.compute_trans(landmark_msg, map_landmark, rot_mat)
-        self.get_logger().info(f"{rot_mat}")
+        trans = self.compute_trans(landmark_msg, map_landmark)
         self.get_logger().info(f"{trans}")
         #publish tf
-        self.calc_pub_tf(rot_mat, trans)
+        self.pub_correction(trans, self.gnss.pose.pose)
 
     def tf_gnss(self, landmark):
         pass
@@ -111,36 +114,27 @@ class LandmarkLocalizerNode(Node):
         return sum_mat/num_mat
     
     #should just construct a tf from the supplied parameters
-    def calc_pub_tf(self, rot_mat, trans):
-        rot_q = R.from_dcm(rot_mat).as_quat() #x,y,z,w
-        br = tf2_ros.TransformBroadcaster(self)
-        t = TransformStamped()
-   
+    def pub_correction(self, trans, gnss_pose):
+        #rot_q = R.from_dcm(rot_mat).as_quat() #x,y,z,w
+        t = PoseWithCovarianceStamped()
+
         t.header.stamp = self.get_clock().now().to_msg()
-        t.header.frame_id = "base_link"
-        t.child_frame_id = "landmark_tf"
-        t.transform.translation.x = trans[0]
-        t.transform.translation.y = trans[1]
-        t.transform.translation.z = trans[2]
-        t.transform.rotation.x = rot_q[0]
-        t.transform.rotation.y = rot_q[1]
-        t.transform.rotation.z = rot_q[2]
-        t.transform.rotation.w = rot_q[3]
+        t.header.frame_id = "map"
+        t.pose.pose.position.x = trans[0] + gnss_pose.position.x
+        t.pose.pose.position.y = trans[1] + gnss_pose.position.y
+        t.pose.pose.position.z = trans[2] + gnss_pose.position.z
+        t.pose.pose.orientation = gnss_pose.orientation
     
-        br.sendTransform(t)
+        self.corrected_pub.publish(t)
 
     #R(bl + trans) = map
     # => trans = R'*map - bl
-    def compute_trans(self, bl_landmark, map_landmark, rot_mat):
-        inverse_rot = np.linalg.inv(rot_mat)
-        sum_t = np.zeros(3)
-        for i in self.corners_to_use:
-            b_i = bl_landmark.bounding_box.corners[i]
-            m_i = map_landmark.bounding_box.corners[i]
-            bl = np.array([b_i.x, b_i.y, b_i.z])
-            mp = np.array([m_i.x, m_i.y, m_i.z])
-            sum_t += inverse_rot.dot(mp) - bl
-        return sum_t/len(self.corners_to_use)
+    #not doing rotations anymore
+    def compute_trans(self, bl_landmark, map_landmark):
+        b_i = bl_landmark.center_point
+        m_i = map_landmark.center_point
+        #should be map - b (hence the negative)
+        return -np.array([b_i.x-m_i.x, b_i.y-m_i.y, b_i.z-m_i.z])
 
     
     def rotation_matrix_from_vectors(self, vec1, vec2):
@@ -162,12 +156,12 @@ class LandmarkLocalizerNode(Node):
     #landmark_msg should be already transformed by GNSS when passed here
     #returns (Obstacle3D, float: the distance from the landmark_msg)
     def closest_landmark(self, landmark_msg):
-        candidates = self.landmarks[landmark_msg.id]
+        candidates = self.landmarks[landmark_msg.label]
         closest = None
         closest_dist = 9999999.9
-        loc = landmark_msg.bounding_box.center.position
+        loc = landmark_msg.center_point
         for landmark in candidates:
-            a = landmark.bounding_box.center.position
+            a = landmark.center_point
             sqr_d = (loc.x-a.x)**2 + (loc.y-a.y)**2 + (loc.z-a.z)**2
             if (sqr_d < closest_dist):
                 closest_dist = sqr_d
@@ -178,7 +172,7 @@ class LandmarkLocalizerNode(Node):
         self.gnss = msg
     def landmark_cb(self, msg):
         for l in msg.landmarks:
-            self.correct(msg)
+            self.correct(l)
 
 def main(args=None):
     rclpy.init(args=args)
