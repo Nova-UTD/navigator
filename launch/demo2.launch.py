@@ -243,7 +243,7 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=["/home/wheitman/navigator/param/atlas/map_odom.param.yaml"],
+        parameters=[path.join(param_dir, "atlas", "map_odom.param.yaml")],
         remappings=[
             ("/odom0", "/gnss_odom"),
             ("/imu0", "/sensors/zed/imu")
@@ -300,15 +300,19 @@ def generate_launch_description():
         lidar_obstacle_detector,
 
         # HARDWARE
+        serial,
+        servo_brake,
+        servo_throttle,
+
         # # Steering
-        # epas_can,
-        # epas_reporter,
-        # epas_controller,
-        # steering_pid,
-        # lidar_driver_front,
-        # lidar_pointcloud_front,
-        # lidar_driver_rear,
-        # lidar_pointcloud_rear,
+        epas_can,
+        epas_reporter,
+        epas_controller,
+        steering_pid,
+        lidar_driver_front,
+        lidar_pointcloud_front,
+        lidar_driver_rear,
+        lidar_pointcloud_rear,
 
         # # Camera
         # zed_interface,
@@ -326,7 +330,7 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         map_odom_ukf,
-        pcl_localization,
+        #pcl_localization,
 
         # CONTROL
         unified_controller,
