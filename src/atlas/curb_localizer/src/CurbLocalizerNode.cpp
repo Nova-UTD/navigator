@@ -11,6 +11,7 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/conversions.h>
+#include <pcl/common/transforms.h>
 
 using namespace navigator::curb_localizer;
 
@@ -51,6 +52,30 @@ void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPt
 }
 
 /**
+ * @brief Translates the given point cloud to the given pose.
+ *  (car reference --> map reference)
+ * @param in_cloud 
+ * @param odom 
+ * @param out_cloud 
+ */
+void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
+    const nav_msgs::msg::Odometry &odom,
+    pcl::PointCloud<pcl::PointXYZ> &out_cloud) {
+
+    Eigen::Affine3d odom_pose;
+    odom_pose.rotate(Eigen::Quaterniond(odom.pose.pose.orientation.w,
+        odom.pose.pose.orientation.x,
+        odom.pose.pose.orientation.y,
+        odom.pose.pose.orientation.z));
+
+    odom_pose.translate(Eigen::Vector3d(odom.pose.pose.position.x,
+        odom.pose.pose.position.y,
+        odom.pose.pose.position.z));
+
+    pcl::transformPointCloud(in_cloud, out_cloud, odom_pose);
+}
+
+/**
  * Algorithm:
  *  1. Start with GPS estimate of current position 
  *  2. Find left, right curb linestrings
@@ -72,6 +97,7 @@ void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPt
  *      different directions are more likely to be wrong. 
  *      Try confidence 
  *          C = ||sum(displacement vectors)|| / sum(||displacement vectors||),
- *      or maybe C^2
+ *      or maybe ||sum_vec||^2 / sum(||displacement vectors||^2)
+ * 
  * 
  */

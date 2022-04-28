@@ -45,6 +45,11 @@ class CurbLocalizerNode : public rclcpp::Node
 
         std::shared_ptr<nav_msgs::msg::Odometry> odom_in;
 
+        void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
+            const nav_msgs::msg::Odometry &odom,
+            pcl::PointCloud<pcl::PointXYZ> &out_cloud);
+
+
 };
 }
 } // namespace navigator
