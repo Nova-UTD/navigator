@@ -104,7 +104,8 @@ class GnssParserNode(Node):
         msg.twist.twist.linear.x = speed*math.cos(yaw)
         msg.twist.twist.linear.y = speed*math.sin(yaw)
 
-        pos_acc = float(parts[4])/1e7
+        # 3.0 is arbitrary multiplier for GNSS
+        pos_acc = 200.0
         yaw_acc = float(parts[5])/1e5
         speed_acc = float(parts[6])/1e3
 

@@ -56,24 +56,24 @@ CallbackReturn PCLLocalization::on_activate(const rclcpp_lifecycle::State &)
   path_pub_->on_activate();
   initial_map_pub_->on_activate();
 
-  // if (set_initial_pose_)
-  // {
-  //   auto msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
+  if (set_initial_pose_)
+  {
+    auto msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
 
-  //   msg->header.stamp = now();
-  //   msg->header.frame_id = global_frame_id_;
-  //   msg->pose.pose.position.x = initial_pose_x_;
-  //   msg->pose.pose.position.y = initial_pose_y_;
-  //   msg->pose.pose.position.z = initial_pose_z_;
-  //   msg->pose.pose.orientation.x = initial_pose_qx_;
-  //   msg->pose.pose.orientation.y = initial_pose_qy_;
-  //   msg->pose.pose.orientation.z = initial_pose_qz_;
-  //   msg->pose.pose.orientation.w = initial_pose_qw_;
+    msg->header.stamp = now();
+    msg->header.frame_id = global_frame_id_;
+    msg->pose.pose.position.x = initial_pose_x_;
+    msg->pose.pose.position.y = initial_pose_y_;
+    msg->pose.pose.position.z = initial_pose_z_;
+    msg->pose.pose.orientation.x = initial_pose_qx_;
+    msg->pose.pose.orientation.y = initial_pose_qy_;
+    msg->pose.pose.orientation.z = initial_pose_qz_;
+    msg->pose.pose.orientation.w = initial_pose_qw_;
 
-  //   path_.poses.push_back(*msg);
+    // path_.poses.push_back(*msg);
 
-  //   initialPoseReceived(msg);
-  // }
+    initialPoseReceived(msg);
+  }
 
   if (use_pcd_map_)
   {
@@ -414,6 +414,28 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   current_pose_stamped_.pose.pose.position.y = static_cast<double>(final_transformation(1, 3));
   current_pose_stamped_.pose.pose.position.z = static_cast<double>(final_transformation(2, 3));
   current_pose_stamped_.pose.pose.orientation = quat_msg;
+  double score = registration_->getFitnessScore();
+
+  double translational_cov = 50.0; // Start with a huge covariance
+  if (score < 15)
+  { // If we have a good (low) score, make the covariance small
+    translational_cov = 0.01;
+  }
+  else if (score < 35)
+  {
+    translational_cov = 1.0;
+  }
+  else if (score < 45)
+  {
+    translational_cov = 3.0;
+  }
+
+  current_pose_stamped_.pose.covariance = {translational_cov, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, translational_cov, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.0, translational_cov, 0.0, 0.0, 0.0,
+                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0, // RPY (last 3 rows) unused
+                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
   pose_pub_->publish(current_pose_stamped_);
   RCLCPP_INFO(get_logger(), "pub pose");
@@ -431,7 +453,7 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   // path_.poses.push_back(current_pose_stamped_);
   // path_pub_->publish(path_);
 
-  latest_fitness_score = registration_->getFitnessScore();
+  latest_fitness_score = score;
 
   if (enable_debug_)
   {
