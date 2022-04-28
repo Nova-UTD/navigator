@@ -293,11 +293,11 @@ def generate_launch_description():
         executable='vt_viz_exe',
     )
 
-    curbDetector = Node(
-        package='curb_detection'
+    curb_detector = Node(
+        package='curb_detection',
         executable='curb_detector',
         remappings=[
-        ("input_points", "input_points"),
+        ("input_points", "/lidar_fused"),
         ]
     )
 
@@ -311,7 +311,7 @@ def generate_launch_description():
     return LaunchDescription([
         # PERCEPTION
         lidar_fusion,
-        lidar_obstacle_detector,
+        # lidar_obstacle_detector,
 
         # # HARDWARE
         # serial,
@@ -323,10 +323,10 @@ def generate_launch_description():
         # epas_reporter,
         # epas_controller,
         # steering_pid,
-        lidar_driver_front,
-        lidar_pointcloud_front,
-        lidar_driver_rear,
-        lidar_pointcloud_rear,
+        # lidar_driver_front,
+        # lidar_pointcloud_front,
+        # lidar_driver_rear,
+        # lidar_pointcloud_rear,
 
         # # Camera
         # zed_interface,
@@ -344,9 +344,9 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         map_odom_ukf,
-        pcl_localization,
-        curbDetector,
-        curbLocalizer,
+        # pcl_localization,
+        curb_detector,
+        # curbLocalizer,
 
         # CONTROL
         unified_controller,

@@ -58,26 +58,63 @@ void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPt
 
 void CurbLocalizerNode::publish_odom() {
     
-    // find right curb centerline (left later)
+    std::vector<std::vector<std::string>> path_roads = {
+        {"81", "1"},
+		{"953", "1"}
+    };
 
-    // curb detector looks ahead about 20m
-    odr::Lane lane;
-    if (current_orientation == 1) { //placeholder
-        lane = navigator::opendrive::get_lane_from_xy(current_position_x + 20, current_position_y); 
-    } else if (current_orientation == 2) {
-        lane = navigator::opendrive::get_lane_from_xy(current_position_x - 20, current_position_y);
-    } else if (current_orientation == 3) {
-        lane = navigator::opendrive::get_lane_from_xy(current_position_x, current_position_y + 20);
-    } else if (current_orientation == 4) {
-        lane = navigator::opendrive::get_lane_from_xy(current_position_x, current_position_y - 20);
+    // get lane from current position
+    std::shared_ptr<odr::Lane> current_lane = navigator::opendrive::get_lane_from_xy(map, current_position_x, current_position_y);
+
+    // get road from current lane
+    std::string road_id = current_lane->road.lock()->id;
+    std::shared_ptr<odr::Road> current_road = map->roads[road_id];
+
+    // get current s value
+    double s = current_road->ref_line->match(current_position_x, current_position_y);    
+
+    std::shared_ptr<odr::Road> target_road;
+    std::shared_ptr<odr::LaneSection> target_lanesection;
+
+    // if adding 20m to current s goes out of road bounds, then next road has curb
+
+    if ((current_lane <= 0 && (s + 20) > current_road->length) || (current_lane > 0 && (s - 20) < 0.0)) {
+
+        double next_s = abs(current_road->length - (s + 20));
+
+        int i = 0;
+        for (auto &stringVector : path_roads) {
+            if (stringVector[0] == road_id && i != path_roads.size() - 1) {
+                target_road = map->roads[path_roads[i + 1][0]];
+                if (path_roads[i + 1][1] == "-1" || path_roads[i + 1][1] == "-2" || path_roads[i + 1][1] == "-3")  {
+                    target_lanesection = target_road->get_lanesection(next_s);
+                } else {
+                    target_lanesection = target_road->get_lanesection(target_road->length - next_s);
+                }
+            }
+            i++;
+        }
+
+    } else {
+        target_road = current_road;
+        target_lanesection = current_road->get_lanesection(s);
     }
 
+    // iterate road lanes and find both curb lanes
+    std::shared_ptr<odr::Lane> right_curb;
+    std::shared_ptr<odr::Lane> left_curb;
 
+    for (auto lane : target_lanesection->get_lanes()) {
+        if (lane->type == "shoulder" && lane->id <= 0) {
+            right_curb = lane;
+        } else if (lane->type == "shoulder" && lane->id > 0) {
+            left_curb = lane;
+        }
+    }
 
-
-
-
-
+    // // get centerline for those lanes
+    odr::Line3D right_curb_line = navigator::opendrive::get_centerline_as_xy(*right_curb, target_lanesection->s0, target_lanesection->get_end(), 0.25, false);
+    odr::Line3D left_curb_line = navigator::opendrive::get_centerline_as_xy(*left_curb, target_lanesection->s0, target_lanesection->get_end(), 0.25, true);
 
 
     odom_out_pub->publish(*odom_out);

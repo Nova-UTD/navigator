@@ -100,7 +100,7 @@ class LidarFusionNode(Node):
                 fused_pcd['x'] < 1, fused_pcd['x'] > -5), np.logical_and(
                 fused_pcd['y'] < 1, fused_pcd['y'] > -1))]
 
-        fused_pcd = fused_pcd[fused_pcd['z'] > 0.3]
+        # fused_pcd = fused_pcd[fused_pcd['z'] > 0.3]
 
         lidar_fused_msg: PointCloud2 = rnp.msgify(PointCloud2, fused_pcd)
         lidar_fused_msg.header.frame_id = self.target_frame

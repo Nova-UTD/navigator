@@ -18,6 +18,8 @@
 #include <pcl/point_cloud.h>
 
 #include "Lanes.h"
+#include "Road.h"
+#include "LaneSection.h"
 
 namespace navigator
 {
