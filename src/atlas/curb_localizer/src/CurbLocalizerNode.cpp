@@ -12,13 +12,27 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/conversions.h>
 #include <pcl/common/transforms.h>
+#include <pcl/registration/icp.h>
+
+// weird build stuff
+#include <pcl/search/impl/kdtree.hpp>
+#include <pcl/kdtree/impl/kdtree_flann.hpp>
 
 using namespace navigator::curb_localizer;
 
 CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
     this->declare_parameter<std::string>("map_file_path", "data/maps/grand_loop/grand_loop.xodr");
+    this->declare_parameter<double>("curb_look_distance", 20.0);
+
+
     this->map_file_path = this->get_parameter("map_file_path").as_string();
     this->map = opendrive::load_map(this->map_file_path)->map;
+
+    this->get_parameter("curb_look_distance", this->look_distance);
+    if(look_distance <= 0.0){
+        RCLCPP_ERROR(this->get_logger(), "look_distance must be positive");
+        look_distance = 20.0;
+    }
 
     // curb detector class also outputs all candidate pts if necessary
 
@@ -35,24 +49,24 @@ CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
         rclcpp::QoS(rclcpp::KeepLast(1)));
 }
 
-void convert_to_pcl(const sensor_msgs::msg::PointCloud2::SharedPtr msg, pcl::PointCloud<pcl::PointXYZ> &out_cloud) {
+void convert_to_pcl(const sensor_msgs::msg::PointCloud2::SharedPtr msg, pcl::PointCloud<pcl::PointXYZ>::Ptr out_cloud) {
     pcl::PCLPointCloud2 pcl_cloud;
     pcl_conversions::toPCL(*msg, pcl_cloud);
-    pcl::fromPCLPointCloud2(pcl_cloud, out_cloud);
+    pcl::fromPCLPointCloud2(pcl_cloud, *out_cloud);
 }
 
 void CurbLocalizerNode::left_curb_points_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg){
     convert_to_pcl(msg, this->left_curb_points);
+    flatten_cloud(this->left_curb_points, this->left_curb_points);
 }
 
 void CurbLocalizerNode::right_curb_points_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg){
     convert_to_pcl(msg, this->right_curb_points);
+    flatten_cloud(this->right_curb_points, this->right_curb_points);
 }
 
 void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPtr msg){
     this->odom_in = msg;
-    this->current_position_x = msg->pose.pose.position.x;
-    this->current_position_y = msg->pose.pose.position.y;
     publish_odom();
 }
 
@@ -127,9 +141,9 @@ void CurbLocalizerNode::publish_odom() {
  * @param odom 
  * @param out_cloud 
  */
-void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
+void CurbLocalizerNode::transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
     const nav_msgs::msg::Odometry &odom,
-    pcl::PointCloud<pcl::PointXYZ> &out_cloud) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr out_cloud) {
 
     Eigen::Affine3d odom_pose;
     odom_pose.rotate(Eigen::Quaterniond(odom.pose.pose.orientation.w,
@@ -141,32 +155,28 @@ void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
         odom.pose.pose.position.y,
         odom.pose.pose.position.z));
 
-    pcl::transformPointCloud(in_cloud, out_cloud, odom_pose);
+    pcl::transformPointCloud(*in_cloud, *out_cloud, odom_pose);
 }
 
-/**
- * Algorithm:
- *  1. Start with GPS estimate of current position 
- *  2. Find left, right curb linestrings
- *      a. Find current lane
- *      b. Find current road
- *      c. ????
- *          i. Behavior near intersections/end of road warrents
- *              a few extra ??
- *      d. get descriptions of the curb
- *      e. a lot of parsing?
- *      f. linestring
- *      (may be able to assume lane boundary is curb since we are
- *      in the rightmost lane. Need ability to get next road for full curb)
- *  3. For each point in the cloud, find the minumum translation
- *      vector that will move the point to the curb linestring
- *  4. The odometry translation is the average point translation
- *  5. The confidence of the translation is some measure of how
- *    consistent the translation vector is- vectors pointing in 
- *      different directions are more likely to be wrong. 
- *      Try confidence 
- *          C = ||sum(displacement vectors)|| / sum(||displacement vectors||),
- *      or maybe ||sum_vec||^2 / sum(||displacement vectors||^2)
- * 
- * 
- */
+void CurbLocalizerNode::flatten_cloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr out_cloud) {
+    // [ 1 0 0 ]   [ x ]   [ x ]
+    // [ 0 1 0 ] * [ y ] = [ y ]
+    // [ 0 0 0 ]   [ z ]   [ 0 ]
+    Eigen::Affine3d projection_matrix = Eigen::Affine3d::Identity();
+    projection_matrix(2, 2) = 0; // zero-indexed
+
+    pcl::transformPointCloud(*in_cloud, *out_cloud, projection_matrix);
+}
+
+Eigen::Vector3d CurbLocalizerNode::find_translation(const pcl::PointCloud<pcl::PointXYZ>::Ptr truth,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr estimate) {
+    
+    pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+    icp.setInputSource(estimate);
+    icp.setInputTarget(truth);
+    icp.align(*estimate);
+
+    Eigen::Vector3d translation = (icp.getFinalTransformation() * Eigen::Vector4d(0, 0, 0, 1)).block<3, 1>(0, 0);
+    return translation;
+}

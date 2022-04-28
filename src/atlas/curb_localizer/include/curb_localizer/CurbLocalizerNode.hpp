@@ -41,25 +41,29 @@ class CurbLocalizerNode : public rclcpp::Node
 
         rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_out_pub;
 
+        double look_distance; // meters to look ahead and behind the car for the curb
+
         std::string map_file_path;
         opendrive::OpenDriveMapPtr map;
 
-        pcl::PointCloud<pcl::PointXYZ> left_curb_points;
-        pcl::PointCloud<pcl::PointXYZ> right_curb_points;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr left_curb_points;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr right_curb_points;
 
         std::shared_ptr<nav_msgs::msg::Odometry> odom_in;
         std::shared_ptr<nav_msgs::msg::Odometry> odom_out;
-        float current_position_x;
-        float current_position_y;
-        float current_orientation;
-
 
         void publish_odom();
 
-        void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ> &in_cloud,
+        static void transform_points_to_odom(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
             const nav_msgs::msg::Odometry &odom,
-            pcl::PointCloud<pcl::PointXYZ> &out_cloud);
-
+            pcl::PointCloud<pcl::PointXYZ>::Ptr out_cloud);
+        // Projects the cloud onto the XY plane.
+        static void flatten_cloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr in_cloud,
+            pcl::PointCloud<pcl::PointXYZ>::Ptr out_cloud);
+        // Finds the translation required to map the estimate (current lidar with odom) to the
+        // known truth (curb on map data)
+        static Eigen::Vector3d find_translation(const pcl::PointCloud<pcl::PointXYZ>::Ptr truth,
+            const pcl::PointCloud<pcl::PointXYZ>::Ptr estimate);
 
 };
 }
