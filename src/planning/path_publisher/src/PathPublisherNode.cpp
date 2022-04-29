@@ -140,12 +140,13 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 	marker.id = 1;
 
 	// Add data contents
-	marker.type = Marker::LINE_STRIP;
+	marker.type = Marker::POINTS;
 	marker.action = Marker::ADD;
 	marker.points = path.points;
 
 	// Set visual display. Not sure if this is needed
 	marker.scale.x = 1;
+    marker.scale.y = 1;
 	marker.color.a = 1.0;
 	marker.color.r = 1.0;
 	marker.color.g = 1.0;
