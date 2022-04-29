@@ -66,7 +66,7 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
 
   this->obstacles_subscription = this->create_subscription<Obstacles>("/sensors/zed/obstacle_array_3d", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
 
-  this->button_subscription = this->create_subscription<Bool>("/controller/buttonA", 8, std::bind(&BehaviorPlannerNode::update_button, this, _1));
+  this->button_subscription = this->create_subscription<Bool>("joy_control_junction_enable", 8, std::bind(&BehaviorPlannerNode::update_button, this, _1));
 
   this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
   this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -184,7 +184,8 @@ void BehaviorPlannerNode::update_state()
     {
       if (final_zones.zones.size())
       {
-        final_zones.zones[0].max_speed = YIELD_SPEED;
+        // will set speed in_junction state anyways
+        // final_zones.zones[0].max_speed = YIELD_SPEED;
         current_state = JUNCTION_MANUAL_DELAY;
       }
     }
@@ -209,19 +210,10 @@ void BehaviorPlannerNode::update_state()
   case JUNCTION_MANUAL_DELAY:
     RCLCPP_INFO(this->get_logger(), "current state: Waiting for manual interference before entering junction");
 
-    // while button held down, restart delay timer and don't change state
+    // if button pressed, then change to in_junction state
     if (button_pressed)
     {
-      delay_ticks = 0;
-    }
-    else
-    {
-      delay_ticks += 1;
-      if (delay_ticks >= max_junc_delay)
-      {
-        delay_ticks = 0;
-        current_state = IN_JUNCTION;
-      }
+      current_state = IN_JUNCTION;
     }
     break;
   case IN_JUNCTION:

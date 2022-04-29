@@ -18,6 +18,7 @@ struct joy_control_params {
   int steering_axis;
   int enable_button;
   float max_steering_angle;
+  int enable_junction_button;
 };
 
 }
