@@ -22,16 +22,10 @@ class LidarFusionNode(Node):
         self.declare_parameter('target_frame', 'base_link')
         self.target_frame = self.get_parameter(
             'target_frame').get_parameter_value().string_value
-        lidar_front_sub = message_filters.Subscriber(
-            self, PointCloud2, '/lidar_front')
-        lidar_rear_sub = message_filters.Subscriber(
-            self, PointCloud2, '/lidar_rear')
-        self.fusion_sync = message_filters.ApproximateTimeSynchronizer(
-            fs=[lidar_front_sub, lidar_rear_sub],
-            queue_size=1,
-            slop=1/rotation_rate
-        )
-        self.fusion_sync.registerCallback(self.fuse_lidar)
+        lidar_front_sub = self.create_subscription(
+            PointCloud2, '/lidar_front', self.front_lidar_cb, 5)
+        lidar_rear_sub = self.create_subscription(
+            PointCloud2, '/lidar_rear', self.rear_lidar_cb, 5)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
@@ -40,6 +34,14 @@ class LidarFusionNode(Node):
             topic="/lidar_fused",
             qos_profile=10
         )
+
+        self.lidar_ds_pub = self.create_publisher(
+            msg_type=PointCloud2,
+            topic="/lidar_fused_downsampled",
+            qos_profile=10
+        )
+
+        self.cached_rear_lidar = PointCloud2()
 
     # point cloud fields: float32 x , float32 y, float32 z, float32 intensity, uint16 ring
     # incoming shape from rnp: (~, 16), where 16 is the ring
@@ -61,6 +63,12 @@ class LidarFusionNode(Node):
         pcd['z'] = xyz[2] + pcd_tf.transform.translation.z
 
         return pcd
+
+    def rear_lidar_cb(self, msg: PointCloud2):
+        self.cached_rear_lidar = msg
+
+    def front_lidar_cb(self, msg: PointCloud2):
+        self.fuse_lidar(msg, self.cached_rear_lidar)
 
     def fuse_lidar(self, lidar_front_msg: PointCloud2, lidar_rear_msg: PointCloud2):
         try:
@@ -108,6 +116,11 @@ class LidarFusionNode(Node):
         lidar_fused_msg.header.frame_id = self.target_frame
         lidar_fused_msg.header.stamp = self.get_clock().now().to_msg()
         self.lidar_fused_pub.publish(lidar_fused_msg)
+
+        lidar_ds_msg: PointCloud2 = rnp.msgify(PointCloud2, downsampled_pcd)
+        lidar_ds_msg.header.frame_id = self.target_frame
+        lidar_ds_msg.header.stamp = self.get_clock().now().to_msg()
+        self.lidar_ds_pub.publish(lidar_ds_msg)
 
 
 def main(args=None):

@@ -1,3 +1,4 @@
+#define USE_VGICP_CUDA 1
 #include <chrono>
 #include <iostream>
 #include <boost/format.hpp>

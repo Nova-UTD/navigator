@@ -10,13 +10,15 @@ from nav_msgs.msg import Odometry  # For GPS, ground truth
 from std_msgs.msg import String as StringMsg
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
-from geometry_msgs.msg import PoseStamped
+from tf2_ros.transform_broadcaster import TransformBroadcaster
+from geometry_msgs.msg import PoseStamped, Vector3, TransformStamped
 
 lat0 = 32.989487
 lon0 = -96.750437
 alt0 = 196.0
 
-frequency = 2 # hz, messages published per second
+frequency = 2  # hz, messages published per second
+
 
 class GnssParserNode(Node):
 
@@ -33,17 +35,37 @@ class GnssParserNode(Node):
         self.gnss_pub = self.create_publisher(
             Odometry, '/sensors/gnss/odom', 10)
 
+        self.filtered_odom_sub = self.create_subscription(
+            Odometry, '/odometry/filtered', self.publish_odom_tf, 10)
+
         self.pose_pub = self.create_publisher(PoseStamped, '/initial_pose', 10)
 
         self.string_data_sub = self.create_subscription(
             StringMsg, '/serial/gnss', self.string_data_callback, 10)
 
-
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.br = TransformBroadcaster(self)
         self.road_boundary = None
-        self.gps_timer = self.create_timer(1.0 / frequency, self.publish_next_gnss)
+        self.gps_timer = self.create_timer(
+            1.0 / frequency, self.publish_next_gnss)
         # outfile.write(f"x,y,z,u,v,speed,pos_acc,yaw_acc,speed_acc\n")
+
+    def publish_odom_tf(self, msg: Odometry):
+        pos = msg.pose.pose.position
+        quat = msg.pose.pose.orientation
+        transl = Vector3(
+            x=pos.x,
+            y=pos.y,
+            z=pos.z
+        )
+        tf = TransformStamped()
+        tf.child_frame_id = msg.child_frame_id
+        tf.header = msg.header
+        tf.transform.translation = transl
+        tf.transform.rotation = quat
+
+        self.br.sendTransform(tf)
 
     def string_data_callback(self, msg):
         self.cached_string = msg.data
