@@ -40,6 +40,7 @@ class CurbLocalizerNode : public rclcpp::Node
         void odom_in_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
 
         rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_out_pub;
+        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr lidar_pub;
 
         double look_distance; // meters to look ahead and behind the car for the curb
 

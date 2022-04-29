@@ -301,9 +301,8 @@ def generate_launch_description():
         ]
     )
 
-    curbLocalizer = Node(
+    curb_localizer = Node(
         package='curb_localizer',
-        name='curb_localizer_node',
         executable='curb_localizer_exe'
     )
 
@@ -346,7 +345,7 @@ def generate_launch_description():
         map_odom_ukf,
         # pcl_localization,
         curb_detector,
-        # curbLocalizer,
+        curb_localizer,
 
         # CONTROL
         unified_controller,

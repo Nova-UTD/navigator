@@ -274,7 +274,6 @@ class CurbDetector(Node):
             #self.getLidarToBlTransform('lidar_front')
             pts = rnp.numpify(msg)
             pts = self.filterPoints(pts)
-            self.get_logger().info(f'{pts.shape}')
             # self.publishCloud(pts, msg.header.frame_id)
             
             self.curb_candidates_pub.publish(self.formPointCloud2(pts, 'base_link'))
