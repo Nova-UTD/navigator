@@ -42,28 +42,13 @@ class LandmarkLocalizerNode(Node):
         self.load_landmarks()
         
         self.max_landmark_difference = 4.0 #only correct if a known landmark is less than x meters from the observed
-        self.correction = [0,0,0]
-        self.correction_log = [] #tuples of (correction, time (float in seconds))
-        self.correction_log_duration = 2.0 #time in seconds to keep corrections before the most recent
-        self.correction_falloff = 3.0 #total correction is a weighted average of correction log. weight is 1/(1+correction_falloff*t), where t is the time difference between this measurment and the most recent one 
-
-    def calc_correction(self, trim_log=True):
-        to_consider = []
-        if len(self.correction_log) == 0:
-            return [0,0,0] #no corrections
-        base_time = self.correction_log[0][1]
-        to_consider = [(corr, t) for (corr, t) in self.correction_log if t <= base_time + self.correction_log_duration]
-        if trim_log:
-            self.correction_log = to_consider
-        if len (to_consider) == 0:
-            return [0,0,0]
-        weight_sum = 0
-        s = 0
-        for corr, t in to_consider:
-            w = 1/(1.0+self.correction_falloff*(t-base_time))
-            weight_sum += w
-            s += corr*w
-        return s/weight_sum
+        self.correction = np.array([0,0,0])
+        self.target_correction = np.array([0,0,0])
+        self.correction_move_speed = 0.1
+        
+    def calc_correction(self):
+        self.get_logger().info(f"{self.correction} {self.target_correction}")
+        return self.correction + (self.target_correction-self.correction)*self.correction_move_speed
 
     def load_landmarks(self):
         #hard code list of landmarks (sorry)
@@ -92,9 +77,14 @@ class LandmarkLocalizerNode(Node):
         l.center_point.z = 1.2
         l.label = l.STOP_SIGN
         self.landmarks.append(l) 
-        l = Landmark() #STOP SIGN BY PHASE 3 AND PARKING GARAGE
-        l.center_point.x = -300.56205839743967
-        l.center_point.y = -429.0077070418239
+        # l = Landmark() #STOP SIGN BY PHASE 3 AND PARKING GARAGE
+        # l.center_point.x = -300.56205839743967
+        # l.center_point.y = -429.0077070418239
+        # l.center_point.z = 1.2
+        # l.label = l.STOP_SIGN
+        l = Landmark() #STOP SIGN ACROSS THE STREET DIAGONALLY BY PHASE 3 AND PARKING GARAGE
+        l.center_point.x = -317.56205839743967
+        l.center_point.y = -411.0077070418239
         l.center_point.z = 1.2
         l.label = l.STOP_SIGN
         self.landmarks.append(l) 
@@ -280,6 +270,9 @@ class LandmarkLocalizerNode(Node):
         self.map_landmark_viz_pub = self.create_publisher(
             MarkerArray, '/viz/map_landmarks', 10
         )
+        self.inital_pose_sub = self.create_subscription(
+            PoseWithCovarianceStamped, '/localization/initialpose', self.init_pose_cb, 10
+        )
 
     #called when we recieve a new landmark
     #compares its position to the closest map landmark of that same type 
@@ -291,7 +284,6 @@ class LandmarkLocalizerNode(Node):
             return (None, False, 9999999)
         if distance_from_observed >= self.max_landmark_difference:
             self.get_logger().warn(f"Observed landmark too far ({distance_from_observed} m) from map landmark!")
-
             return (None, False, 9999999)
         #compute correction using base_link landmark
         trans = self.compute_trans(landmark_msg_tf, map_landmark)
@@ -448,9 +440,19 @@ class LandmarkLocalizerNode(Node):
             trans = t
         if min_dist >= 999999:
             return
+        if t is None:
+            return
         #publish closest of all landmarks
-        clock = self.get_clock().now().to_msg()
-        self.correction_log.append((t, clock.sec+clock.nanosec*1e-9))
+        self.target_correction = t
+        self.pub_correction()
+    
+    def init_pose_cb(self, pose):
+        us = np.array([pose.pose.pose.position.x, pose.pose.pose.position.y, pose.pose.pose.position.z])
+        p = np.array([self.gnss.pose.pose.position.x, self.gnss.pose.pose.position.y, self.gnss.pose.pose.position.z])
+        t = us - p
+        self.get_logger().warn(f"Manual correction {t}!")
+        self.target_correction = t
+        self.correction = t
         self.pub_correction()
 
 def main(args=None):
