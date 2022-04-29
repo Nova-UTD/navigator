@@ -251,15 +251,11 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-<<<<<<< HEAD
         parameters=[path.join(param_dir, "atlas", "map_odom.param.yaml")],
         remappings=[
             ("/odom0", "/gnss_odom"),
             ("/imu0", "/sensors/zed/imu")
         ]
-=======
-        parameters=[(path.join(param_dir, "atlas", "map_odom.param.yaml"))],
->>>>>>> feautre_landmark_loc
     )
 
     scan_matcher = Node(
