@@ -123,13 +123,11 @@ void CurbLocalizerNode::publish_odom() {
 
     // last_pt should contain the point at coordinate s
     // TODO replace this with message topic
-    double dist_to_curb_lidar = 1;
     double dx = last_pt[0] - current_position_x;
     double dy = last_pt[1] - current_position_y;
     double dist_to_curb_odom = sqrt(dx * dx + dy * dy);
-    dist_to_curb_lidar = std::max(0.1, dist_to_curb_lidar);
 
-    double interp_coeff = dist_to_curb_lidar / dist_to_curb_odom;
+    double interp_coeff = this->dist_to_curb / dist_to_curb_odom;
 
     dx *= interp_coeff;
     dy *= interp_coeff;
