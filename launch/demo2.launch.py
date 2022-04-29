@@ -334,20 +334,22 @@ def generate_launch_description():
         obstacle_drawer,
         # pcl_launch,
 
+        landmark_localizer,
+
         # HARDWARE
-        serial,
-        servo_brake,
-        servo_throttle,
+        #serial,
+        #servo_brake,
+        #servo_throttle,
 
         # # Steering
-        epas_can,
-        epas_reporter,
-        epas_controller,
-        steering_pid,
-        lidar_driver_front,
-        lidar_pointcloud_front,
-        lidar_driver_rear,
-        lidar_pointcloud_rear,
+        #epas_can,
+        #epas_reporter,
+        #epas_controller,
+        #steering_pid,
+        #lidar_driver_front,
+        #lidar_pointcloud_front,
+        #lidar_driver_rear,
+        #lidar_pointcloud_rear,
 
         # # Camera
         # zed_interface,
@@ -371,7 +373,6 @@ def generate_launch_description():
         unified_controller,
 
         # MISC
-        # landmark_localizer
         odr_viz,
         odom_bl_link,
         urdf_publisher,

@@ -54,24 +54,6 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	
 	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
 
-	auto mini_route_info = std::vector<PathSection> {
-		PathSection("81", -1),
-		PathSection("953", -1),
-        PathSection("82", -1),
-        PathSection("929", -1),
-        PathSection("104", 2),
-        PathSection("128", 1),
-		PathSection("40", 1),
-		PathSection("955", 1),
-		PathSection("81", 1),
-	};
-
-	auto mini_test_route_info = std::vector<PathSection> {
-		PathSection("81", -1),
-		PathSection("953", -1),
-        PathSection("82", -1),
-	};
-
     for (auto s : route_info) {
         all_ids.insert(s.road_id);
     }
@@ -81,7 +63,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
 	map = navigator::opendrive::load_map(xodr_path)->map;
 
-	this->route1 = generate_path(mini_test_route_info, map);
+	this->route1 = generate_path(route_info, map);
 	this->path = this->route1;
 }
 
@@ -94,8 +76,19 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSe
 		std::string id = section.road_id;
 		int lane_id = section.lane_id;
 		auto road = map->roads[id];
-		std::shared_ptr<odr::LaneSection> lanesection = road->get_lanesection(section.lanesection);
-		odr::LaneSet laneset = lanesection->get_lanes();
+        if (road == nullptr)
+        {
+            RCLCPP_WARN(this->get_logger(), "NO ROAD FOUND FOR ROAD %s", id.c_str());
+            continue;
+        }
+        std::shared_ptr<odr::LaneSection> lanesection = road->get_lanesection(section.lanesection);
+        if (lanesection == nullptr)
+        {
+            RCLCPP_WARN(this->get_logger(), "NO LANESECTION FOR ROAD %s", id.c_str());
+            continue;
+        }
+        odr::LaneSet laneset = lanesection->get_lanes();
+
 		std::shared_ptr<odr::Lane> lane = nullptr;
         //loop through the laneset to find a pointer to the lane.
 		for (auto l : laneset) {
@@ -106,10 +99,6 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSe
 		}
 		if (lane == nullptr) {
 			RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s", id.c_str());
-			continue;
-		}
-        if (lanesection == nullptr) {
-			RCLCPP_WARN(this->get_logger(), "NO LANESECTION FOR ROAD %s", id.c_str());
 			continue;
 		}
 
@@ -151,12 +140,13 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 	marker.id = 1;
 
 	// Add data contents
-	marker.type = Marker::LINE_STRIP;
+	marker.type = Marker::POINTS;
 	marker.action = Marker::ADD;
 	marker.points = path.points;
 
 	// Set visual display. Not sure if this is needed
 	marker.scale.x = 1;
+    marker.scale.y = 1;
 	marker.color.a = 1.0;
 	marker.color.r = 1.0;
 	marker.color.g = 1.0;
@@ -164,7 +154,7 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 
 	// Add path to array
 	marker_array.markers.push_back(marker);
-	// RCLCPP_INFO(this->get_logger(), "path viz");
+	RCLCPP_INFO(this->get_logger(), "path viz");
 
 	viz_pub->publish(marker_array);
 }
