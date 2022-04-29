@@ -43,10 +43,10 @@ CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
     // curb detector class also outputs all candidate pts if necessary
 
     this->left_curb_points_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("curb_points/left",
-        rclcpp::QoS(rclcpp::KeepLast(1)),
+        rclcpp::QoS(rclcpp::KeepLast(2)),
         std::bind(&CurbLocalizerNode::left_curb_points_callback, this, std::placeholders::_1));
     this->right_curb_points_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("curb_points/right",
-        rclcpp::QoS(rclcpp::KeepLast(1)),
+        rclcpp::QoS(rclcpp::KeepLast(2)),
         std::bind(&CurbLocalizerNode::right_curb_points_callback, this, std::placeholders::_1));
     this->odom_in_sub = this->create_subscription<nav_msgs::msg::Odometry>("/sensors/gnss/odom",
         rclcpp::QoS(rclcpp::KeepLast(1)),
@@ -54,8 +54,8 @@ CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
     this->odom_out_pub = this->create_publisher<nav_msgs::msg::Odometry>("odom_out",
         rclcpp::QoS(rclcpp::KeepLast(1)));
 
-    this->lidar_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("pcl_out", rclcpp::QoS(rclcpp::KeepLast(1)));
-        this->lidar_pub2 = this->create_publisher<sensor_msgs::msg::PointCloud2>("pcl_out2", rclcpp::QoS(rclcpp::KeepLast(1)));
+    this->lidar_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("pcl_out", rclcpp::QoS(rclcpp::KeepLast(4)));
+        this->lidar_pub2 = this->create_publisher<sensor_msgs::msg::PointCloud2>("pcl_out2", rclcpp::QoS(rclcpp::KeepLast(4)));
 
 }
 
@@ -167,13 +167,19 @@ void CurbLocalizerNode::publish_odom() {
     // get lane from current position
     std::shared_ptr<odr::Lane> current_lane = navigator::opendrive::get_lane_from_xy(map, current_position_x, current_position_y);
 
-    if (current_lane == nullptr) return;
+    if (current_lane == nullptr){
+        odom_out_pub->publish(odom_out);
+        return;
+    } 
 
     // get road from current lane
     std::string road_id = current_lane->road.lock()->id;
     std::shared_ptr<odr::Road> current_road = map->roads[road_id];
 
-    if (current_road == nullptr) return;
+    if (current_road == nullptr){
+        odom_out_pub->publish(odom_out);
+        return;
+    } 
 
     // get current s value
     double s = current_road->ref_line->match(current_position_x, current_position_y);
@@ -209,7 +215,10 @@ void CurbLocalizerNode::publish_odom() {
     navigator::opendrive::LanePtr right_curb = nullptr;
     navigator::opendrive::LanePtr left_curb = nullptr;
 
-    if (target_lanesection == nullptr) return;
+    if (target_lanesection == nullptr){
+        odom_out_pub->publish(odom_out);
+        return;
+    }
 
     for (auto lane : target_lanesection->get_lanes()) {
         if (lane->type == "shoulder" && lane->id <= 0) {
@@ -316,5 +325,5 @@ Eigen::Vector3d CurbLocalizerNode::find_translation(const pcl::PointCloud<pcl::P
     icp.align(dummy_out);
 
     Eigen::Vector3d translation = Eigen::Affine3d(icp.getFinalTransformation().cast<double>()).translation();
-    return translation;
+    return -translation;
 }
