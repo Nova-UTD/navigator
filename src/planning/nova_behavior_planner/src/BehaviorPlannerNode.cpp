@@ -13,38 +13,63 @@
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
+#define MAP_PARAM "map_xodr_file_path"
+#define STOP_TICK "stop_tick"
+#define JUNC_DELAY "junc_delay"
+#define MAX_DIST_TO_ZONE "max_dist_to_zone"
+#define MIN_DIST_OUT_ZONE "min_dist_out_zone"
+#define STOP_SPEED_DIF "stop_speed_dif"
+#define STOP_POSE_DIF "stop_pose_dif"
+
 using namespace Nova::BehaviorPlanner;
 
 BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {  
-  std::string xodr_path = "data/maps/grand_loop/grand_loop.xodr";
+
   this->current_state = LANEKEEPING;
   this->reached_zone = false;
   this->stop_ticks = 0;
   this->yield_ticks = 0;
   this->delay_ticks = 0;
 
+  this->declare_parameter<std::string>(MAP_PARAM, "data/maps/grand_loop/grand_loop.xodr");
+	this->declare_parameter<int>(STOP_TICK, 10);
+  this->declare_parameter<int>(JUNC_DELAY, 20);
+  this->declare_parameter<double>(MAX_DIST_TO_ZONE, 2.0);
+  this->declare_parameter<double>(MIN_DIST_OUT_ZONE, 10.0);
+  this->declare_parameter<double>(STOP_SPEED_DIF, 0.25);
+  this->declare_parameter<double>(STOP_POSE_DIF, 1.0);
+
+  std::string xodr_path;
+	this->get_parameter<std::string>(MAP_PARAM, xodr_path);
+	this->get_parameter<int>(STOP_TICK, max_stop_ticks);
+  this->get_parameter<int>(JUNC_DELAY, max_junc_delay);
+  this->get_parameter<double>(MAX_DIST_TO_ZONE, max_dist_to_zone);
+  this->get_parameter<double>(MIN_DIST_OUT_ZONE, min_dist_out_zone);
+  this->get_parameter<double>(STOP_SPEED_DIF, stop_speed_dif);
+  this->get_parameter<double>(STOP_POSE_DIF, stop_pose_dif);
+
     // xml parsing
-    RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
-    std::shared_ptr<navigator::opendrive::MapInfo> map_info = navigator::opendrive::load_map(xodr_path);
-    this->map = map_info->map;
-    this->map_info = map_info;
+  RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
+  std::shared_ptr<navigator::opendrive::MapInfo> map_info = navigator::opendrive::load_map(xodr_path);
+  this->map = map_info->map;
+  this->map_info = map_info;
 
-    this->control_timer = this->create_wall_timer(message_frequency, std::bind(&BehaviorPlannerNode::send_message, this));
+  this->control_timer = this->create_wall_timer(message_frequency, std::bind(&BehaviorPlannerNode::send_message, this));
 
-    this->final_zone_publisher = this->create_publisher<ZoneArray>("zone_array", 10);
+  this->final_zone_publisher = this->create_publisher<ZoneArray>("zone_array", 10);
 
-    this->current_state_publisher = this->create_publisher<BehaviorState>("current_state", 10);
+  this->current_state_publisher = this->create_publisher<BehaviorState>("current_state", 10);
 
-    this->odometry_subscription = this->create_subscription<Odometry>("/gnss_odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
+  this->odometry_subscription = this->create_subscription<Odometry>("/gnss_odom", 8, std::bind(&BehaviorPlannerNode::update_current_speed, this, _1));
 
-    this->path_subscription = this->create_subscription<FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
+  this->path_subscription = this->create_subscription<FinalPath>("paths", 8, std::bind(&BehaviorPlannerNode::update_current_path, this, _1));
 
-    this->obstacles_subscription = this->create_subscription<Obstacles>("/sensors/zed/obstacle_array_3d", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
+  this->obstacles_subscription = this->create_subscription<Obstacles>("/sensors/zed/obstacle_array_3d", 8, std::bind(&BehaviorPlannerNode::update_current_obstacles, this, _1));
 
-    this->button_subscription = this->create_subscription<Bool>("/controller/buttonA", 8, std::bind(&BehaviorPlannerNode::update_button, this, _1));
+  this->button_subscription = this->create_subscription<Bool>("/controller/buttonA", 8, std::bind(&BehaviorPlannerNode::update_button, this, _1));
 
-    this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
-    this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+  this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+  this->transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
 BehaviorPlannerNode::~BehaviorPlannerNode() {}
@@ -121,16 +146,13 @@ void BehaviorPlannerNode::update_state()
   switch (current_state)
   {
   case LANEKEEPING:
-    // RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
+    RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
 
-    if (upcoming_intersection())
-    {
-      if (final_zones.zones[0].max_speed == STOP_SPEED)
-      {
+    if (upcoming_intersection()) {
+      if (final_zones.zones[0].max_speed == STOP_SPEED) {
         current_state = STOPPING;
       }
-      else
-      {
+      else {
         current_state = YIELDING;
       }
     }
@@ -140,8 +162,7 @@ void BehaviorPlannerNode::update_state()
 
     if (reached_desired_velocity(YIELD_SPEED))
       yield_ticks += 1;
-    if (yield_ticks >= 5)
-    {
+    if (yield_ticks >= 5) {
       yield_ticks = 0;
       current_state = IN_JUNCTION;
     }
@@ -151,8 +172,7 @@ void BehaviorPlannerNode::update_state()
 
     if (is_stopped())
       stop_ticks += 1;
-    if (stop_ticks >= 6)
-    {
+    if (stop_ticks >= max_stop_ticks) {
       stop_ticks = 0;
       current_state = STOPPED;
     }
@@ -197,7 +217,7 @@ void BehaviorPlannerNode::update_state()
     else
     {
       delay_ticks += 1;
-      if (delay_ticks >= 20)
+      if (delay_ticks >= max_junc_delay)
       {
         delay_ticks = 0;
         current_state = IN_JUNCTION;
@@ -340,7 +360,7 @@ bool BehaviorPlannerNode::obstacles_present(bool in_junction)
         // obstacle is already inside zone
         obs_in_junction = true;
       }
-      else if (i < 4 && !in_junction && zone_point_distance(point.x, point.y) < 1.0)
+      else if (i < 4 && !in_junction && zone_point_distance(point.x, point.y) < max_dist_to_zone)
       {
         // obstacle is nearby zone (assume they have right-of-way)
         // don't care about this property if we are already inside junction
@@ -382,7 +402,7 @@ void BehaviorPlannerNode::check_right_of_way()
     }
 
     // if zone-closest corner is farther away than 10 meters, obstacle can be removed
-    if (min_distance > 10.0)
+    if (min_distance > min_dist_out_zone)
     {
       for (size_t i = 0; i < obs_with_ROW.size(); i++)
       {
@@ -406,7 +426,7 @@ bool BehaviorPlannerNode::is_stopped()
 {
   float speed_dif = std::abs(STOP_SPEED - current_speed);
   float position_dif = std::abs(prev_position_x - current_position_x) + std::abs(prev_position_y - current_position_y);
-  return (speed_dif < 0.25 && position_dif < 1.0);
+  return (speed_dif < stop_speed_dif && position_dif < stop_pose_dif);
 }
 
 bool BehaviorPlannerNode::upcoming_intersection()

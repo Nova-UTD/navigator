@@ -172,9 +172,9 @@ def generate_launch_description():
         package='nova_behavior_planner',
         executable='BehaviorPlannerLaunch',
         parameters=[
-            (path.join(param_dir, "planning", "path_publisher.param.yaml"))],
+            (path.join(param_dir, "planning", "behavior_planner.param.yaml"))],
         remappings=[
-            ("/sensors/gnss/odom", "odometry"),
+            ("/gnss_odom", "odometry"),
             ("paths", "paths"),
             ("/sensors/zed/obstacle_array_3d", "zed_obstacles")])
 
