@@ -5,5 +5,5 @@
     names_file: "data/perception/coco.names"
     config_file: "data/perception/yolov4.cfg"
     publish_labeled_image: True
-    confidence_threshold: 0.7
+    confidence_threshold: 0.6
     nms_threshold: 0.4

@@ -331,7 +331,7 @@ def generate_launch_description():
         obstacle_detector_2d,
         lidar_obstacle_detector,
         obstacle_detector_3d,
-        obstacle_drawer,
+        #obstacle_drawer,
         # pcl_launch,
 
         landmark_localizer,
@@ -359,18 +359,18 @@ def generate_launch_description():
         # speedometer_translator,
 
         # BEHAVIOR
-        path_publisher,
-        motion_planner,
-        zone_fusion,
-        obstacle_zoner,
-        behavior_planner,
+        #path_publisher,
+        #motion_planner,
+        #zone_fusion,
+        #obstacle_zoner,
+        #behavior_planner,
 
         # STATE ESTIMATION
         map_odom_ukf,
         #pcl_localization,
 
         # CONTROL
-        unified_controller,
+        #unified_controller,
 
         # MISC
         odr_viz,

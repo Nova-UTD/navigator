@@ -97,17 +97,17 @@ class LandmarkLocalizerNode(Node):
         l.center_point.y = -96.1917145197929
         l.center_point.z = 1.2
         self.landmarks.append(l) #stop
-        l = Landmark()
+        l = Landmark() #STOP SIGN BY PHASE 3 COMING FROM REC CENTER
         l.center_point.x = -319.2613163102851
         l.center_point.y = -603.9380237274966
         l.center_point.z = 1.2
         self.landmarks.append(l) #stop
-        l = Landmark()
+        l = Landmark() #FIRE HYDRANT PHASE 3 BY REC CENTER
         l.center_point.x = -151.69859272249326
         l.center_point.y = -586.7810955816708
         l.center_point.z = 1.2
         self.landmarks.append(l) #stop
-        l = Landmark()
+        l = Landmark() #STOP SIGN PHASE 3 PARKING LOT
         l.center_point.x = -305.44632001416176
         l.center_point.y = -513.228774044821
         l.center_point.z = 1.2
@@ -117,9 +117,9 @@ class LandmarkLocalizerNode(Node):
         # l.center_point.y = -518.8424218030733
         # l.center_point.z = 1.2
         # self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -303.06205839743967
-        l.center_point.y = -432.0077070418239
+        l = Landmark() #STOP SIGN BY PHASE 3 AND PARKING GARAGE
+        l.center_point.x = -300.56205839743967
+        l.center_point.y = -429.0077070418239
         l.center_point.z = 1.2
         # self.landmarks.append(l) #stop
         # l = Landmark()
@@ -142,7 +142,7 @@ class LandmarkLocalizerNode(Node):
         # l.center_point.y = -339.6201958380861
         # l.center_point.z = 1.2
         self.landmarks.append(l) #stop
-        l = Landmark()
+        l = Landmark() #STOP SIGN IN PARKING LOT BY PARKING GARAGE
         l.center_point.x = -298.3001872598016
         l.center_point.y = -323.6502444482444
         l.center_point.z = 1.2
@@ -152,21 +152,21 @@ class LandmarkLocalizerNode(Node):
         # l.center_point.y = -304.81124638488063
         # l.center_point.z = 1.2
         # self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -317.5626751825434
-        l.center_point.y = -284.3849623186094
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
-        l = Landmark()
+        #l = Landmark()
+        #l.center_point.x = -317.5626751825434
+        #l.center_point.y = -284.3849623186094
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #stop
+        l = Landmark() #STOP SIGN PAST LAB BUILDINGS
         l.center_point.x = -298.8049204824074
         l.center_point.y = -263.4724736543279
         l.center_point.z = 1.2
         self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -317.92133133589925
-        l.center_point.y = -267.83851123948494
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
+        #l = Landmark()
+        #l.center_point.x = -317.92133133589925
+        #l.center_point.y = -267.83851123948494
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #stop
         # l = Landmark()
         # l.center_point.x = -316.634307854749
         # l.center_point.y = -148.3548689661853
@@ -183,77 +183,77 @@ class LandmarkLocalizerNode(Node):
         # l.center_point.z = 1.2
         # self.landmarks.append(l) #hydrant
         #will's
-        l = Landmark()
-        l.center_point.x = -41.79408776467312
-        l.center_point.y = -608.8506133594491
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
-        l = Landmark()
+        #l = Landmark()
+        #l.center_point.x = -41.79408776467312
+        #l.center_point.y = -608.8506133594491
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #stop
+        l = Landmark() #FIRE HYDRANT BY SECOND STOP SIGN BY REC CENTER
         l.center_point.x = -64.81375677117087
         l.center_point.y = -607.4311219078864
         l.center_point.z = 1.2
         self.landmarks.append(l) #stop
-        l = Landmark()
+        l = Landmark() #SECOND STOP SIGN BY REC CENTER
         l.center_point.x = -30.562687470500386
-        l.center_point.y = -597.2162151202285
+        l.center_point.y = -596.2162151202285
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = -42.21459423818776 
-        l.center_point.y = -593.785112410955
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = -32.476940514524976
-        l.center_point.y = -607.5314171374566
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 21.766159778683654
-        l.center_point.y = -607.6976206363331
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 23.87467599165364
-        l.center_point.y = -597.4650893304047
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 33.718110188288996
-        l.center_point.y = -612.2018876755918
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
+        #l = Landmark()
+        #l.center_point.x = -42.21459423818776 
+        #l.center_point.y = -593.785112410955
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = -32.476940514524976
+        #l.center_point.y = -607.5314171374566
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = 21.766159778683654
+        #l.center_point.y = -607.6976206363331
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = 23.87467599165364
+        #l.center_point.y = -597.4650893304047
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = 33.718110188288996
+        #l.center_point.y = -612.2018876755918
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
+        l = Landmark() #FIRST STOP SIGN BY REC CENTER
         l.center_point.x = 36.97954323171624 
         l.center_point.y = -597.8959074840187
         l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 39.093763099422304 
-        l.center_point.y = -597.6364862788248
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
+        self.landmarks.append(l) #stop sign
+        #l = Landmark()
+        #l.center_point.x = 39.093763099422304 
+        #l.center_point.y = -597.6364862788248
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
+        l = Landmark() #RIGHT STOP SIGN PARKING LOT 2 BEFORE HUGE INTERSECTION
         l.center_point.x = 403.2352641276224
         l.center_point.y = 37.42771778471791
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #LEFT STOP SIGN PARKING LOT 2 BEFORE HUGE INTERSECTION
         l.center_point.x = 415.1452761071515 
         l.center_point.y = 58.97503635384894
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #STOP SIGN BY PARKING LOT BEFURE HUGE INTERSECTION
         l.center_point.x = 459.74975032906593
         l.center_point.y = -69.22017668406002
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #LEFT SIDE STOP SIGN BY PARKING LOT BEFORE HUGE INTERSECTION
         l.center_point.x = 474.0894052286024
         l.center_point.y = -47.12080623430883
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #STOP SIGN BEFORE HUGE INTERSECTION
         l.center_point.x = 493.32613979938577 
         l.center_point.y = -104.52346107588416
         l.center_point.z = 1.2
@@ -278,37 +278,32 @@ class LandmarkLocalizerNode(Node):
         #l.center_point.y = -126.18455653601359
         #l.center_point.z = 1.2
         #self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #STOP SIGN BY LOT D (ATEC)
         l.center_point.x = 565.8509748029343 
         l.center_point.y = -197.0851284711794
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 575.1855439963444 
-        l.center_point.y = -175.29354427829483
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 539.9798341216523
-        l.center_point.y = -414.4740893267974
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = 575.1855439963444 
+        #l.center_point.y = -175.29354427829483
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
         #l = Landmark()
         #l.center_point.x = 539.7592568706534
         #l.center_point.y = -431.7580895306746
         #l.center_point.z = 1.2
         #self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #FAR STOP SIGN BY ATEC, KINDA SKETCH BUT DOESN'T GET RECOGNIZED 
         l.center_point.x = 518.6783352418486
         l.center_point.y = -431.5969739967253
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #FIRST STOP SIGN BY JSOM
         l.center_point.x = 478.617544002802
         l.center_point.y = -587.8603550776359
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #SECOND STOP SIGN BY JSOM
         l.center_point.x = 408.66122526618415
         l.center_point.y = -577.5742447015119
         l.center_point.z = 1.2
@@ -318,32 +313,32 @@ class LandmarkLocalizerNode(Node):
         #l.center_point.y = -574.3798608713213
         #l.center_point.z = 1.2
         #self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 364.3585013646588 
-        l.center_point.y = -591.0413370904802
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 330.70263013461687
-        l.center_point.y = -591.7334526328239
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
+        #l = Landmark()
+        #l.center_point.x = 364.3585013646588 
+        #l.center_point.y = -591.0413370904802
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = 330.70263013461687
+        #l.center_point.y = -591.7334526328239
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
+        l = Landmark() #JSOM FIRE HYDRANT
         l.center_point.x = 311.8256177404206 
         l.center_point.y = -574.4557014711646
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #TRAFFIC CIRCLE HYDRANT
         l.center_point.x = 234.30549651357802
         l.center_point.y = -545.9329233597714
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #STOP SIGN BY START POINT (ADMIN BUILDING)
         l.center_point.x = 158.43694499107576
         l.center_point.y = 124.92202085281235
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #STOP SIGN ACROSS FROM EINSTEIN BROS PARKING GARAGE
         l.center_point.x = 43.84403459688677
         l.center_point.y = 139.89790224497207
         l.center_point.z = 1.2
@@ -353,7 +348,7 @@ class LandmarkLocalizerNode(Node):
         # l.center_point.y = 147.72856210524185
         # l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
+        l = Landmark() #STOP SIGN END OF RES HALLS
         l.center_point.x = -61.765944858204236
         l.center_point.y = 125.6109221047434
         l.center_point.z = 1.2
@@ -363,6 +358,10 @@ class LandmarkLocalizerNode(Node):
         # l.center_point.y = 143.60194485802825
         # l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
+        l = Landmark() ##STOP SIGN by atec
+        l.center_point.x = 539
+        l.center_point.y = -415.5
+        l.center_point.z = 1.2
         self.get_logger().info(f"Loaded {len(self.landmarks)} landmarks!")
         draws = []
         for k in self.landmarks:
@@ -389,7 +388,7 @@ class LandmarkLocalizerNode(Node):
             l_marker.scale.y = 1.0
             l_marker.scale.z = 1.0
             l_marker.color = color
-            l_marker.lifetime.sec = 300
+            l_marker.lifetime.sec = 3000
 
             l_marker.pose.position.x = l.center_point.x
             l_marker.pose.position.y = l.center_point.y
