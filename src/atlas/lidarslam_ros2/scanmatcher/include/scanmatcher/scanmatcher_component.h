@@ -55,6 +55,7 @@ extern "C" {
 #include <geometry_msgs/msg/transform.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/path.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 
 #include <lidarslam_msgs/msg/map_array.hpp>
 #include "scanmatcher/lidar_undistortion.hpp"
@@ -92,7 +93,7 @@ private:
 
     pcl::Registration < pcl::PointXYZI, pcl::PointXYZI > ::Ptr registration_;
 
-    rclcpp::Subscription < geometry_msgs::msg::PoseStamped > ::SharedPtr initial_pose_sub_;
+    rclcpp::Subscription < nav_msgs::msg::Odometry > ::SharedPtr initial_pose_sub_;
     rclcpp::Subscription < sensor_msgs::msg::Imu > ::SharedPtr imu_sub_;
     rclcpp::Subscription < sensor_msgs::msg::PointCloud2 > ::SharedPtr input_cloud_sub_;
 
@@ -105,7 +106,7 @@ private:
     std::packaged_task < void() > mapping_task_;
     std::future < void > mapping_future_;
 
-    geometry_msgs::msg::PoseStamped corrent_pose_stamped_;
+    nav_msgs::msg::Odometry corrent_pose_stamped_;
     lidarslam_msgs::msg::MapArray map_array_msg_;
     nav_msgs::msg::Path path_;
     rclcpp::Publisher < geometry_msgs::msg::PoseStamped > ::SharedPtr pose_pub_;

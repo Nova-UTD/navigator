@@ -1,0 +1,9 @@
+/**:
+  ros__parameters:
+    map_xodr_file_path: data/maps/grand_loop/grand_loop.xodr
+    stop_tick: 10
+    junc_delay: 20
+    max_dist_to_zone: 2.0
+    min_dist_out_zone: 10.0
+    stop_speed_dif: 0.25
+    stop_pose_dif: 1.0

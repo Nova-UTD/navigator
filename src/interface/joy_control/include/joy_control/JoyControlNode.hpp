@@ -32,6 +32,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr steering_publisher;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr enable_publisher;
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr junction_enable_publisher;
 
   bool throttle_init = false;
   bool brake_init = false;

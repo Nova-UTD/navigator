@@ -1,25 +1,25 @@
 pcl_localization:
   ros__parameters:
-    registration_method: "GICP"
-    ndt_resolution: 3.0
-    ndt_step_size: 0.1
+    registration_method: "NDT"
+    ndt_resolution: 2.0
+    ndt_step_size: 0.4
     transform_epsilon: 0.01
     voxel_leaf_size: 1.0
     scan_max_range: 100.0
     scan_min_range: 1.0
     scan_period: 0.1
-    use_pcd_map: true
-    map_path: "data/maps/grand_loop/grand_loop.pcd"
+    use_pcd_map: false
+    map_path: "/home/main/navigator-2/data/maps/grand_loop/grand_loop.pcd"
     set_initial_pose: false
-    initial_pose_x: 0.0
-    initial_pose_y: 0.0
-    initial_pose_z: 0.0
+    initial_pose_x: -167.2391822215378
+    initial_pose_y: 95.10477333449926
+    initial_pose_z: -0.0029020091934057746
     initial_pose_qx: 0.0
     initial_pose_qy: 0.0
-    initial_pose_qz: 0.0
-    initial_pose_qw: 1.0
-    use_odom: false
+    initial_pose_qz: 0.6853907477913105
+    initial_pose_qw: 0.7281754753093983
+    use_odom: true
     use_imu: false
     enable_debug: true
-    gps_dist_recenter_threshold: 5.0
-    fitness_recenter_threshold: 50.0
+    fitness_gnss_threshold: 55.0
+    dist_gnss_threshold: 5.0
