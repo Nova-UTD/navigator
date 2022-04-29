@@ -50,7 +50,6 @@ class CurbLocalizerNode : public rclcpp::Node
         pcl::PointCloud<pcl::PointXYZ>::Ptr right_curb_points;
 
         std::shared_ptr<nav_msgs::msg::Odometry> odom_in;
-        std::shared_ptr<nav_msgs::msg::Odometry> odom_out;
 
         void publish_odom();
 

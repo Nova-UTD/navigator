@@ -75,6 +75,8 @@ void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPt
 }
 
 void CurbLocalizerNode::publish_odom() {
+
+    nav_msgs::msg::Odometry odom_out = *(this->odom_in);
     
     std::vector<std::vector<std::string>> path_roads = {
         {"81", "1"},
@@ -144,7 +146,8 @@ void CurbLocalizerNode::publish_odom() {
 
     Eigen::Vector3d displacement_right = find_translation(right_curb_points_map, right_curb_points);
 
-    odom_out_pub->publish(*odom_out);
+
+    odom_out_pub->publish(odom_out);
 }
 
 /**
