@@ -41,23 +41,39 @@ class LandmarkLocalizerNode(Node):
         self.gnss.pose.pose.position.z = 2.0
         self.load_landmarks()
         
-        # self.max_landmark_difference = 4.0 #only correct if a known landmark is less than x meters from the observed
-        # self.correction = [0,0,0]
-        # self.correction_log = [] #tuples of (correction, time (float in seconds))
-        # self.correction_log_duration = 2.0 #time in seconds to keep corrections before the most recent
-        # self.correction_falloff = 3.0 #total correction is a weighted average of correction log. weight is 1/(1+correction_falloff*t), where t is the time difference between this measurment and the most recent one 
+        self.max_landmark_difference = 4.0 #only correct if a known landmark is less than x meters from the observed
+        self.correction = [0,0,0]
+        self.correction_log = [] #tuples of (correction, time (float in seconds))
+        self.correction_log_duration = 2.0 #time in seconds to keep corrections before the most recent
+        self.correction_falloff = 3.0 #total correction is a weighted average of correction log. weight is 1/(1+correction_falloff*t), where t is the time difference between this measurment and the most recent one 
 
-    # def calc_correction(self, trim_log=True):
-    #     to_consider = []
-    #     if len(self.correction_log) == 0:
-    #         return [0,0,0] #no corrections
-    #     base_time = self.correction_log[0][1]
-    #     to_consider = [(corr, t) for (corr, t) in correction_log if t <= base_time + self.correction_log_duration]
-    #     values = [corr/(1.0+self.correction_falloff*(t-base_time)) for corr, t in to_consider]
-    #     return sum(values)
+    def calc_correction(self, trim_log=True):
+        to_consider = []
+        if len(self.correction_log) == 0:
+            return [0,0,0] #no corrections
+        base_time = self.correction_log[0][1]
+        to_consider = [(corr, t) for (corr, t) in self.correction_log if t <= base_time + self.correction_log_duration]
+        if trim_log:
+            self.correction_log = to_consider
+        if len (to_consider) == 0:
+            return [0,0,0]
+        weight_sum = 0
+        s = 0
+        for corr, t in to_consider:
+            w = 1/(1.0+self.correction_falloff*(t-base_time))
+            weight_sum += w
+            s += corr*w
+        return s/weight_sum
+
     def load_landmarks(self):
         #hard code list of landmarks (sorry)
         self.landmarks = []
+        l = Landmark() #STOP SIGN BY PHASE 3 COMING FROM REC CENTER
+        l.center_point.x = -299.0
+        l.center_point.y = -139.0
+        l.center_point.z = 1.2
+        l.label = l.STOP_SIGN
+        self.landmarks.append(l) 
         l = Landmark() #STOP SIGN BY PHASE 3 COMING FROM REC CENTER
         l.center_point.x = -319.2613163102851
         l.center_point.y = -603.9380237274966
@@ -329,7 +345,9 @@ class LandmarkLocalizerNode(Node):
         t = PoseWithCovarianceStamped()
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = "map"
+        self.correction = self.calc_correction()
         self.get_logger().info(f"correction {self.correction}")
+
         tf_trans = self.tf_gnss(self.correction)
         self.get_logger().info(f"tf_correction {tf_trans.center_point.x} {tf_trans.center_point.y} {tf_trans.center_point.z}")
         t.pose.pose.position.x = tf_trans.center_point.x
@@ -428,10 +446,11 @@ class LandmarkLocalizerNode(Node):
                 continue
             min_dist = d 
             trans = t
-        if min_dist == 9999999:
+        if min_dist >= 999999:
             return
-        #publish mean tf of all landmarks
-        self.correction = trans
+        #publish closest of all landmarks
+        clock = self.get_clock().now().to_msg()
+        self.correction_log.append((t, clock.sec+clock.nanosec*1e-9))
         self.pub_correction()
 
 def main(args=None):
