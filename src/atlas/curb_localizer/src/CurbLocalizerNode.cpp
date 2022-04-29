@@ -42,7 +42,7 @@ CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
 
     // curb detector class also outputs all candidate pts if necessary
 
-    this->left_curb_points_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("curb_points/left",
+    this->left_curb_points_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("/curb_points/right",
         rclcpp::QoS(rclcpp::KeepLast(2)),
         std::bind(&CurbLocalizerNode::left_curb_points_callback, this, std::placeholders::_1));
     this->right_curb_points_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("curb_points/right",
@@ -95,10 +95,17 @@ void CurbLocalizerNode::publish_odom() {
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr left_lidar_trans = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr right_lidar_trans = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    
+    
     transform_points_to_odom(this->left_curb_points, *(this->odom_in), left_lidar_trans);
     transform_points_to_odom(this->right_curb_points, *(this->odom_in), right_lidar_trans);
 
-    
+    sensor_msgs::msg::PointCloud2 transpub;
+    print("A");
+    pcl::toROSMsg(*left_lidar_trans, transpub);
+    print("B");
+    transpub.header.frame_id = "map";
+    this->lidar_pub->publish(transpub);
 
     std::vector<std::vector<std::string>> path_roads = {
         {"81", "-1"},
@@ -221,9 +228,9 @@ void CurbLocalizerNode::publish_odom() {
     }
 
     for (auto lane : target_lanesection->get_lanes()) {
-        if (lane->type == "shoulder" && lane->id <= 0) {
+        if (lane->type == "shoulder" && lane->id * current_lane->id > 0) {
             right_curb = lane;
-        } else if (lane->type == "shoulder" && lane->id > 0) {
+        } else if (lane->type == "shoulder" && lane->id * current_lane->id< 0) {
             left_curb = lane;
         }
     }
@@ -237,39 +244,38 @@ void CurbLocalizerNode::publish_odom() {
     odr::Line3D right_curb_line = navigator::opendrive::get_centerline_as_xy(*right_curb, target_lanesection->s0, target_lanesection->get_end(), 0.25, false);
     odr::Line3D left_curb_line = navigator::opendrive::get_centerline_as_xy(*left_curb, target_lanesection->s0, target_lanesection->get_end(), 0.25, true);
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr right_curb_points_map
+    pcl::PointCloud<pcl::PointXYZ>::Ptr curb_points_map
         = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
     // TODO: curb point cloud in map frame from curb centerline
     for(odr::Vec3D point : right_curb_line) {
-        right_curb_points_map->push_back(pcl::PointXYZ(point[0], point[1], 0));
+        curb_points_map->push_back(pcl::PointXYZ(point[0], point[1], 0));
     }
 
-    sensor_msgs::msg::PointCloud2 transpub;
-    print("A");
-    pcl::toROSMsg(*right_lidar_trans, transpub);
-    print("B");
-    transpub.header.frame_id = "map";
-    this->lidar_pub->publish(transpub);
+    for(odr::Vec3D point : left_curb_line) {
+        curb_points_map->push_back(pcl::PointXYZ(point[0], point[1], 0));
+    }
+
     sensor_msgs::msg::PointCloud2 transpub2;
     print("A");
-    pcl::toROSMsg(*right_curb_points_map, transpub2);
+    pcl::toROSMsg(*curb_points_map, transpub2);
     print("B");
     transpub2.header.frame_id = "map";
     this->lidar_pub2->publish(transpub2);
 
 
-
-    Eigen::Vector3d displacement_right = find_translation(right_curb_points_map, right_lidar_trans) / 50.0;
-    this->last_offset = last_offset + displacement_right;
+    auto lr_merge = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    *lr_merge = *left_lidar_trans + *right_lidar_trans;
+    Eigen::Vector3d displacement = find_translation(curb_points_map, lr_merge) / 50.0;
+    this->last_offset = last_offset + displacement;
     // TODO: check fitness of displacement
-    odom_out.pose.pose.position.x += displacement_right(0);
-    odom_out.pose.pose.position.y += displacement_right(1);
-    odom_out.pose.pose.position.z += displacement_right(2);
+    odom_out.pose.pose.position.x += displacement(0);
+    odom_out.pose.pose.position.y += displacement(1);
+    odom_out.pose.pose.position.z += displacement(2);
 
-    print(std::to_string(displacement_right(0)));
-    print(std::to_string(displacement_right(1)));
-    print(std::to_string(displacement_right(2)));
+    print(std::to_string(displacement(0)));
+    print(std::to_string(displacement(1)));
+    print(std::to_string(displacement(2)));
     print(std::to_string(odom_in->pose.pose.position.x));
     print(std::to_string(odom_in->pose.pose.position.y));
     print(std::to_string(odom_in->pose.pose.position.z));
@@ -317,12 +323,17 @@ void CurbLocalizerNode::flatten_cloud(pcl::PointCloud<pcl::PointXYZ>::Ptr in_clo
 Eigen::Vector3d CurbLocalizerNode::find_translation(const pcl::PointCloud<pcl::PointXYZ>::Ptr truth,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr estimate) {
     
-    pcl::PointCloud<pcl::PointXYZ> dummy_out;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr dummy_out = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
     pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-    icp.setInputSource(estimate);
-    icp.setInputTarget(truth);
-    icp.align(dummy_out);
+    icp.setMaxCorrespondenceDistance(5);
+    icp.setMaximumIterations(50);
+    icp.setEuclideanFitnessEpsilon(10000);
+    icp.setInputSource(truth);
+    icp.setInputTarget(dummy_out);
+    icp.align(*estimate);
+
+    print("CONVERGED???? " + std::to_string(icp.hasConverged()));
 
     Eigen::Vector3d translation = Eigen::Affine3d(icp.getFinalTransformation().cast<double>()).translation();
     return -translation;

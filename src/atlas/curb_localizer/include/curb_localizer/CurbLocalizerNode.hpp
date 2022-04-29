@@ -67,7 +67,7 @@ class CurbLocalizerNode : public rclcpp::Node
             pcl::PointCloud<pcl::PointXYZ>::Ptr out_cloud);
         // Finds the translation required to map the estimate (current lidar with odom) to the
         // known truth (curb on map data)
-        static Eigen::Vector3d find_translation(const pcl::PointCloud<pcl::PointXYZ>::Ptr truth,
+        Eigen::Vector3d find_translation(const pcl::PointCloud<pcl::PointXYZ>::Ptr truth,
             const pcl::PointCloud<pcl::PointXYZ>::Ptr estimate);
 
 };
