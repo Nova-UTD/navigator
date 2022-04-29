@@ -25,6 +25,10 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from itertools import combinations
 
+import pymap3d as pm
+
+cunorrected_log = open("uncorrected.csv", 'w')
+corrected_log = open("corrected.csv", 'w')
 
 class LandmarkLocalizerNode(Node):
 
@@ -37,7 +41,7 @@ class LandmarkLocalizerNode(Node):
         self.gnss.pose.pose.position.z = 2.0
         self.load_landmarks()
         
-        self.max_landmark_difference = 5.0 #only correct if a known landmark is less than x meters from the observed
+        self.max_landmark_difference = 4.0 #only correct if a known landmark is less than x meters from the observed
         self.last_correction = [0,0,0]
 
     def load_landmarks(self):
@@ -48,11 +52,11 @@ class LandmarkLocalizerNode(Node):
         l.center_point.y = -134.9235080306727
         l.center_point.z = 1.2
         self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -322.93398015179844
-        l.center_point.y = -132.05339792123465
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
+        # l = Landmark()
+        # l.center_point.x = -322.93398015179844
+        # l.center_point.y = -132.05339792123465
+        # l.center_point.z = 1.2
+        # self.landmarks.append(l) #stop
         l = Landmark()
         l.center_point.x = -315.2870263839025
         l.center_point.y = -114.9616260345575
@@ -72,16 +76,11 @@ class LandmarkLocalizerNode(Node):
         l.center_point.x = -162.48869421862923
         l.center_point.y = 129.77177127323284
         l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -56.19235350276722
-        l.center_point.y = 121.20271514525827
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -61.394257554274475
-        l.center_point.y = 125.19494364878537
-        l.center_point.z = 1.2
+        # self.landmarks.append(l) #stop
+        # l = Landmark()
+        # l.center_point.x = -56.19235350276722
+        # l.center_point.y = 121.20271514525827
+        # l.center_point.z = 1.2
         self.landmarks.append(l) #stop
         l = Landmark()
         l.center_point.x = -348.81230336197166
@@ -113,46 +112,46 @@ class LandmarkLocalizerNode(Node):
         l.center_point.y = -513.228774044821
         l.center_point.z = 1.2
         self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -328.4492914602717
-        l.center_point.y = -518.8424218030733
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
+        # l = Landmark()
+        # l.center_point.x = -328.4492914602717
+        # l.center_point.y = -518.8424218030733
+        # l.center_point.z = 1.2
+        # self.landmarks.append(l) #stop
         l = Landmark()
         l.center_point.x = -303.06205839743967
         l.center_point.y = -432.0077070418239
         l.center_point.z = 1.2
+        # self.landmarks.append(l) #stop
+        # l = Landmark()
+        # l.center_point.x = -321.61443296870044
+        # l.center_point.y = -428.1394611485689
+        # l.center_point.z = 1.2
         self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -321.61443296870044
-        l.center_point.y = -428.1394611485689
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -295.3522192456413
-        l.center_point.y = -414.6034979249579
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -318.4172885145335
-        l.center_point.y = -409.61226243185126
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -303.0673017314964
-        l.center_point.y = -339.6201958380861
-        l.center_point.z = 1.2
+        # l = Landmark()
+        # l.center_point.x = -295.3522192456413
+        # l.center_point.y = -414.6034979249579
+        # l.center_point.z = 1.2
+        # self.landmarks.append(l) #stop
+        # l = Landmark()
+        # l.center_point.x = -318.4172885145335
+        # l.center_point.y = -409.61226243185126
+        # l.center_point.z = 1.2
+        # self.landmarks.append(l) #stop
+        # l = Landmark()
+        # l.center_point.x = -303.0673017314964
+        # l.center_point.y = -339.6201958380861
+        # l.center_point.z = 1.2
         self.landmarks.append(l) #stop
         l = Landmark()
         l.center_point.x = -298.3001872598016
         l.center_point.y = -323.6502444482444
         l.center_point.z = 1.2
         self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -297.860880051065
-        l.center_point.y = -304.81124638488063
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
+        # l = Landmark()
+        # l.center_point.x = -297.860880051065
+        # l.center_point.y = -304.81124638488063
+        # l.center_point.z = 1.2
+        # self.landmarks.append(l) #stop
         l = Landmark()
         l.center_point.x = -317.5626751825434
         l.center_point.y = -284.3849623186094
@@ -168,21 +167,21 @@ class LandmarkLocalizerNode(Node):
         l.center_point.y = -267.83851123948494
         l.center_point.z = 1.2
         self.landmarks.append(l) #stop
-        l = Landmark()
-        l.center_point.x = -316.634307854749
-        l.center_point.y = -148.3548689661853
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #stop
+        # l = Landmark()
+        # l.center_point.x = -316.634307854749
+        # l.center_point.y = -148.3548689661853
+        # l.center_point.z = 1.2
+        # self.landmarks.append(l) #stop
         l = Landmark()
         l.center_point.x = -286.44465661733466
         l.center_point.y = -132.26290969570948
         l.center_point.z = 1.2
         self.landmarks.append(l) #stop
 
-        l.center_point.x = -328.0
-        l.center_point.y = -520.6
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
+        # l.center_point.x = -328.0
+        # l.center_point.y = -520.6
+        # l.center_point.z = 1.2
+        # self.landmarks.append(l) #hydrant
         #will's
         l = Landmark()
         l.center_point.x = -41.79408776467312
@@ -259,26 +258,26 @@ class LandmarkLocalizerNode(Node):
         l.center_point.y = -104.52346107588416
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 516.5247765603557
-        l.center_point.y = -99.06807791962109
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 525.2663655717937
-        l.center_point.y = -107.07712021257227
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 503.8947525482264
-        l.center_point.y = -122.81293606687251
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 529.4644684701508 
-        l.center_point.y = -126.18455653601359
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = 516.5247765603557
+        #l.center_point.y = -99.06807791962109
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = 525.2663655717937
+        #l.center_point.y = -107.07712021257227
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = 503.8947525482264
+        #l.center_point.y = -122.81293606687251
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = 529.4644684701508 
+        #l.center_point.y = -126.18455653601359
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
         l = Landmark()
         l.center_point.x = 565.8509748029343 
         l.center_point.y = -197.0851284711794
@@ -294,11 +293,11 @@ class LandmarkLocalizerNode(Node):
         l.center_point.y = -414.4740893267974
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 539.7592568706534
-        l.center_point.y = -431.7580895306746
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = 539.7592568706534
+        #l.center_point.y = -431.7580895306746
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
         l = Landmark()
         l.center_point.x = 518.6783352418486
         l.center_point.y = -431.5969739967253
@@ -314,11 +313,11 @@ class LandmarkLocalizerNode(Node):
         l.center_point.y = -577.5742447015119
         l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = 355.33691556821714
-        l.center_point.y = -574.3798608713213
-        l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
+        #l = Landmark()
+        #l.center_point.x = 355.33691556821714
+        #l.center_point.y = -574.3798608713213
+        #l.center_point.z = 1.2
+        #self.landmarks.append(l) #hydrant
         l = Landmark()
         l.center_point.x = 364.3585013646588 
         l.center_point.y = -591.0413370904802
@@ -348,21 +347,21 @@ class LandmarkLocalizerNode(Node):
         l.center_point.x = 43.84403459688677
         l.center_point.y = 139.89790224497207
         l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = -55.31356208328481
-        l.center_point.y = 147.72856210524185
-        l.center_point.z = 1.2
+        # self.landmarks.append(l) #hydrant
+        # l = Landmark()
+        # l.center_point.x = -55.31356208328481
+        # l.center_point.y = 147.72856210524185
+        # l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
         l = Landmark()
         l.center_point.x = -61.765944858204236
         l.center_point.y = 125.6109221047434
         l.center_point.z = 1.2
-        self.landmarks.append(l) #hydrant
-        l = Landmark()
-        l.center_point.x = -38.5588168134327
-        l.center_point.y = 143.60194485802825
-        l.center_point.z = 1.2
+        # self.landmarks.append(l) #hydrant
+        # l = Landmark()
+        # l.center_point.x = -38.5588168134327
+        # l.center_point.y = 143.60194485802825
+        # l.center_point.z = 1.2
         self.landmarks.append(l) #hydrant
         self.get_logger().info(f"Loaded {len(self.landmarks)} landmarks!")
         draws = []
@@ -425,24 +424,25 @@ class LandmarkLocalizerNode(Node):
         map_landmark, distance_from_observed = self.closest_landmark(landmark_msg_tf)
         if map_landmark == None:
             self.get_logger().warn(f"No map landmark to compare!")
-            return (None, False)
+            return (None, False, 9999999)
         if distance_from_observed >= self.max_landmark_difference:
             self.get_logger().warn(f"Observed landmark too far ({distance_from_observed} m) from map landmark!")
 
-            return (None, False)
+            return (None, False, 9999999)
         #compute correction using base_link landmark
         trans = self.compute_trans(landmark_msg_tf, map_landmark)
         self.get_logger().info(f"offset: {trans}")
-        return (trans, True)
+        return (trans, True, distance_from_observed)
         
 
     def tf_gnss(self, center):
         translate = np.zeros(3)
-        translate[0] = center[0] + self.gnss.pose.pose.position.x
-        translate[1] = center[1] + self.gnss.pose.pose.position.y
-        translate[2] = center[2] + self.gnss.pose.pose.position.z
+        
         rot = R.from_quat([self.gnss.pose.pose.orientation.x, self.gnss.pose.pose.orientation.y, self.gnss.pose.pose.orientation.z, self.gnss.pose.pose.orientation.w])
-        final = rot.apply(translate)
+        final = rot.apply(center)
+        translate[0] = final[0] + self.gnss.pose.pose.position.x
+        translate[1] = final[1] + self.gnss.pose.pose.position.y
+        translate[2] = final[2] + self.gnss.pose.pose.position.z
         res = Landmark()
         res.center_point.x = translate[0]
         res.center_point.y = translate[1]
@@ -487,8 +487,18 @@ class LandmarkLocalizerNode(Node):
         t.pose.pose.position.y = tf_trans.center_point.y
         t.pose.pose.position.z = self.gnss.pose.pose.position.z#tf_trans.center_point.z
         t.pose.pose.orientation = self.gnss.pose.pose.orientation
-    
+        
+        self.write_lat_long(t.pose.pose.position.x,t.pose.pose.position.y,t.pose.pose.position.z, corrected_log)
+        self.write_lat_long(self.gnss.pose.pose.position.x,self.gnss.pose.pose.position.y,self.gnss.pose.pose.position.z, cunorrected_log)
+
         self.corrected_pub.publish(t)
+    def write_lat_long(self, x, y, z, log):
+        lat0 = 32.989487
+        lon0 = -96.750437
+        alt0 = 196.0
+        lat, lon, alt = pm.enu2geodetic(
+            float(x), float(y), float(z), lat0, lon0, alt0)
+        log.write(f"{lat},{lon}\n")
 
     #R(bl + trans) = map
     # => trans = R'*map - bl
@@ -550,18 +560,21 @@ class LandmarkLocalizerNode(Node):
         ),
         'perceived')
         trans = np.zeros(3)
-        corrections = 0
+        min_dist = 9999999
+        
         
         for l in msg_tf:
-            t, has_correction = self.correct(l)
+            t, has_correction, d = self.correct(l)
             if not has_correction:
                 continue #no correction found
-            trans += t
-            corrections += 1
-        if corrections == 0:
+            if d > min_dist:
+                continue
+            min_dist = d 
+            trans = t
+        if min_dist == 9999999:
             return
         #publish mean tf of all landmarks
-        self.last_correction = trans/corrections
+        self.last_correction = trans
         self.pub_correction()
 
 def main(args=None):
