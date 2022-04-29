@@ -28,6 +28,7 @@ using namespace std::chrono_literals;
 #define MAP_PARAM "map_xodr_file_path"
 #define SPEED_PARAM "cruising_speed_ms"
 #define SPEED_BUMP_PARAM "speed_bump_ms"
+#define ROUTE_INFO_PARAMS "route_info_params"
 
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
@@ -35,106 +36,23 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	this->declare_parameter<std::string>(MAP_PARAM, "data/maps/grand_loop/grand_loop.xodr");
 	this->declare_parameter<double>(SPEED_PARAM, 10.0);
     this->declare_parameter<double>(SPEED_BUMP_PARAM, 2.0);
+	this->declare_parameter<std::vector<string>>(ROUTE_INFO_PARAMS, std::vector<string> ({}));
 
 	std::string xodr_path;
+	std::vector<string> route_info_params;
 	this->get_parameter<std::string>(MAP_PARAM, xodr_path);
 	this->get_parameter<double>(SPEED_PARAM, cruising_speed);
     this->get_parameter<double>(SPEED_BUMP_PARAM, speed_bump_speed);
+	this->get_parameter<std::vector<string>>(ROUTE_INFO_PARAMS, route_info_params);
+	
+
+	auto route_info = std::vector<PathSection>();
+	for (auto it = std::begin(route_info_params); it != std::end(route_info_params); it+=3)
+		route_info.push_back(PathSection(*it, std::stoi(*(it+1)), std::stod(*(it+2))));
 
 	paths_pub = this->create_publisher<FinalPath>("paths", 1);
 	
 	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
-    
-    auto route_info = std::vector<PathSection> {
-		PathSection("81", -1),
-		PathSection("953", -1),
-        PathSection("82", -1),
-        PathSection("919", -1),
-        PathSection("105", -1),
-        PathSection("332", -1),
-        PathSection("39", -1),
-        PathSection("663", -1),
-        PathSection("78", -1),
-        PathSection("337", -1),
-        PathSection("7", -1),
-        PathSection("465", -1),
-        PathSection("63", -1),
-        PathSection("776", -1),
-        PathSection("98", 4, 82.99),
-        PathSection("98", 5, 60.03),
-        PathSection("98", 6, 53.43),
-        PathSection("98", 5, 3.61),
-        PathSection("98", 5, 0),
-        PathSection("582", 1),
-        PathSection("98", 5, 0),
-        PathSection("43", -1, 0),
-        PathSection("43", -1, 59.72),
-        PathSection("898", -1),
-        PathSection("48", -1, 0),
-        PathSection("48", -1, 20.06),
-        PathSection("48", -1, 28.76),
-        PathSection("48", -2, 49.12),
-        PathSection("48", -2, 60.23),
-        PathSection("262", -1),
-        PathSection("86", -1),
-        PathSection("998", -1),
-        PathSection("110", -1),
-        PathSection("689", -1),
-        PathSection("111", -1),
-        PathSection("219", -2),
-        PathSection("113", -2),
-        PathSection("609", -1),
-        PathSection("57", 1),
-        PathSection("390", 1),
-        PathSection("55", 1, 263.97),
-        PathSection("55", 1, 0),
-		PathSection("788", 1),
-		PathSection("17", -1),
-		PathSection("181", -1),
-		PathSection("18", -1),
-		PathSection("275", -1),
-		PathSection("19", -1),
-		PathSection("814", -1),
-		PathSection("809", -1),
-		PathSection("83", -3),
-		PathSection("28", -3),
-		PathSection("0", -3),
-		PathSection("150", -1),
-		PathSection("42", -1),
-		PathSection("21", 1),
-		PathSection("80", 1),
-		PathSection("497", 1),
-		PathSection("79", 1),
-		PathSection("960", 1),
-		PathSection("120", -1, 0),
-		PathSection("120", -1, 67.88),
-		PathSection("75", 1, 38.16),
-		PathSection("75", 2, 0),
-		PathSection("827", 1),
-		PathSection("103", -1),
-		PathSection("141", -1),
-		PathSection("40", 1),
-		PathSection("955", 1),
-		PathSection("81", 1),
-    };
-
-	auto mini_route_info = std::vector<PathSection> {
-		PathSection("81", -1),
-		PathSection("953", -1),
-        PathSection("82", -1),
-        PathSection("929", -1),
-        PathSection("104", 2),
-        PathSection("128", 1),
-		PathSection("40", 1),
-		PathSection("955", 1),
-		PathSection("81", 1),
-	};
-
-	auto mini_test_route_info = std::vector<PathSection> {
-		PathSection("81", -1),
-		PathSection("953", -1),
-        PathSection("82", -1),
-	};
 
     for (auto s : route_info) {
         all_ids.insert(s.road_id);
@@ -145,7 +63,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
 	map = navigator::opendrive::load_map(xodr_path)->map;
 
-	this->route1 = generate_path(mini_test_route_info, map);
+	this->route1 = generate_path(route_info, map);
 	this->path = this->route1;
 }
 
@@ -158,8 +76,19 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSe
 		std::string id = section.road_id;
 		int lane_id = section.lane_id;
 		auto road = map->roads[id];
-		std::shared_ptr<odr::LaneSection> lanesection = road->get_lanesection(section.lanesection);
-		odr::LaneSet laneset = lanesection->get_lanes();
+        if (road == nullptr)
+        {
+            RCLCPP_WARN(this->get_logger(), "NO ROAD FOUND FOR ROAD %s", id.c_str());
+            continue;
+        }
+        std::shared_ptr<odr::LaneSection> lanesection = road->get_lanesection(section.lanesection);
+        if (lanesection == nullptr)
+        {
+            RCLCPP_WARN(this->get_logger(), "NO LANESECTION FOR ROAD %s", id.c_str());
+            continue;
+        }
+        odr::LaneSet laneset = lanesection->get_lanes();
+
 		std::shared_ptr<odr::Lane> lane = nullptr;
         //loop through the laneset to find a pointer to the lane.
 		for (auto l : laneset) {
@@ -170,10 +99,6 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSe
 		}
 		if (lane == nullptr) {
 			RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s", id.c_str());
-			continue;
-		}
-        if (lanesection == nullptr) {
-			RCLCPP_WARN(this->get_logger(), "NO LANESECTION FOR ROAD %s", id.c_str());
 			continue;
 		}
 
@@ -221,6 +146,7 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 
 	// Set visual display. Not sure if this is needed
 	marker.scale.x = 1;
+    marker.scale.y = 1;
 	marker.color.a = 1.0;
 	marker.color.r = 1.0;
 	marker.color.g = 1.0;
@@ -228,7 +154,7 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 
 	// Add path to array
 	marker_array.markers.push_back(marker);
-	// RCLCPP_INFO(this->get_logger(), "path viz");
+	RCLCPP_INFO(this->get_logger(), "path viz");
 
 	viz_pub->publish(marker_array);
 }

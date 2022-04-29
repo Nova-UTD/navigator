@@ -22,6 +22,10 @@ JoyControlNode::JoyControlNode() : rclcpp::Node("joy_control") {
   this->declare_parameter("max_steering_angle");
   this->params.max_steering_angle
     = this->get_parameter("max_steering_angle").as_double();
+
+  this->declare_parameter("junction_enable_button");
+  this->params.enable_junction_button = this->get_parameter("junction_enable_button").as_int();
+  
   this->init();
 }
 
@@ -43,6 +47,9 @@ void JoyControlNode::init() {
   this->joy_subscription = this->create_subscription<sensor_msgs::msg::Joy>
     ("joy_control_input", 8, std::bind
      (&JoyControlNode::update, this, std::placeholders::_1));
+  
+  this->junction_enable_publisher = this->create_publisher<std_msgs::msg::Bool>
+    ("joy_control_junction_enable", 8);
 }
 
 void JoyControlNode::update(sensor_msgs::msg::Joy::SharedPtr state) {
@@ -50,11 +57,13 @@ void JoyControlNode::update(sensor_msgs::msg::Joy::SharedPtr state) {
   std_msgs::msg::Float32 brake_message;
   std_msgs::msg::Float32 steering_message;
   std_msgs::msg::Bool enable_message;
+  std_msgs::msg::Bool junction_enable_message;
 
   float raw_throttle = state->axes[this->params.throttle_axis];
   float raw_brake = state->axes[this->params.brake_axis];
   float raw_steering = state->axes[this->params.steering_axis];
   int raw_enable = state->buttons[this->params.enable_button];
+  int junction_raw_enable = state->buttons[this->params.enable_junction_button];
 
   // Until moved, throttle and brake initially read 0
   if(raw_throttle != 0.0) this->throttle_init = true;
@@ -63,6 +72,9 @@ void JoyControlNode::update(sensor_msgs::msg::Joy::SharedPtr state) {
   bool enable = raw_enable == 1;
   enable_message.data = enable;
   
+  bool junction_enable = junction_raw_enable == 1;
+  junction_enable_message.data = junction_enable;
+
   throttle_message.data = this->throttle_init && enable ?
     (raw_throttle * -0.5) + 0.5 : 0.0;
   brake_message.data = this->brake_init && enable ?
@@ -74,4 +86,5 @@ void JoyControlNode::update(sensor_msgs::msg::Joy::SharedPtr state) {
   this->brake_publisher->publish(brake_message);
   this->steering_publisher->publish(steering_message);
   this->enable_publisher->publish(enable_message);
+  this->junction_enable_publisher->publish(junction_enable_message);
 }
