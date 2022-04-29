@@ -17,6 +17,8 @@
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 
+#include <Eigen/Dense>
+
 #include "Lanes.h"
 #include "Road.h"
 #include "LaneSection.h"
@@ -41,6 +43,8 @@ class CurbLocalizerNode : public rclcpp::Node
 
         rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_out_pub;
         rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr lidar_pub;
+        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr lidar_pub2;
+
 
         double look_distance; // meters to look ahead and behind the car for the curb
 
@@ -51,6 +55,7 @@ class CurbLocalizerNode : public rclcpp::Node
         pcl::PointCloud<pcl::PointXYZ>::Ptr right_curb_points;
 
         std::shared_ptr<nav_msgs::msg::Odometry> odom_in;
+        Eigen::Vector3d last_offset;
 
         void publish_odom();
 

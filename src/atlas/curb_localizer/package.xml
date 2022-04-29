@@ -16,6 +16,7 @@
   <depend>opendrive_utils</depend>
   <depend>PCL</depend>
   <depend>lz4</depend>
+  <depend>Eigen</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
