@@ -28,6 +28,7 @@ using namespace std::chrono_literals;
 #define MAP_PARAM "map_xodr_file_path"
 #define SPEED_PARAM "cruising_speed_ms"
 #define SPEED_BUMP_PARAM "speed_bump_ms"
+#define ROUTE_INFO_PARAMS "route_info_params"
 
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
@@ -35,88 +36,23 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	this->declare_parameter<std::string>(MAP_PARAM, "data/maps/grand_loop/grand_loop.xodr");
 	this->declare_parameter<double>(SPEED_PARAM, 10.0);
     this->declare_parameter<double>(SPEED_BUMP_PARAM, 2.0);
+	this->declare_parameter<std::vector<string>>(ROUTE_INFO_PARAMS, std::vector<string> ({}));
 
 	std::string xodr_path;
+	std::vector<string> route_info_params;
 	this->get_parameter<std::string>(MAP_PARAM, xodr_path);
 	this->get_parameter<double>(SPEED_PARAM, cruising_speed);
     this->get_parameter<double>(SPEED_BUMP_PARAM, speed_bump_speed);
+	this->get_parameter<std::vector<string>>(ROUTE_INFO_PARAMS, route_info_params);
+	
+
+	auto route_info = std::vector<PathSection>();
+	for (auto it = std::begin(route_info_params); it != std::end(route_info_params); it+=3)
+		route_info.push_back(PathSection(*it, std::stoi(*(it+1)), std::stod(*(it+2))));
 
 	paths_pub = this->create_publisher<FinalPath>("paths", 1);
 	
 	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
-    
-    auto route_info = std::vector<PathSection> {
-		PathSection("81", -1),
-		PathSection("953", -1),
-        PathSection("82", -1),
-        PathSection("919", -1),
-        PathSection("105", -1),
-        PathSection("332", -1),
-        PathSection("39", -1),
-        PathSection("663", -1),
-        PathSection("78", -1),
-        PathSection("337", -1),
-        PathSection("7", -1),
-        PathSection("465", -1),
-        PathSection("63", -1),
-        PathSection("776", -1),
-        PathSection("98", 4, 82.99),
-        PathSection("98", 5, 60.03),
-        PathSection("98", 6, 53.43),
-        PathSection("98", 5, 3.61),
-        PathSection("98", 5, 0),
-        PathSection("582", 1),
-        PathSection("98", 5, 0),
-        PathSection("43", -1, 0),
-        PathSection("43", -1, 59.72),
-        PathSection("898", -1),
-        PathSection("48", -1, 0),
-        PathSection("48", -1, 20.06),
-        PathSection("48", -1, 28.76),
-        PathSection("48", -2, 49.12),
-        PathSection("48", -2, 60.23),
-        PathSection("262", -1),
-        PathSection("86", -1),
-        PathSection("998", -1),
-        PathSection("110", -1),
-        PathSection("689", -1),
-        PathSection("111", -1),
-        PathSection("219", -2),
-        PathSection("113", -2),
-        PathSection("609", -1),
-        PathSection("57", 1),
-        PathSection("390", 1),
-        PathSection("55", 1, 263.97),
-        PathSection("55", 1, 0),
-		PathSection("788", 1),
-		PathSection("17", -1),
-		PathSection("181", -1),
-		PathSection("18", -1),
-		PathSection("275", -1),
-		PathSection("19", -1),
-		PathSection("814", -1),
-		PathSection("809", -1),
-		PathSection("83", -3),
-		PathSection("28", -3),
-		PathSection("0", -3),
-		PathSection("150", -1),
-		PathSection("42", -1),
-		PathSection("21", 1),
-		PathSection("80", 1),
-		PathSection("497", 1),
-		PathSection("79", 1),
-		PathSection("960", 1),
-		PathSection("120", -1, 0),
-		PathSection("120", -1, 67.88),
-		PathSection("75", 1, 38.16),
-		PathSection("75", 2, 0),
-		PathSection("827", 1),
-		PathSection("103", -1),
-		PathSection("141", -1),
-		PathSection("40", 1),
-		PathSection("955", 1),
-		PathSection("81", 1),
-    };
 
 	auto mini_route_info = std::vector<PathSection> {
 		PathSection("81", -1),
