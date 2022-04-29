@@ -137,7 +137,7 @@ def generate_launch_description():
         executable='unified_controller_node',
         remappings=[
             ("/planning/outgoing_trajectory", "trajectory"),
-            ("/sensors/gnss/odom", "odometry"),
+            ("/gnss_odom", "odometry"),
             ("/command/throttle_position", "throttle_position"),
             ("/command/brake_position", "brake_position"),
             ("/command/steering_position", "steering_target")])
@@ -149,7 +149,7 @@ def generate_launch_description():
             ("outgoing_trajectory", "trajectory"),
             ("planning/paths", "paths"),
             ("/planning/zones", "zones"),
-            ("/sensors/gnss/odom", "odometry")],
+            ("/gnss_odom", "odometry")],
         parameters=[
             (path.join(param_dir, "planning", "motion_planner.param.yaml"))])
 
