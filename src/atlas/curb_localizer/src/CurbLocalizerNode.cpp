@@ -143,9 +143,16 @@ void CurbLocalizerNode::publish_odom() {
         = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 
     // TODO: curb point cloud in map frame from curb centerline
-
+    for(odr::Vec3D point : right_curb_line) {
+        right_curb_points_map->push_back(pcl::PointXYZ(point[0], point[1], 0));
+    }
+    
     Eigen::Vector3d displacement_right = find_translation(right_curb_points_map, right_curb_points);
 
+    // TODO: check fitness of displacement
+    odom_out.pose.pose.position.x += displacement_right(0);
+    odom_out.pose.pose.position.y += displacement_right(1);
+    odom_out.pose.pose.position.z += displacement_right(2);
 
     odom_out_pub->publish(odom_out);
 }
