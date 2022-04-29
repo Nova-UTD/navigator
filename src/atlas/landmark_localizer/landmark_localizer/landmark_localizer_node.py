@@ -41,9 +41,20 @@ class LandmarkLocalizerNode(Node):
         self.gnss.pose.pose.position.z = 2.0
         self.load_landmarks()
         
-        self.max_landmark_difference = 4.0 #only correct if a known landmark is less than x meters from the observed
-        self.last_correction = [0,0,0]
+        # self.max_landmark_difference = 4.0 #only correct if a known landmark is less than x meters from the observed
+        # self.correction = [0,0,0]
+        # self.correction_log = [] #tuples of (correction, time (float in seconds))
+        # self.correction_log_duration = 2.0 #time in seconds to keep corrections before the most recent
+        # self.correction_falloff = 3.0 #total correction is a weighted average of correction log. weight is 1/(1+correction_falloff*t), where t is the time difference between this measurment and the most recent one 
 
+    # def calc_correction(self, trim_log=True):
+    #     to_consider = []
+    #     if len(self.correction_log) == 0:
+    #         return [0,0,0] #no corrections
+    #     base_time = self.correction_log[0][1]
+    #     to_consider = [(corr, t) for (corr, t) in correction_log if t <= base_time + self.correction_log_duration]
+    #     values = [corr/(1.0+self.correction_falloff*(t-base_time)) for corr, t in to_consider]
+    #     return sum(values)
     def load_landmarks(self):
         #hard code list of landmarks (sorry)
         self.landmarks = []
@@ -318,8 +329,8 @@ class LandmarkLocalizerNode(Node):
         t = PoseWithCovarianceStamped()
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = "map"
-        self.get_logger().info(f"correction {self.last_correction}")
-        tf_trans = self.tf_gnss(self.last_correction)
+        self.get_logger().info(f"correction {self.correction}")
+        tf_trans = self.tf_gnss(self.correction)
         self.get_logger().info(f"tf_correction {tf_trans.center_point.x} {tf_trans.center_point.y} {tf_trans.center_point.z}")
         t.pose.pose.position.x = tf_trans.center_point.x
         t.pose.pose.position.y = tf_trans.center_point.y
@@ -420,7 +431,7 @@ class LandmarkLocalizerNode(Node):
         if min_dist == 9999999:
             return
         #publish mean tf of all landmarks
-        self.last_correction = trans
+        self.correction = trans
         self.pub_correction()
 
 def main(args=None):
