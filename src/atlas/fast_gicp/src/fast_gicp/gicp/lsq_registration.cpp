@@ -1,3 +1,4 @@
+#define USE_VGICP_CUDA 1
 #include <fast_gicp/gicp/lsq_registration.hpp>
 #include <fast_gicp/gicp/impl/lsq_registration_impl.hpp>
 

@@ -1,0 +1,7 @@
+.*.swp
+*.pyc
+pypcd.egg-info
+build
+.eggs/
+dist
+_build
