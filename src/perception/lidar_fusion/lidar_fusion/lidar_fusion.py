@@ -97,8 +97,10 @@ class LidarFusionNode(Node):
         # Basic filtering
         fused_pcd = fused_pcd[np.logical_not(
             np.logical_and(
-                fused_pcd['x'] < 1, fused_pcd['x'] > -5), np.logical_and(
-                fused_pcd['y'] < 1, fused_pcd['y'] > -1))]
+                np.logical_and(fused_pcd['x'] < 1, fused_pcd['x'] > -5),
+                np.logical_and(fused_pcd['y'] < 1, fused_pcd['y'] > -1)
+            )
+        )]
 
         # fused_pcd = fused_pcd[fused_pcd['z'] > 0.3]
 

@@ -9,26 +9,29 @@ from tf2_ros.buffer import Buffer
 import tf2_py
 from tf2_ros.transform_listener import TransformListener
 import math
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from std_msgs.msg import Float32
 from os.path import exists
 
 from scipy.spatial.transform import Rotation as R
 
 from sensor_msgs.msg import PointCloud2
 
+
 class CurbDetector(Node):
     def __init__(self):
         super().__init__('curb_detector')
 
         self.TOP_RING = 6
-        self.DIST_TOLERANCE = 0.04 # meters-- 6 cm
-        self.MAX_HEIGHT = 0.5 # meters
+        self.DIST_TOLERANCE = 0.04  # meters-- 6 cm
+        self.MAX_HEIGHT = 0.5  # meters
         self.MIN_ANGLE = -math.pi/2
-        self.MAX_ANGLE =  math.pi/2
+        self.MAX_ANGLE = math.pi/2
 
         self.lidar_sub = self.create_subscription(
             PointCloud2,
             'input_points',
-            self.front_lidar_cb,
+            self.fused_lidar_cb,
             10
         )
 
@@ -49,7 +52,13 @@ class CurbDetector(Node):
             'curb_points/right',
             10
         )
-        
+
+        self.dist_pub = self.create_publisher(
+            Float32,
+            'curb_distance',
+            10
+        )
+
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
@@ -71,12 +80,6 @@ class CurbDetector(Node):
         # Remove nan values
         pts = pts[np.logical_not(np.isnan(pts['x']))]
 
-        # translation = self.lidar_to_bl_tf.transform.translation
-        # pts['x'] += translation.x
-        # pts['y'] += translation.y
-        # pts['z'] += translation.z
-        # self.get_logger().info("{}".format(translation.z))
-
         # Crop to height, lower rings
         pts = pts[
             np.logical_and(
@@ -94,73 +97,20 @@ class CurbDetector(Node):
                         pts['y'] <= 2.0
                     ),
                     np.logical_and(
-                        pts['x'] >= -2.0,
+                        pts['x'] >= -5.0,
                         pts['x'] <= 2.0
                     )
                 )
             )
         ]
 
-        # Rotate all points to base_link
-        # TODO: Remove or rework; rotations are computationally costly!
-        # quat = [
-        #     self.lidar_to_bl_tf.transform.rotation.x,
-        #     self.lidar_to_bl_tf.transform.rotation.y,
-        #     self.lidar_to_bl_tf.transform.rotation.z,
-        #     self.lidar_to_bl_tf.transform.rotation.w
-        # ]
-        # r = R.from_quat(quat)
-        # xyz = np.transpose(np.array([npcloud['x'], npcloud['y'], npcloud['z']]))
-        
-        # pts = r.apply(xyz)
-
-        # xyz = np.array([pts['x'],pts['y'],pts['z']])
-        
-        # xyz = np.transpose(xyz)
-        # xyz = r.apply(xyz)
-        # xyz = np.transpose(xyz)
-        # # xyz[0] += translation.x
-        # # xyz[1] += translation.y
-        # # xyz[2] += translation.z
-        # pts['x'] = xyz[0]
-        # pts['y'] = xyz[1]
-        # pts['z'] = xyz[2]
-
-        # for point in pts:
-        #     xyz = np.array([point['x'],point['y'],point['z']])
-        #     r = R.from_euler('xyz', [-0.015, -0.03, -1.45])
-        #     xyz = r.apply(xyz)
-        #     point['x'] = xyz[0]
-        #     point['y'] = xyz[1]
-        #     point['z'] = xyz[2]
-
-        # Remove points far to side, behind
-        pts = pts[
-            np.logical_and(
-                 np.logical_and(
-                    pts['y'] < 10.0,
-                    pts['y'] > -5.0
-                ),
-                pts['x'] > 5.0
-            )
-            
-        ]
-
-        # Crop by angle
-        pts = pts[
-            np.logical_and(
-                np.arctan2(pts['y'],pts['x']) < self.MAX_ANGLE,
-                np.arctan2(pts['y'],pts['x']) > self.MIN_ANGLE
-            )
-        ]
-
-        angles = np.arctan2(pts['y'],pts['x'])
+        angles = np.arctan2(pts['y'], pts['x'])
 
         return pts
 
     def dist_2d(self, ptA, ptB):
         # print("{} AND {}".format(ptA, ptB))
-        res =  math.sqrt(
+        res = math.sqrt(
             (ptA['x'] - ptB['x']) ** 2 +
             (ptA['y'] - ptB['y']) ** 2
         )
@@ -179,87 +129,143 @@ class CurbDetector(Node):
 
         return numerator/denominator
 
-    def slide(self, ring_pts, min_x=4.5, linear_dist_threshold = 0.006, min_dz = 0.06, max_dz = 0.2, window=10, debug=False):
-        if ring_pts.shape[0] < 10:
-            # self.get_logger().warn("Received ring with < 2 points, skipping")
-            return
-        
-        if window < 6:
-            self.get_logger().warn("Window must be at least 6.")
-            return
-        
-        for i in range(len(ring_pts)-window):
-            dz = abs(ring_pts[i+window]['z'] - ring_pts[i]['z'])
-            if dz > min_dz and dz < max_dz:
-                linear_dist = self.distFromPoints(
-                    ring_pts[i], ring_pts[int(i+window/2)], ring_pts[i+window]
-                )
-                if linear_dist < linear_dist_threshold:
-                    linear_dist = self.distFromPoints(
-                        ring_pts[i+2], ring_pts[int(i+window/2)], ring_pts[i+window-2]
-                    )
-                    if linear_dist < linear_dist_threshold:
-                        if debug:
-                            self.get_logger().info("{} lin dist, {} dz".format(linear_dist, dz))
-                        return ring_pts[i]
+    def slide(self, ring_pts, candidate_points):
+        last_pt = ring_pts[0]
+        for pt in ring_pts[1:]:
+            y_dist = abs(last_pt['y'] - pt['y'])
+            z_dist = abs(last_pt['z'] - pt['z'])
+            slope = z_dist / y_dist
+            last_pt = pt
+            if slope > 10.0:
+                candidate_points.append(pt)
 
-        # for i, pt in enumerate(ring_pts[1:]):
-        #     dist = self.dist_2d(pt, prev_point)
-        #     if dist > self.DIST_TOLERANCE and pt['x'] > min_x:
-        #         self.get_logger().info("{} from end".format(len(ring_pts)-i))
-        #         return prev_point
-        #     # print(dist)
-        #     prev_point = pt
-        print("No curb found. last: {}".format(ring_pts[:-1]))
+    def ptArrayToMsg(self, pts):
+        np_pts = np.array(pts)
+        pcd2: PointCloud2 = rnp.msgify(PointCloud2, np_pts)
+        pcd2.header.stamp = self.get_clock().now().to_msg()
+        pcd2.header.frame_id = 'base_link'
+        return pcd2
 
-    def searchRingForCurbs(self, ring_pts):
-        # Find index of point at theta=0
+    def k_means_cluster(self, candidate_points):
+        left_mean = [0, 10, 0]
+        right_mean = [0, -10, 0]
 
-        if len(ring_pts) == 0:
-            return
+        for i in range(3):
+            new_left = [0, 0, 0]
+            new_right = [0, 0, 0]
+            n_left_pts = 0
+            n_right_pts = 0
 
+            for pt in candidate_points:
+                x_dist_to_left = (pt['x'] - left_mean[0]) ** 2
+                x_dist_to_right = (pt['x'] - right_mean[0]) ** 2
+                y_dist_to_left = (pt['y'] - left_mean[1]) ** 2
+                y_dist_to_right = (pt['y'] - right_mean[1]) ** 2
+                z_dist_to_left = (pt['z'] - left_mean[2]) ** 2
+                z_dist_to_right = (pt['z'] - right_mean[2]) ** 2
+                total_dist_to_left = x_dist_to_left + y_dist_to_left + z_dist_to_left
+                total_dist_to_right = x_dist_to_right + y_dist_to_right + z_dist_to_right
+                if(total_dist_to_left > total_dist_to_right):
+                    n_left_pts += 1
+                    new_left[0] += pt['x']
+                    new_left[1] += pt['y']
+                    new_left[2] += pt['z']
+                else:
+                    n_right_pts += 1
+                    new_right[0] += pt['x']
+                    new_right[1] += pt['y']
+                    new_right[2] += pt['z']
 
-        angles = np.arctan2(ring_pts['y'],ring_pts['x'])
-        # self.get_logger().info("Avg angle{}".format(np.mean(angles)))
-        abs_angles = np.abs(angles)
-        zero_idx = np.argmin(abs_angles)
-        # self.get_logger().info("{} @ {}".format(ring_pts[zero_idx], zero_idx))
+            new_left[0] /= n_left_pts
+            new_left[1] /= n_left_pts
+            new_left[2] /= n_left_pts
+            new_right[0] /= n_right_pts
+            new_right[1] /= n_right_pts
+            new_right[2] /= n_right_pts
 
-        # ring_pts = ring_pts[angles>0]
-        # angles = angles[angles>0]
-        left_pts = ring_pts[:zero_idx]
-        left_curb_pt = self.slide(left_pts[::-1], linear_dist_threshold=0.007, min_dz=0.03, window=10, debug=True)
-        # if pt is not None:
-        #     plt.scatter(-pt['y'], pt['x'], s=20)
+            left_mean = new_left
+            right_mean = new_right
 
-        right_pts = ring_pts[zero_idx:]
-        right_curb_pt = self.slide(right_pts[::1])
-        # if pt is not None:
-        #     plt.scatter(-pt['y'], pt['x'], s=20)
+        left_pts = []
+        right_pts = []
 
-        # plt.title("Left Pane") 
-        # plt.xlabel("y (m)") 
-        # plt.ylabel("x (m)") 
-        # plt.scatter(-ring_pts['y'], ring_pts['x'], s=5)
-        # if pt is not None:
-        #     plt.scatter(-pt['y'], pt['x'], s=20)
-        # plt.show()
+        for pt in candidate_points:
+            x_dist_to_left = (pt['x'] - left_mean[0]) ** 2
+            x_dist_to_right = (pt['x'] - right_mean[0]) ** 2
+            y_dist_to_left = (pt['y'] - left_mean[1]) ** 2
+            y_dist_to_right = (pt['y'] - right_mean[1]) ** 2
+            z_dist_to_left = (pt['z'] - left_mean[2]) ** 2
+            z_dist_to_right = (pt['z'] - right_mean[2]) ** 2
+            total_dist_to_left = x_dist_to_left + y_dist_to_left + z_dist_to_left
+            total_dist_to_right = x_dist_to_right + y_dist_to_right + z_dist_to_right
+            if(total_dist_to_left > total_dist_to_right):
+                left_pts.append(pt)
+            else:
+                right_pts.append(pt)
 
-        return (left_curb_pt, right_curb_pt)
+        return left_pts, right_pts
+
+    def get_mean(self, pts):
+        mean = [0, 0, 0]
+        for pt in pts:
+            mean[0] += pt['x']
+            mean[1] += pt['y']
+            mean[2] += pt['z']
+        n_pts = len(pts)
+        mean[0] /= n_pts
+        mean[1] /= n_pts
+        mean[2] /= n_pts
+        return mean
 
     def findAllCurbBounds(self, pts):
         left_curbs = []
         right_curbs = []
 
+        candidate_points = []
         for ring in range(self.TOP_RING):
-            ring_pts = pts[pts['ring']==ring]
-            bounds = self.searchRingForCurbs(ring_pts)
-            if bounds and bounds[0] is not None:
-                left_curbs.append(bounds[0])
-            if bounds and bounds[1] is not None:
-                right_curbs.append(bounds[1])
+            ring_pts = pts[pts['ring'] == ring]
+            self.slide(ring_pts, candidate_points)
 
-        return left_curbs, right_curbs
+        left_pts, right_pts = self.k_means_cluster(candidate_points)
+        left_mean = self.get_mean(left_pts)
+        right_mean = self.get_mean(right_pts)
+
+        mean_x = (left_mean[0] + right_mean[0]) / 2
+        mean_y = (left_mean[1] + right_mean[1]) / 2
+        # delta_x = left_mean[0] - right_mean[0]
+        # delta_y = left_mean[1] - right_mean[1]
+        # slope = delta_y / delta_x  # Slope of a line in between these points
+        # x_intercept = intercept_x - (slope * intercept_y)
+
+        right_pts_trimmed = self.trim(right_pts, mean_x, mean_y)
+
+        return right_pts_trimmed
+
+    def trim(self, pts, x, y):
+        pts_cut = []
+        for pt in pts:
+            if pt['y'] < 0:
+                pts_cut.append(pt)
+        pts = pts_cut
+
+        distances = []
+        for pt in pts:
+            # x_d = (pt['x'] - x) ** 2
+            # y_d = (pt['y'] - y) ** 2
+            # distances.append(math.sqrt(x_d + y_d))
+            distances.append(pt['y'])
+        distances.sort()
+        max_dist = distances[math.floor(len(distances) * 8 / 10)]
+
+        points = []
+        for pt in pts:
+            # x_d = (pt['x'] - x) ** 2
+            # y_d = (pt['y'] - y) ** 2
+            # d = math.sqrt(x_d + y_d)
+            d = pt['y']
+            if(d > max_dist):
+                points.append(pt)
+        return points
 
     def formPointCloud2(self, nparray, frame_id: str):
         filtered_msg: PointCloud2 = rnp.msgify(PointCloud2, nparray)
@@ -267,44 +273,25 @@ class CurbDetector(Node):
         filtered_msg.header.stamp = self.get_clock().now().to_msg()
         return filtered_msg
 
-    def front_lidar_cb(self, msg: PointCloud2):
+    def fused_lidar_cb(self, msg: PointCloud2):
         if not self.tf_buffer.can_transform('base_link', 'lidar_front', self.get_clock().now()):
             return
-        else: 
-            #self.getLidarToBlTransform('lidar_front')
+        else:
             pts = rnp.numpify(msg)
             pts = self.filterPoints(pts)
-            # self.publishCloud(pts, msg.header.frame_id)
-            
-            self.curb_candidates_pub.publish(self.formPointCloud2(pts, 'base_link'))
+            right_curbs = self.findAllCurbBounds(pts)
 
-            left_curbs, right_curbs = self.findAllCurbBounds(pts)
-            left_array = np.array(left_curbs, dtype=[
-                ('x', np.float32),
-                ('y', np.float32),
-                ('z', np.float32),
-                ('intensity', np.float32),
-                ('ring', np.uint8)
-            ])
-            left_res_msg: PointCloud2 = rnp.msgify(PointCloud2, left_array)
-            left_res_msg.header.frame_id = 'base_link'
-            left_res_msg.header.stamp = self.get_clock().now().to_msg()
-            self.left_curb_pts_pub.publish(left_res_msg)
+        if len(right_curbs) == 0:
+            return
 
-            right_array = np.array(right_curbs, dtype=[
-                ('x', np.float32),
-                ('y', np.float32),
-                ('z', np.float32),
-                ('intensity', np.float32),
-                ('ring', np.uint8)
-            ])
-            right_res_msg: PointCloud2 = rnp.msgify(PointCloud2, right_array)
-            right_res_msg.header.frame_id = 'base_link'
-            right_res_msg.header.stamp = self.get_clock().now().to_msg()
+        mean_curb = self.get_mean(right_curbs)
 
-            # self.get_logger().info(f'{right_array.shape}')
+        dist_msg = Float32()
+        dist_msg.data = mean_curb[1]
+        self.dist_pub.publish(dist_msg)
+        self.right_curb_pts_pub.publish(self.ptArrayToMsg(right_curbs))
+        # self.left_curb_pts_pub.publish(self.ptArrayToMsg(left_curbs))
 
-            self.right_curb_pts_pub.publish(right_res_msg)
 
 def main(args=None):
     rclpy.init(args=args)
