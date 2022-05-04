@@ -35,9 +35,6 @@ CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
 
 void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPtr msg){
     this->odom_in = msg;
-    odom_in->pose.pose.position.x += bias_x;
-    odom_in->pose.pose.position.y += bias_y;
-    print("Odom cb");
     publish_odom();
 }
 
@@ -46,40 +43,40 @@ void CurbLocalizerNode::publish_odom() {
     if (odom_in == nullptr) return;
     if (map == nullptr) return;
 
-    nav_msgs::msg::Odometry odom_out = *(this->odom_in);
+    nav_msgs::msg::Odometry corrected_odom = *(this->odom_in);
 
-    double current_position_x = this->odom_in->pose.pose.position.x;
-    double current_position_y = this->odom_in->pose.pose.position.y;
+    // Attempt to de-bias the odom using the accumulated known bias
+    double& odo_x = corrected_odom.pose.pose.position.x;
+    double& odo_y = corrected_odom.pose.pose.position.y;
+
+    odo_x += this->bias_x;
+    odo_y += this->bias_y;
 
     // get lane from current position
-    std::shared_ptr<odr::Lane> current_lane = navigator::opendrive::get_lane_from_xy(map, current_position_x, current_position_y);
+    std::shared_ptr<odr::Lane> current_lane = navigator::opendrive::get_lane_from_xy(map, odo_x, odo_y);
 
-    if (current_lane == nullptr){
-        odom_out_pub->publish(odom_out);
+    if (current_lane == nullptr || current_lane->road.expired()){
+        // If we can't find the lane, assume no bias change
+        odom_out_pub->publish(corrected_odom);
         return;
     } 
 
-    // get road from current lane
+    // get road to find curb points
     std::string road_id = current_lane->road.lock()->id;
     std::shared_ptr<odr::Road> current_road = map->roads[road_id];
 
     if (current_road == nullptr){
-        odom_out_pub->publish(odom_out);
+        odom_out_pub->publish(corrected_odom);
         return;
     } 
 
     // get current s value
-    double s = current_road->ref_line->match(current_position_x, current_position_y);
+    double s = current_road->ref_line->match(odo_x, odo_y);
 
-    std::shared_ptr<odr::Road> target_road;
-    std::shared_ptr<odr::LaneSection> target_lanesection;
-
-    // if adding 20m to current s goes out of road bounds, then next road has curb
-    target_road = current_road;
-    target_lanesection = current_road->get_lanesection(s);
+    std::shared_ptr<odr::LaneSection> target_lanesection = current_road->get_lanesection(s);
 
     if (target_lanesection == nullptr){
-        odom_out_pub->publish(odom_out);
+        odom_out_pub->publish(corrected_odom);
         return;
     }
 
@@ -89,54 +86,47 @@ void CurbLocalizerNode::publish_odom() {
         if (lane->type == "shoulder" && (lane->id * current_lane->id) >= 0 )
             curb_lane = lane;
     }
-    if(curb_lane == nullptr) return; // No curb found
-
-    // Get t of curb at current 
-
-
-    // get centerline for those lanes
-    odr::Line3D curb_line = navigator::opendrive::get_centerline_as_xy(*curb_lane, target_lanesection->s0, target_lanesection->get_end(), 0.25, false);
-
-    auto curb_line_it = curb_line.begin();
-    double dist_traversed = 0;
-    auto last_pt = *curb_line_it;
-    for (; curb_line_it != curb_line.end(); curb_line_it++) {
-        auto curr_pt = *curb_line_it;
-        double dist = 0;
-        for(int  i : {0,1,2}){
-            double dxi = curr_pt[i] - last_pt[i];
-            dist += dxi * dxi;
-        }
-        dist = sqrt(dist);
-        if(dist + dist_traversed > s){
-            // Interpolate point 
-            double interp_factor = (s - dist_traversed) / dist;
-            for(int i : {0,1,2}){
-                double dxi = (curr_pt[i] - last_pt[i]) * interp_factor;
-                last_pt[i] += dxi;
-            }
-            break;
-        } 
-        dist_traversed += dist;
-        last_pt = curr_pt;
+    if(curb_lane == nullptr) {
+        // No curb found, cannot correct bias
+        odom_out_pub->publish(corrected_odom);
+        return; 
     }
 
-    // last_pt should contain the point at coordinate s
-    // TODO replace this with message topic
-    double dx = last_pt[0] - current_position_x;
-    double dy = last_pt[1] - current_position_y;
+    // Get the closest curb point, with for low curvature (as roads are) should
+    // match the distance given to us by CurbDetector
+
+    // Picked 0.1 because I wasn't sure what happens for identical 
+    // start and end points, and picked 11 because 0.1 * 11 > 1.0
+    // so at the very least there should be a point in the line even
+    // if endpoints are not included. Not sure of any of this.
+    auto curb = curb_lane->get_border_line(s, s+0.1, 11, false);
+    double curb_x = curb[0][0];
+    double curb_y = curb[0][1];
+
+    // <dx, dy> represents the vector from car to curb
+    double dx = curb_x - odo_x;
+    double dy = curb_y - odo_y;
     double dist_to_curb_odom = sqrt(dx * dx + dy * dy);
 
-    double interp_coeff = this->dist_to_curb / dist_to_curb_odom;
+    // We are looking at the right curb, so dy should be positive.
+    // If not, it's a sign the odom has drifted to the wrong curb.
 
-    dx *= interp_coeff;
-    dy *= interp_coeff;
+    // position + predicted_offset = curb pos = (position + bias) + measured_offset,
+    // so bias = predicted_offset - measured_offset
+    double bias_change_magnitude = dist_to_curb_odom - this->dist_to_curb;
+    // All vectors are parallel, so the easiest way to find 
+    // bias is bias = (bias_magnitude) * (normalized predicted_offset)
+    double bias_coeff = bias_change_magnitude / dist_to_curb_odom;
 
-    odom_out.pose.pose.position.x += dx;
-    odom_out.pose.pose.position.y += dy;
+    // <dx, dy> now represents the new bias vector (added on top of old bias)
+    dx *= bias_coeff;
+    dy *= bias_coeff;
+
+    odo_y += dy;
+    odo_x += dx;
 
     bias_x += dx;
     bias_y += dy;
 
-    odom_out_pub->publish(odom_out);
+    odom_out_pub->publish(corrected_odom);
 }
