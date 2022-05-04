@@ -45,6 +45,8 @@ class LandmarkLocalizerNode(Node):
         self.correction = np.array([0,0,0])
         self.target_correction = np.array([0,0,0])
         self.correction_move_speed = 0.1
+
+        self.do_sign_localization = True
         
     def calc_correction(self):
         self.get_logger().info(f"{self.correction} {self.target_correction}")
@@ -409,6 +411,8 @@ class LandmarkLocalizerNode(Node):
 
     #recieves LandmarkArray message, transforms landmarks form base_link to gnss, corrects
     def landmark_cb(self, msg):
+        if not self.do_sign_localization:
+            return
         if (self.gnss == None):
             self.get_logger().warn(f"Landmark recieved but no gnss!")
             return
