@@ -348,7 +348,7 @@ def generate_launch_description():
         curb_localizer,
 
         # CONTROL
-        unified_controller,
+        # unified_controller,
 
         # MISC
         # landmark_localizer

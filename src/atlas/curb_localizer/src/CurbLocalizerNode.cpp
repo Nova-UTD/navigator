@@ -17,6 +17,9 @@ using namespace navigator::curb_localizer;
 
 CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
     this->declare_parameter<std::string>("map_file_path", "data/maps/grand_loop/grand_loop.xodr");
+    this->declare_parameter<double>("max_bias_magnitude", 4);
+    
+    this->get_parameter("max_bias_magnitude", MAX_BIAS_MAGNITUDE);
     
     this->map_file_path = this->get_parameter("map_file_path").as_string();
     this->map = opendrive::load_map(this->map_file_path)->map;
@@ -51,6 +54,12 @@ void CurbLocalizerNode::publish_odom() {
 
     odo_x += this->bias_x;
     odo_y += this->bias_y;
+
+    // If we don't have updated curb distance, don't do anything further
+    if (this->dist_to_curb < 0) {
+        this->odom_out_pub->publish(corrected_odom);
+        return;
+    }
 
     // get lane from current position
     std::shared_ptr<odr::Lane> current_lane = navigator::opendrive::get_lane_from_xy(map, odo_x, odo_y);
@@ -129,4 +138,14 @@ void CurbLocalizerNode::publish_odom() {
     bias_y += dy;
 
     odom_out_pub->publish(corrected_odom);
+
+    // Cleanup: ensure we don't reuse curb data,
+    // and bound the bias magnitude
+    this->dist_to_curb = -1;
+
+    double bias_mag = sqrt(bias_x * bias_x + bias_y * bias_y);
+    if (bias_mag > MAX_BIAS_MAGNITUDE) {
+        bias_x *= MAX_BIAS_MAGNITUDE / bias_mag;
+        bias_y *= MAX_BIAS_MAGNITUDE / bias_mag;
+    }
 }

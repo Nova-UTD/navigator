@@ -29,7 +29,7 @@ class CurbLocalizerNode : public rclcpp::Node
         CurbLocalizerNode();
 
     private:
-        double dist_to_curb = 1;
+        double dist_to_curb = -1;
         rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr curb_dist_sub;
         void curb_dist_callback(const std_msgs::msg::Float32::SharedPtr msg){
             dist_to_curb = std::max(0.1f, msg->data);
@@ -46,6 +46,7 @@ class CurbLocalizerNode : public rclcpp::Node
         std::shared_ptr<nav_msgs::msg::Odometry> odom_in;
         double bias_y = 0;
         double bias_x = 0;
+        double MAX_BIAS_MAGNITUDE = 4;
 
         void publish_odom();
 
