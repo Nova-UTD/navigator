@@ -83,7 +83,7 @@ class ScanMatchingNode(Node):
         # Read our map
         self.get_logger().info("Reading map...")
         map_file = o3d.io.read_point_cloud(
-            'data/maps/grand_loop/grand_loop.pcd')
+            '/home/main/grand_loop.pcd')
         self.map_cloud = np.asarray(map_file.points)
 
         # Get our initial estimates from GNSS log
@@ -267,9 +267,9 @@ class ScanMatchingNode(Node):
             ('y', np.float32),
             ('z', np.float32)
         ])
-        print(arr.shape)
-        print(data.shape)
-        print(arr[0])
+        # print(arr.shape)
+        # print(data.shape)
+        # print(arr[0])
         data['x'] = arr[:, 0]
         data['y'] = arr[:, 1]
         data['z'] = arr[:, 2]
