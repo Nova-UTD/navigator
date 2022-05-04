@@ -109,6 +109,8 @@ class LidarFusionNode(Node):
                 np.logical_and(fused_pcd['y'] < 1, fused_pcd['y'] > -1)
             )
         )]
+        DOWNSAMPLE_RATE = 5
+        downsampled_pcd = fused_pcd[::DOWNSAMPLE_RATE]
 
         # fused_pcd = fused_pcd[fused_pcd['z'] > 0.3]
 
