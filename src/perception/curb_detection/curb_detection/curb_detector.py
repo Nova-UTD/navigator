@@ -19,6 +19,9 @@ class CurbDetector(Node):
         super().__init__('curb_detector')
         self.TOP_RING = 6
         self.MAX_HEIGHT = 0.5  # meters
+
+        self.LOOK_DIST = 4
+        
         self.lidar_sub = self.create_subscription(
             PointCloud2,
             'input_points',
@@ -37,7 +40,7 @@ class CurbDetector(Node):
         curbs = self.findAllCurbBounds(pts)
         if len(curbs) == 0:
             return
-        self.curb_pub.publish(self.ptArrayToMsg(pts))
+        self.curb_pub.publish(self.ptArrayToMsg(curbs))
 
     def filterPoints(self, pts):
         pts = pts[np.logical_not(np.isnan(pts['x']))] # Remove nan values
@@ -62,7 +65,7 @@ class CurbDetector(Node):
             )
         ]
         pts = pts[ # Remove all points to the left of the vehicle by more than 2 meters
-            pts['y'] < 2.0]
+            pts['y'] < 0]
         return pts
     
     def ptArrayToMsg(self, pts):
@@ -72,24 +75,43 @@ class CurbDetector(Node):
         pcd2.header.frame_id = 'base_link'
         return pcd2
 
-    def slide(self, ring_pts, curbs):
-        if len(ring_pts) == 0:
-            return
-        last_pt = ring_pts[0]
-        for pt in ring_pts[1:]:
-            y_dist = abs(last_pt['y'] - pt['y'])
-            z_dist = abs(last_pt['z'] - pt['z'])
-            slope = z_dist / y_dist
-            last_pt = pt
-            if slope > 10.0:
-                curbs.append(pt)
-
     def findAllCurbBounds(self, pts):
         curbs = []
         for ring in range(self.TOP_RING):
             ring_pts = pts[pts['ring'] == ring]
-            self.slide(ring_pts, curbs)
+            self.slide(curbs, ring_pts)
+            curbs.append(ring_pts[math.floor(len(ring_pts) / 4)])
         return curbs
+
+    def dist(self, a, b):
+        return math.sqrt(
+            (a['x'] - b['x']) ** 2 +
+            (a['y'] - b['y']) ** 2 +
+            (a['z'] - b['z']) ** 2)
+
+    def mirror_around(self, a, b):
+        pt = b.copy()
+        pt['x'] = (pt['x'] * 2) - a['x']
+        pt['y'] = (pt['y'] * 2) - a['y']
+        pt['z'] = (pt['z'] * 2) - a['z']
+        return pt
+    
+    def slide(self, curbs, pts):
+        is_candidate = []
+        dists = []
+        for i in range(len(pts)):
+            dists.append(self.dist(pts[i - self.LOOK_DIST], pts[i]))
+        for i in range(len(pts) - self.LOOK_DIST):
+            this_point = pts[i]
+            previous_point = pts[i - self.LOOK_DIST]
+            next_point = pts[i + self.LOOK_DIST]
+            next_dist = dists[i + self.LOOK_DIST]
+            previous_dist = dists[i]
+            if(abs(next_dist - previous_dist) > previous_dist * 2):
+                continue
+            dist = self.dist(self.mirror_around(previous_point, this_point), next_point)
+            if(dist > previous_dist):
+                curbs.append(this_point)
 
 def main(args=None):
     rclpy.init(args=args)
