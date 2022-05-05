@@ -13,6 +13,7 @@ from os.path import exists
 from scipy.spatial.transform import Rotation as R
 from sensor_msgs.msg import PointCloud2
 
+
 class CurbDetector(Node):
     def __init__(self):
         super().__init__('curb_detector')
@@ -54,7 +55,7 @@ class CurbDetector(Node):
                         pts['y'] <= 2.0
                     ),
                     np.logical_and(
-                        pts['x'] >= -2.0,
+                        pts['x'] >= -5.0,
                         pts['x'] <= 2.0
                     )
                 )

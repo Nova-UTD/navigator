@@ -107,6 +107,14 @@ private:
     std::vector<int> obs_with_ROW; // holds IDs of obstacles with right-of-way
     std::vector<std::string> junction_ids; // holds IDs of upcoming junctions
 
+    // param variables
+    int max_stop_ticks;
+    int max_junc_delay;
+    double max_dist_to_zone;
+    double min_dist_out_zone;
+    double stop_speed_dif;
+    double stop_pose_dif;
+
     // pub/sub functions
     void update_current_speed(Odometry::SharedPtr ptr);
     void update_current_path(FinalPath::SharedPtr ptr);

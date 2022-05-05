@@ -1,3 +1,4 @@
+#define USE_VGICP_CUDA 1
 #include <fast_gicp/gicp/experimental/fast_gicp_mp.hpp>
 #include <fast_gicp/gicp/experimental/fast_gicp_mp_impl.hpp>
 

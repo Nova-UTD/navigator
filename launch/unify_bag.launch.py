@@ -24,7 +24,7 @@ def generate_launch_description():
         f"ros2 bag play -l {bag_path}".split())
 
     launch_path = path.realpath(__file__)
-    launch_dir = path.dirname(launch_path)
+    launch_dir = path.join(path.dirname(launch_path), '..')
     param_dir = path.join(launch_dir, "param")
     interface = "vcan0"
     # /usr/loca/zed/get_python_api.py
@@ -64,11 +64,54 @@ def generate_launch_description():
         ]
     )
 
+    pcl_localization = Node(
+        package='pcl_localization_ros2',
+        executable='pcl_localization_node',
+        remappings=[
+            ('/cloud', '/lidar_fused'),
+            ('/imu', '/sensors/zed/imu'),
+            ('/initialpose', '/sensors/gnss/odom'),
+            ('/pcl_pose', '/pose/ndt2')
+        ],
+        output='screen',
+        parameters=[
+            '/home/main/navigator-2/src/atlas/pcl_localization_ros2/param/localization.yaml']
+    )
+
+    map_odom_ukf = Node(
+        package='robot_localization',
+        executable='ukf_node',
+        name='localization_map_odom',
+        parameters=[
+            "/home/wheitman/navigator-2/param/atlas/map_odom.param.yaml"],
+        remappings=[
+            ("/odom0", "/gnss_odom"),
+            ("/imu0", "/sensors/zed/imu")
+        ]
+    )
+
+    odom_bl_link = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=[
+            '0.0', '0.0', '0.0', '0.0', '0.0', '0.0', '1.0', 'odom', 'base_link'
+        ]
+    )
+
+    scan_matcher = Node(
+        package='scan_matching',
+        executable='scan_matching_node'
+    )
+
     # LIO-SAM only needs three inputs: IMU, Lidar, and GPS
     return LaunchDescription([
         gnss_pub,
         lidar_fusion,
         urdf_publisher,
+        # map_odom_ukf,
         viz,
-        zed_unpacker
+        odom_bl_link,
+        zed_unpacker,
+        # pcl_localization,
+        scan_matcher,
     ])

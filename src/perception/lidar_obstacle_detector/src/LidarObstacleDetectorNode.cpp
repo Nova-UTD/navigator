@@ -105,7 +105,7 @@ void LidarObstacleDetectorNode::lidar_callback(const PointCloud2::SharedPtr msg)
 }
 
 void LidarObstacleDetectorNode::publish_zones(){
-    RCLCPP_INFO(this->get_logger(), "Publishing zones");
+    //RCLCPP_INFO(this->get_logger(), "Publishing zones");
     update_tf();
 
     ZoneArray zones;
@@ -154,7 +154,7 @@ void LidarObstacleDetectorNode::publish_zones(){
     }
     
     this->zone_pub->publish(zones);
-    RCLCPP_INFO(this->get_logger(), "Published %d zones", zones.zones.size());
+    //RCLCPP_INFO(this->get_logger(), "Published %d zones", zones.zones.size());
 }
 
 void LidarObstacleDetectorNode::update_tf() {
