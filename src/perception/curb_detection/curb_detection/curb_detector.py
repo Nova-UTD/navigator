@@ -27,32 +27,16 @@ class CurbDetector(Node):
             PointCloud2,
             'curb_points',
             10)
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
-        self.lidar_to_bl_tf = TransformStamped()
-
-    def getLidarToBlTransform(self, lidar_frame: str):
-        try:
-            self.lidar_to_bl_tf = self.tf_buffer.lookup_transform(
-                'base_link',
-                lidar_frame,
-                rclpy.time.Time(seconds=0, nanoseconds=0)
-            )
-        except TransformException as ex:
-            self.get_logger().info(
-                f'Could not transform {dest_frame} to {lidar_frame}: {ex}')
-            return
 
     def fused_lidar_cb(self, msg: PointCloud2):
-        if not self.tf_buffer.can_transform('base_link', 'lidar_front', self.get_clock().now()):
+        pts = rnp.numpify(msg)
+        if len(pts) == 0:
             return
-        else:
-            pts = rnp.numpify(msg)
-            pts = self.filterPoints(pts)
-            curbs = self.findAllCurbBounds(pts)
+        pts = self.filterPoints(pts)
+        curbs = self.findAllCurbBounds(pts)
         if len(curbs) == 0:
             return
-        self.curb_pub.publish(self.ptArrayToMsg(curbs))
+        self.curb_pub.publish(self.ptArrayToMsg(pts))
 
     def filterPoints(self, pts):
         pts = pts[np.logical_not(np.isnan(pts['x']))] # Remove nan values
@@ -77,7 +61,7 @@ class CurbDetector(Node):
             )
         ]
         pts = pts[ # Remove all points to the left of the vehicle by more than 2 meters
-            pts['y'] > 2.0]
+            pts['y'] < 2.0]
         return pts
     
     def ptArrayToMsg(self, pts):
@@ -88,6 +72,8 @@ class CurbDetector(Node):
         return pcd2
 
     def slide(self, ring_pts, curbs):
+        if len(ring_pts) == 0:
+            return
         last_pt = ring_pts[0]
         for pt in ring_pts[1:]:
             y_dist = abs(last_pt['y'] - pt['y'])
