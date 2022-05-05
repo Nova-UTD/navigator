@@ -258,14 +258,21 @@ def generate_launch_description():
         ]
     )
 
+    odom_bl_ukf = Node(
+        package='robot_localization',
+        executable='ukf_node',
+        name='localization_odom_bl',
+        parameters=[path.join(param_dir, "atlas", "odom_bl.param.yaml")]
+    )
+
     scan_matcher = Node(
         package='scan_matching',
         executable='scan_matching_node'
     )
 
     landmark_localizer = Node(
-        package = 'landmark_localizer',
-        executable = 'landmark_localizer_node'
+        package='landmark_localizer',
+        executable='landmark_localizer_node'
     )
 
     obstacle_detector_2d = Node(
@@ -284,7 +291,8 @@ def generate_launch_description():
         package='obstacle_detection_3d',
         executable='obstacle_detection_3d_node',
         name='obstacle_detection_3d_node',
-        parameters=[(path.join(param_dir, "perception", "front_camera.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "perception", "front_camera.param.yaml"))],
         remappings=[
             ('/depth_image', '/sensors/zed/depth_img'),
             ('/obstacle_array_2d', '/obstacle_array_2d'),
@@ -315,7 +323,8 @@ def generate_launch_description():
             ("lidar_points", "/lidar_fused"),
             ("/zones", "/planning/zones"),
         ],
-        parameters=[(path.join(param_dir,"perception","lidar_obstacle_detector_node.param.yaml"))],
+        parameters=[(path.join(param_dir, "perception",
+                               "lidar_obstacle_detector_node.param.yaml"))],
     )
 
     visuals = Node(
@@ -324,32 +333,31 @@ def generate_launch_description():
         executable='vt_viz_exe',
     )
 
-    
     return LaunchDescription([
         # PERCEPTION
         lidar_fusion,
-        obstacle_detector_2d,
-        lidar_obstacle_detector,
-        obstacle_detector_3d,
-        #obstacle_drawer,
+        # obstacle_detector_2d,
+        # lidar_obstacle_detector,
+        # obstacle_detector_3d,
+        # obstacle_drawer,
         # pcl_launch,
 
-        landmark_localizer,
+        # landmark_localizer,
 
         # HARDWARE
-        #serial,
-        #servo_brake,
-        #servo_throttle,
+        # serial,
+        # servo_brake,
+        # servo_throttle,
 
         # # Steering
-        #epas_can,
-        #epas_reporter,
-        #epas_controller,
-        #steering_pid,
-        #lidar_driver_front,
-        #lidar_pointcloud_front,
-        #lidar_driver_rear,
-        #lidar_pointcloud_rear,
+        # epas_can,
+        # epas_reporter,
+        # epas_controller,
+        # steering_pid,
+        # lidar_driver_front,
+        # lidar_pointcloud_front,
+        # lidar_driver_rear,
+        # lidar_pointcloud_rear,
 
         # # Camera
         # zed_interface,
@@ -359,18 +367,19 @@ def generate_launch_description():
         # speedometer_translator,
 
         # BEHAVIOR
-        #path_publisher,
-        #motion_planner,
-        #zone_fusion,
-        #obstacle_zoner,
-        #behavior_planner,
+        # path_publisher,
+        # motion_planner,
+        # zone_fusion,
+        # obstacle_zoner,
+        # behavior_planner,
 
         # STATE ESTIMATION
-        map_odom_ukf,
-        #pcl_localization,
+        # map_odom_ukf,
+        odom_bl_ukf,
+        # pcl_localization,
 
         # CONTROL
-        #unified_controller,
+        # unified_controller,
 
         # MISC
         odr_viz,
