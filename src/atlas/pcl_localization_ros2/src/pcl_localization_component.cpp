@@ -12,6 +12,7 @@ PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
   declare_parameter("ndt_resolution", 1.0);
   declare_parameter("ndt_step_size", 0.1);
   declare_parameter("trans_epsilon", 0.01);
+  declare_parameter("max_iterations", 35);
   declare_parameter("voxel_leaf_size", 0.2);
   declare_parameter("scan_max_range", 100.0);
   declare_parameter("scan_min_range", 1.0);
@@ -149,6 +150,7 @@ void PCLLocalization::initializeParameters()
   get_parameter("ndt_resolution", ndt_resolution_);
   get_parameter("ndt_step_size", ndt_step_size_);
   get_parameter("trans_epsilon", trans_epsilon_);
+  get_parameter("max_iterations", max_iterations_);
   get_parameter("voxel_leaf_size", voxel_leaf_size_);
   get_parameter("scan_max_range", scan_max_range_);
   get_parameter("scan_min_range", scan_min_range_);
@@ -225,6 +227,7 @@ void PCLLocalization::initializeRegistration()
     ndt->setStepSize(ndt_step_size_);
     ndt->setResolution(ndt_resolution_);
     ndt->setTransformationEpsilon(trans_epsilon_);
+    ndt->setMaximumIterations(max_iterations_);
     registration_ = ndt;
   }
 
@@ -450,6 +453,9 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
                        (final_transformation.coeff(0,
                                                    0) +
                         final_transformation.coeff(1, 1) + final_transformation.coeff(2, 2) - 1);
+    std::cout << "TF EPSILON: " << registration_->getTransformationEpsilon() << std::endl;
+    std::cout << "EUCL FIT EPSILON: " << registration_->getEuclideanFitnessEpsilon() << std::endl;
+    std::cout << "TF ROT EPSILON: " << registration_->getTransformationRotationEpsilon() << std::endl;
     double init_angle = acos(init_cos_angle);
     double angle = acos(cos_angle);
     // Ref:https://twitter.com/Atsushi_twi/status/1185868416864808960
