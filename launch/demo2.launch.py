@@ -230,6 +230,7 @@ def generate_launch_description():
     odr_viz = Node(
         package='odr_visualizer',
         executable='visualizer',
+        name='odr_viz',
         parameters=[
             (path.join(param_dir, "mapping", "odr.param.yaml"))
         ],
@@ -375,15 +376,16 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         map_odom_ukf,
-        odom_bl_ukf,
+        # odom_bl_ukf,
         # pcl_localization,
+        scan_matcher,
 
         # CONTROL
         # unified_controller,
 
         # MISC
         odr_viz,
-        # odom_bl_link,
+        odom_bl_link,
         urdf_publisher,
         visuals
     ])
