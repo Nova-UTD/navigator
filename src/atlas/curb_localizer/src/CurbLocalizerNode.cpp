@@ -13,16 +13,23 @@
 
 using namespace navigator::curb_localizer;
 
-#define print(M) RCLCPP_INFO(this->get_logger(), M)
+#define ROUTE_INFO_PARAMS "route_info_params"
 
 CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
     this->declare_parameter<std::string>("map_file_path", "data/maps/grand_loop/grand_loop.xodr");
     this->declare_parameter<double>("max_bias_magnitude", 4);
+    this->declare_parameter<std::vector<std::string>>(ROUTE_INFO_PARAMS, std::vector<std::string> ({}));
     
     this->get_parameter("max_bias_magnitude", MAX_BIAS_MAGNITUDE);
-    
     this->map_file_path = this->get_parameter("map_file_path").as_string();
     this->map = opendrive::load_map(this->map_file_path)->map;
+
+    std::vector<std::string> route_info_params;
+	this->get_parameter<std::vector<std::string>>(ROUTE_INFO_PARAMS, route_info_params);
+
+    route_info = std::vector<PathSection>();
+	for (auto it = std::begin(route_info_params); it != std::end(route_info_params); it+=3)
+		route_info.push_back(PathSection(*it, std::stoi(*(it+1)), std::stod(*(it+2))));
 
     // curb detector class also outputs all candidate pts if necessary
     this->odom_in_sub = this->create_subscription<nav_msgs::msg::Odometry>("/sensors/gnss/odom",
@@ -52,6 +59,20 @@ void CurbLocalizerNode::publish_odom() {
     double& odo_x = corrected_odom.pose.pose.position.x;
     double& odo_y = corrected_odom.pose.pose.position.y;
 
+    // find closest road to true odom data
+    std::shared_ptr<odr::Road> current_road;
+    int desired_lane_id;
+    double min_dist = 99999;
+    for (PathSection section : route_info) {
+        std::shared_ptr<odr::Road> road = map->roads[section.road_id];
+        double dist = navigator::opendrive::get_distance(road->ref_line, odo_x, odo_y);
+        if (dist < min_dist) {
+            min_dist = dist;
+            current_road = road;
+            desired_lane_id = section.lane_id;
+        }
+    }
+
     odo_x += this->bias_x;
     odo_y += this->bias_y;
 
@@ -61,40 +82,26 @@ void CurbLocalizerNode::publish_odom() {
         return;
     }
 
-    // get lane from current position
-    std::shared_ptr<odr::Lane> current_lane = navigator::opendrive::get_lane_from_xy(map, odo_x, odo_y);
-
-    if (current_lane == nullptr || current_lane->road.expired()){
-        // If we can't find the lane, assume no bias change
-        odom_out_pub->publish(corrected_odom);
-        return;
-    } 
-
-    // get road to find curb points
-    std::string road_id = current_lane->road.lock()->id;
-    std::shared_ptr<odr::Road> current_road = map->roads[road_id];
-
-    if (current_road == nullptr){
-        odom_out_pub->publish(corrected_odom);
-        return;
-    } 
-
     // get current s value
     double s = current_road->ref_line->match(odo_x, odo_y);
-
     std::shared_ptr<odr::LaneSection> target_lanesection = current_road->get_lanesection(s);
 
-    if (target_lanesection == nullptr){
+    if (target_lanesection == nullptr) {
         odom_out_pub->publish(corrected_odom);
         return;
     }
 
-    double current_lane_id = current_lane->id;
     navigator::opendrive::LanePtr curb_lane;
     for (auto lane : target_lanesection->get_lanes()) {
-        if (lane->type == "shoulder" && (lane->id * current_lane->id) >= 0 )
+        if (lane->type == "shoulder" && (lane->id * desired_lane_id) >= 0)
             curb_lane = lane;
+        // if we have a parking lane, supercedes actual shoulder 
+        if (lane->type == "parking" && (lane->id * desired_lane_id) >= 0) {
+            curb_lane = lane;
+            break;
+        }
     }
+
     if(curb_lane == nullptr) {
         // No curb found, cannot correct bias
         odom_out_pub->publish(corrected_odom);

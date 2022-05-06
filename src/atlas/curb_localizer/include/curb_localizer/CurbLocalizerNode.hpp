@@ -23,6 +23,17 @@ namespace navigator
 namespace curb_localizer
 {
 
+class PathSection {
+public:
+    std::string road_id;
+    int lane_id;
+    double lanesection;
+    double speed;
+    PathSection(std::string road_id, int lane_id, double lanesection, double max_speed) : road_id(road_id), lane_id(lane_id), lanesection(lanesection), speed(max_speed) {}
+    PathSection(std::string road_id, int lane_id, double lanesection) : road_id(road_id), lane_id(lane_id), lanesection(lanesection), speed(-1) {}
+    PathSection(std::string road_id, int lane_id) : road_id(road_id), lane_id(lane_id), lanesection(0), speed(-1) {}
+};
+
 class CurbLocalizerNode : public rclcpp::Node
 {
     public:
@@ -34,6 +45,8 @@ class CurbLocalizerNode : public rclcpp::Node
         void curb_dist_callback(const std_msgs::msg::Float32::SharedPtr msg){
             dist_to_curb = std::max(0.1f, msg->data);
         }
+
+        std::vector<PathSection> route_info;
 
         rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_in_sub;
         void odom_in_callback(const nav_msgs::msg::Odometry::SharedPtr msg);

@@ -134,7 +134,8 @@ class CurbDetector(Node):
         for pt in ring_pts[1:]:
             y_dist = abs(last_pt['y'] - pt['y'])
             z_dist = abs(last_pt['z'] - pt['z'])
-            slope = z_dist / y_dist
+            if y_dist != 0: # divide by 0 error was occurring
+                slope = z_dist / y_dist
             last_pt = pt
             if slope > 10.0:
                 candidate_points.append(pt)

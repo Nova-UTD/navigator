@@ -303,7 +303,9 @@ def generate_launch_description():
 
     curb_localizer = Node(
         package='curb_localizer',
-        executable='curb_localizer_exe'
+        executable='curb_localizer_exe',
+        parameters=[(path.join(param_dir,"planning","path_publisher.param.yaml"))],
+ 
     )
 
     

@@ -117,10 +117,10 @@ class LidarFusionNode(Node):
         lidar_fused_msg.header.stamp = self.get_clock().now().to_msg()
         self.lidar_fused_pub.publish(lidar_fused_msg)
 
-        lidar_ds_msg: PointCloud2 = rnp.msgify(PointCloud2, downsampled_pcd)
-        lidar_ds_msg.header.frame_id = self.target_frame
-        lidar_ds_msg.header.stamp = self.get_clock().now().to_msg()
-        self.lidar_ds_pub.publish(lidar_ds_msg)
+        # lidar_ds_msg: PointCloud2 = rnp.msgify(PointCloud2, downsampled_pcd)
+        # lidar_ds_msg.header.frame_id = self.target_frame
+        # lidar_ds_msg.header.stamp = self.get_clock().now().to_msg()
+        # self.lidar_ds_pub.publish(lidar_ds_msg)
 
 
 def main(args=None):
