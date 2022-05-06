@@ -68,6 +68,7 @@ public:
       odom_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::ConstSharedPtr
       cloud_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::ConstSharedPtr imu_sub_;
   std::shared_ptr<tf2_ros::TransformListener> transform_listener_{nullptr};
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 
@@ -113,4 +114,5 @@ public:
 
   // imu
   LidarUndistortion lidar_undistortion_;
+  sensor_msgs::msg::Imu::ConstSharedPtr cached_imu;
 };

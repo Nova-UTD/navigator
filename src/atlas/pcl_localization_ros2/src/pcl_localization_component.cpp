@@ -202,6 +202,10 @@ void PCLLocalization::initializePubSub()
       "cloud", rclcpp::SensorDataQoS(),
       std::bind(&PCLLocalization::cloudReceived, this, std::placeholders::_1));
 
+  imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
+      "/sensors/zed/imu", rclcpp::SensorDataQoS(),
+      std::bind(&PCLLocalization::imuReceived, this, std::placeholders::_1));
+
   // TF2
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
   transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -329,10 +333,13 @@ void PCLLocalization::odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg)
 
 void PCLLocalization::imuReceived(sensor_msgs::msg::Imu::ConstSharedPtr msg)
 {
-  if (!use_imu_)
-  {
-    return;
-  }
+  // if (!use_imu_)
+  // {
+  //   return;
+  // }
+
+  this->cached_imu = msg;
+  RCLCPP_INFO(this->get_logger(), "Received IMU");
 
   // double roll, pitch, yaw;
   // tf2::Quaternion orientation;
@@ -360,6 +367,7 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   {
     return;
   }
+  
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
   pcl::fromROSMsg(*msg, *cloud_ptr);
 
@@ -391,6 +399,29 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   Eigen::Matrix4f init_guess;
   Eigen::Affine3d affine;
   tf2::fromMsg(current_pose_stamped_.pose.pose, affine);
+  
+  if(this->cached_imu != nullptr) {
+    // transform our initial guess using angular velocity
+    double last_received_time =
+      current_pose_stamped_.header.stamp.sec +
+      current_pose_stamped_.header.stamp.nanosec * 1e-9;
+    double received_time =
+      msg->header.stamp.sec +
+      msg->header.stamp.nanosec * 1e-9;
+    double time_delta = received_time - last_received_time;
+    double ax = time_delta * cached_imu->angular_velocity.x;
+    double ay = time_delta * cached_imu->angular_velocity.y;
+    double az = time_delta * cached_imu->angular_velocity.z;
+
+    Eigen::Affine3d rx =
+      Eigen::Affine3d(Eigen::AngleAxisd(ax, Eigen::Vector3d(1, 0, 0)));
+    Eigen::Affine3d ry =
+      Eigen::Affine3d(Eigen::AngleAxisd(ay, Eigen::Vector3d(0, 1, 0)));
+    Eigen::Affine3d rz =
+      Eigen::Affine3d(Eigen::AngleAxisd(az, Eigen::Vector3d(0, 0, 1)));
+    affine = rz * ry * rx * affine;
+  }
+  
   init_guess = affine.matrix().cast<float>();
 
   pcl::PointCloud<pcl::PointXYZI>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZI>);
