@@ -81,7 +81,7 @@ class ScanMatchingNode(Node):
         # Read our map
         self.get_logger().info("Reading map...")
         map_file = o3d.io.read_point_cloud(
-            '/home/main/grand_loop.pcd')
+            '/home/wheitman/Downloads/grand_loop_fullsize.pcd')
         self.map_cloud = np.asarray(map_file.points)
 
         self.get_logger().info(
