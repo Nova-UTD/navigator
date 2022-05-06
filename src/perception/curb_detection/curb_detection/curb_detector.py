@@ -104,7 +104,8 @@ class CurbDetector(Node):
             next_point = pts[i + self.LOOK_DIST]
             next_dist = dists[i + self.LOOK_DIST]
             previous_dist = dists[i]
-            if(abs(next_dist - previous_dist) > previous_dist * 2):
+            span = abs(next_dist - previous_dist) / 4
+            if(span > previous_dist or span > next_dist):
                 candidates.append(False)
                 continue
             dist = self.dist(self.mirror_around(previous_point, this_point), next_point)
@@ -112,6 +113,8 @@ class CurbDetector(Node):
         for i in range(self.LOOK_DIST):
             candidates.append(False)
         candidates = pts[candidates]
+        if(len(candidates) == 0):
+            return candidates
         curb_dist = np.percentile(candidates['y'], 90)
         candidates = candidates[candidates['y'] > curb_dist]
         return candidates
