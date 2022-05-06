@@ -38,8 +38,6 @@ class CurbDetector(Node):
             return
         pts = self.filterPoints(pts)
         curbs = self.findAllCurbBounds(pts)
-        if len(curbs) == 0:
-            return
         self.curb_pub.publish(self.ptArrayToMsg(curbs))
 
     def filterPoints(self, pts):
@@ -64,13 +62,12 @@ class CurbDetector(Node):
                 )
             )
         ]
-        pts = pts[ # Remove all points to the left of the vehicle by more than 2 meters
+        pts = pts[ # Remove all points to the left of the vehicle
             pts['y'] < 0]
         return pts
     
     def ptArrayToMsg(self, pts):
-        np_pts = np.array(pts)
-        pcd2: PointCloud2 = rnp.msgify(PointCloud2, np_pts)
+        pcd2: PointCloud2 = rnp.msgify(PointCloud2, pts)
         pcd2.header.stamp = self.get_clock().now().to_msg()
         pcd2.header.frame_id = 'base_link'
         return pcd2
@@ -79,8 +76,9 @@ class CurbDetector(Node):
         curbs = []
         for ring in range(self.TOP_RING):
             ring_pts = pts[pts['ring'] == ring]
-            self.slide(curbs, ring_pts)
-            curbs.append(ring_pts[math.floor(len(ring_pts) / 4)])
+            curbs.append(self.slide(ring_pts))
+        curbs = np.concatenate(curbs)
+        curbs = curbs[curbs['y'] > np.percentile(curbs['y'], 90) - 0.1]
         return curbs
 
     def dist(self, a, b):
@@ -96,9 +94,9 @@ class CurbDetector(Node):
         pt['z'] = (pt['z'] * 2) - a['z']
         return pt
     
-    def slide(self, curbs, pts):
-        is_candidate = []
+    def slide(self, pts):
         dists = []
+        candidates = []
         for i in range(len(pts)):
             dists.append(self.dist(pts[i - self.LOOK_DIST], pts[i]))
         for i in range(len(pts) - self.LOOK_DIST):
@@ -108,10 +106,14 @@ class CurbDetector(Node):
             next_dist = dists[i + self.LOOK_DIST]
             previous_dist = dists[i]
             if(abs(next_dist - previous_dist) > previous_dist * 2):
+                candidates.append(False)
                 continue
             dist = self.dist(self.mirror_around(previous_point, this_point), next_point)
-            if(dist > previous_dist):
-                curbs.append(this_point)
+            candidates.append(bool(dist > previous_dist))
+        for i in range(self.LOOK_DIST):
+            candidates.append(False)
+        candidates = pts[candidates]
+        return candidates
 
 def main(args=None):
     rclpy.init(args=args)
