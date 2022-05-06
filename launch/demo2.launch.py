@@ -374,7 +374,7 @@ def generate_launch_description():
         # behavior_planner,
 
         # STATE ESTIMATION
-        # map_odom_ukf,
+        map_odom_ukf,
         odom_bl_ukf,
         # pcl_localization,
 
@@ -383,7 +383,7 @@ def generate_launch_description():
 
         # MISC
         odr_viz,
-        odom_bl_link,
+        # odom_bl_link,
         urdf_publisher,
         visuals
     ])
