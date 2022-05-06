@@ -20,7 +20,7 @@ class CurbDetector(Node):
         self.TOP_RING = 6
         self.MAX_HEIGHT = 0.5  # meters
 
-        self.LOOK_DIST = 4
+        self.LOOK_DIST = 6
         
         self.lidar_sub = self.create_subscription(
             PointCloud2,
@@ -78,7 +78,6 @@ class CurbDetector(Node):
             ring_pts = pts[pts['ring'] == ring]
             curbs.append(self.slide(ring_pts))
         curbs = np.concatenate(curbs)
-        curbs = curbs[curbs['y'] > np.percentile(curbs['y'], 90) - 0.1]
         return curbs
 
     def dist(self, a, b):
@@ -113,6 +112,8 @@ class CurbDetector(Node):
         for i in range(self.LOOK_DIST):
             candidates.append(False)
         candidates = pts[candidates]
+        curb_dist = np.percentile(candidates['y'], 90)
+        candidates = candidates[candidates['y'] > curb_dist]
         return candidates
 
 def main(args=None):
