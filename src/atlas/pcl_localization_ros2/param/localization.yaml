@@ -2,7 +2,7 @@ pcl_localization:
   ros__parameters:
     registration_method: "NDT"
     ndt_resolution: 2.0
-    ndt_step_size: 0.4
+    ndt_step_size: 0.01
     transform_epsilon: 0.01
     voxel_leaf_size: 1.0
     scan_max_range: 100.0
@@ -10,7 +10,7 @@ pcl_localization:
     scan_period: 0.1
     use_pcd_map: false
     map_path: "/home/wheitman/navigator-2/data/maps/grand_loop/grand_loop.pcd"
-    set_initial_pose: false
+    set_initial_pose: true
     initial_pose_x: -167.2391822215378
     initial_pose_y: 95.10477333449926
     initial_pose_z: -0.0029020091934057746

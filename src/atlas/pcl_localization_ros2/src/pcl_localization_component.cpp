@@ -56,24 +56,24 @@ CallbackReturn PCLLocalization::on_activate(const rclcpp_lifecycle::State &)
   path_pub_->on_activate();
   initial_map_pub_->on_activate();
 
-  // if (set_initial_pose_)
-  // {
-  //   auto msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
+  if (set_initial_pose_)
+  {
+    auto msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
 
-  //   msg->header.stamp = now();
-  //   msg->header.frame_id = global_frame_id_;
-  //   msg->pose.pose.position.x = initial_pose_x_;
-  //   msg->pose.pose.position.y = initial_pose_y_;
-  //   msg->pose.pose.position.z = initial_pose_z_;
-  //   msg->pose.pose.orientation.x = initial_pose_qx_;
-  //   msg->pose.pose.orientation.y = initial_pose_qy_;
-  //   msg->pose.pose.orientation.z = initial_pose_qz_;
-  //   msg->pose.pose.orientation.w = initial_pose_qw_;
+    msg->header.stamp = now();
+    msg->header.frame_id = global_frame_id_;
+    msg->pose.pose.position.x = initial_pose_x_;
+    msg->pose.pose.position.y = initial_pose_y_;
+    msg->pose.pose.position.z = initial_pose_z_;
+    msg->pose.pose.orientation.x = initial_pose_qx_;
+    msg->pose.pose.orientation.y = initial_pose_qy_;
+    msg->pose.pose.orientation.z = initial_pose_qz_;
+    msg->pose.pose.orientation.w = initial_pose_qw_;
 
-  //   path_.poses.push_back(*msg);
+    // path_.poses.push_back(*msg);
 
-  //   initialPoseReceived(msg);
-  // }
+    initialPoseReceived(msg);
+  }
 
   if (use_pcd_map_)
   {
@@ -426,7 +426,7 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   transform_stamped.transform.translation.y = static_cast<double>(final_transformation(1, 3));
   transform_stamped.transform.translation.z = static_cast<double>(final_transformation(2, 3));
   transform_stamped.transform.rotation = quat_msg;
-  // broadcaster_.sendTransform(transform_stamped);
+  broadcaster_.sendTransform(transform_stamped); // Comment this out to turn off transform publishing
 
   // path_.poses.push_back(current_pose_stamped_);
   // path_pub_->publish(path_);
