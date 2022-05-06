@@ -4,6 +4,7 @@
 #include <string>
 #include <thread>
 #include <utility>
+#include <fstream>
 
 #include <pcl/registration/ndt.h>
 #include <pcl/registration/gicp.h>
@@ -103,6 +104,8 @@ public:
   double initial_pose_qz_;
   double initial_pose_qw_;
 
+  bool enable_logging_to_file_{false};
+  std::ofstream *csvFile = new std::ofstream("ndt_log.csv");
   bool use_odom_{false};
   double last_odom_received_time_;
   bool use_imu_{false};

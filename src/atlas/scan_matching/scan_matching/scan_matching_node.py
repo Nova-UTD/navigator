@@ -88,7 +88,7 @@ class ScanMatchingNode(Node):
             f"Map loaded with shape {self.map_cloud.shape}")
 
         self.map_pub = self.create_publisher(PointCloud2, '/map/pcd', 1)
-        self.map_pub_timer = self.create_timer(5, self.publish_map)
+        self.map_pub_timer = self.create_timer(10, self.publish_map)
 
     def align(self, moving, fixed, initial_T):
         # Downsample our input

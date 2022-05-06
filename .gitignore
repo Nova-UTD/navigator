@@ -4,3 +4,8 @@ install
 log
 .vscode
 *.weights
+ndt_in_gnss.csv
+ndt_log copy.csv
+ndt_log.csv
+.gitignore
+meters_to_gnss_degrees.py

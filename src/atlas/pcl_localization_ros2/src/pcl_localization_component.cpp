@@ -26,6 +26,7 @@ PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
   declare_parameter("initial_pose_qx", 0.0);
   declare_parameter("initial_pose_qy", 0.0);
   declare_parameter("initial_pose_qz", 0.0);
+  declare_parameter("enable_logging_to_file", false);
   declare_parameter("initial_pose_qw", 1.0);
   declare_parameter("use_odom", false);
   declare_parameter("use_imu", false);
@@ -124,13 +125,15 @@ CallbackReturn PCLLocalization::on_cleanup(const rclcpp_lifecycle::State &)
   cloud_sub_.reset();
 
   return CallbackReturn::SUCCESS;
+  csvFile->close();
 }
 
 CallbackReturn PCLLocalization::on_shutdown(const rclcpp_lifecycle::State &state)
 {
   RCLCPP_INFO(get_logger(), "Shutting Down from %s", state.label().c_str());
-
+  
   return CallbackReturn::SUCCESS;
+  
 }
 
 CallbackReturn PCLLocalization::on_error(const rclcpp_lifecycle::State &state)
@@ -163,6 +166,7 @@ void PCLLocalization::initializeParameters()
   get_parameter("initial_pose_z", initial_pose_z_);
   get_parameter("initial_pose_qx", initial_pose_qx_);
   get_parameter("initial_pose_qy", initial_pose_qy_);
+  get_parameter("enable_logging_to_file", enable_logging_to_file_);
   get_parameter("initial_pose_qz", initial_pose_qz_);
   get_parameter("initial_pose_qw", initial_pose_qw_);
   get_parameter("use_odom", use_odom_);
@@ -463,4 +467,12 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
     std::cout << "delta_angle:" << delta_angle * 180 / M_PI << "[deg]" << std::endl;
     std::cout << "-----------------------------------------------------" << std::endl;
   }
+
+  if (enable_logging_to_file_)
+  {
+    *csvFile << current_pose_stamped_.pose.pose.position.x<<","
+      <<current_pose_stamped_.pose.pose.position.y<<","<<current_pose_stamped_.pose.pose.position.z
+      <<","<<registration_->getFitnessScore()<< std::endl;
+  }
+
 }

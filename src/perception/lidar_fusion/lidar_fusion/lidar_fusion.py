@@ -110,9 +110,9 @@ class LidarFusionNode(Node):
             )
         )]
         DOWNSAMPLE_RATE = 5
-        downsampled_pcd = fused_pcd[::DOWNSAMPLE_RATE]
 
-        # fused_pcd = fused_pcd[fused_pcd['z'] > 0.3]
+        fused_pcd = fused_pcd[fused_pcd['z'] > 0.3]
+        downsampled_pcd = fused_pcd[::DOWNSAMPLE_RATE]
 
         lidar_fused_msg: PointCloud2 = rnp.msgify(PointCloud2, fused_pcd)
         lidar_fused_msg.header.frame_id = self.target_frame
