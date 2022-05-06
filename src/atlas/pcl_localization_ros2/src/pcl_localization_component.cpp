@@ -33,6 +33,7 @@ PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
   declare_parameter("enable_debug", false);
   declare_parameter("fitness_gnss_threshold", 10.0);
   declare_parameter("dist_gnss_threshold", 5.0);
+  declare_parameter("pose_position_cov_k", 1.0);
 }
 
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
@@ -174,6 +175,7 @@ void PCLLocalization::initializeParameters()
   get_parameter("enable_debug", enable_debug_);
   get_parameter("fitness_gnss_threshold", fitness_gnss_threshold);
   get_parameter("dist_gnss_threshold", dist_gnss_threshold);
+  get_parameter("pose_position_cov_k", pose_position_cov_k);
 }
 
 void PCLLocalization::initializePubSub()
@@ -330,8 +332,12 @@ void PCLLocalization::odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg)
   // corrent_pose_stamped_.pose.position.y += delta_position.y();
   // corrent_pose_stamped_.pose.position.z += delta_position.z();
   // corrent_pose_stamped_.pose.orientation = quat_msg;
-  current_pose_stamped_.pose.pose = msg->pose.pose;
-  current_pose_stamped_.header = msg->header;
+  if (!fitnessOk) {
+    current_pose_stamped_.pose.pose = msg->pose.pose;
+    current_pose_stamped_.header = msg->header;
+    RCLCPP_INFO(get_logger(), "Fitness score was above threshold, adding GPS");
+  }
+
 }
 
 void PCLLocalization::imuReceived(sensor_msgs::msg::Imu::ConstSharedPtr msg)
@@ -422,6 +428,15 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   current_pose_stamped_.pose.pose.position.z = static_cast<double>(final_transformation(2, 3));
   current_pose_stamped_.pose.pose.orientation = quat_msg;
 
+  double pos_cov = registration_->getFitnessScore() / pose_position_cov_k; // The divisors here are arbitrary
+  double ang_cov = registration_->getFitnessScore() / (5*pose_position_cov_k);
+  current_pose_stamped_.pose.covariance = { pos_cov, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                            0.0, pos_cov, 0.0, 0.0, 0.0, 0.0,
+                                            0.0, 0.0, pos_cov, 0.0, 0.0, 0.0,
+                                            0.0, 0.0, 0.0, pos_cov, 0.0, 0.0,
+                                            0.0, 0.0, 0.0, 0.0, pos_cov, 0.0,
+                                            0.0, 0.0, 0.0, 0.0, 0.0, pos_cov};
+
   pose_pub_->publish(current_pose_stamped_);
   RCLCPP_INFO(get_logger(), "pub pose");
 
@@ -433,7 +448,7 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   transform_stamped.transform.translation.y = static_cast<double>(final_transformation(1, 3));
   transform_stamped.transform.translation.z = static_cast<double>(final_transformation(2, 3));
   transform_stamped.transform.rotation = quat_msg;
-  broadcaster_.sendTransform(transform_stamped); // Comment this out to turn off transform publishing
+  // broadcaster_.sendTransform(transform_stamped); // Comment this out to turn off transform publishing
 
   // path_.poses.push_back(current_pose_stamped_);
   // path_pub_->publish(path_);

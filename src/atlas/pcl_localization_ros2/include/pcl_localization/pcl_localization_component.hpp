@@ -115,6 +115,8 @@ public:
   double fitness_gnss_threshold;
   double dist_gnss_threshold;
 
+  double pose_position_cov_k;
+
   // imu
   LidarUndistortion lidar_undistortion_;
 };

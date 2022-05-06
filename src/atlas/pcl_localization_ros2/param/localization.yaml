@@ -2,11 +2,11 @@ pcl_localization:
   ros__parameters:
     registration_method: "NDT"
     ndt_resolution: 2.0
-    ndt_step_size: 0.2
+    ndt_step_size: 0.3
     trans_epsilon: 0.01
     max_iterations: 35
     voxel_leaf_size: 0.4
-    scan_max_range: 100.0
+    scan_max_range: 70.0
     scan_min_range: 1.0
     scan_period: 0.1
     use_pcd_map: false
@@ -21,7 +21,8 @@ pcl_localization:
     initial_pose_qw: 0.7281754753093983
     use_odom: true
     use_imu: false
-    enable_debug: true
-    fitness_gnss_threshold: 55.0
+    enable_debug: false
+    fitness_gnss_threshold: 3.0
     dist_gnss_threshold: 5.0
     enable_logging_to_file: true
+    pose_position_cov_k: 7.0

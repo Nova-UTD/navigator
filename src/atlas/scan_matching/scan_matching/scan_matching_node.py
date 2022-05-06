@@ -80,15 +80,17 @@ class ScanMatchingNode(Node):
 
         # Read our map
         self.get_logger().info("Reading map...")
+        # map_file = o3d.io.read_point_cloud(
+        #     '/home/wheitman/Downloads/grand_loop_fullsize.pcd')
         map_file = o3d.io.read_point_cloud(
-            '/home/wheitman/Downloads/grand_loop_fullsize.pcd')
+            'data/maps/grand_loop/grand_loop_04.pcd')
         self.map_cloud = np.asarray(map_file.points)
 
         self.get_logger().info(
             f"Map loaded with shape {self.map_cloud.shape}")
 
         self.map_pub = self.create_publisher(PointCloud2, '/map/pcd', 1)
-        self.map_pub_timer = self.create_timer(10, self.publish_map)
+        self.map_pub_timer = self.create_timer(5, self.publish_map)
 
     def align(self, moving, fixed, initial_T):
         # Downsample our input
