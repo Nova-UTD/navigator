@@ -24,8 +24,6 @@ Todos:
 
 '''
 
-from re import S
-from unittest import result
 import cv2
 import time
 from scipy import rand
@@ -83,56 +81,14 @@ class ScanMatchingNode(Node):
         # Read our map
         self.get_logger().info("Reading map...")
         map_file = o3d.io.read_point_cloud(
-            'data/maps/grand_loop/grand_loop.pcd')
+            '/home/main/grand_loop.pcd')
         self.map_cloud = np.asarray(map_file.points)
-
-        # Get our initial estimates from GNSS log
-        initial_estimates = np.genfromtxt(
-            'frames/gnss_log_full.csv', delimiter=',')
-        print(initial_estimates)
 
         self.get_logger().info(
             f"Map loaded with shape {self.map_cloud.shape}")
 
         self.map_pub = self.create_publisher(PointCloud2, '/map/pcd', 1)
         self.map_pub_timer = self.create_timer(5, self.publish_map)
-
-        frame = 40
-
-        # Choose initial estimate for frame 7
-        # initial_trans = initial_estimates[frame, 0:3]
-        # initial_quat = initial_estimates[frame, 3:7]
-        # # print(initial_quat)
-        # rot_matrix = R.from_quat(initial_quat).as_dcm()
-        # initial_T = np.zeros((4, 4))
-        # initial_T[0:3, 0:3] = rot_matrix
-        # initial_T[0:3, 3] = initial_trans.T
-        # initial_T[3, 3] = 1.0
-
-        # try alignment >:o
-        # moving_file = o3d.io.read_point_cloud(
-        #     '/home/main/navigator-2/frames/frame' + str(frame) + '.pcd')
-        # moving = np.asarray(moving_file.points)
-
-        # moving = moving[moving[:, 0] > -50]
-        # moving = moving[moving[:, 0] < 50]
-        # moving = moving[moving[:, 1] > -50]
-        # moving = moving[moving[:, 1] < 50]
-
-        # self.align(moving, map_cloud, initial_T)
-
-        # self.lidar_sub = self.create_subscription(
-        #     PointCloud2, '/lidar_fused', self.lidar_cb, 10)
-
-        # self.gnss_sub = self.create_subscription(
-        #     Odometry, '/sensors/gnss/odom', self.gnss_cb, 10)
-        # self.cached_gnss = None
-
-        # self.result_odom_pub = self.create_publisher(
-        #     Odometry, '/atlas/odom', 10)
-
-        # self.lidar_save_timer = self.create_timer(5, self.save_lidar)
-        # self.lidar_save_idx = 0
 
     def align(self, moving, fixed, initial_T):
         # Downsample our input
@@ -147,18 +103,18 @@ class ScanMatchingNode(Node):
         moving_o3d = moving_o3d.transform(initial_T)
         moving_full = moving
 
-        moving = pygicp.downsample(moving, 3.0)
+        # moving = pygicp.downsample(moving, 3.0)
 
-        gicp = pygicp.NDTCuda()
-        gicp.set_input_target(fixed)
-        gicp.set_input_source(moving)
+        ndt = pygicp.NDTCuda()
+        ndt.set_input_target(fixed)
+        ndt.set_input_source(moving)
         # gicp.set_correspondence_randomness(1000)
-        gicp.set_resolution(2.0)
-        matrix = gicp.align(
+        ndt.set_resolution(2.0)
+        matrix = ndt.align(
             initial_guess=initial_T
         )
 
-        print(dir(gicp))
+        print(dir(ndt))
 
         # Transform by final tf
         # moving_o3d_result = o3d.geometry.PointCloud()
@@ -267,9 +223,9 @@ class ScanMatchingNode(Node):
             ('y', np.float32),
             ('z', np.float32)
         ])
-        print(arr.shape)
-        print(data.shape)
-        print(arr[0])
+        # print(arr.shape)
+        # print(data.shape)
+        # print(arr[0])
         data['x'] = arr[:, 0]
         data['y'] = arr[:, 1]
         data['z'] = arr[:, 2]

@@ -26,6 +26,29 @@
         false,
       ]
 
+    # pose0: "/sensors/zed/pose" # xyz and yaw
+    # pose0_config:
+    #   [
+    #     true,
+    #     true,
+    #     true,
+    #     false,
+    #     false,
+    #     true,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #     false,
+    #   ]
+    # pose0_differential: true
+
+
+
     # pose1: "/pcl_pose" # Angular vel, linear acc
     # pose1_config:
     #   [
