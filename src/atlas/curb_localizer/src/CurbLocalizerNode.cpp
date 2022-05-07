@@ -49,6 +49,18 @@ void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPt
     publish_odom();
 }
 
+/**
+ * @brief Adds a (squared) amount to the covariance of the odometry
+ * 
+ * @param odom 
+ * @param cov_x 
+ * @param cov_y 
+ */
+void apply_covariance(nav_msgs::msg::Odometry &odom, double cov_x, double cov_y){
+    odom.pose.covariance[0] += cov_x * cov_x;
+    odom.pose.covariance[7] += cov_y * cov_y; // 7 = 1st row, first col (1*6 + 1)
+}
+
 void CurbLocalizerNode::publish_odom() {
 
     if (odom_in == nullptr) return;
@@ -79,6 +91,8 @@ void CurbLocalizerNode::publish_odom() {
 
     // If we don't have updated curb distance, don't do anything further
     if (this->dist_to_curb < 0) {
+        // Bad readings and other errors should result in a high covariance
+        apply_covariance(corrected_odom, bias_x, bias_y);
         this->odom_out_pub->publish(corrected_odom);
         return;
     }
@@ -88,6 +102,7 @@ void CurbLocalizerNode::publish_odom() {
     std::shared_ptr<odr::LaneSection> target_lanesection = current_road->get_lanesection(s);
 
     if (target_lanesection == nullptr) {
+        apply_covariance(corrected_odom, bias_x, bias_y);
         odom_out_pub->publish(corrected_odom);
         return;
     }
@@ -105,6 +120,7 @@ void CurbLocalizerNode::publish_odom() {
 
     if(curb_lane == nullptr) {
         // No curb found, cannot correct bias
+        apply_covariance(corrected_odom, bias_x, bias_y);
         odom_out_pub->publish(corrected_odom);
         return; 
     }
@@ -141,9 +157,6 @@ void CurbLocalizerNode::publish_odom() {
     // so bias = predicted_offset - measured_offset
     double bias_change_magnitude = dist_to_curb_odom - this->dist_to_curb;
 
-    // TODO: this part is a hunch
-    bias_change_magnitude = copysign(std::max(bias_change_magnitude, 0.1), bias_change_magnitude);
-
     // All vectors are parallel, so the easiest way to find 
     // bias is bias = (bias_magnitude) * (normalized predicted_offset)
     double bias_coeff = bias_change_magnitude / dist_to_curb_odom;
@@ -157,6 +170,11 @@ void CurbLocalizerNode::publish_odom() {
 
     bias_x += dx;
     bias_y += dy;
+
+    // Tie covarience to the bias change- repeated results are more confident
+    corrected_odom.pose.covariance[0] += dx * dx;
+    corrected_odom.pose.covariance[6*1 + 1] += dy * dy;
+
 
     odom_out_pub->publish(corrected_odom);
 
