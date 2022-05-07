@@ -27,6 +27,11 @@
 
 #include "pcl_localization/lidar_undistortion.hpp"
 
+#include <pclomp/ndt_omp.h>
+#include <pclomp/ndt_omp_impl.hpp>
+#include <pclomp/voxel_grid_covariance_omp.h>
+#include <pclomp/voxel_grid_covariance_omp_impl.hpp>
+
 using namespace std::chrono_literals;
 
 class PCLLocalization : public rclcpp_lifecycle::LifecycleNode
@@ -116,6 +121,7 @@ public:
   double dist_gnss_threshold;
 
   double pose_position_cov_k;
+  int ndt_num_threads;
 
   // imu
   LidarUndistortion lidar_undistortion_;
