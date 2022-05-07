@@ -30,6 +30,7 @@
   <exec_depend>tf2_geometry_msgs</exec_depend>
   <exec_depend>tf2_eigen</exec_depend>
   <exec_depend>pcl_conversions</exec_depend>
+  <depend>ndt_omp_ros2</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

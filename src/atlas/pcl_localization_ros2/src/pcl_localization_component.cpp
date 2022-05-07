@@ -34,6 +34,7 @@ PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
   declare_parameter("fitness_gnss_threshold", 10.0);
   declare_parameter("dist_gnss_threshold", 5.0);
   declare_parameter("pose_position_cov_k", 1.0);
+  declare_parameter("ndt_num_threads", 4);
 }
 
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
@@ -176,6 +177,7 @@ void PCLLocalization::initializeParameters()
   get_parameter("fitness_gnss_threshold", fitness_gnss_threshold);
   get_parameter("dist_gnss_threshold", dist_gnss_threshold);
   get_parameter("pose_position_cov_k", pose_position_cov_k);
+  get_parameter("ndt_num_threads", ndt_num_threads);
 }
 
 void PCLLocalization::initializePubSub()
@@ -228,12 +230,14 @@ void PCLLocalization::initializeRegistration()
   }
   else
   {
-    pcl::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>::Ptr ndt(
-        new pcl::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>());
+    pclomp::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>::Ptr
+      ndt(new pclomp::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>());
     ndt->setStepSize(ndt_step_size_);
     ndt->setResolution(ndt_resolution_);
     ndt->setTransformationEpsilon(trans_epsilon_);
     ndt->setMaximumIterations(max_iterations_);
+    ndt->setNeighborhoodSearchMethod(pclomp::DIRECT7);
+    if (ndt_num_threads > 0) {ndt->setNumThreads(ndt_num_threads);}
     registration_ = ndt;
   }
 
