@@ -140,6 +140,10 @@ void CurbLocalizerNode::publish_odom() {
     // position + predicted_offset = curb pos = (position + bias) + measured_offset,
     // so bias = predicted_offset - measured_offset
     double bias_change_magnitude = dist_to_curb_odom - this->dist_to_curb;
+
+    // TODO: this part is a hunch
+    bias_change_magnitude = copysign(std::max(bias_change_magnitude, 0.1), bias_change_magnitude);
+
     // All vectors are parallel, so the easiest way to find 
     // bias is bias = (bias_magnitude) * (normalized predicted_offset)
     double bias_coeff = bias_change_magnitude / dist_to_curb_odom;
