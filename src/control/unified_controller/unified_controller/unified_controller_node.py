@@ -261,6 +261,7 @@ class UnifiedController(Node):
         # Get throttle and brake
         v_look = self.point_at_distance(self.current_path_index, v_look_dist)
         target_velocity = v_look.vx
+        self.desired_speed_pub.publish(target_velocity)
         throttle, brake = self.calculate_throttle_brake(target_velocity, self.stamp_time)
 
         # apply moving average to steering and throttle
@@ -476,7 +477,11 @@ class UnifiedController(Node):
             '/command/steering_position',
             10
         )
-
+        self.desired_speed_pub = self.create_publisher(
+            Float32,
+            '/control/desired_speed',
+            10
+        )
         self.control_timer = self.create_timer(0.2, self.generate_commands)
 
 
