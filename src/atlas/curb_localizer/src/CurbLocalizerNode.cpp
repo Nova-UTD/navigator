@@ -9,6 +9,7 @@
 
 #include "curb_localizer/CurbLocalizerNode.hpp"
 #include "opendrive_utils/OpenDriveUtils.hpp"
+#include "eigen3/Eigen/Dense"
 
 
 using namespace navigator::curb_localizer;
@@ -124,8 +125,17 @@ void CurbLocalizerNode::publish_odom() {
     double dy = curb_y - odo_y;
     double dist_to_curb_odom = sqrt(dx * dx + dy * dy);
 
-    // We are looking at the right curb, so dy should be positive.
-    // If not, it's a sign the odom has drifted to the wrong curb.
+    // We are looking at the right curb, so the vector transformed into base_link
+    // should point to the right. If it doesn't, flip the sign distance to fix this.
+    auto orient = this->odom_in->pose.pose.orientation;
+    Eigen::Quaterniond q(orient.w, orient.x, orient.y, orient.z);
+    Eigen::Vector3d v(dx, dy, 0);
+    Eigen::Vector3d v_in_base = q.inverse() * v;
+    if (v_in_base[1] > 0) {
+        dist_to_curb_odom *= -1;
+        RCLCPP_INFO(this->get_logger(), "Flipped sign of curb distance");
+    }
+
 
     // position + predicted_offset = curb pos = (position + bias) + measured_offset,
     // so bias = predicted_offset - measured_offset

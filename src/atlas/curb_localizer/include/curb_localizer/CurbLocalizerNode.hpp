@@ -43,7 +43,7 @@ class CurbLocalizerNode : public rclcpp::Node
         double dist_to_curb = -1;
         rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr curb_dist_sub;
         void curb_dist_callback(const std_msgs::msg::Float32::SharedPtr msg){
-            dist_to_curb = std::max(0.1f, msg->data);
+            dist_to_curb = std::max(0.1f, std::abs(msg->data));
         }
 
         std::vector<PathSection> route_info;
