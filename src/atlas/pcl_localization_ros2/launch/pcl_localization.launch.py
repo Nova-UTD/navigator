@@ -49,7 +49,7 @@ def generate_launch_description():
         remappings=[('/cloud', '/lidar_fused'), ('/map', '/map/pcd'),
                     ('/odom', '/sensors/gnss/odom')],
         parameters=[
-            "/home/wheitman/navigator/src/atlas/pcl_localization_ros2/param/localization.yaml"],
+            "/home/main/navigator/src/atlas/pcl_localization_ros2/param/localization.yaml"],
         output='screen')
 
     to_inactive = launch.actions.EmitEvent(

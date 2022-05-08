@@ -362,7 +362,7 @@ def generate_launch_description():
 
         # # Camera
         # zed_interface,
-       gnss_parser,
+        gnss_parser,
         # vehicle_can,
         # speedometer_reporter,
         # speedometer_translator,
@@ -375,7 +375,7 @@ def generate_launch_description():
         # behavior_planner,
 
         # STATE ESTIMATION
-        # map_odom_ukf,
+        map_odom_ukf,
         # odom_bl_ukf,
         # pcl_localization,
         scan_matcher,
@@ -384,8 +384,8 @@ def generate_launch_description():
         # unified_controller,
 
         # MISC
-        odr_viz,
+        # odr_viz,
         odom_bl_link,
         urdf_publisher,
-        visuals
+        # visuals
     ])

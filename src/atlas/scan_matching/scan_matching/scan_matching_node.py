@@ -24,7 +24,7 @@ Todos:
 
 '''
 
-import cv2
+#import cv2
 import time
 from scipy import rand
 from sensor_msgs.msg import PointCloud2, Image, Imu
@@ -41,7 +41,7 @@ from tf2_ros.buffer import Buffer
 import tf2_msgs
 from tf2_ros import TransformException, TransformStamped
 import pymap3d
-from cv_bridge import CvBridge
+# from cv_bridge import CvBridge
 import numpy as np
 import ros2_numpy as rnp
 from rclpy.node import Node
@@ -49,7 +49,7 @@ import rclpy
 from scipy.spatial.transform import Rotation as R
 
 # FAST_GICP
-import pygicp
+# import pygicp
 import open3d as o3d
 
 class ScanMatchingNode(Node):
@@ -70,8 +70,8 @@ class ScanMatchingNode(Node):
         self.map_pub = self.create_publisher(PointCloud2, '/map/pcd', 1)
         self.map_pub_timer = self.create_timer(5, self.publish_map)
 
-        self.lidar_sub = self.create_subscription(
-            PointCloud2, '/lidar_fused', self.lidar_cb, 10)
+        # self.lidar_sub = self.create_subscription(
+        #     PointCloud2, '/lidar_fused', self.lidar_cb, 10)
 
         self.gnss_sub = self.create_subscription(
             Odometry, '/sensors/gnss/odom', self.gnss_cb, 10)
@@ -86,7 +86,7 @@ class ScanMatchingNode(Node):
         result_odom.pose.pose.position.y = result_matrix[1, 3].item()
         result_odom.pose.pose.position.z = result_matrix[2, 3].item()
 
-        result_quat = R.from_dcm(result_matrix[0:3, 0:3]).as_quat()
+        result_quat = R.from_matrix(result_matrix[0:3, 0:3]).as_quat()
         result_odom.pose.pose.orientation.x = result_quat[0].item()
         result_odom.pose.pose.orientation.y = result_quat[1].item()
         result_odom.pose.pose.orientation.z = result_quat[2].item()
@@ -125,9 +125,9 @@ class ScanMatchingNode(Node):
         ndt.set_input_source(moving)
         # gicp.set_correspondence_randomness(1000)
         ndt.set_resolution(2.0)
-        matrix = ndt.align(
-            initial_guess=initial_T
-        )
+        # matrix = ndt.align(
+        #     initial_guess=initial_T
+        # )
 
         return matrix
 
@@ -169,7 +169,7 @@ class ScanMatchingNode(Node):
         initial_quat = np.array([
             rot.x, rot.y, rot.z, rot.w
         ])
-        rot_matrix = R.from_quat(initial_quat).as_dcm()
+        rot_matrix = R.from_quat(initial_quat).as_matrix()
         initial_T = np.zeros((4, 4))
         initial_T[0:3, 0:3] = rot_matrix
         initial_T[0:3, 3] = initial_trans.T
