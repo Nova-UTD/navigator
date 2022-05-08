@@ -11,7 +11,7 @@ pcl_localization:
     scan_period: 0.1
     use_pcd_map: false
     map_path: "/home/wheitman/navigator-2/data/maps/grand_loop/grand_loop.pcd"
-    set_initial_pose: true
+    set_initial_pose: false
     initial_pose_x: -213.24679565429688
     initial_pose_y: -310.8988037109375
     initial_pose_z: -0.0029020091934057746
