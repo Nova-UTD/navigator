@@ -65,6 +65,8 @@ def generate_launch_description():
     epas_controller = Node(
         package = 'epas_translator',
         executable = 'controller',
+        parameters = [
+            (path.join(param_dir,"interface","epas_controller.param.yaml"))],
         remappings = [
             ("epas_translator_steering_power", "steering_power"),
             ("epas_translator_outgoing_can_frames", "outgoing_can"),

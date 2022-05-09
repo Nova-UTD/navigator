@@ -11,14 +11,14 @@ pcl_localization:
     scan_period: 0.1
     use_pcd_map: false
     map_path: "/home/wheitman/navigator-2/data/maps/grand_loop/grand_loop.pcd"
-    set_initial_pose: true
-    initial_pose_x: -173.2391822215378
-    initial_pose_y: 29.10477333449926
+    set_initial_pose: false
+    initial_pose_x: -213.24679565429688
+    initial_pose_y: -310.8988037109375
     initial_pose_z: -0.0029020091934057746
     initial_pose_qx: 0.0
     initial_pose_qy: 0.0
-    initial_pose_qz: 0.6853907477913105
-    initial_pose_qw: 0.7281754753093983
+    initial_pose_qz: -0.9870872938169499
+    initial_pose_qw: 0.16018325251139845
     use_odom: true
     use_imu: false
     enable_debug: false

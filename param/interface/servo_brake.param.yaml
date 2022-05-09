@@ -4,3 +4,4 @@
     prefix: s
     min: 180
     max: 45
+    needs_enable: false

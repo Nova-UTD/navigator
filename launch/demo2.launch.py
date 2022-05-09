@@ -346,7 +346,7 @@ def generate_launch_description():
         # landmark_localizer,
 
         # HARDWARE
-        # serial,
+        serial,
         # servo_brake,
         # servo_throttle,
 
@@ -355,14 +355,14 @@ def generate_launch_description():
         # epas_reporter,
         # epas_controller,
         # steering_pid,
-        # lidar_driver_front,
-        # lidar_pointcloud_front,
-        # lidar_driver_rear,
-        # lidar_pointcloud_rear,
+        lidar_driver_front,
+        lidar_pointcloud_front,
+        lidar_driver_rear,
+        lidar_pointcloud_rear,
 
         # # Camera
         # zed_interface,
-        gnss_parser,
+       gnss_parser,
         # vehicle_can,
         # speedometer_reporter,
         # speedometer_translator,
