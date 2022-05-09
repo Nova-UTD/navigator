@@ -1,4 +1,4 @@
 ---
 /**:
   ros__parameters:
-    needs_enable: false
+    needs_enable: true

@@ -42,11 +42,25 @@ class LandmarkLocalizerNode(Node):
         self.load_landmarks()
         
         self.max_landmark_difference = 4.0 #only correct if a known landmark is less than x meters from the observed
-        self.last_correction = [0,0,0]
+        self.correction = np.array([0,0,0])
+        self.target_correction = np.array([0,0,0])
+        self.correction_move_speed = 0.1
+
+        self.do_sign_localization = True
+        
+    def calc_correction(self):
+        self.get_logger().info(f"{self.correction} {self.target_correction}")
+        return self.correction + (self.target_correction-self.correction)*self.correction_move_speed
 
     def load_landmarks(self):
         #hard code list of landmarks (sorry)
         self.landmarks = []
+        l = Landmark() #STOP SIGN BY PHASE 3 COMING FROM REC CENTER
+        l.center_point.x = -299.0
+        l.center_point.y = -139.0
+        l.center_point.z = 1.2
+        l.label = l.STOP_SIGN
+        self.landmarks.append(l) 
         l = Landmark() #STOP SIGN BY PHASE 3 COMING FROM REC CENTER
         l.center_point.x = -319.2613163102851
         l.center_point.y = -603.9380237274966
@@ -65,9 +79,14 @@ class LandmarkLocalizerNode(Node):
         l.center_point.z = 1.2
         l.label = l.STOP_SIGN
         self.landmarks.append(l) 
-        l = Landmark() #STOP SIGN BY PHASE 3 AND PARKING GARAGE
-        l.center_point.x = -300.56205839743967
-        l.center_point.y = -429.0077070418239
+        # l = Landmark() #STOP SIGN BY PHASE 3 AND PARKING GARAGE
+        # l.center_point.x = -300.56205839743967
+        # l.center_point.y = -429.0077070418239
+        # l.center_point.z = 1.2
+        # l.label = l.STOP_SIGN
+        l = Landmark() #STOP SIGN ACROSS THE STREET DIAGONALLY BY PHASE 3 AND PARKING GARAGE
+        l.center_point.x = -317.56205839743967
+        l.center_point.y = -411.0077070418239
         l.center_point.z = 1.2
         l.label = l.STOP_SIGN
         self.landmarks.append(l) 
@@ -253,6 +272,9 @@ class LandmarkLocalizerNode(Node):
         self.map_landmark_viz_pub = self.create_publisher(
             MarkerArray, '/viz/map_landmarks', 10
         )
+        self.inital_pose_sub = self.create_subscription(
+            PoseWithCovarianceStamped, '/localization/initialpose', self.init_pose_cb, 10
+        )
 
     #called when we recieve a new landmark
     #compares its position to the closest map landmark of that same type 
@@ -264,7 +286,6 @@ class LandmarkLocalizerNode(Node):
             return (None, False, 9999999)
         if distance_from_observed >= self.max_landmark_difference:
             self.get_logger().warn(f"Observed landmark too far ({distance_from_observed} m) from map landmark!")
-
             return (None, False, 9999999)
         #compute correction using base_link landmark
         trans = self.compute_trans(landmark_msg_tf, map_landmark)
@@ -318,8 +339,10 @@ class LandmarkLocalizerNode(Node):
         t = PoseWithCovarianceStamped()
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = "map"
-        self.get_logger().info(f"correction {self.last_correction}")
-        tf_trans = self.tf_gnss(self.last_correction)
+        self.correction = self.calc_correction()
+        self.get_logger().info(f"correction {self.correction}")
+
+        tf_trans = self.tf_gnss(self.correction)
         self.get_logger().info(f"tf_correction {tf_trans.center_point.x} {tf_trans.center_point.y} {tf_trans.center_point.z}")
         t.pose.pose.position.x = tf_trans.center_point.x
         t.pose.pose.position.y = tf_trans.center_point.y
@@ -388,6 +411,8 @@ class LandmarkLocalizerNode(Node):
 
     #recieves LandmarkArray message, transforms landmarks form base_link to gnss, corrects
     def landmark_cb(self, msg):
+        if not self.do_sign_localization:
+            return
         if (self.gnss == None):
             self.get_logger().warn(f"Landmark recieved but no gnss!")
             return
@@ -417,10 +442,21 @@ class LandmarkLocalizerNode(Node):
                 continue
             min_dist = d 
             trans = t
-        if min_dist == 9999999:
+        if min_dist >= 999999:
             return
-        #publish mean tf of all landmarks
-        self.last_correction = trans
+        if t is None:
+            return
+        #publish closest of all landmarks
+        self.target_correction = t
+        self.pub_correction()
+    
+    def init_pose_cb(self, pose):
+        us = np.array([pose.pose.pose.position.x, pose.pose.pose.position.y, pose.pose.pose.position.z])
+        p = np.array([self.gnss.pose.pose.position.x, self.gnss.pose.pose.position.y, self.gnss.pose.pose.position.z])
+        t = us - p
+        self.get_logger().warn(f"Manual correction {t}!")
+        self.target_correction = t
+        self.correction = t
         self.pub_correction()
 
 def main(args=None):

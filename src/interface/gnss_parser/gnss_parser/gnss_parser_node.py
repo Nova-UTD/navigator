@@ -51,6 +51,8 @@ class GnssParserNode(Node):
             1.0 / frequency, self.publish_next_gnss)
         # outfile.write(f"x,y,z,u,v,speed,pos_acc,yaw_acc,speed_acc\n")
 
+        self.prev_yaw = None
+
     def publish_odom_tf(self, msg: Odometry):
         pos = msg.pose.pose.position
         quat = msg.pose.pose.orientation
@@ -98,11 +100,24 @@ class GnssParserNode(Node):
         msg.pose.pose.position.x = x
         msg.pose.pose.position.y = y
         msg.pose.pose.position.z = z
-        msg.pose.pose.orientation.w = math.cos(yaw/2)
-        msg.pose.pose.orientation.z = math.sin(yaw/2)
 
-        msg.twist.twist.linear.x = speed*math.cos(yaw)
-        msg.twist.twist.linear.y = speed*math.sin(yaw)
+        # This is an attempt to prevent the orientation from suddenly
+        # flipping when the car is stopped
+        if speed < 0.5 and self.prev_yaw is not None:
+            msg.pose.pose.orientation.w = math.cos(self.prev_yaw/2)
+            msg.pose.pose.orientation.z = math.sin(self.prev_yaw/2) 
+            msg.twist.twist.linear.x = speed*math.cos(self.prev_yaw)
+            msg.twist.twist.linear.y = speed*math.sin(self.prev_yaw)
+        else:
+            msg.pose.pose.orientation.w = math.cos(yaw/2)
+            msg.pose.pose.orientation.z = math.sin(yaw/2)
+            msg.twist.twist.linear.x = speed*math.cos(yaw)
+            msg.twist.twist.linear.y = speed*math.sin(yaw)
+        
+        if speed > 1.0:
+            self.prev_yaw = yaw
+
+
 
         pos_acc = float(parts[4])/1e7
         yaw_acc = float(parts[5])/1e5

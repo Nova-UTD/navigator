@@ -46,7 +46,7 @@ CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
     this->odom_in_sub = this->create_subscription<nav_msgs::msg::Odometry>("/sensors/gnss/odom",
         rclcpp::QoS(rclcpp::KeepLast(10)),
         std::bind(&CurbLocalizerNode::odom_in_callback, this, std::placeholders::_1));
-    this->curb_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("/curb_points_right",
+    this->curb_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("/curb_points",
         rclcpp::QoS(rclcpp::KeepLast(10)),
         std::bind(&CurbLocalizerNode::curb_callback, this, std::placeholders::_1));
 
@@ -76,7 +76,7 @@ void CurbLocalizerNode::curb_callback(const sensor_msgs::msg::PointCloud2::Share
 
     double dist = dist_sum / weightsum;
 
-    this->dist_to_curb = dist;
+    this->dist_to_curb = std::abs(dist);
 }
 
 /**
@@ -101,53 +101,68 @@ void CurbLocalizerNode::publish_odom() {
     // Attempt to de-bias the odom using the accumulated known bias
     double& odo_x = corrected_odom.pose.pose.position.x;
     double& odo_y = corrected_odom.pose.pose.position.y;
-
-    // find closest road to true odom data
-    std::shared_ptr<odr::Road> current_road;
-    int desired_lane_id;
-    double min_dist = 99999;
-    for (PathSection section : route_info) {
-        std::shared_ptr<odr::Road> road = map->roads[section.road_id];
-        double dist = navigator::opendrive::get_distance(road->ref_line, odo_x, odo_y);
-        if (dist < min_dist) {
-            min_dist = dist;
-            current_road = road;
-            desired_lane_id = section.lane_id;
-        }
-    }
-
+    
     odo_x += this->bias_x;
     odo_y += this->bias_y;
 
-    // If we don't have updated curb distance, don't do anything further
+     // If we don't have updated curb distance, don't do anything further
     if (this->dist_to_curb < 0) {
         // Bad readings and other errors should result in a high covariance
         apply_covariance(corrected_odom, bias_x, bias_y);
         this->odom_out_pub->publish(corrected_odom);
         return;
     }
+    
+    // find closest road to true odom data
+    std::shared_ptr<odr::Road> current_road;
+    int desired_lane_id;
+    double min_dist = 99999;
+    // for (PathSection section : route_info) {
+    //     std::shared_ptr<odr::Road> road = map->roads[section.road_id];
+    //     if(road == nullptr) continue;
 
-    // get current s value
-    double s = current_road->ref_line->match(odo_x, odo_y);
-    std::shared_ptr<odr::LaneSection> target_lanesection = current_road->get_lanesection(s);
-
-    if (target_lanesection == nullptr) {
-        apply_covariance(corrected_odom, bias_x, bias_y);
-        odom_out_pub->publish(corrected_odom);
-        return;
-    }
+    //     double dist = navigator::opendrive::get_distance(road->ref_line, odo_x, odo_y);
+    //     if (dist < min_dist) {
+    //         min_dist = dist;
+    //         current_road = road;
+    //         desired_lane_id = section.lane_id;
+    //     }
+    // }
 
     navigator::opendrive::LanePtr curb_lane;
-    for (auto lane : target_lanesection->get_lanes()) {
-        if (lane->type == "shoulder" && (lane->id * desired_lane_id) >= 0)
-            curb_lane = lane;
-        // if we have a parking lane, supercedes actual shoulder 
-        if (lane->type == "parking" && (lane->id * desired_lane_id) >= 0) {
-            curb_lane = lane;
-            break;
+    double s;
+
+    if(current_road == nullptr){
+        curb_lane = navigator::opendrive::get_lane_from_xy(map, odo_x, odo_y);
+        if(curb_lane != nullptr){
+            RCLCPP_INFO(this->get_logger(), "Found curb lane");
+            s = curb_lane->road.lock()->ref_line->match(odo_x, odo_y);
+        }else{
+            RCLCPP_INFO(this->get_logger(), "No curb lane found");
+        }
+    }else{
+        RCLCPP_INFO(this->get_logger(), "Found road");
+        // get current s value
+        s = current_road->ref_line->match(odo_x, odo_y);
+        std::shared_ptr<odr::LaneSection> target_lanesection = current_road->get_lanesection(s);
+
+        if (target_lanesection == nullptr) {
+            apply_covariance(corrected_odom, bias_x, bias_y);
+            odom_out_pub->publish(corrected_odom);
+            return;
+        }
+
+        for (auto lane : target_lanesection->get_lanes()) {
+            if (lane->type == "shoulder" && (lane->id * desired_lane_id) >= 0)
+                curb_lane = lane;
+            // if we have a parking lane, supercedes actual shoulder 
+            if (lane->type == "parking" && (lane->id * desired_lane_id) >= 0) {
+                curb_lane = lane;
+                break;
+            }
         }
     }
-
+  
     if(curb_lane == nullptr) {
         // No curb found, cannot correct bias
         apply_covariance(corrected_odom, bias_x, bias_y);
