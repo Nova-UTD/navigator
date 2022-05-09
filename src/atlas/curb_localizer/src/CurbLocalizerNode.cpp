@@ -11,10 +11,20 @@
 #include "opendrive_utils/OpenDriveUtils.hpp"
 #include "eigen3/Eigen/Dense"
 
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/conversions.h>
+#include <pcl/common/transforms.h>
 
 using namespace navigator::curb_localizer;
 
 #define ROUTE_INFO_PARAMS "route_info_params"
+
+
+void convert_to_pcl(const sensor_msgs::msg::PointCloud2::SharedPtr msg, pcl::PointCloud<pcl::PointXYZ> &out_cloud) {
+    pcl::PCLPointCloud2 pcl_cloud;
+    pcl_conversions::toPCL(*msg, pcl_cloud);
+    pcl::fromPCLPointCloud2(pcl_cloud, out_cloud);
+}
 
 CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
     this->declare_parameter<std::string>("map_file_path", "data/maps/grand_loop/grand_loop.xodr");

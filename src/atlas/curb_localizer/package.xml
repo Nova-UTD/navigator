@@ -14,6 +14,8 @@
   <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>opendrive_utils</depend>
+  <depend>PCL</depend>
+  <depend>lz4</depend>
   <depend>Eigen</depend>
 
   <export>
