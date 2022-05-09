@@ -384,7 +384,7 @@ def generate_launch_description():
         # unified_controller,
 
         # MISC
-        # odr_viz,
+        odr_viz,
         odom_bl_link,
         urdf_publisher,
         # visuals
