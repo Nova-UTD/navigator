@@ -93,19 +93,9 @@ class PIDController():
 
 class UnifiedController(Node):
 
-    VEHICLE_MASS_KG = 769.0
-    ENGINE_POWER_W = 6500.0
-    WHEEL_FRICTION_COEFFICIENT_LOWER = 0.4
-    WHEEL_FRICTION_COEFFICIENT_UPPER = 0.7
-    BRAKE_FORCE = WHEEL_FRICTION_COEFFICIENT_UPPER * VEHICLE_MASS_KG * 9.81 # a guess
-
     WHEEL_BASE = 3.4
     MAX_STEERING_ANGLE = 0.58294 # radians
 
-    MAX_SAFE_DECELERATION = 8 # m/s^2
-    MAX_COMFORTABLE_DECELERATION = 1 # m/s^2
-    MAX_COMFORTABLE_ACCELERATION = 1
-    MAX_LATERAL_ACCELERATION = 1.0 # radial acceleration on turns
     TOP_SPEED = 9.0 # m/s
     MAX_THROTTLE = 0.5
     THROTTLE_RAMP = 0.3 # 1 / throttle_ramp = seconds to reach max throttle from 0
@@ -155,27 +145,9 @@ class UnifiedController(Node):
     THROTTLE_LAST_WEIGHT = 0.0
 
     def paths_cb(self, msg: Trajectory):
-        
         self.cached_path = msg
 
     def odom_cb(self, msg: Odometry):
-        # # For noise testing only
-        # POS_NOISE_MAG = 0.0
-        # msg.pose.pose.position.x += POS_NOISE_MAG * random.uniform(-1, 1)
-        # msg.pose.pose.position.y += POS_NOISE_MAG * random.uniform(-1, 1)
-        # msg.pose.pose.position.z += POS_NOISE_MAG * random.uniform(-1, 1)
-
-        # VEL_NOISE_MAG = 0.0
-        # msg.twist.twist.linear.x += VEL_NOISE_MAG * random.uniform(-1, 1)
-        # msg.twist.twist.linear.y += VEL_NOISE_MAG * random.uniform(-1, 1)
-        # msg.twist.twist.linear.z += VEL_NOISE_MAG * random.uniform(-1, 1)
-
-        # HEADING_NOISE_MAG = 0.00
-        # msg.pose.pose.orientation.x += HEADING_NOISE_MAG * random.uniform(-1, 1)
-        # msg.pose.pose.orientation.y += HEADING_NOISE_MAG * random.uniform(-1, 1)
-        # msg.pose.pose.orientation.z += HEADING_NOISE_MAG * random.uniform(-1, 1)
-        # msg.pose.pose.orientation.w += HEADING_NOISE_MAG * random.uniform(-1, 1)
-
         self.cached_odometry = msg
 
     def update_state(self):
@@ -240,8 +212,8 @@ class UnifiedController(Node):
         self.update_state()
 
         if abs(self.current_time - self.stamp_time) > self.MAX_ACCEPTABLE_MESSAGE_DELAY:
-            # self.publish_commands(0, 0, 1)
-            #self.get_logger().error("Time between messages exceeds acceptable limit: EMERGENCY STOP")
+            # self.publish_commands(0, 1, 0)
+            self.get_logger().error("Time between messages exceeds acceptable limit: PLEASE EMERGENCY STOP")
             # return
             pass
 
