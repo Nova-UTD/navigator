@@ -44,19 +44,39 @@ CurbLocalizerNode::CurbLocalizerNode() : Node("curb_localizer"){
 
     // curb detector class also outputs all candidate pts if necessary
     this->odom_in_sub = this->create_subscription<nav_msgs::msg::Odometry>("/sensors/gnss/odom",
-        rclcpp::QoS(rclcpp::KeepLast(1)),
+        rclcpp::QoS(rclcpp::KeepLast(10)),
         std::bind(&CurbLocalizerNode::odom_in_callback, this, std::placeholders::_1));
-    this->curb_dist_sub = this->create_subscription<std_msgs::msg::Float32>("/curb_distance",
-        rclcpp::QoS(rclcpp::KeepLast(1)),
-        std::bind(&CurbLocalizerNode::curb_dist_callback, this, std::placeholders::_1));
+    this->curb_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>("/curb_points_right",
+        rclcpp::QoS(rclcpp::KeepLast(10)),
+        std::bind(&CurbLocalizerNode::curb_callback, this, std::placeholders::_1));
 
     this->odom_out_pub = this->create_publisher<nav_msgs::msg::Odometry>("odom_out",
-        rclcpp::QoS(rclcpp::KeepLast(1)));
+        rclcpp::QoS(rclcpp::KeepLast(10)));
 }
 
 void CurbLocalizerNode::odom_in_callback(const nav_msgs::msg::Odometry::SharedPtr msg){
     this->odom_in = msg;
     publish_odom();
+}
+
+void CurbLocalizerNode::curb_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg){
+    pcl::PointCloud<pcl::PointXYZ> cloud;
+    convert_to_pcl(msg, cloud);
+    // Find average dist to curb, which is y. 
+    // Treat nearer points as better
+    double weightsum = 0;
+    double dist_sum = 0;
+
+    for(auto pt : cloud.points){
+        double dist = pt.y;
+        double weight = 1.0 / (pt.x *pt.x + 1.0);
+        dist_sum += dist * weight;
+        weightsum += weight;
+    }
+
+    double dist = dist_sum / weightsum;
+
+    this->dist_to_curb = dist;
 }
 
 /**

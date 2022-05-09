@@ -17,4 +17,4 @@ project(${directory_name})
 find_package(nova_auto_package REQUIRED)
 nova_auto_package()
 
-target_link_libraries(curb_localizer_exe lz4)
+target_link_libraries(curb_localizer_lib lz4)

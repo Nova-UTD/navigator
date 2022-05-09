@@ -9,9 +9,9 @@
 
   <buildtool_depend>nova_auto_package</buildtool_depend>
 
+  <depend>sensor_msgs</depend>
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
-  <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>opendrive_utils</depend>
   <depend>PCL</depend>

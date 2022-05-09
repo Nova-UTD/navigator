@@ -12,6 +12,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <std_msgs/msg/float32.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <opendrive_utils/OpenDriveUtils.hpp>
 
 #include "Lanes.h"
@@ -41,10 +42,8 @@ class CurbLocalizerNode : public rclcpp::Node
 
     private:
         double dist_to_curb = -1;
-        rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr curb_dist_sub;
-        void curb_dist_callback(const std_msgs::msg::Float32::SharedPtr msg){
-            dist_to_curb = std::max(0.1f, std::abs(msg->data));
-        }
+        rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr curb_sub;
+        void curb_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
 
         std::vector<PathSection> route_info;
 
