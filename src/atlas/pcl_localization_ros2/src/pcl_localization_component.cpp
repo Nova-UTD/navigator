@@ -295,6 +295,13 @@ void PCLLocalization::odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg)
   auto pcd_pos = current_pose_stamped_.pose.pose.position;
   bool fitnessOk = latest_fitness_score < fitness_gnss_threshold;
 
+  if (initialpose_recieved_ == false) {
+    RCLCPP_INFO(get_logger(), "Initial pose set from GNSS.");
+    current_pose_stamped_.pose.pose = msg->pose.pose;
+    current_pose_stamped_.header = msg->header;
+    initialpose_recieved_ = true;
+  }
+
   // double current_odom_received_time = msg->header.stamp.sec +
   //                                     msg->header.stamp.nanosec * 1e-9;
   // double dt_odom = current_odom_received_time - last_odom_received_time_;
@@ -336,6 +343,7 @@ void PCLLocalization::odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg)
   // corrent_pose_stamped_.pose.position.y += delta_position.y();
   // corrent_pose_stamped_.pose.position.z += delta_position.z();
   // corrent_pose_stamped_.pose.orientation = quat_msg;
+
   if (!fitnessOk) {
     current_pose_stamped_.pose.pose = msg->pose.pose;
     current_pose_stamped_.header = msg->header;
