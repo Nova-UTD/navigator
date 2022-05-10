@@ -199,7 +199,7 @@ class UnifiedController(Node):
 
         self.steering_pub.publish(Float32(
             # Coordinate system is flipped from what I was doing math with
-            data= -float(steering)
+            data= float(steering)
         ))
 
 
