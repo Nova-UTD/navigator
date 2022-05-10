@@ -35,6 +35,9 @@ class GnssParserNode(Node):
         self.gnss_pub = self.create_publisher(
             Odometry, '/sensors/gnss/odom', 10)
 
+        self.gnss_big_covariance_pub = self.create_publisher(
+            Odometry, '/sensors/gnss/odom_big_cov', 10)
+
         self.filtered_odom_sub = self.create_subscription(
             Odometry, '/odometry/filtered', self.publish_odom_tf, 10)
 
@@ -105,7 +108,7 @@ class GnssParserNode(Node):
         # flipping when the car is stopped
         if speed < 0.5 and self.prev_yaw is not None:
             msg.pose.pose.orientation.w = math.cos(self.prev_yaw/2)
-            msg.pose.pose.orientation.z = math.sin(self.prev_yaw/2) 
+            msg.pose.pose.orientation.z = math.sin(self.prev_yaw/2)
             msg.twist.twist.linear.x = speed*math.cos(self.prev_yaw)
             msg.twist.twist.linear.y = speed*math.sin(self.prev_yaw)
         else:
@@ -113,11 +116,9 @@ class GnssParserNode(Node):
             msg.pose.pose.orientation.z = math.sin(yaw/2)
             msg.twist.twist.linear.x = speed*math.cos(yaw)
             msg.twist.twist.linear.y = speed*math.sin(yaw)
-        
+
         if speed > 1.0:
             self.prev_yaw = yaw
-
-
 
         pos_acc = float(parts[4])/1e7
         yaw_acc = float(parts[5])/1e5
@@ -138,6 +139,16 @@ class GnssParserNode(Node):
                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         self.gnss_pub.publish(msg)
+
+        pose_acc = 3.0
+        msg.pose.covariance = [pos_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
+                               0.0, pos_acc, 0.0, 0.0, 0.0, 0.0,
+                               0.0, 0.0, pos_acc, 0.0, 0.0, 0.0,
+                               0.0, 0.0, 0.0, yaw_acc, 0.0, 0.0,
+                               0.0, 0.0, 0.0, 0.0, yaw_acc, 0.0,
+                               0.0, 0.0, 0.0, 0.0, 0.0, yaw_acc]
+
+        self.gnss_big_covariance_pub.publish(msg)
 
         ps = PoseStamped()
         ps.header = msg.header
