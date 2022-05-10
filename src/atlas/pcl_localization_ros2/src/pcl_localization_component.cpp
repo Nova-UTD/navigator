@@ -356,7 +356,9 @@ void PCLLocalization::odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg)
   // corrent_pose_stamped_.pose.orientation = quat_msg;
 
   if (!fitnessOk) {
-    current_pose_stamped_.pose.pose = msg->pose.pose;
+    // current_pose_stamped_.pose.pose = msg->pose.pose;
+    current_pose_stamped_.pose.pose.position.x = msg->pose.pose.position.x;
+    current_pose_stamped_.pose.pose.position.y = msg->pose.pose.position.y;
     current_pose_stamped_.header = msg->header;
     RCLCPP_INFO(get_logger(), "Fitness score was above threshold, adding GPS");
   }
