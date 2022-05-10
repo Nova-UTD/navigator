@@ -22,7 +22,7 @@ pcl_localization:
     use_odom: true
     use_imu: false
     enable_debug: false
-    fitness_gnss_threshold: 3.0
+    fitness_gnss_threshold: 15.0
     dist_gnss_threshold: 5.0
     enable_logging_to_file: true
     pose_position_cov_k: 7.0
