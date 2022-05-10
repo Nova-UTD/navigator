@@ -1,4 +1,5 @@
 from os import name, path, environ
+from struct import pack
 from tkinter import E
 
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -66,6 +67,8 @@ def generate_launch_description():
     epas_controller = Node(
         package='epas_translator',
         executable='controller',
+        parameters=[
+            (path.join(param_dir, "interface", "epas_controller.param.yaml"))],
         remappings=[
             ("epas_translator_steering_power", "steering_power"),
             ("epas_translator_outgoing_can_frames", "epas_outgoing_can"),
@@ -113,8 +116,8 @@ def generate_launch_description():
         parameters=[(path.join
                      (param_dir, "interface", "speedometer_reporter.param.yaml"))],
         remappings=[
-            ("incoming_can_frames", "vehicle_incoming_can"),
-            ("result_topic", "vehicle_speedometer")])
+            ("can_translation_incoming_can_frames", "vehicle_incoming_can"),
+            ("can_translation_result_topic", "vehicle_speedometer")])
 
     speedometer_translator = Node(
         package='msg_translation',
@@ -137,7 +140,7 @@ def generate_launch_description():
         executable='unified_controller_node',
         remappings=[
             ("/planning/outgoing_trajectory", "trajectory"),
-            ("/gnss_odom", "odometry"),
+            ("/gnss_odom", "/odometry/filtered"),
             ("/command/throttle_position", "throttle_position"),
             ("/command/brake_position", "brake_position"),
             ("/command/steering_position", "steering_target")])
@@ -149,7 +152,7 @@ def generate_launch_description():
             ("outgoing_trajectory", "trajectory"),
             ("planning/paths", "paths"),
             ("/planning/zones", "zones"),
-            ("/gnss_odom", "odometry")],
+            ("/gnss_odom", "/odometry/filtered")],
         parameters=[
             (path.join(param_dir, "planning", "motion_planner.param.yaml"))])
 
@@ -236,7 +239,7 @@ def generate_launch_description():
         ],
         output='screen',
         remappings=[
-            ("/map", "/odr_map")
+            ("/map", "/map/viz")
         ]
     )
 
@@ -334,6 +337,39 @@ def generate_launch_description():
         executable='vt_viz_exe',
     )
 
+    vehicle_kinematics = Node(
+        package='vehicle_kinematics',
+        executable='vehicle_kinematics',
+        remappings=[
+            ('vehicle_kinematics_speed', '/vehicle_speedometer'),
+            ('vehicle_kinematics_angle', '/real_steering_angle'),
+            ('vehicle_kinematics_twist', '/sensors/can/twist')
+        ],
+        parameters=[(path.join(param_dir, "atlas",
+                               "vehicle_kinematics.param.yaml"))],
+    )
+    
+    joy = Node(
+        package = 'joy_linux',
+        executable = 'joy_linux_node',
+        parameters = [
+            (path.join
+             (param_dir,"interface","joy.param.yaml"))],
+        remappings = [])
+
+    joy_control = Node(
+        package = 'joy_control',
+        executable = 'joy_control',
+        parameters = [
+            (path.join
+             (param_dir,"interface","joy_control.param.yaml"))],
+        remappings = [
+            ("joy_control_throttle", "throttle_position_trash"),
+            ("joy_control_brake", "brake_position_trash"),
+            ("joy_control_steering", "steering_target_trash"),
+            ("joy_control_enable", "steering_enable"),
+            ("joy_control_input", "/joy")])
+
     return LaunchDescription([
         # PERCEPTION
         lidar_fusion,
@@ -351,10 +387,10 @@ def generate_launch_description():
         # servo_throttle,
 
         # # Steering
-        # epas_can,
-        # epas_reporter,
-        # epas_controller,
-        # steering_pid,
+        epas_can,
+        epas_reporter,
+        epas_controller,
+        steering_pid,
         lidar_driver_front,
         lidar_pointcloud_front,
         lidar_driver_rear,
@@ -362,30 +398,33 @@ def generate_launch_description():
 
         # # Camera
         # zed_interface,
-       gnss_parser,
+        gnss_parser,
         # vehicle_can,
         # speedometer_reporter,
         # speedometer_translator,
 
         # BEHAVIOR
-        # path_publisher,
-        # motion_planner,
+        path_publisher,
+        motion_planner,
         # zone_fusion,
         # obstacle_zoner,
         # behavior_planner,
 
         # STATE ESTIMATION
-        # map_odom_ukf,
+        map_odom_ukf,
         # odom_bl_ukf,
         # pcl_localization,
         scan_matcher,
+        # vehicle_kinematics,
 
         # CONTROL
-        # unified_controller,
+        unified_controller,
 
         # MISC
         odr_viz,
         odom_bl_link,
         urdf_publisher,
-        visuals
+        # visuals
+        joy,
+        joy_control,
     ])
