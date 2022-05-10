@@ -52,6 +52,7 @@ from scipy.spatial.transform import Rotation as R
 # import pygicp
 import open3d as o3d
 
+
 class ScanMatchingNode(Node):
 
     def __init__(self):
@@ -61,7 +62,7 @@ class ScanMatchingNode(Node):
         # map_file = o3d.io.read_point_cloud(
         #     '/home/wheitman/Downloads/grand_loop_fullsize.pcd')
         map_file = o3d.io.read_point_cloud(
-            'data/maps/grand_loop/grand_loop_04.pcd')
+            'data/maps/grand_loop/lab.pcd')
         self.map_cloud = np.asarray(map_file.points)
 
         self.get_logger().info(
@@ -79,7 +80,7 @@ class ScanMatchingNode(Node):
 
         self.result_odom_pub = self.create_publisher(
             Odometry, '/atlas/odom', 10)
-        
+
     def matrix_to_odom(self, result_matrix):
         result_odom = Odometry()
         result_odom.pose.pose.position.x = result_matrix[0, 3].item()
@@ -96,7 +97,7 @@ class ScanMatchingNode(Node):
         result_odom.header.frame_id = 'map'
         result_odom.child_frame_id = 'odom'
         return result_odom
-    
+
     def publish_cloud_from_array(self, arr, frame_id: str, publisher):
         data = np.zeros(arr.shape[0], dtype=[
             ('x', np.float32),
@@ -182,6 +183,7 @@ class ScanMatchingNode(Node):
         result_odom = self.matrix_to_odom(result_matrix)
         self.cached_gnss = result_odom
         self.result_odom_pub.publish(result_odom)
+
 
 def main(args=None):
     rclpy.init(args=args)
