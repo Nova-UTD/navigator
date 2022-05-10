@@ -3,7 +3,9 @@
     cruising_speed_ms: 10.0
     map_xodr_file_path: data/maps/grand_loop/grand_loop.xodr
     route_info_params: [
-      "65", "-1", "0"
+      "66", "-1", "0",
+      "359", "-1", "0",
+      "85", "-1", "0"
     ]
     # route_info_params: [
     #   # "32", "-1", "60.41",
