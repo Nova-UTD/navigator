@@ -1,5 +1,6 @@
 #include <pcl_localization/pcl_localization_component.hpp>
 #include <exception>
+#include <cmath>
 
 PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
     : rclcpp_lifecycle::LifecycleNode("pcl_localization", options),
@@ -300,6 +301,16 @@ void PCLLocalization::odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg)
     current_pose_stamped_.pose.pose = msg->pose.pose;
     current_pose_stamped_.header = msg->header;
     initialpose_recieved_ = true;
+  }
+
+  double dist_squared =
+    pow(gps_pos.x - pcd_pos.x, 2) +
+    pow(gps_pos.y - pcd_pos.y, 2);
+  double dist = sqrt(dist_squared);
+  
+  if(dist > dist_gnss_threshold) {
+    current_pose_stamped_.pose.pose = msg->pose.pose;
+    current_pose_stamped_.header = msg->header;
   }
 
   // double current_odom_received_time = msg->header.stamp.sec +
