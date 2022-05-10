@@ -94,7 +94,7 @@ class PIDController():
 class UnifiedController(Node):
 
     WHEEL_BASE = 3.4
-    MAX_STEERING_ANGLE = 0.58294 # radians
+    MAX_STEERING_ANGLE = 0.506 # radians
 
     TOP_SPEED = 9.0 # m/s
     MAX_THROTTLE = 0.5
@@ -233,7 +233,6 @@ class UnifiedController(Node):
         # Get throttle and brake
         v_look = self.point_at_distance(self.current_path_index, v_look_dist)
         target_velocity = v_look.vx
-        self.desired_speed_pub.publish(target_velocity)
         throttle, brake = self.calculate_throttle_brake(target_velocity, self.stamp_time)
 
         # apply moving average to steering and throttle
