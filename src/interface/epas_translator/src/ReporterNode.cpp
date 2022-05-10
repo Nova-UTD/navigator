@@ -29,7 +29,7 @@ constexpr can_data_t angle_mask = 0xFF << (8 * angle_bit_shift);
 
 // TODO Make this an actual parameter
 // Maximum angle we can steer to on either side, in radians
-const float steering_angle_max = 0.58294;
+const float steering_angle_max = 0.506;
 
 ReporterNode::ReporterNode() : rclcpp::Node("steering_reporter") {
   this->declare_parameter("is_calibrated");

@@ -1,4 +1,5 @@
 from os import name, path, environ
+from struct import pack
 from tkinter import E
 
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -113,8 +114,8 @@ def generate_launch_description():
         parameters=[(path.join
                      (param_dir, "interface", "speedometer_reporter.param.yaml"))],
         remappings=[
-            ("incoming_can_frames", "vehicle_incoming_can"),
-            ("result_topic", "vehicle_speedometer")])
+            ("can_translation_incoming_can_frames", "vehicle_incoming_can"),
+            ("can_translation_result_topic", "vehicle_speedometer")])
 
     speedometer_translator = Node(
         package='msg_translation',
@@ -334,6 +335,18 @@ def generate_launch_description():
         executable='vt_viz_exe',
     )
 
+    vehicle_kinematics = Node(
+        package='vehicle_kinematics',
+        executable='vehicle_kinematics',
+        remappings=[
+            ('vehicle_kinematics_speed', '/vehicle_speedometer'),
+            ('vehicle_kinematics_angle', '/real_steering_angle'),
+            ('vehicle_kinematics_twist', '/sensors/can/twist')
+        ],
+        parameters=[(path.join(param_dir, "atlas",
+                               "vehicle_kinematics.param.yaml"))],
+    )
+
     return LaunchDescription([
         # PERCEPTION
         lidar_fusion,
@@ -351,8 +364,8 @@ def generate_launch_description():
         # servo_throttle,
 
         # # Steering
-        # epas_can,
-        # epas_reporter,
+        epas_can,
+        epas_reporter,
         # epas_controller,
         # steering_pid,
         lidar_driver_front,
@@ -363,9 +376,9 @@ def generate_launch_description():
         # # Camera
         # zed_interface,
         gnss_parser,
-        # vehicle_can,
-        # speedometer_reporter,
-        # speedometer_translator,
+        vehicle_can,
+        speedometer_reporter,
+        speedometer_translator,
 
         # BEHAVIOR
         # path_publisher,
@@ -379,6 +392,7 @@ def generate_launch_description():
         # odom_bl_ukf,
         # pcl_localization,
         scan_matcher,
+        vehicle_kinematics,
 
         # CONTROL
         # unified_controller,

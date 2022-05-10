@@ -32,7 +32,7 @@ VehicleKinematicsNode::VehicleKinematicsNode() : Node("vehicle_kinematics") {
 }
 
 void VehicleKinematicsNode::send_message() {
-  float angular_velocity = this->speed * tan(this->angle) / this->vehicle_length;
+  float angular_velocity = this->speed * tan(-this->angle) / this->vehicle_length;
   auto message = geometry_msgs::msg::TwistWithCovarianceStamped();
   message.header.frame_id = "base_link";
   message.header.stamp = this->get_clock()->now();

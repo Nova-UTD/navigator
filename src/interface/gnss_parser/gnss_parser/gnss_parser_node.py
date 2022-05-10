@@ -8,7 +8,6 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry  # For GPS, ground truth
 from std_msgs.msg import String as StringMsg
-from sensor_msgs.msg import Imu
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from tf2_ros.transform_broadcaster import TransformBroadcaster
@@ -44,8 +43,6 @@ class GnssParserNode(Node):
         self.string_data_sub = self.create_subscription(
             StringMsg, '/serial/gnss', self.string_data_callback, 10)
 
-        self.imu_pub = self.create_publisher(Imu, '/sensors/imu', 10)
-
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.br = TransformBroadcaster(self)
@@ -73,83 +70,58 @@ class GnssParserNode(Node):
         self.br.sendTransform(tf)
 
     def string_data_callback(self, msg):
-        opcode: str = msg.data.split()[0] # First part of space-separated packet
-        
-        if (opcode == "IMU"):
-            self.handleIMU(msg)
-        elif (opcode == "GPS"):
-            self.handle_gnss(msg)
+        self.cached_string = msg.data
 
-    def handle_imu(self, msg: StringMsg):
-        parts = msg.data.split()
-        acc_x, acc_y, acc_z = parts[1:4] # Linear acceleration
-        vel_x, vel_y, vel_z = parts[4:]  # Angular velocity
-        imuMsg = Imu()
-        imuMsg.angular_velocity = Vector3(
-            x = vel_x,
-            y = vel_y,
-            z = vel_z
-        )
-        imuMsg.linear_acceleration = Vector3(
-            x = acc_x,
-            y = acc_y,
-            z = acc_z
-        )
-        imuMsg.header.stamp = self.get_clock().now().to_msg()
-        imuMsg.header.frame_id = 'arduino_imu'
-        
-        self.imu_pub.publish(imuMsg)
-
-    def handle_gnss(self, msg: StringMsg):
-        line = msg.data
+    def publish_next_gnss(self):
+        line = self.cached_string
         if (line == ""):
             return
         parts = line.split()
         # print(parts)
-        lat = int(parts[0])/1e7
-        lon = int(parts[1])/1e7
+        lat = int(parts[1])/1e7
+        lon = int(parts[2])/1e7
         alt = alt0
 
         x, y, z = pm.geodetic2enu(lat, lon, alt, lat0, lon0, alt0)
-        compass_yaw = float(parts[2])/1e5
+        compass_yaw = float(parts[3])/1e5
         yaw_deg = (compass_yaw-90)*-1
         while yaw_deg < 0.0:
             yaw_deg += 360.0
         while yaw_deg > 360.0:
             yaw_deg -= 360.0
         yaw = yaw_deg * math.pi/180.0
-        speed = float(parts[3])/1000
+        speed = float(parts[4])/1000
 
-        odomMsg = Odometry()
-        odomMsg.header.stamp = self.get_clock().now().to_msg()
-        odomMsg.header.frame_id = "map"
+        msg = Odometry()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = "map"
         # Should this be base_link? Doesn't make a huge difference.
-        odomMsg.child_frame_id = "odom"
-        odomMsg.pose.pose.position.x = x
-        odomMsg.pose.pose.position.y = y
-        odomMsg.pose.pose.position.z = z
+        msg.child_frame_id = "odom"
+        msg.pose.pose.position.x = x
+        msg.pose.pose.position.y = y
+        msg.pose.pose.position.z = z
 
         # This is an attempt to prevent the orientation from suddenly
         # flipping when the car is stopped
-        if speed < 1.0 and self.prev_yaw is not None:
-            odomMsg.pose.pose.orientation.w = math.cos(self.prev_yaw/2)
-            odomMsg.pose.pose.orientation.z = math.sin(self.prev_yaw/2) 
-            odomMsg.twist.twist.linear.x = speed*math.cos(self.prev_yaw)
-            odomMsg.twist.twist.linear.y = speed*math.sin(self.prev_yaw)
+        if speed < 0.5 and self.prev_yaw is not None:
+            msg.pose.pose.orientation.w = math.cos(self.prev_yaw/2)
+            msg.pose.pose.orientation.z = math.sin(self.prev_yaw/2) 
+            msg.twist.twist.linear.x = speed*math.cos(self.prev_yaw)
+            msg.twist.twist.linear.y = speed*math.sin(self.prev_yaw)
         else:
-            odomMsg.pose.pose.orientation.w = math.cos(yaw/2)
-            odomMsg.pose.pose.orientation.z = math.sin(yaw/2)
-            odomMsg.twist.twist.linear.x = speed*math.cos(yaw)
-            odomMsg.twist.twist.linear.y = speed*math.sin(yaw)
-
+            msg.pose.pose.orientation.w = math.cos(yaw/2)
+            msg.pose.pose.orientation.z = math.sin(yaw/2)
+            msg.twist.twist.linear.x = speed*math.cos(yaw)
+            msg.twist.twist.linear.y = speed*math.sin(yaw)
+        
         if speed > 1.0:
             self.prev_yaw = yaw
 
 
 
-        pos_acc = float(parts[4])/1e7
-        yaw_acc = float(parts[5])/1e5
-        speed_acc = float(parts[6])/1e3
+        pos_acc = float(parts[5])/1e7
+        yaw_acc = float(parts[6])/1e5
+        speed_acc = float(parts[7])/1e3
 
         msg.pose.covariance = [pos_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
                                0.0, pos_acc, 0.0, 0.0, 0.0, 0.0,
