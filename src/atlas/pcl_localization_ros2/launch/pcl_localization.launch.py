@@ -47,9 +47,9 @@ def generate_launch_description():
         package='pcl_localization_ros2',
         node_executable='pcl_localization_node',
         remappings=[('/cloud', '/lidar_fused'), ('/map', '/map/pcd'),
-                    ('/odom', '/odometry/filtered')],
+                    ('/odom', '/sensors/gnss/odom')],
         parameters=[
-            "/home/main/navigator-2/src/atlas/pcl_localization_ros2/param/localization.yaml"],
+            "/home/main/navigator/src/atlas/pcl_localization_ros2/param/localization.yaml"],
         output='screen')
 
     to_inactive = launch.actions.EmitEvent(

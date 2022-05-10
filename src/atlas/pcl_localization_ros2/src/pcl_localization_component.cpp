@@ -1,5 +1,6 @@
 #include <pcl_localization/pcl_localization_component.hpp>
 #include <exception>
+#include <cmath>
 
 PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
     : rclcpp_lifecycle::LifecycleNode("pcl_localization", options),
@@ -12,6 +13,7 @@ PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
   declare_parameter("ndt_resolution", 1.0);
   declare_parameter("ndt_step_size", 0.1);
   declare_parameter("trans_epsilon", 0.01);
+  declare_parameter("max_iterations", 35);
   declare_parameter("voxel_leaf_size", 0.2);
   declare_parameter("scan_max_range", 100.0);
   declare_parameter("scan_min_range", 1.0);
@@ -25,12 +27,15 @@ PCLLocalization::PCLLocalization(const rclcpp::NodeOptions &options)
   declare_parameter("initial_pose_qx", 0.0);
   declare_parameter("initial_pose_qy", 0.0);
   declare_parameter("initial_pose_qz", 0.0);
+  declare_parameter("enable_logging_to_file", false);
   declare_parameter("initial_pose_qw", 1.0);
   declare_parameter("use_odom", false);
   declare_parameter("use_imu", false);
   declare_parameter("enable_debug", false);
   declare_parameter("fitness_gnss_threshold", 10.0);
   declare_parameter("dist_gnss_threshold", 5.0);
+  declare_parameter("pose_position_cov_k", 1.0);
+  declare_parameter("ndt_num_threads", 4);
 }
 
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
@@ -56,24 +61,24 @@ CallbackReturn PCLLocalization::on_activate(const rclcpp_lifecycle::State &)
   path_pub_->on_activate();
   initial_map_pub_->on_activate();
 
-  // if (set_initial_pose_)
-  // {
-  //   auto msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
+  if (set_initial_pose_)
+  {
+    auto msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
 
-  //   msg->header.stamp = now();
-  //   msg->header.frame_id = global_frame_id_;
-  //   msg->pose.pose.position.x = initial_pose_x_;
-  //   msg->pose.pose.position.y = initial_pose_y_;
-  //   msg->pose.pose.position.z = initial_pose_z_;
-  //   msg->pose.pose.orientation.x = initial_pose_qx_;
-  //   msg->pose.pose.orientation.y = initial_pose_qy_;
-  //   msg->pose.pose.orientation.z = initial_pose_qz_;
-  //   msg->pose.pose.orientation.w = initial_pose_qw_;
+    msg->header.stamp = now();
+    msg->header.frame_id = global_frame_id_;
+    msg->pose.pose.position.x = initial_pose_x_;
+    msg->pose.pose.position.y = initial_pose_y_;
+    msg->pose.pose.position.z = initial_pose_z_;
+    msg->pose.pose.orientation.x = initial_pose_qx_;
+    msg->pose.pose.orientation.y = initial_pose_qy_;
+    msg->pose.pose.orientation.z = initial_pose_qz_;
+    msg->pose.pose.orientation.w = initial_pose_qw_;
 
-  //   path_.poses.push_back(*msg);
+    // path_.poses.push_back(*msg);
 
-  //   initialPoseReceived(msg);
-  // }
+    initialPoseReceived(msg);
+  }
 
   if (use_pcd_map_)
   {
@@ -123,13 +128,15 @@ CallbackReturn PCLLocalization::on_cleanup(const rclcpp_lifecycle::State &)
   cloud_sub_.reset();
 
   return CallbackReturn::SUCCESS;
+  csvFile->close();
 }
 
 CallbackReturn PCLLocalization::on_shutdown(const rclcpp_lifecycle::State &state)
 {
   RCLCPP_INFO(get_logger(), "Shutting Down from %s", state.label().c_str());
-
+  
   return CallbackReturn::SUCCESS;
+  
 }
 
 CallbackReturn PCLLocalization::on_error(const rclcpp_lifecycle::State &state)
@@ -149,6 +156,7 @@ void PCLLocalization::initializeParameters()
   get_parameter("ndt_resolution", ndt_resolution_);
   get_parameter("ndt_step_size", ndt_step_size_);
   get_parameter("trans_epsilon", trans_epsilon_);
+  get_parameter("max_iterations", max_iterations_);
   get_parameter("voxel_leaf_size", voxel_leaf_size_);
   get_parameter("scan_max_range", scan_max_range_);
   get_parameter("scan_min_range", scan_min_range_);
@@ -161,6 +169,7 @@ void PCLLocalization::initializeParameters()
   get_parameter("initial_pose_z", initial_pose_z_);
   get_parameter("initial_pose_qx", initial_pose_qx_);
   get_parameter("initial_pose_qy", initial_pose_qy_);
+  get_parameter("enable_logging_to_file", enable_logging_to_file_);
   get_parameter("initial_pose_qz", initial_pose_qz_);
   get_parameter("initial_pose_qw", initial_pose_qw_);
   get_parameter("use_odom", use_odom_);
@@ -168,6 +177,8 @@ void PCLLocalization::initializeParameters()
   get_parameter("enable_debug", enable_debug_);
   get_parameter("fitness_gnss_threshold", fitness_gnss_threshold);
   get_parameter("dist_gnss_threshold", dist_gnss_threshold);
+  get_parameter("pose_position_cov_k", pose_position_cov_k);
+  get_parameter("ndt_num_threads", ndt_num_threads);
 }
 
 void PCLLocalization::initializePubSub()
@@ -220,11 +231,14 @@ void PCLLocalization::initializeRegistration()
   }
   else
   {
-    pcl::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>::Ptr ndt(
-        new pcl::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>());
+    pclomp::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>::Ptr
+      ndt(new pclomp::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>());
     ndt->setStepSize(ndt_step_size_);
     ndt->setResolution(ndt_resolution_);
     ndt->setTransformationEpsilon(trans_epsilon_);
+    ndt->setMaximumIterations(max_iterations_);
+    ndt->setNeighborhoodSearchMethod(pclomp::DIRECT7);
+    if (ndt_num_threads > 0) {ndt->setNumThreads(ndt_num_threads);}
     registration_ = ndt;
   }
 
@@ -282,6 +296,23 @@ void PCLLocalization::odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg)
   auto pcd_pos = current_pose_stamped_.pose.pose.position;
   bool fitnessOk = latest_fitness_score < fitness_gnss_threshold;
 
+  if (initialpose_recieved_ == false) {
+    RCLCPP_INFO(get_logger(), "Initial pose set from GNSS.");
+    current_pose_stamped_.pose.pose = msg->pose.pose;
+    current_pose_stamped_.header = msg->header;
+    initialpose_recieved_ = true;
+  }
+
+  double dist_squared =
+    pow(gps_pos.x - pcd_pos.x, 2) +
+    pow(gps_pos.y - pcd_pos.y, 2);
+  double dist = sqrt(dist_squared);
+  
+  if(dist > dist_gnss_threshold) {
+    current_pose_stamped_.pose.pose = msg->pose.pose;
+    current_pose_stamped_.header = msg->header;
+  }
+
   // double current_odom_received_time = msg->header.stamp.sec +
   //                                     msg->header.stamp.nanosec * 1e-9;
   // double dt_odom = current_odom_received_time - last_odom_received_time_;
@@ -323,8 +354,13 @@ void PCLLocalization::odomReceived(nav_msgs::msg::Odometry::ConstSharedPtr msg)
   // corrent_pose_stamped_.pose.position.y += delta_position.y();
   // corrent_pose_stamped_.pose.position.z += delta_position.z();
   // corrent_pose_stamped_.pose.orientation = quat_msg;
-  current_pose_stamped_.pose.pose = msg->pose.pose;
-  current_pose_stamped_.header = msg->header;
+
+  if (!fitnessOk) {
+    current_pose_stamped_.pose.pose = msg->pose.pose;
+    current_pose_stamped_.header = msg->header;
+    RCLCPP_INFO(get_logger(), "Fitness score was above threshold, adding GPS");
+  }
+
 }
 
 void PCLLocalization::imuReceived(sensor_msgs::msg::Imu::ConstSharedPtr msg)
@@ -415,6 +451,15 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   current_pose_stamped_.pose.pose.position.z = static_cast<double>(final_transformation(2, 3));
   current_pose_stamped_.pose.pose.orientation = quat_msg;
 
+  double pos_cov = registration_->getFitnessScore() / pose_position_cov_k; // The divisors here are arbitrary
+  double ang_cov = registration_->getFitnessScore() / (5*pose_position_cov_k);
+  current_pose_stamped_.pose.covariance = { pos_cov, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                            0.0, pos_cov, 0.0, 0.0, 0.0, 0.0,
+                                            0.0, 0.0, pos_cov, 0.0, 0.0, 0.0,
+                                            0.0, 0.0, 0.0, pos_cov, 0.0, 0.0,
+                                            0.0, 0.0, 0.0, 0.0, pos_cov, 0.0,
+                                            0.0, 0.0, 0.0, 0.0, 0.0, pos_cov};
+
   pose_pub_->publish(current_pose_stamped_);
   RCLCPP_INFO(get_logger(), "pub pose");
 
@@ -426,7 +471,7 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
   transform_stamped.transform.translation.y = static_cast<double>(final_transformation(1, 3));
   transform_stamped.transform.translation.z = static_cast<double>(final_transformation(2, 3));
   transform_stamped.transform.rotation = quat_msg;
-  // broadcaster_.sendTransform(transform_stamped);
+  // broadcaster_.sendTransform(transform_stamped); // Comment this out to turn off transform publishing
 
   // path_.poses.push_back(current_pose_stamped_);
   // path_pub_->publish(path_);
@@ -450,6 +495,9 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
                        (final_transformation.coeff(0,
                                                    0) +
                         final_transformation.coeff(1, 1) + final_transformation.coeff(2, 2) - 1);
+    std::cout << "TF EPSILON: " << registration_->getTransformationEpsilon() << std::endl;
+    std::cout << "EUCL FIT EPSILON: " << registration_->getEuclideanFitnessEpsilon() << std::endl;
+    std::cout << "TF ROT EPSILON: " << registration_->getTransformationRotationEpsilon() << std::endl;
     double init_angle = acos(init_cos_angle);
     double angle = acos(cos_angle);
     // Ref:https://twitter.com/Atsushi_twi/status/1185868416864808960
@@ -457,4 +505,12 @@ void PCLLocalization::cloudReceived(sensor_msgs::msg::PointCloud2::ConstSharedPt
     std::cout << "delta_angle:" << delta_angle * 180 / M_PI << "[deg]" << std::endl;
     std::cout << "-----------------------------------------------------" << std::endl;
   }
+
+  if (enable_logging_to_file_)
+  {
+    *csvFile << current_pose_stamped_.pose.pose.position.x<<","
+      <<current_pose_stamped_.pose.pose.position.y<<","<<current_pose_stamped_.pose.pose.position.z
+      <<","<<registration_->getFitnessScore()<< std::endl;
+  }
+
 }

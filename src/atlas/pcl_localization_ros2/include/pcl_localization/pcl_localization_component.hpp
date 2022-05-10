@@ -4,6 +4,7 @@
 #include <string>
 #include <thread>
 #include <utility>
+#include <fstream>
 
 #include <pcl/registration/ndt.h>
 #include <pcl/registration/gicp.h>
@@ -25,6 +26,11 @@
 #include "nav_msgs/msg/path.hpp"
 
 #include "pcl_localization/lidar_undistortion.hpp"
+
+#include <pclomp/ndt_omp.h>
+#include <pclomp/ndt_omp_impl.hpp>
+#include <pclomp/voxel_grid_covariance_omp.h>
+#include <pclomp/voxel_grid_covariance_omp_impl.hpp>
 
 using namespace std::chrono_literals;
 
@@ -90,6 +96,7 @@ public:
   double ndt_resolution_;
   double ndt_step_size_;
   double trans_epsilon_;
+  int max_iterations_;
   double voxel_leaf_size_;
   bool use_pcd_map_{false};
   std::string map_path_;
@@ -102,6 +109,8 @@ public:
   double initial_pose_qz_;
   double initial_pose_qw_;
 
+  bool enable_logging_to_file_{false};
+  std::ofstream *csvFile = new std::ofstream("ndt_log.csv");
   bool use_odom_{false};
   double last_odom_received_time_;
   bool use_imu_{false};
@@ -110,6 +119,9 @@ public:
   double latest_fitness_score = 99.0;
   double fitness_gnss_threshold;
   double dist_gnss_threshold;
+
+  double pose_position_cov_k;
+  int ndt_num_threads;
 
   // imu
   LidarUndistortion lidar_undistortion_;

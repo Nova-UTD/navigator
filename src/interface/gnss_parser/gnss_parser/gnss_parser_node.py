@@ -35,6 +35,9 @@ class GnssParserNode(Node):
         self.gnss_pub = self.create_publisher(
             Odometry, '/sensors/gnss/odom', 10)
 
+        self.gnss_big_covariance_pub = self.create_publisher(
+            Odometry, '/sensors/gnss/odom_big_cov', 10)
+
         self.filtered_odom_sub = self.create_subscription(
             Odometry, '/odometry/filtered', self.publish_odom_tf, 10)
 
@@ -50,6 +53,8 @@ class GnssParserNode(Node):
         self.gps_timer = self.create_timer(
             1.0 / frequency, self.publish_next_gnss)
         # outfile.write(f"x,y,z,u,v,speed,pos_acc,yaw_acc,speed_acc\n")
+
+        self.prev_yaw = None
 
     def publish_odom_tf(self, msg: Odometry):
         pos = msg.pose.pose.position
@@ -76,19 +81,19 @@ class GnssParserNode(Node):
             return
         parts = line.split()
         # print(parts)
-        lat = int(parts[0])/1e7
-        lon = int(parts[1])/1e7
+        lat = int(parts[1])/1e7
+        lon = int(parts[2])/1e7
         alt = alt0
 
         x, y, z = pm.geodetic2enu(lat, lon, alt, lat0, lon0, alt0)
-        compass_yaw = float(parts[2])/1e5
+        compass_yaw = float(parts[3])/1e5
         yaw_deg = (compass_yaw-90)*-1
         while yaw_deg < 0.0:
             yaw_deg += 360.0
         while yaw_deg > 360.0:
             yaw_deg -= 360.0
         yaw = yaw_deg * math.pi/180.0
-        speed = float(parts[3])/1000
+        speed = float(parts[4])/1000
 
         msg = Odometry()
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -98,11 +103,22 @@ class GnssParserNode(Node):
         msg.pose.pose.position.x = x
         msg.pose.pose.position.y = y
         msg.pose.pose.position.z = z
-        msg.pose.pose.orientation.w = math.cos(yaw/2)
-        msg.pose.pose.orientation.z = math.sin(yaw/2)
 
-        msg.twist.twist.linear.x = speed*math.cos(yaw)
-        msg.twist.twist.linear.y = speed*math.sin(yaw)
+        # This is an attempt to prevent the orientation from suddenly
+        # flipping when the car is stopped
+        if speed < 1.0 and self.prev_yaw is not None:
+            odomMsg.pose.pose.orientation.w = math.cos(self.prev_yaw/2)
+            odomMsg.pose.pose.orientation.z = math.sin(self.prev_yaw/2)
+            odomMsg.twist.twist.linear.x = speed*math.cos(self.prev_yaw)
+            odomMsg.twist.twist.linear.y = speed*math.sin(self.prev_yaw)
+        else:
+            msg.pose.pose.orientation.w = math.cos(yaw/2)
+            msg.pose.pose.orientation.z = math.sin(yaw/2)
+            msg.twist.twist.linear.x = speed*math.cos(yaw)
+            msg.twist.twist.linear.y = speed*math.sin(yaw)
+        
+        if speed > 1.0:
+            self.prev_yaw = yaw
 
         pos_acc = float(parts[4])/1e7
         yaw_acc = float(parts[5])/1e5
@@ -123,6 +139,16 @@ class GnssParserNode(Node):
                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         self.gnss_pub.publish(msg)
+
+        pose_acc = 3.0
+        msg.pose.covariance = [pos_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
+                               0.0, pos_acc, 0.0, 0.0, 0.0, 0.0,
+                               0.0, 0.0, pos_acc, 0.0, 0.0, 0.0,
+                               0.0, 0.0, 0.0, yaw_acc, 0.0, 0.0,
+                               0.0, 0.0, 0.0, 0.0, yaw_acc, 0.0,
+                               0.0, 0.0, 0.0, 0.0, 0.0, yaw_acc]
+
+        self.gnss_big_covariance_pub.publish(msg)
 
         ps = PoseStamped()
         ps.header = msg.header
