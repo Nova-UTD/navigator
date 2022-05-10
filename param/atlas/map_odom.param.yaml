@@ -28,6 +28,28 @@
         false,
       ]
     odom0_differential: true
+    
+
+    odom1: "/sensors/gnss/odom_big_cov" # xyz and yaw
+    odom1_config:
+      [
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]
+    odom0_differential: false
 
     pose0: "/pcl_pose" # xyz and yaw
     pose0_config:

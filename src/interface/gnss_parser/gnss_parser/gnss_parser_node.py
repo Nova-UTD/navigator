@@ -35,6 +35,9 @@ class GnssParserNode(Node):
         self.gnss_pub = self.create_publisher(
             Odometry, '/sensors/gnss/odom', 10)
 
+        self.gnss_big_covariance_pub = self.create_publisher(
+            Odometry, '/sensors/gnss/odom_big_cov', 10)
+
         self.filtered_odom_sub = self.create_subscription(
             Odometry, '/odometry/filtered', self.publish_odom_tf, 10)
 
@@ -103,11 +106,11 @@ class GnssParserNode(Node):
 
         # This is an attempt to prevent the orientation from suddenly
         # flipping when the car is stopped
-        if speed < 0.5 and self.prev_yaw is not None:
-            msg.pose.pose.orientation.w = math.cos(self.prev_yaw/2)
-            msg.pose.pose.orientation.z = math.sin(self.prev_yaw/2) 
-            msg.twist.twist.linear.x = speed*math.cos(self.prev_yaw)
-            msg.twist.twist.linear.y = speed*math.sin(self.prev_yaw)
+        if speed < 1.0 and self.prev_yaw is not None:
+            odomMsg.pose.pose.orientation.w = math.cos(self.prev_yaw/2)
+            odomMsg.pose.pose.orientation.z = math.sin(self.prev_yaw/2)
+            odomMsg.twist.twist.linear.x = speed*math.cos(self.prev_yaw)
+            odomMsg.twist.twist.linear.y = speed*math.sin(self.prev_yaw)
         else:
             msg.pose.pose.orientation.w = math.cos(yaw/2)
             msg.pose.pose.orientation.z = math.sin(yaw/2)
@@ -117,11 +120,9 @@ class GnssParserNode(Node):
         if speed > 1.0:
             self.prev_yaw = yaw
 
-
-
-        pos_acc = float(parts[5])/1e7
-        yaw_acc = float(parts[6])/1e5
-        speed_acc = float(parts[7])/1e3
+        pos_acc = float(parts[4])/1e7
+        yaw_acc = float(parts[5])/1e5
+        speed_acc = float(parts[6])/1e3
 
         msg.pose.covariance = [pos_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
                                0.0, pos_acc, 0.0, 0.0, 0.0, 0.0,
@@ -138,6 +139,16 @@ class GnssParserNode(Node):
                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         self.gnss_pub.publish(msg)
+
+        pose_acc = 3.0
+        msg.pose.covariance = [pos_acc, 0.0, 0.0, 0.0, 0.0, 0.0,
+                               0.0, pos_acc, 0.0, 0.0, 0.0, 0.0,
+                               0.0, 0.0, pos_acc, 0.0, 0.0, 0.0,
+                               0.0, 0.0, 0.0, yaw_acc, 0.0, 0.0,
+                               0.0, 0.0, 0.0, 0.0, yaw_acc, 0.0,
+                               0.0, 0.0, 0.0, 0.0, 0.0, yaw_acc]
+
+        self.gnss_big_covariance_pub.publish(msg)
 
         ps = PoseStamped()
         ps.header = msg.header
