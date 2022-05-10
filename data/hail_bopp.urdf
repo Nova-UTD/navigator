@@ -52,6 +52,14 @@
     <origin xyz="0.0 0.0 1.0" rpy="0 0 0"/>
   </joint>
 
+  <link name="arduino_imu"/>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arduino_imu"/>
+    <origin xyz="0.3 0.0 0.0" rpy="0 0 0"/>
+  </joint>
+
   <link name="gnss"/>
 
   <!-- This specifies where our GNSS sensor is located relative to our rear axle. WSH. -->
