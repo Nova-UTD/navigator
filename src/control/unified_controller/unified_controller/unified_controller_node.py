@@ -256,6 +256,8 @@ class UnifiedController(Node):
         lookahead_arrow.frame_locked = True
         lookahead_arrow.type = Marker.ARROW
         self.lookahead_arrow_viz_pub.publish(lookahead_arrow)
+        if abs(goal_steering_angle) >= self.MAX_STEERING_ANGLE:
+            self.get_logger().warn("Max steering angle reached!")
 
         # Get throttle and brake
         v_look = self.point_at_distance(self.current_path_index, v_look_dist)
