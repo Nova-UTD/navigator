@@ -17,12 +17,7 @@ lat0 = 32.989487
 lon0 = -96.750437
 alt0 = 196.0
 
-frequency = 2  # hz, messages published per second
-
-
 class GnssParserNode(Node):
-
-    cached_string = ""
 
     def __init__(self):
         super().__init__('gnss_parser_node')
@@ -47,9 +42,6 @@ class GnssParserNode(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.br = TransformBroadcaster(self)
         self.road_boundary = None
-        self.gps_timer = self.create_timer(
-            1.0 / frequency, self.publish_next_gnss)
-        # outfile.write(f"x,y,z,u,v,speed,pos_acc,yaw_acc,speed_acc\n")
 
         self.prev_yaw = None
 
@@ -70,14 +62,15 @@ class GnssParserNode(Node):
         self.br.sendTransform(tf)
 
     def string_data_callback(self, msg):
-        self.cached_string = msg.data
-
-    def publish_next_gnss(self):
-        line = self.cached_string
+        line = msg.data
         if (line == ""):
             return
         parts = line.split()
         # print(parts)
+
+        if(parts[0] != "gps"):
+            return
+        
         lat = int(parts[1])/1e7
         lon = int(parts[2])/1e7
         alt = alt0
