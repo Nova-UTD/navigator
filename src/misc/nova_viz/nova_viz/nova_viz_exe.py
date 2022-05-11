@@ -131,10 +131,10 @@ class NovaVizNode(Node):
             r=0.0,
             g=1.0,
             b=0.0,
-            a=1.0
+            a=0.5
         )
         line_strip.pose.position.z = 0.6  # Offset from road surface
-        line_strip.scale.x = 0.5  # Meters wide.
+        line_strip.scale.x = 0.1  # Meters wide.
         line_strip.frame_locked = True
         line_strip.points = msg.paths[0].points
         self.path_viz_pub.publish(line_strip)

@@ -12,8 +12,9 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 import math
-
-from geometry_msgs.msg import Vector3
+from visualization_msgs.msg import Marker, MarkerArray
+from std_msgs.msg import ColorRGBA
+from geometry_msgs.msg import Vector3, Point
 
 # For noise testing only
 # from numpy import random
@@ -230,6 +231,34 @@ class UnifiedController(Node):
         goal_steering_angle = min(goal_steering_angle, self.MAX_STEERING_ANGLE)
         goal_steering_angle = max(goal_steering_angle, -self.MAX_STEERING_ANGLE)
 
+        # Visualize
+        lookahead_arrow = Marker()
+        lookahead_arrow.header.stamp = self.get_clock().now().to_msg()
+        lookahead_arrow.header.frame_id = 'map'
+        lookahead_arrow.action = Marker.ADD
+        lookahead_arrow.color = ColorRGBA(
+            r=1.0,
+            g=0.0,
+            b=1.0,
+            a=1.0,
+        )
+        lookahead_arrow.id = 1
+        lookahead_arrow.ns = 'pure_pursuit'
+        lookahead_arrow.scale.x = 1.0
+        lookahead_arrow.points.append(Point(
+            x=self.position.x,
+            y=self.position.y
+        ))
+        lookahead_arrow.points.append(Point(
+            x=steering_lookahead.x,
+            y=steering_lookahead.y
+        ))
+        lookahead_arrow.frame_locked = True
+        lookahead_arrow.type = Marker.ARROW
+        self.lookahead_arrow_viz_pub.publish(lookahead_arrow)
+        if abs(goal_steering_angle) >= self.MAX_STEERING_ANGLE:
+            self.get_logger().warn("Max steering angle reached!")
+
         # Get throttle and brake
         v_look = self.point_at_distance(self.current_path_index, v_look_dist)
         target_velocity = v_look.vx
@@ -239,6 +268,11 @@ class UnifiedController(Node):
         steering_angle = self.last_steering_position * self.STEERING_LAST_WEIGHT + goal_steering_angle * (1 - self.STEERING_LAST_WEIGHT)
         steering_angle = min(max(steering_angle, -self.MAX_STEERING_ANGLE), self.MAX_STEERING_ANGLE)
         self.last_steering_position = steering_angle
+
+        if(steering_angle < 0):
+            self.get_logger().info("Left")
+        else:
+            self.get_logger().info("Right")
 
         throttle = self.last_throttle_position * self.THROTTLE_LAST_WEIGHT + throttle * (1 - self.THROTTLE_LAST_WEIGHT)
         brake = self.last_brake_position * self.THROTTLE_LAST_WEIGHT + brake * (1 - self.THROTTLE_LAST_WEIGHT)
@@ -452,6 +486,12 @@ class UnifiedController(Node):
             Float32,
             '/control/desired_speed',
             10
+        )
+        self.lookahead_arrow_viz_pub = self.create_publisher(
+            Marker, '/viz/lookahead', 10
+        )
+        self.steering_angle_viz_pub = self.create_publisher(
+            Marker, '/viz/steering_angle', 10
         )
         self.control_timer = self.create_timer(0.2, self.generate_commands)
 
