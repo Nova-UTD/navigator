@@ -145,9 +145,9 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 	marker.points = path.points;
 
 	// Set visual display. Not sure if this is needed
-	marker.scale.x = 1;
-    marker.scale.y = 1;
-	marker.color.a = 1.0;
+	marker.scale.x = 0.5;
+    marker.scale.y = 0.5;
+	marker.color.a = 0.5;
 	marker.color.r = 1.0;
 	marker.color.g = 1.0;
 	marker.color.b = 0;
