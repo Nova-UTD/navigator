@@ -230,6 +230,9 @@ class UnifiedController(Node):
         goal_steering_angle = min(goal_steering_angle, self.MAX_STEERING_ANGLE)
         goal_steering_angle = max(goal_steering_angle, -self.MAX_STEERING_ANGLE)
 
+        if abs(goal_steering_angle) >= self.MAX_STEERING_ANGLE:
+            self.get_logger().warn("Max steering angle reached!")
+
         # Get throttle and brake
         v_look = self.point_at_distance(self.current_path_index, v_look_dist)
         target_velocity = v_look.vx
