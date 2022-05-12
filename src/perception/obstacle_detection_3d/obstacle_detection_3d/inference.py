@@ -10,7 +10,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation as R
 
-DEPTH_MAX = 40.0
+DEPTH_MAX = 35.0    # 35 just to be safe
 RANGE_MAX = 60.0
 SEARCH_RADIUS = 1.0
 
@@ -82,7 +82,11 @@ class ObstacleDetection3DNode(Node):
         ])
 
         # matrix to transform to base link
-        rotation_matrix = R.from_euler('xyz', [rot_x, rot_y, rot_z], degrees=True).as_dcm()
+        try:    # version issue: as_dcm was named to as_matrix
+            rotation_matrix = R.from_euler('xyz', [rot_x, rot_y, rot_z], degrees=True).as_matrix()
+        except AttributeError:
+            rotation_matrix = R.from_euler('xyz', [rot_x, rot_y, rot_z], degrees=True).as_dcm()
+
         translation_vector = np.array([[trans_x], [trans_y], [trans_z]])
         bl_transform_matrix = np.concatenate([rotation_matrix, translation_vector], axis=1)
         bl_transform_matrix = np.concatenate((bl_transform_matrix,[[0,0,0,1]]), axis=0)
@@ -171,7 +175,7 @@ class ObstacleDetection3DNode(Node):
                 continue
 
             # if the obstacle is further than max depth of camera
-            if (min_depth > DEPTH_MAX):
+            if (min_depth >= DEPTH_MAX):
                 if self.pcd_kdtree != None:  # pass the box generation to lidar-based method
                     # center of 2D bbox into 3D
                     center_pixel_x = (x2+x1) // 2
