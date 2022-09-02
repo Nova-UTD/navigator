@@ -1,4 +1,4 @@
-# Navigator
+<img src="https://user-images.githubusercontent.com/link-to-your-image.png" width="200" />
 
 Navigator is our autonomous driving stack. This is what Nova is all about - the code that makes our car run. 
 
