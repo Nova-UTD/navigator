@@ -1,0 +1,64 @@
+<svg width="1440" height="664" viewBox="0 0 1440 664" xmlns="http://www.w3.org/2000/svg"><style>
+        text {
+          font-family: system-ui, sans-serif;
+          fill: #000;
+        }
+        .bg {
+          fill: #fff;
+        }
+        .icon {
+          fill: #000;
+          opacity: 0.8;
+        }
+
+        /* header/sidebar styles */
+        .header {
+          fill: #f8f8f8;
+        }
+        .headerDate {
+          font-size: 14px;
+          font-weight: bold;
+        }
+        .logoIcon {
+          fill: #4660F9;
+        }
+        .tick {
+          fill: #666;
+          font-weight: bold;
+        }
+        .tickLine {
+          stroke: #666;
+        }
+        .sidebarDivider {
+          stroke: #ddd;
+        }
+
+        /* track styles */
+        .boxText {
+          opacity: 0.7;
+        }
+        .date {
+          fill: #999;
+          font-size: 12px;
+        }
+        .progressOuter {
+          fill: rgba(255,255,255,0.3);
+        }
+        .progressInner {
+          fill: rgba(0,0,0,0.5);
+        }
+        .closedGroup &gt; text, .closedGroup &gt; use {
+          fill: #999;
+        }
+        .subtext {
+          opacity: 0.7;
+        }
+
+        /* nested track styles */
+        .nestedBox {
+          opacity: 0.6;
+        }
+        .nestedBg {
+          fill: #f8f8f8;
+        }
+      </style><defs><filter id="shadow"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#ccc"></feDropShadow></filter><clipPath id="dont-overlap-sidebar"><rect x="350" y="0" width="1090" height="664"></rect></clipPath><clipPath id="sidebar-contents"><rect x="0" y="0" width="350" height="664"></rect></clipPath><linearGradient id="sidebarShadow" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color: rgb(100, 100, 100); stop-opacity: 0.15;"></stop><stop offset="100%" style="stop-color: rgb(100, 100, 100); stop-opacity: 0;"></stop></linearGradient><path id="projectIcon" d="M4 4v2h8V4zm0-2h8a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2zm4 9v2h12v-2zm0-2h12a2 2 0 012 2v2a2 2 0 01-2 2H8a2 2 0 01-2-2v-2a2 2 0 012-2zm-4 9v2h3v-2zm0-2h3a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2a2 2 0 012-2z" transform="scale(0.7)"></path><path id="epicIcon" d="M4.667 2A.667.667 0 004 2.667v11.231l3.12-2.738a1.333 1.333 0 011.76 0L12 13.898V2.667A.667.667 0 0011.333 2zM11.333.667a2 2 0 012 2v11.231a1.333 1.333 0 01-2.212 1.003L8 12.163 4.88 14.9a1.333 1.333 0 01-2.213-1.003V2.667a2 2 0 012-2zM9.667 3.333H6v6h4V8H7.333V7h2V5.667h-2v-1h2.334z"></path><path id="epicIconClosed" d="M12 8.04a.667.667 0 111.333 0v5.778a1.333 1.333 0 01-2.234.983L8 11.96 4.901 14.8a1.333 1.333 0 01-2.234-.982V2.667a2 2 0 012-2h3.349a.667.667 0 110 1.333h-3.35A.667.667 0 004 2.667v11.15l3.099-2.84a1.333 1.333 0 011.802 0L12 13.817zM9.805 3.529l.862.862 2.862-2.862a.667.667 0 11.942.942l-3.333 3.334a.667.667 0 01-.943 0L8.862 4.47a.667.667 0 11.943-.942z"></path><path id="zhLogo" d="M11.228 3.727V1.076H.327v2.651h7.229L.168 12.928v2.674h11.22v-2.674h-7.57zm5.644.702c-3.127 0-5.484 2.583-5.484 5.756 0 3.152 2.449 5.735 5.826 5.735 1.835 0 3.376-.748 4.192-1.7l-1.428-1.882a3.686 3.686 0 01-2.651 1.134c-1.678 0-2.833-1.088-3.106-2.607h8.046c.045-.18.068-.566.068-.906 0-3.127-2.358-5.53-5.463-5.53zm-2.605 4.69c.318-1.382 1.269-2.334 2.652-2.334 1.292 0 2.266.793 2.583 2.334h-5.235zm42.975 1.497c0 1.586-.929 2.651-2.312 2.651-1.383 0-2.312-1.065-2.312-2.651v-5.87h-2.766v6.074c0 3.037 2.017 5.055 5.077 5.055s5.078-2.017 5.078-5.055V4.746h-2.765v5.87zM67.894 4.43v-.002c-1.405 0-2.516.566-3.308 1.496V.008H61.82v15.594h2.765v-1.087c.77.884 1.88 1.405 3.308 1.405 3.015 0 5.213-2.47 5.213-5.757 0-3.377-2.334-5.734-5.213-5.734zm-.43 8.884c-1.654 0-2.878-1.383-2.878-3.128s1.224-3.15 2.878-3.15c1.677 0 2.878 1.405 2.878 3.15 0 1.746-1.2 3.128-2.878 3.128zm-38.749-8.9c-2.976 0-4.938 2.018-4.938 5.054v6.075h2.69v-5.87c0-1.587.904-2.652 2.248-2.652 1.344 0 2.247 1.065 2.247 2.651v5.871h2.69V9.468c0-3.037-1.962-5.054-4.937-5.054zm16.376 2.44H38.18v-5.78h-2.834v14.527h2.834V9.505h6.912V15.6h2.855V1.075h-2.855z"></path></defs><rect x="0" y="0" width="1440" height="664" class="bg"></rect><g class="track"><title>Solidify architecture and design</title><g class="" clip-path="url(#sidebar-contents)"><use href="#epicIcon" x="20" y="76" class="icon"></use><text x="40" y="88">Solidify architecture and design</text><text x="20" y="106" class="date">Oct 29 - Nov 19</text><line x1="0" x2="1440" y1="124" y2="124" stroke="#e7e7e7"></line></g><rect x="346.34157509157507" y="66" width="108.46153846153851" height="50" rx="2" clip-path="url(#dont-overlap-sidebar)" style="filter: url(&quot;#shadow&quot;); fill: rgb(182, 162, 221);"></rect><g class=""><text x="376.34157509157507" y="94" class="boxText" clip-path="url(#dont-overlap-sidebar)">Solidify architecture and design<tspan class="subtext"> (0/3)</tspan></text></g><rect x="346.34157509157507" y="110" width="108.46153846153851" height="6" clip-path="url(#dont-overlap-sidebar)" class="progressOuter"></rect></g><g class="track"><title>🚩 A: Full localization</title><g class="" clip-path="url(#sidebar-contents)"><use href="#epicIcon" x="20" y="142" class="icon"></use><text x="40" y="154">🚩 A: Full localization</text><text x="20" y="172" class="date">Nov 19 - Dec 9</text><line x1="0" x2="1440" y1="190" y2="190" stroke="#e7e7e7"></line></g><rect x="454.8031135531136" y="132" width="103.2967032967033" height="50" rx="2" clip-path="url(#dont-overlap-sidebar)" style="filter: url(&quot;#shadow&quot;); fill: rgb(200, 205, 234);"></rect><g class=""><use href="#epicIcon" x="464.8031135531136" y="147" class="icon"></use><text x="484.8031135531136" y="160" class="boxText" clip-path="url(#dont-overlap-sidebar)">🚩 A: Full localization<tspan class="subtext"></tspan></text></g></g><g class="track"><title>🚩 B: Path planning</title><g class="" clip-path="url(#sidebar-contents)"><use href="#epicIcon" x="20" y="208" class="icon"></use><text x="40" y="220">🚩 B: Path planning</text><text x="20" y="238" class="date">Jan 7, 2022 - Jan 27</text><line x1="0" x2="1440" y1="256" y2="256" stroke="#e7e7e7"></line></g><rect x="707.8800366300366" y="198" width="103.2967032967033" height="50" rx="2" clip-path="url(#dont-overlap-sidebar)" style="filter: url(&quot;#shadow&quot;); fill: rgb(133, 213, 250);"></rect><g class=""><use href="#epicIcon" x="717.8800366300366" y="213" class="icon"></use><text x="737.8800366300366" y="226" class="boxText" clip-path="url(#dont-overlap-sidebar)">🚩 B: Path planning<tspan class="subtext"></tspan></text></g></g><g class="track"><title>🚩 C: Full steering</title><g class="" clip-path="url(#sidebar-contents)"><use href="#epicIcon" x="20" y="274" class="icon"></use><text x="40" y="286">🚩 C: Full steering</text><text x="20" y="304" class="date">Jan 28, 2022 - Feb 3</text><line x1="0" x2="1440" y1="322" y2="322" stroke="#e7e7e7"></line></g><rect x="816.3415750915751" y="264" width="30.98901098901092" height="50" rx="2" clip-path="url(#dont-overlap-sidebar)" style="filter: url(&quot;#shadow&quot;); fill: rgb(145, 226, 237);"></rect><g class=""><use href="#epicIcon" x="826.3415750915751" y="279" class="icon"></use><text x="846.3415750915751" y="292" class="boxText" clip-path="url(#dont-overlap-sidebar)">🚩 C: Full steering<tspan class="subtext"></tspan></text></g></g><g class="track"><title>🚩 E: Peddle actuation</title><g class="" clip-path="url(#sidebar-contents)"><use href="#epicIcon" x="20" y="340" class="icon"></use><text x="40" y="352">🚩 E: Peddle actuation</text><text x="20" y="370" class="date">Jan 28, 2022 - Feb 17</text><line x1="0" x2="1440" y1="388" y2="388" stroke="#e7e7e7"></line></g><rect x="816.3415750915751" y="330" width="103.29670329670319" height="50" rx="2" clip-path="url(#dont-overlap-sidebar)" style="filter: url(&quot;#shadow&quot;); fill: rgb(182, 162, 221);"></rect><g class=""><use href="#epicIcon" x="826.3415750915751" y="345" class="icon"></use><text x="846.3415750915751" y="358" class="boxText" clip-path="url(#dont-overlap-sidebar)">🚩 E: Peddle actuation<tspan class="subtext"></tspan></text></g></g><g class="track"><title>🚩 D: Throttle and brake calculations</title><g class="" clip-path="url(#sidebar-contents)"><use href="#epicIcon" x="20" y="406" class="icon"></use><text x="40" y="418">🚩 D: Throttle and brake calculations</text><text x="20" y="436" class="date">Jan 28, 2022 - Feb 17</text><line x1="0" x2="1440" y1="454" y2="454" stroke="#e7e7e7"></line></g><rect x="816.3415750915751" y="396" width="103.29670329670319" height="50" rx="2" clip-path="url(#dont-overlap-sidebar)" style="filter: url(&quot;#shadow&quot;); fill: rgb(200, 205, 234);"></rect><g class=""><use href="#epicIcon" x="826.3415750915751" y="411" class="icon"></use><text x="846.3415750915751" y="424" class="boxText" clip-path="url(#dont-overlap-sidebar)">🚩 D: Throttle and brake calculations<tspan class="subtext"></tspan></text></g></g><g class="track"><title>🚩 F: Throttle and brake along course</title><g class="" clip-path="url(#sidebar-contents)"><use href="#epicIcon" x="20" y="472" class="icon"></use><text x="40" y="484">🚩 F: Throttle and brake along course</text><text x="20" y="502" class="date">Feb 18, 2022 - Mar 10</text><line x1="0" x2="1440" y1="520" y2="520" stroke="#e7e7e7"></line></g><rect x="924.8031135531136" y="462" width="103.29670329670319" height="50" rx="2" clip-path="url(#dont-overlap-sidebar)" style="filter: url(&quot;#shadow&quot;); fill: rgb(133, 213, 250);"></rect><g class=""><use href="#epicIcon" x="934.8031135531136" y="477" class="icon"></use><text x="954.8031135531136" y="490" class="boxText" clip-path="url(#dont-overlap-sidebar)">🚩 F: Throttle and brake along course<tspan class="subtext"></tspan></text></g></g><g class="track"><title>🚩 G: Polished throttle and brake</title><g class="" clip-path="url(#sidebar-contents)"><use href="#epicIcon" x="20" y="538" class="icon"></use><text x="40" y="550">🚩 G: Polished throttle and brake</text><text x="20" y="568" class="date">Mar 11, 2022 - Mar 31</text><line x1="0" x2="1440" y1="586" y2="586" stroke="#e7e7e7"></line></g><rect x="1033.264652014652" y="528" width="103.2967032967033" height="50" rx="2" clip-path="url(#dont-overlap-sidebar)" style="filter: url(&quot;#shadow&quot;); fill: rgb(145, 226, 237);"></rect><g class=""><use href="#epicIcon" x="1043.264652014652" y="543" class="icon"></use><text x="1063.264652014652" y="556" class="boxText" clip-path="url(#dont-overlap-sidebar)">🚩 G: Polished throttle and brake<tspan class="subtext"></tspan></text></g></g><g class="track"><title>🚩 H: Full, safe, stable driving along entire course</title><g class="" clip-path="url(#sidebar-contents)"><use href="#epicIcon" x="20" y="604" class="icon"></use><text x="40" y="616">🚩 H: Full, safe, stable driving alon…</text><text x="20" y="634" class="date">Apr 1, 2022 - Apr 21</text><line x1="0" x2="1440" y1="652" y2="652" stroke="#e7e7e7"></line></g><rect x="1141.7261904761904" y="594" width="103.2967032967033" height="50" rx="2" clip-path="url(#dont-overlap-sidebar)" style="filter: url(&quot;#shadow&quot;); fill: rgb(182, 162, 221);"></rect><g class=""><use href="#epicIcon" x="1151.7261904761904" y="609" class="icon"></use><text x="1171.7261904761904" y="622" class="boxText" clip-path="url(#dont-overlap-sidebar)">🚩 H: Full, safe, stable driving along entire course<tspan class="subtext"></tspan></text></g></g><g><rect x="0" y="0" width="1440" height="62" class="header" style="filter: url(&quot;#shadow&quot;);"></rect><a href="https://www.zenhub.com"><use href="#zhLogo" x="20" y="12" class="logoIcon"></use></a><text x="20" y="45" class="headerDate">October 30, 2021</text></g><g clip-path="url(#dont-overlap-sidebar)"><text x="205.3846153846154" y="30" class="tick">Oct</text><text x="365.4945054945055" y="30" class="tick">Nov</text><text x="520.6547619047619" y="30" class="tick">Dec</text><text x="680.764652014652" y="30" class="tick">2022</text><text x="840.8745421245421" y="30" class="tick">Feb</text><text x="985.4899267399268" y="30" class="tick">Mar</text><text x="1145.3846153846152" y="30" class="tick">Apr</text><text x="1300.3296703296703" y="30" class="tick">May</text>;</g><rect x="350" y="0" width="20" height="664" fill="url(#sidebarShadow)"></rect><line x1="350" x2="350" y1="50" y2="664" class="sidebarDivider"></line></svg>
