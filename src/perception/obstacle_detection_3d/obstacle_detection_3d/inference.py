@@ -28,7 +28,6 @@ CLASS_X = {
     5:  5.0,    # truck
 }
 
-
 class ObstacleDetection3DNode(Node):
 
     def __init__(self):
@@ -257,6 +256,7 @@ class ObstacleDetection3DNode(Node):
     def depth_image_cb(self, depth_msg: Image):
         # self.get_logger().info('got depth')
         self.depth_image = rnp.numpify(depth_msg)
+    
 
     # expects transformed, fused lidar point clouds
     # filters the point cloud and caches it as a K-d Tree
