@@ -19,6 +19,9 @@ alt0 = 196.0
 
 class GnssParserNode(Node):
 
+    def say_hello(self):
+        self.get_logger().info("Kyle Was Here")
+
     def __init__(self):
         super().__init__('gnss_parser_node')
 
@@ -26,6 +29,8 @@ class GnssParserNode(Node):
         # self.road_cloud_sub = self.create_subscription(
         #     PointCloud2, '/lidar/semantic/road', self.calculate_bias, 10
         # )
+
+        self.say_hello()
 
         self.gnss_pub = self.create_publisher(
             Odometry, '/sensors/gnss/odom', 10)

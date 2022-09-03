@@ -29,7 +29,7 @@ class VizSubscriber(Node):
         super().__init__('viz_subscriber')
         #self.costed_paths_sub = self.create_subscription(CostedPaths, '/planning/paths', self.paths_cb, 10)
         #self.path_viz_pub = self.create_publisher(Marker, '/viz/path', 10)
-        self.trajectory_sub = self.create_subscription(Trajectory, '/planning/outgoing_trajectory', self.motion_paths_cb, 10)
+        self.trajectory_sub = self.create_subscription(Trajectory, '/trajectory', self.motion_paths_cb, 10)
         self.zones_sub = self.create_subscription(ZoneArray, '/planning/zones', self.zones_cb, 10)
         self.zones_viz_pub = self.create_publisher(MarkerArray, '/viz/zones', 10)
         self.trajectory_viz_pub = self.create_publisher(Marker, '/viz/trajectory', 10)
