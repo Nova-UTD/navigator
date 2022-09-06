@@ -18,30 +18,35 @@
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
 
-title: Nova
-#email: your-email@example.com
+title: Navigator
 description: >- # this means to ignore newlines until "baseurl:"
-  Driving is hard, but humans make it look easy. 
-  We're <b>UT Dallas's applied autonomous driving project</b>, and we're making driving look easier than ever.
-
-baseurl: "" # the subpath of your site, e.g. /blog
+  Navigator is an open-source autonomous driving system developed
+  by Nova, an applied research group at UT Dallas.
+baseurl: "/navigator" # the subpath of your site, e.g. /blog
 url: "https://nova-utd.github.io" # the base hostname & protocol for your site, e.g. http://example.com
-#twitter_username: jekyllrb
-github_username:  Nova-UTD
-logo: /assets/res/logo.svg
-
-github:
-  is_user_page: true
+domain: "nova-utd.github.io"
+github_username:  nova-utd
+logo: "/assets/res/logo_compact.png"
 
 # Build settings
-theme: jekyll-theme-minimal
+theme: just-the-docs
 plugins:
   - jekyll-feed
+color_scheme: novalicious
 
-gems:
-  - jekyll-octicons
+# Aux links for the upper right navigation
+aux_links:
+  "Learn about Nova":
+    - "//nova-utd.github.io"
 
+# Makes Aux links open in a new tab. Default is false
+aux_links_new_tab: false
 
+# External navigation links
+nav_external_links:
+  - title: Learn about Nova
+    url: https://nova-utd.github.io
+    hide_icon: false # set to true to hide the external link icon - defaults to false
 
 # Exclude from processing.
 # The following items will not be processed, by default.
