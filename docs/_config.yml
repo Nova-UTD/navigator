@@ -29,7 +29,7 @@ github_username:  nova-utd
 logo: "/assets/res/logo_compact.png"
 
 # Build settings
-remote_theme: just-the-docs
+remote_theme: just-the-docs/just-the-docs
 plugins:
   - jekyll-feed
 color_scheme: novalicious
