@@ -28,7 +28,8 @@ def generate_launch_description():
     # INTERFACE
     carla = Node(
         package='sim_bridge',
-        executable='sim_bridge_node'
+        executable='sim_bridge_node',
+        parameters=['params.yaml']
     )
 
     # LOCALIZATION

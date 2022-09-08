@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 '''
 Nova at UT Dallas, 2022
 
@@ -47,7 +46,10 @@ import ros2_numpy as rnp
 from rclpy.node import Node
 import rclpy
 import sys
-sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
+
+sys.path.append(
+    '/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg'
+)
 import carla
 import random
 import sim_bridge.scenarios as sc
@@ -59,13 +61,13 @@ import sim_bridge.scenarios as sc
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
 
-GNSS_PERIOD = 1/(2.0)  # 2 Hz
-GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
-GROUND_TRUTH_ODOM_PERIOD = 1/(10.0)  # 10 Hz
-LIDAR_PERIOD = 1/(10.0)  # 10 Hz
-SEMANTIC_LIDAR_PERIOD = 1/(2.0)  # 10 Hz
-SPEEDOMETER_PERIOD = 1/(10.0)  # 10 Hz
-STEERING_ANGLE_PERIOD = 1/(10.0)  # 10 Hz
+GNSS_PERIOD = 1 / (2.0)  # 2 Hz
+GROUND_TRUTH_OBJ_PERIOD = 1 / (2.0)  # 2 Hz (purposely bad)
+GROUND_TRUTH_ODOM_PERIOD = 1 / (10.0)  # 10 Hz
+LIDAR_PERIOD = 1 / (10.0)  # 10 Hz
+SEMANTIC_LIDAR_PERIOD = 1 / (2.0)  # 10 Hz
+SPEEDOMETER_PERIOD = 1 / (10.0)  # 10 Hz
+STEERING_ANGLE_PERIOD = 1 / (10.0)  # 10 Hz
 OBSTACLE_QTY_VEHICLE = 2  # Spawn n cars
 OBSTACLE_QTY_PED = 0  # Spawn n peds
 
@@ -77,23 +79,24 @@ MAP_ORIGIN_LON = 0.0  # degrees
 M_TO_DEG = 9e-6  # APPROXIMATE! WSH.
 
 # Degrees -  https://carla.readthedocs.io/en/latest/ref_sensors/#gnss-sensor
-GNSS_ALT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG*0.3
-GNSS_ALT_SDEV = 0.5*M_TO_DEG*0.3
-GNSS_LAT_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG*0.3
-GNSS_LAT_SDEV = 0.5*M_TO_DEG*0.3
-GNSS_LON_BIAS = random.uniform(0.25, 1.0)*M_TO_DEG*0.3
-GNSS_LON_SDEV = 0.5*M_TO_DEG*0.3
+GNSS_ALT_BIAS = random.uniform(0.25, 1.0) * M_TO_DEG * 0.3
+GNSS_ALT_SDEV = 0.5 * M_TO_DEG * 0.3
+GNSS_LAT_BIAS = random.uniform(0.25, 1.0) * M_TO_DEG * 0.3
+GNSS_LAT_SDEV = 0.5 * M_TO_DEG * 0.3
+GNSS_LON_BIAS = random.uniform(0.25, 1.0) * M_TO_DEG * 0.3
+GNSS_LON_SDEV = 0.5 * M_TO_DEG * 0.3
 
 # Publish a true map->base_link transform. Disable this if
 # another localization algorithm (ukf, ndt, etc.) is running! WSH.
 PULBISH_MAP_BL_TRANSFORM = False
 
 sys.path.append(
-    '/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
+    '/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg'
+)
 
 sys.path.append(
-    '/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
-
+    '/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg'
+)
 
 # For lidar data manipulation/conversion. WSH.
 
@@ -101,32 +104,37 @@ sys.path.append(
 
 # For lat/lon-> ENU conversions. WSH.
 
-
 # Message definitons
 
 
 class SimBridgeNode(Node):
 
     # Straight-up copied from carla_ros_bridge. WSH.
-    def get_color_image(self, carla_image: carla.Image, encoding: str = 'bgra8'):
+    def get_color_image(self,
+                        carla_image: carla.Image,
+                        encoding: str = 'bgra8'):
         """
         Function to transform the received carla camera data into a ROS image message
         """
-        carla_image_data_array = np.ndarray(
-            shape=(carla_image.height, carla_image.width, 4),
-            dtype=np.uint8, buffer=carla_image.raw_data)
-        img_msg = self.cv_bridge.cv2_to_imgmsg(
-            carla_image_data_array, encoding=encoding)
+        carla_image_data_array = np.ndarray(shape=(carla_image.height,
+                                                   carla_image.width, 4),
+                                            dtype=np.uint8,
+                                            buffer=carla_image.raw_data)
+        img_msg = self.cv_bridge.cv2_to_imgmsg(carla_image_data_array,
+                                               encoding=encoding)
         img_msg.header.stamp = self.get_clock().now().to_msg()
         img_msg.header.frame_id = '/base_link'
 
         return img_msg
 
     # Straight-up copied from carla_ros_bridge. WSH.
-    def get_depth_image(self, carla_image: carla.Image, encoding: str = 'passthrough'):
-        bgra_image = np.ndarray(
-            shape=(carla_image.height, carla_image.width, 4),
-            dtype=np.uint8, buffer=carla_image.raw_data)
+    def get_depth_image(self,
+                        carla_image: carla.Image,
+                        encoding: str = 'passthrough'):
+        bgra_image = np.ndarray(shape=(carla_image.height, carla_image.width,
+                                       4),
+                                dtype=np.uint8,
+                                buffer=carla_image.raw_data)
 
         # Apply (R + G * 256 + B * 256 * 256) / (256**3 - 1) * 1000
         # according to the documentation:
@@ -146,34 +154,6 @@ class SimBridgeNode(Node):
         img_msg = self.get_color_image(data)
         self.birds_eye_cam_pub.publish(img_msg)
 
-    # TODO: Fix so that full scan is registered each time. WSH.
-    def front_lidar_cb(self, data: carla.LidarMeasurement):
-        # Taken from carla_ros_bridge's "lidar.py". WSH.
-        header = Header(
-            stamp=self.get_clock().now().to_msg(),
-            frame_id='lidar_front'
-        )
-
-        lidar_data = np.fromstring(
-            bytes(data.raw_data), dtype=np.float32)
-        lidar_data = np.reshape(
-            lidar_data, (int(lidar_data.shape[0] / 4), 4))
-        lidar_data.dtype = [
-            ('x', np.float32),
-            ('y', np.float32),
-            ('z', np.float32),
-            ('intensity', np.float32)
-        ]
-        # we take the opposite of y axis
-        # (as lidar point are express in left handed coordinate system, and ros need right handed)
-        lidar_data['y'] *= -1
-
-        msg = rnp.msgify(PointCloud2, lidar_data)
-        msg.header = header
-        self.front_lidar_pub.publish(msg)
-        # point_cloud_msg = create_cloud(header, fields, lidar_data)
-        # self.lidar_publisher.publish(point_cloud_msg)
-
     def front_rgb_cb(self, data: carla.Image):
         img_msg = self.get_color_image(data, encoding='bgra8')
         self.front_rgb_pub.publish(img_msg)
@@ -189,10 +169,8 @@ class SimBridgeNode(Node):
         msg.header.frame_id = 'map'
         msg.child_frame_id = 'gnss'
 
-        enu_coords = pymap3d.geodetic2enu(
-            data.latitude, data.longitude, 0.0,
-            MAP_ORIGIN_LAT, MAP_ORIGIN_LON, 0.0
-        )
+        enu_coords = pymap3d.geodetic2enu(data.latitude, data.longitude, 0.0,
+                                          MAP_ORIGIN_LAT, MAP_ORIGIN_LON, 0.0)
 
         posewithcov.pose.position.x = enu_coords[0]
         posewithcov.pose.position.y = enu_coords[1]
@@ -200,12 +178,10 @@ class SimBridgeNode(Node):
         posewithcov.pose.position.z = enu_coords[2]
 
         ego_tf = self.ego.get_transform()
-        ego_quat = R.from_euler(
-            'yzx',
-            [ego_tf.rotation.pitch*-1*math.pi/180.0,
-             ego_tf.rotation.yaw*-1*math.pi/180.0,
-             ego_tf.rotation.roll*-1*math.pi/180.0]
-        ).as_quat()
+        ego_quat = R.from_euler('yzx', [
+            ego_tf.rotation.pitch * -1 * math.pi / 180.0, ego_tf.rotation.yaw *
+            -1 * math.pi / 180.0, ego_tf.rotation.roll * -1 * math.pi / 180.0
+        ]).as_quat()
         posewithcov.pose.orientation.x = ego_quat[0]
         posewithcov.pose.orientation.y = ego_quat[1]
         posewithcov.pose.orientation.z = ego_quat[2]
@@ -218,14 +194,17 @@ class SimBridgeNode(Node):
         twist_linear.z = ego_vel.z
         msg.twist.twist.linear = twist_linear
 
-        accuracy = 1.0  # Meters, s.t. pos.x = n +/- accuracy
+        linear_cov = 0.1
+        angular_cov = 0.1
 
-        posewithcov.covariance = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        posewithcov.covariance = [
+            linear_cov, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, linear_cov, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, linear_cov, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, angular_cov, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, angular_cov, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, angular_cov
+        ]
 
         msg.pose = posewithcov
 
@@ -243,9 +222,9 @@ class SimBridgeNode(Node):
         imu_msg.angular_velocity.x = data.gyroscope.x * -1
         imu_msg.angular_velocity.y = data.gyroscope.y * -1
         imu_msg.angular_velocity.z = data.gyroscope.z * -1
-        imu_msg.linear_acceleration_covariance = [0.3, 0.0, 0.0,
-                                                  0.0, 0.3, 0.0,
-                                                  0.0, 0.0, 0.3]
+        imu_msg.linear_acceleration_covariance = [
+            0.3, 0.0, 0.0, 0.0, 0.3, 0.0, 0.0, 0.0, 0.3
+        ]
 
         # imu_msg.angular_velocity_covariance   =  [0.1, 0.0, 0.0,
         #                                           0.0, 0.1, 0.0,
@@ -261,7 +240,7 @@ class SimBridgeNode(Node):
         cmd.reverse = self.reverse_cmd
         vel = self.ego.get_velocity()
         speed = math.floor(
-            math.sqrt((vel.x ** 2) + (vel.y ** 2) + (vel.z ** 2))/0.447) * 0.447
+            math.sqrt((vel.x**2) + (vel.y**2) + (vel.z**2)) / 0.447) * 0.447
         if (speed > 10.2):
             cmd.throttle = 0.0  # Cap our speed at 23 mph. WSH.
             # self.get_logger().warn("Your speed of {} has maxed out".format(speed))
@@ -289,23 +268,14 @@ class SimBridgeNode(Node):
         #     self.get_logger().info("{}".format(det))
 
         # Taken from carla_ros_bridge's "lidar.py". WSH.
-        header = Header(
-            stamp=self.get_clock().now().to_msg(),
-            frame_id='lidar_front'
-        )
+        header = Header(stamp=self.get_clock().now().to_msg(),
+                        frame_id='lidar_front')
 
-        lidar_data = np.fromstring(
-            bytes(data.raw_data), dtype=np.float32)
-        lidar_data = np.reshape(
-            lidar_data, (int(lidar_data.shape[0] / 6), 6))
-        lidar_data.dtype = [
-            ('x', np.float32),
-            ('y', np.float32),
-            ('z', np.float32),
-            ('angle', np.float32),
-            ('id', np.int32),
-            ('intensity', np.int32)
-        ]
+        lidar_data = np.fromstring(bytes(data.raw_data), dtype=np.float32)
+        lidar_data = np.reshape(lidar_data, (int(lidar_data.shape[0] / 6), 6))
+        lidar_data.dtype = [('x', np.float32), ('y', np.float32),
+                            ('z', np.float32), ('angle', np.float32),
+                            ('id', np.int32), ('intensity', np.int32)]
         # we take the opposite of y axis
         # (as lidar point are expressed in left handed coordinate system, and ros need right handed)
         lidar_data['y'] *= -1
@@ -336,7 +306,7 @@ class SimBridgeNode(Node):
 
     def add_obstacle(self, actor, obstacles, is_car):
         if actor.id == self.ego.id:
-            return #motivational quote: we should not be an obstacle to ourselves
+            return  #motivational quote: we should not be an obstacle to ourselves
 
         ego_position = Point()
         ego_tf: carla.Transform = self.ego.get_transform()
@@ -361,16 +331,18 @@ class SimBridgeNode(Node):
 
         # add world space corner points
         corner_points = bbox.get_world_vertices(actor_tf)
-        carla_to_our_ordering = [(0,0),(4,1),(6,2),(2,3)] #carla orders vertices in the box differently than we do. 
+        carla_to_our_ordering = [
+            (0, 0), (4, 1), (6, 2), (2, 3)
+        ]  #carla orders vertices in the box differently than we do.
         for c, us in carla_to_our_ordering:
             tf_pt = corner_points[c]
             corner = Point()
             #change all coordinates to be relative to car ('base_link') instead of world ('map')
             corner.x = tf_pt.x - ego_position.x
-            corner.y = -tf_pt.y - ego_position.y # change coordinate system
+            corner.y = -tf_pt.y - ego_position.y  # change coordinate system
             corner.z = tf_pt.z - ego_position.z
             obst.bounding_box.corners[us] = corner
-        
+
         obstacles.append(obst)
 
     def publish_true_boxes(self):
@@ -396,7 +368,7 @@ class SimBridgeNode(Node):
         vel = self.ego.get_velocity()
         twist_linear = TwistWithCovarianceStamped()
         speed = math.floor(
-            math.sqrt((vel.x ** 2) + (vel.y ** 2) + (vel.z ** 2))/0.447) * 0.447
+            math.sqrt((vel.x**2) + (vel.y**2) + (vel.z**2)) / 0.447) * 0.447
         twist_linear.twist.twist.linear.x = speed
         # Our speedometer is accurate to ~0.5 m/s. Covariance is the square of stdev.
         twist_linear.twist.covariance[0] = 0.25
@@ -410,9 +382,9 @@ class SimBridgeNode(Node):
             carla.VehicleWheelLocation.FL_Wheel)
         front_right_wheel = self.ego.get_wheel_steer_angle(
             carla.VehicleWheelLocation.FR_Wheel)
-        tricycle_angle = (front_left_wheel + front_right_wheel)/2
+        tricycle_angle = (front_left_wheel + front_right_wheel) / 2
         # Convert to right-handed, degrees to radians
-        tricycle_angle *= -math.pi/180
+        tricycle_angle *= -math.pi / 180
         msg = SteeringPosition()
         msg.data = tricycle_angle
         self.steering_angle_pub.publish(msg)
@@ -429,15 +401,14 @@ class SimBridgeNode(Node):
         ego_orientation = Quaternion()
         ego_tf: carla.Transform = ego.get_transform()
         ego_position.x = ego_tf.location.x
-        ego_position.y = ego_tf.location.y*-1
+        ego_position.y = ego_tf.location.y * -1
         ego_position.z = 0.0  # Force to zero
 
-        ego_quat = R.from_euler(
-            'yzx',
-            [ego_tf.rotation.pitch*-1*math.pi/180.0,
-             ego_tf.rotation.yaw*-1*math.pi/180.0-math.pi,
-             ego_tf.rotation.roll*-1*math.pi/180.0]
-        ).as_quat()
+        ego_quat = R.from_euler('yzx', [
+            ego_tf.rotation.pitch * -1 * math.pi / 180.0,
+            ego_tf.rotation.yaw * -1 * math.pi / 180.0 - math.pi,
+            ego_tf.rotation.roll * -1 * math.pi / 180.0
+        ]).as_quat()
         ego_orientation.x = ego_quat[0]
         ego_orientation.y = ego_quat[1]
         ego_orientation.z = ego_quat[2]
@@ -460,22 +431,25 @@ class SimBridgeNode(Node):
             self.last_tf = TransformStamped()
             self.last_tf.header = odom.header
             self.last_tf.child_frame_id = odom.child_frame_id
-            translation = Vector3(
-                x=odom.pose.pose.position.x,
-                y=odom.pose.pose.position.y,
-                z=odom.pose.pose.position.z
-            )
+            translation = Vector3(x=odom.pose.pose.position.x,
+                                  y=odom.pose.pose.position.y,
+                                  z=odom.pose.pose.position.z)
             self.last_tf.transform.translation = translation
-            self.last_tf.transform.rotation = Quaternion(
-                x=ego_quat[0],
-                y=ego_quat[1],
-                z=ego_quat[2],
-                w=ego_quat[3]
-            )
+            self.last_tf.transform.rotation = Quaternion(x=ego_quat[0],
+                                                         y=ego_quat[1],
+                                                         z=ego_quat[2],
+                                                         w=ego_quat[3])
             self.tf_broadcaster.sendTransform(self.last_tf)
 
     def __init__(self):
         super().__init__('sim_bridge_node')
+
+        self.declare_parameters(namespace='interface',
+                                parameters=[('drive_mode', 'carla_autopilot')
+                                            ])
+
+        mode = self.get_parameter('interface.drive_mode').value
+        self.get_logger().info("MODE IS:"+mode)
 
         # Define sensors
         self.front_lidar: carla.ServerSideSensor
@@ -489,129 +463,74 @@ class SimBridgeNode(Node):
         self.reverse_cmd = False
 
         # Create our publishers
-        self.birds_eye_cam_pub = self.create_publisher(
-            Image,
-            '/carla/birds_eye_rgb',
-            10
-        )
+        self.birds_eye_cam_pub = self.create_publisher(Image,
+                                                       '/carla/birds_eye_rgb',
+                                                       10)
 
-        self.front_depth_pub = self.create_publisher(
-            Image,
-            '/camera_front/depth',
-            10
-        )
+        self.front_depth_pub = self.create_publisher(Image,
+                                                     '/camera_front/depth', 10)
 
         self.front_lidar_pub = self.create_publisher(
-            PointCloud2,
-            '/lidar_front/points_raw',
-            10
-        )
+            PointCloud2, '/lidar_front/points_raw', 10)
 
-        self.front_rgb_pub = self.create_publisher(
-            Image,
-            '/camera_front/rgb',
-            10
-        )
+        self.front_rgb_pub = self.create_publisher(Image, '/camera_front/rgb',
+                                                   10)
 
-        self.rear_lidar_pub = self.create_publisher(
-            PointCloud2,
-            '/lidar_rear/points_raw',
-            10
-        )
+        self.rear_lidar_pub = self.create_publisher(PointCloud2,
+                                                    '/lidar_rear/points_raw',
+                                                    10)
 
-        self.gnss_pub = self.create_publisher(
-            Odometry,
-            '/gnss/odom',
-            10
-        )
+        self.gnss_pub = self.create_publisher(Odometry, '/gnss/odom', 10)
 
         self.ground_truth_odom_pub = self.create_publisher(
-            Odometry,
-            '/carla/odom',
-            10
-        )
+            Odometry, '/carla/odom', 10)
 
         self.ground_truth_obst_pub = self.create_publisher(
-            Obstacle3DArray,
-            '/objects',
-            10
-        )
+            Obstacle3DArray, '/objects', 10)
 
-        self.primary_imu_pub = self.create_publisher(
-            Imu,
-            '/imu_primary/data',
-            10
-        )
+        self.primary_imu_pub = self.create_publisher(Imu, '/imu_primary/data',
+                                                     10)
 
         self.speedometer_pub = self.create_publisher(
-            TwistWithCovarianceStamped,
-            '/can/speedometer_twist',
-            10
-        )
+            TwistWithCovarianceStamped, '/can/speedometer_twist', 10)
 
         self.steering_angle_pub = self.create_publisher(
-            SteeringPosition,
-            '/can/steering_angle',
-            10
-        )
+            SteeringPosition, '/can/steering_angle', 10)
 
-        self.sem_lidar_pub = self.create_publisher(
-            PointCloud2,
-            '/lidar/semantic',
-            10
-        )
+        self.sem_lidar_pub = self.create_publisher(PointCloud2,
+                                                   '/lidar/semantic', 10)
 
         self.sem_road_lidar_pub = self.create_publisher(
-            PointCloud2,
-            '/lidar/semantic/road',
-            10
-        )
+            PointCloud2, '/lidar/semantic/road', 10)
 
         self.steering_command_sub = self.create_subscription(
-            SteeringPosition,
-            '/command/steering_position',
-            self.steering_command_cb,
-            10
-        )
+            SteeringPosition, '/command/steering_position',
+            self.steering_command_cb, 10)
 
         self.throttle_command_sub = self.create_subscription(
-            PeddlePosition,
-            '/command/throttle_position',
-            self.throttle_command_cb,
-            10
-        )
+            PeddlePosition, '/command/throttle_position',
+            self.throttle_command_cb, 10)
 
         self.brake_command_sub = self.create_subscription(
-            PeddlePosition,
-            '/command/brake_position',
-            self.brake_command_cb,
-            10
-        )
+            PeddlePosition, '/command/brake_position', self.brake_command_cb,
+            10)
 
         self.reverse_command_sub = self.create_subscription(
-            Bool,
-            '/command/reverse',
-            self.reverse_command_cb,
-            10
-        )
+            Bool, '/command/reverse', self.reverse_command_cb, 10)
 
         self.ground_truth_odom_timer = self.create_timer(
-            GROUND_TRUTH_ODOM_PERIOD, self.true_odom_cb
-        )
+            GROUND_TRUTH_ODOM_PERIOD, self.true_odom_cb)
 
         self.command_timer = self.create_timer(0.1, self.process_command)
 
         self.ground_truth_objects_timer = self.create_timer(
-            GROUND_TRUTH_OBJ_PERIOD, self.publish_true_boxes
-        )
+            GROUND_TRUTH_OBJ_PERIOD, self.publish_true_boxes)
 
-        self.speedometer_timer = self.create_timer(
-            SPEEDOMETER_PERIOD, self.pub_speedometer
-        )
+        self.speedometer_timer = self.create_timer(SPEEDOMETER_PERIOD,
+                                                   self.pub_speedometer)
 
-        self.steering_angle_timer = self.create_timer(
-            STEERING_ANGLE_PERIOD, self.pub_steering_angle
-        )
+        self.steering_angle_timer = self.create_timer(STEERING_ANGLE_PERIOD,
+                                                      self.pub_steering_angle)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -621,23 +540,24 @@ class SimBridgeNode(Node):
 
     def connect_to_carla(self):
         # Connect to client, load world
-        self.get_logger().info("Connecting to CARLA on port {}".format(CLIENT_PORT))
+        self.get_logger().info(
+            "Connecting to CARLA on port {}".format(CLIENT_PORT))
         self.client = carla.Client('localhost', CLIENT_PORT)
         self.client.set_timeout(20.0)
-        
+
+        drive_mode = self.get_parameter('interface.drive_mode').value
+
         scenario_manager = sc.ScenarioManager(self)
-        scenario_manager.car_stopped_at_stop_junction()
+        scenario_manager.normal(carla_autopilot_enabled = (drive_mode=="carla_autopilot"))
 
         self.get_logger().info("Started scenario!")
-        
 
     def add_ego_sensors(self):
 
         front_lidar_tf = carla.Transform(
             carla.Location(x=3.4, y=0.902, z=0.7876),
             # DEGREES, left-handed. Come on, CARLA...
-            carla.Rotation(roll=0.85943669, pitch=1.71887339, yaw=83.0788803)
-        )
+            carla.Rotation(roll=0.85943669, pitch=1.71887339, yaw=83.0788803))
 
         # Attach Lidar sensor
         lidar_bp = self.blueprint_library.find('sensor.lidar.ray_cast')
@@ -646,9 +566,10 @@ class SimBridgeNode(Node):
         lidar_bp.set_attribute('rotation_frequency', '40')
         # lidar_bp.set_attribute('points_per_second', '11,200')
         relative_transform = front_lidar_tf
-        self.front_lidar = self.world.spawn_actor(
-            lidar_bp, relative_transform, attach_to=self.ego)
-        self.front_lidar.listen(self.front_lidar_cb)
+        self.front_lidar = self.world.spawn_actor(lidar_bp,
+                                                  relative_transform,
+                                                  attach_to=self.ego)
+        # self.front_lidar.listen(self.front_lidar_cb)
 
         # Semantic lidar
         sem_lidar_bp = self.blueprint_library.find(
@@ -660,8 +581,9 @@ class SimBridgeNode(Node):
         # sem_lidar_bp.set_attribute('rotation_frequency', '40')
         # sem_lidar_bp.set_attribute('points_per_second', '11,200') # 3.4 -0.902 0.7876
         relative_transform = front_lidar_tf
-        self.sem_lidar = self.world.spawn_actor(
-            sem_lidar_bp, relative_transform, attach_to=self.ego)
+        self.sem_lidar = self.world.spawn_actor(sem_lidar_bp,
+                                                relative_transform,
+                                                attach_to=self.ego)
         self.sem_lidar.listen(self.sem_lidar_cb)
 
         # Attach GNSS sensor
@@ -674,37 +596,42 @@ class SimBridgeNode(Node):
         gnss_bp.set_attribute('noise_lon_stddev', str(GNSS_LON_SDEV))
         gnss_bp.set_attribute('noise_lon_bias', str(GNSS_LON_BIAS))
         gnss_bp.set_attribute('sensor_tick', str(GNSS_PERIOD))
-        relative_transform = carla.Transform(carla.Location(
-            x=0.0, y=0.0, z=0.0), carla.Rotation())  # TODO: Fix transform
-        self.gnss = self.world.spawn_actor(
-            gnss_bp, relative_transform, attach_to=self.ego)
+        relative_transform = carla.Transform(
+            carla.Location(x=0.0, y=0.0, z=0.0),
+            carla.Rotation())  # TODO: Fix transform
+        self.gnss = self.world.spawn_actor(gnss_bp,
+                                           relative_transform,
+                                           attach_to=self.ego)
         self.gnss.listen(self.gnss_cb)
 
         # Attach bird's-eye camera
         birds_eye_cam_bp = self.blueprint_library.find('sensor.camera.rgb')
         birds_eye_cam_bp.set_attribute('sensor_tick', str(0.1))
-        relative_transform = carla.Transform(carla.Location(
-            x=0.0, y=0.0, z=20.0), carla.Rotation(pitch=-90.0))
-        self.birds_eye_cam = self.world.spawn_actor(
-            birds_eye_cam_bp, relative_transform, attach_to=self.ego)
+        relative_transform = carla.Transform(
+            carla.Location(x=0.0, y=0.0, z=20.0), carla.Rotation(pitch=-90.0))
+        self.birds_eye_cam = self.world.spawn_actor(birds_eye_cam_bp,
+                                                    relative_transform,
+                                                    attach_to=self.ego)
         self.birds_eye_cam.listen(self.birds_eye_cam_cb)
 
         # Attach front rgb camera
         front_rgb_bp = self.blueprint_library.find('sensor.camera.rgb')
         front_rgb_bp.set_attribute('sensor_tick', str(0.1))
-        relative_transform = carla.Transform(carla.Location(
-            x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
-        self.front_rgb = self.world.spawn_actor(
-            front_rgb_bp, relative_transform, attach_to=self.ego)
+        relative_transform = carla.Transform(
+            carla.Location(x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
+        self.front_rgb = self.world.spawn_actor(front_rgb_bp,
+                                                relative_transform,
+                                                attach_to=self.ego)
         self.front_rgb.listen(self.front_rgb_cb)
 
         # Attach front depth camera
         front_depth_bp = self.blueprint_library.find('sensor.camera.depth')
         front_depth_bp.set_attribute('sensor_tick', str(0.1))
-        relative_transform = carla.Transform(carla.Location(
-            x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
-        self.front_depth = self.world.spawn_actor(
-            front_depth_bp, relative_transform, attach_to=self.ego)
+        relative_transform = carla.Transform(
+            carla.Location(x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
+        self.front_depth = self.world.spawn_actor(front_depth_bp,
+                                                  relative_transform,
+                                                  attach_to=self.ego)
         self.front_depth.listen(self.front_depth_cb)
 
         # Attach front camera's IMU
@@ -718,10 +645,11 @@ class SimBridgeNode(Node):
         # primary_imu_bp.set_attribute('noise_gyro_stddev_z', str(0.03))
         primary_imu_bp.set_attribute('sensor_tick', str(0.025))
         # TODO: Add covariance. WSH.
-        relative_transform = carla.Transform(carla.Location(
-            x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
-        self.primary_imu = self.world.spawn_actor(
-            primary_imu_bp, relative_transform, attach_to=self.ego)
+        relative_transform = carla.Transform(
+            carla.Location(x=2.0, y=0.0, z=2.0), carla.Rotation(pitch=0.0))
+        self.primary_imu = self.world.spawn_actor(primary_imu_bp,
+                                                  relative_transform,
+                                                  attach_to=self.ego)
         self.primary_imu.listen(self.primary_imu_cb)
 
 

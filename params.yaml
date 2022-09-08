@@ -1,0 +1,4 @@
+interface:
+  /**:
+    ros__parameters:
+      drive_mode: "carla_autopilot" # "manual", "carla_autopilot", "autosteer", "automatic"

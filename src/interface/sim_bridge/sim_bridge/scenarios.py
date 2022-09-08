@@ -70,11 +70,11 @@ class ScenarioManager:
 
     # ALL SCENARIOS
 
-    def normal(self, num_ped=0, num_cars=0):
+    def normal(self, num_ped=0, num_cars=0, carla_autopilot_enabled=False):
         self.reset_vars()
 
         self.sim_bridge.world = self.sim_bridge.client.load_world(self.world)
-        self.setup_ego(self.ego_spawn[0], self.ego_spawn[1], self.ego_spawn[2], self.ego_yaw)
+        self.setup_ego(self.ego_spawn[0], self.ego_spawn[1], self.ego_spawn[2], self.ego_yaw, carla_autopilot=carla_autopilot_enabled)
         self.add_vehicles([None] * num_cars)
         self.add_pedestrians([None] * num_ped)
 
