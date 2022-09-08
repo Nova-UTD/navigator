@@ -26,54 +26,6 @@ def generate_launch_description():
     )
 
     # INTERFACE
-    epas_reporter = Node(
-        package='epas_translator',
-        executable='reporter',
-        parameters=[(path.join(param_dir,"interface","epas_reporter.param.yaml"))],
-        remappings=[
-            ("incoming_can_frames", "incoming_can_frames"),
-            ("real_steering_angle", "real_steering_angle")
-        ]
-    )
-
-    epas_controller = Node(
-        package='voltron_epas_steering',
-        executable='controller',
-        parameters=[(path.join(param_dir,"interface","epas_controller.param.yaml"))],
-        remappings=[
-            ("steering_power", "steering_power"),
-            ("outgoing_can_frames", "outgoing_can_frames")
-        ]
-    )
-
-    speedometer_reporter = Node(
-        package='can_translation',
-        executable='float_reporter',
-        parameters=[(path.join(param_dir,"interface","speedometer_reporter.param.yaml"))],
-        remappings=[
-            ("incoming_can_frames", "incoming_can_frames_can1"),
-            ("result_topic", "vehicle_speedometer")
-        ]
-    )
-    
-    # steering_pid
-    can = Node(
-        package='voltron_can',
-        executable='interface',
-        parameters=[(path.join(param_dir,"interface","can_interface.param.yaml"))],
-        remappings=[
-        ],
-        arguments=[interface]
-    )
-
-    gnss = Node(
-        package='nova_gps',
-        executable='interface',
-        parameters=[],
-        remappings=[],
-        arguments=['/dev/ttyACM0']
-    )
-
     carla = Node(
         package='sim_bridge',
         executable='sim_bridge_node'
@@ -103,16 +55,6 @@ def generate_launch_description():
         ]
     )
 
-    # odom_bl_ukf = Node(
-    #     package='robot_localization',
-    #     executable='ukf_node',
-    #     name='localization_map_odom',
-    #     parameters=[(path.join(param_dir,"atlas","odom_bl.param.yaml"))],
-    #     remappings=[
-    #         ("/imu0", "/imu_primary/data")
-    #     ]
-    # )
-
     # MAPPING
     lanelet_server = Node(
         package='lanelet2_map_provider',
@@ -130,13 +72,6 @@ def generate_launch_description():
         ],
         output='screen'
     )
-
-    # lanelet_visualizer = Node(
-    #     package='lanelet2_map_provider',
-    #     executable='lanelet2_map_visualizer_exe',
-    #     name='lanelet2_map_visualizer_node',
-    #     namespace='had_maps'
-    # )
 
     pcd_loader = Node(
         package='map_publishers',
@@ -166,35 +101,6 @@ def generate_launch_description():
     )
 
     # PERCEPTION
-    lidar_driver_front = Node(
-        package='velodyne_driver',
-        executable='velodyne_driver_node',
-        namespace='lidar_front',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_front.param.yaml"))]
-    )
-    lidar_pointcloud_front = Node(
-        package='velodyne_pointcloud',
-        executable='velodyne_convert_node',
-        namespace='lidar_front',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_front.param.yaml"))]
-    )
-    lidar_driver_rear = Node(
-        package='velodyne_driver',
-        executable='velodyne_driver_node',
-        namespace='lidar_rear',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_driver_rear.param.yaml"))]
-    )
-    lidar_pointcloud_rear = Node(
-        package='velodyne_pointcloud',
-        executable='velodyne_convert_node',
-        namespace='lidar_rear',
-        parameters=[(path.join(launch_dir, "param", "perception","lidar_pointcloud_rear.param.yaml"))]
-    )
-
-    curb_detector = Node(
-        package='curb_detection',
-        executable='curb_detector'
-    )
     
     # PLANNING
     route_planner = Node(
@@ -325,15 +231,9 @@ def generate_launch_description():
         unified_controller,
 
         # INTERFACE
-        # can,
         carla,
-        # epas_controller,
-        # epas_reporter,
-        # gnss,
-        # speedometer_reporter,
 
         # LOCALIZATION
-        # ndt,
         map_odom_ukf,
 
         # MAPPING
@@ -345,17 +245,8 @@ def generate_launch_description():
         visuals,
 
         # PERCEPTION
-        # lidar_driver_front,
-        # lidar_pointcloud_front,
-        # lidar_driver_rear,
-        # lidar_pointcloud_rear,
-        # curb_detector,
 
         # PLANNING
-        # route_planner,
-        # path_planner,
-        # lane_planner,
-        # parking_planner,
         zone_fusion,
         obstacle_zoner,
         behavior_planner,

@@ -58,7 +58,6 @@ import sim_bridge.scenarios as sc
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
-CLIENT_WORLD = 'Town07'
 
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
@@ -623,9 +622,13 @@ class SimBridgeNode(Node):
     def connect_to_carla(self):
         # Connect to client, load world
         self.get_logger().info("Connecting to CARLA on port {}".format(CLIENT_PORT))
-        client = carla.Client('localhost', CLIENT_PORT)
-        client.set_timeout(20.0)
-        self.world = client.load_world(CLIENT_WORLD)
+        self.client = carla.Client('localhost', CLIENT_PORT)
+        self.client.set_timeout(20.0)
+        
+        scenario_manager = sc.ScenarioManager(self)
+        scenario_manager.car_stopped_at_stop_junction()
+
+        self.get_logger().info("Started scenario!")
         
 
     def add_ego_sensors(self):
