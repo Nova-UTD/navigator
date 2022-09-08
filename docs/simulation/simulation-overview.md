@@ -4,7 +4,7 @@ title: Simulation
 nav_order: 5
 ---
 
-# Controls overview
+# Simulation overview
 {: .no_toc }
 
 ## Table of contents
