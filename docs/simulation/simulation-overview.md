@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Controls
+title: Simulation
 nav_order: 5
 ---
 
