@@ -50,8 +50,7 @@ def generate_launch_description():
         parameters=[(path.join(param_dir,"atlas","map_odom.param.yaml"))],
         remappings=[
             ("/odom0", "/gnss/odom"),
-            ("/imu0", "/imu_primary/data"),
-            ("/twist0", "/can/speedometer_twist")
+            ("/imu0", "/imu_primary/data")
         ]
     )
 

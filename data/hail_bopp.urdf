@@ -16,7 +16,7 @@
   <link name="base_link">
     <visual>
       <geometry>
-        <mesh filename="file:///home/main/navigator/data/hailbopp.obj" scale="1.0 1.0 1.0"/>
+        <mesh filename="file://hailbopp.obj" scale="1.0 1.0 1.0"/>
       </geometry>
       <material name="maroon"/>
       <origin xyz="-2.6 0 0.28" rpy="0 0 1.570796"/>
