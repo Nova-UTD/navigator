@@ -4,7 +4,7 @@ title: Simulation
 nav_order: 5
 ---
 
-# Simulation overview
+# Simulation overview:
 {: .no_toc }
 
 ## Table of contents
@@ -34,7 +34,7 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
 
 
 
-## Launching the simulator & running Navigator
+## Launching the simulator & running Navigator:
 
 * Launching CARLA:
 
@@ -90,7 +90,7 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
     *The most up-to-date information on our bridge's capabilities* can be found [at the top of the script itself](https://github.com/Nova-UTD/navigator         /blob/dev/src/interface/sim_bridge/sim_bridge/sim_bridge_node.py#L3).
 
 
-## Using the Simulator
+## Using the Simulator:
 
 - You can control our ego vehicle with `ros2 run manual_control manual_control_node`
    - At the moment, this only supports keyboard control through NoMachine or similar, ***not SSH***.
@@ -99,7 +99,7 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
    - Don't forget to rebuild the package or use `colcon build --symlink-install` (recommended).
    - ROS param support in the works.
 
-## Troubleshooting
+## Troubleshooting:
 
 - If you get a "pynput" error, try running `pip3 install pynput`.
 - If you get a CARLA segmentation fault, it's likely you just need to restart CARLA. This will be fixed... eventually. This should only happen after starting the bridge 10 times or so, and should not happen while the bridge is running.
