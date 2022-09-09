@@ -17,10 +17,10 @@ nav_order: 5
 
 Put your overview information here.
 
-## Section A
+## Simulation Enviroment
 This is some text.
 
-## Section B
+## Launching the simulator
 This is some text.
 
 ### Here's an example from our code
@@ -41,5 +41,5 @@ void MotionPlannerNode::send_message() {
 }
 ```
 
-## Section C
+## Using the Simulator
 This is some text.
