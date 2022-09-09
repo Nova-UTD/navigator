@@ -62,7 +62,15 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
     
 * Launching the stack:
 
-    1. Run the rest of our stack. The sim_bridge will publish sensor data just as if you were driving on campus, and it will similary accept commands from      our [standard topics](https://github.com/Nova-UTD/navigator/wiki/Topic-and-transform-structure). As of writing, our custom bridge publishes:
+    1. Open a new terminal window.
+
+    2. Navigate to the root directory of Navigator.
+
+    3. Run `source /install/setup.bash`
+
+    4. Run `ros2 launch carla.launch.py`
+
+    5. Check RVIZ and terminal output. The sim_bridge will publish sensor data just as if you were driving on campus, and it will similary accept commands      from our [standard topics](https://github.com/Nova-UTD/navigator/wiki/Topic-and-transform-structure). As of writing, our custom bridge publishes:
 
     - GNSS (GPS)
     - IMU
