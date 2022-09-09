@@ -94,12 +94,12 @@ class ScenarioManager:
     # Works (Commit 503)
     # Car should stop before continuing
     # LK -> SG -> SD -> IJ -> LK
-    def upcoming_stop_sign(self):
+    def upcoming_stop_sign(self, carla_autopilot_enabled=True):
         self.reset_vars()
         self.ego_spawn = (-152, -79, 20)
         
         self.sim_bridge.world = self.sim_bridge.client.load_world(self.world)
-        self.setup_ego(self.ego_spawn[0], self.ego_spawn[1], self.ego_spawn[2], self.ego_yaw)
+        self.setup_ego(self.ego_spawn[0], self.ego_spawn[1], self.ego_spawn[2], self.ego_yaw, carla_autopilot=carla_autopilot_enabled)
 
     # Works (Commit 503)
     # Car should slow down then stop completely
