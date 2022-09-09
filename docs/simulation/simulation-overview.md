@@ -59,6 +59,12 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
     [INFO] [1645631990.794344351] [sim_bridge_node]: Connecting to CARLA on port 2000
     [INFO] [1645631993.616481805] [sim_bridge_node]: Spawning ego vehicle (vehicle.audi.etron) @ Transform(Location(x=-64.644844, y=24.471010, z=0.600000),     Rotation(pitch=0.000000, yaw=0.159198, roll=0.000000))
     ```
+
+* Launching RVIZ:
+
+    1. Open a new terminal instance and source the setup script via a command like: `. navigator/install/setup.bash `
+    2. Run: `rviz2'
+    3. Select File followed by Open Config Select default.rviz from the share folder. It is recommended that you have your own copy of this as well             for your own configuration.
     
 * Launching the stack:
 
@@ -86,7 +92,6 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
 
 ## Using the Simulator
 
-## Extras
 - You can control our ego vehicle with `ros2 run manual_control manual_control_node`
    - At the moment, this only supports keyboard control through NoMachine or similar, ***not SSH***.
    - If you get a "pynput" error, try running `pip3 install pynput`.
@@ -95,5 +100,6 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
    - ROS param support in the works.
 
 ## Troubleshooting
+
 - If you get a "pynput" error, try running `pip3 install pynput`.
 - If you get a CARLA segmentation fault, it's likely you just need to restart CARLA. This will be fixed... eventually. This should only happen after starting the bridge 10 times or so, and should not happen while the bridge is running.
