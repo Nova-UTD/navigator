@@ -51,6 +51,7 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
     1. In a seperate terminal window, launch `sim_bridge_node` by:
 
         a. Sourcing Navigator via a command such as `. navigator/install/setup.bash `
+        
         b. Run the bridge by issuing the follwing: `ros2 run sim_bridge sim_bridge_node`
         
     2. If done correctly, output should look something like this:
