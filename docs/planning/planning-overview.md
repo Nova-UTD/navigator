@@ -114,6 +114,7 @@ void MotionPlannerNode::send_message() {
   and then remove them when it is safe to proceed. 
 
   ## Strengths and Weaknesses
+  
   Strengths:
    * Zones are an easily understood description of what the car is doing
    * Zones can accomplish any sort of stop-go behavior we need, including 
