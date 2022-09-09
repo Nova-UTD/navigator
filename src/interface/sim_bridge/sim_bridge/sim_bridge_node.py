@@ -548,7 +548,7 @@ class SimBridgeNode(Node):
         drive_mode = self.get_parameter('interface.drive_mode').value
 
         scenario_manager = sc.ScenarioManager(self)
-        scenario_manager.normal(carla_autopilot_enabled = (drive_mode=="carla_autopilot"))
+        scenario_manager.upcoming_stop_sign()
 
         self.get_logger().info("Started scenario!")
 
