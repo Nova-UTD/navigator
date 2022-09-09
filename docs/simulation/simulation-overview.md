@@ -15,7 +15,10 @@ nav_order: 5
 
 ---
 
-Put your overview information here.
+Before demonstrating our codebase on the vehicle, in the real world, we must first test our stack in a virtual one. The following documentation outlines essential CARLA usage and syntax, to allow for simulating our stack in a virtual enviroment. Nova utilizes CARLA for virtualization. For further information on CARLA, and to learn more about advanced usage, please see the following links: 
+
+- https://carla.org/
+- https://carla.readthedocs.io/en/latest/
 
 ## Simulation Enviroment
 This is some text.
