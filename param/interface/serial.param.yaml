@@ -1,4 +1,0 @@
----
-/**:
-  ros__parameters:
-    device_name: /dev/ttyACM0

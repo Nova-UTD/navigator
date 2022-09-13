@@ -25,70 +25,56 @@ using visualization_msgs::msg::MarkerArray;
 using voltron_msgs::msg::FinalPath;
 using namespace std::chrono_literals;
 
-#define MAP_PARAM "map_xodr_file_path"
-#define SPEED_PARAM "cruising_speed_ms"
-#define SPEED_BUMP_PARAM "speed_bump_ms"
-#define ROUTE_INFO_PARAMS "route_info_params"
-
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 
-	// Declare parameters
-	this->declare_parameter<std::string>(MAP_PARAM, "data/maps/grand_loop/grand_loop.xodr");
-	this->declare_parameter<double>(SPEED_PARAM, 10.0);
-    this->declare_parameter<double>(SPEED_BUMP_PARAM, 2.0);
-	this->declare_parameter<std::vector<string>>(ROUTE_INFO_PARAMS, std::vector<string> ({}));
-
-	std::string xodr_path;
-	std::vector<string> route_info_params;
-	this->get_parameter<std::string>(MAP_PARAM, xodr_path);
-	this->get_parameter<double>(SPEED_PARAM, cruising_speed);
-    this->get_parameter<double>(SPEED_BUMP_PARAM, speed_bump_speed);
-	this->get_parameter<std::vector<string>>(ROUTE_INFO_PARAMS, route_info_params);
-	
-
-	auto route_info = std::vector<PathSection>();
-	for (auto it = std::begin(route_info_params); it != std::end(route_info_params); it+=3)
-		route_info.push_back(PathSection(*it, std::stoi(*(it+1)), std::stod(*(it+2))));
-
+	std::string xodr_path = "data/maps/town07/Town07_Opt.xodr";
 	paths_pub = this->create_publisher<FinalPath>("paths", 1);
-	
+	odom_sub = this->create_subscription<Odometry>("/odometry/filtered", 1, [this](Odometry::SharedPtr msg) {
+		cached_odom = msg;
+	});
 	viz_pub = this->create_publisher<MarkerArray>("path_pub_viz", 1);
+    
+	auto route_1_road_ids = std::vector<std::string>{
+		"21","39","57","584","7","693","6","509","5","4",
+        "686","601","34","532","35","359","40","634","50","10","9","976",
+        "36","210","46","436","59","168","60","464","61","559","62",
+        "352","24","467","20","920",
+	};
+	auto route_1_lane_ids = std::vector<int> {
+		-1,-1,-1,-1,1,1,1,1,1,1,
+        1,-1,-1,-1,-1,-1,1,1,-3,-3,-3,-1,
+        -1,-1,1,1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,
+	};
 
-    for (auto s : route_info) {
-        all_ids.insert(s.road_id);
+    for (auto s : route_1_road_ids) {
+        all_ids.insert(s);
     }
-	path_pub_timer = this->create_wall_timer(10s, std::bind(&PathPublisherNode::generatePaths, this));
+	path_pub_timer = this->create_wall_timer(0.5s, std::bind(&PathPublisherNode::generatePaths, this));
 
 	// Read map from file, using our path param
 	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
 	map = navigator::opendrive::load_map(xodr_path)->map;
 
-	this->route1 = generate_path(route_info, map);
+	
+
+	this->route1 = generate_path(route_1_road_ids, route_1_lane_ids, map);
 	this->path = this->route1;
 }
 
-voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSection> &route_info, navigator::opendrive::OpenDriveMapPtr map)
+voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, navigator::opendrive::OpenDriveMapPtr map)
 {
 	std::vector<odr::Vec3D> route;
 	FinalPath costed_path;
 	double step = 0.25;
-	for (auto& section : route_info) {
-		std::string id = section.road_id;
-		int lane_id = section.lane_id;
+	for (size_t i = 0; i < road_ids.size(); i++) {
+		std::string id = road_ids[i];
+		int lane_id = lane_ids[i];
 		auto road = map->roads[id];
-        if (road == nullptr)
-        {
-            RCLCPP_WARN(this->get_logger(), "NO ROAD FOUND FOR ROAD %s", id.c_str());
-            continue;
-        }
-        std::shared_ptr<odr::LaneSection> lanesection = road->get_lanesection(section.lanesection);
-        if (lanesection == nullptr)
-        {
-            RCLCPP_WARN(this->get_logger(), "NO LANESECTION FOR ROAD %s", id.c_str());
-            continue;
-        }
-        odr::LaneSet laneset = lanesection->get_lanes();
-
+		//there is only one lanesection per road on this map
+		std::shared_ptr<odr::LaneSection> lanesection = *(road->get_lanesections().begin());
+		odr::LaneSet laneset = lanesection->get_lanes();
+		//RCLCPP_INFO(this->get_logger(), "There are %d lanes for road %s", laneset.size(), id.c_str());
 		std::shared_ptr<odr::Lane> lane = nullptr;
         //loop through the laneset to find a pointer to the lane.
 		for (auto l : laneset) {
@@ -98,16 +84,14 @@ voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<PathSe
 			}
 		}
 		if (lane == nullptr) {
-			RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s", id.c_str());
+			RCLCPP_WARN(this->get_logger(), "NO LANE FOR ROAD %s (i=%d)", id.c_str(), i);
 			continue;
 		}
-
 		odr::Line3D centerline = navigator::opendrive::get_centerline_as_xy(*lane, lanesection->s0, lanesection->get_end(), step, lane_id>0);
 
 		for (odr::Vec3D point : centerline) {
 			route.push_back(point);
-            //if a speed is defined, use that over the default cruising speed
-			costed_path.speeds.push_back(section.speed < 0 ? cruising_speed : section.speed);
+			costed_path.speeds.push_back(10);
 		}
 	}
 	RCLCPP_INFO(this->get_logger(), "generated path");
@@ -145,9 +129,8 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 	marker.points = path.points;
 
 	// Set visual display. Not sure if this is needed
-	marker.scale.x = 0.5;
-    marker.scale.y = 0.5;
-	marker.color.a = 0.5;
+	marker.scale.x = 1;
+	marker.color.a = 1.0;
 	marker.color.r = 1.0;
 	marker.color.g = 1.0;
 	marker.color.b = 0;
@@ -161,8 +144,30 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 
 
 void PathPublisherNode::generatePaths() {
+	// Wait until odometry data is available
+	if (cached_odom == nullptr) {
+		RCLCPP_WARN(get_logger(), "Odometry not yet received, skipping...");
+		return;
+	}
+	Point current_pos = cached_odom->pose.pose.position;
+
+	auto twist = cached_odom->twist.twist.linear;
+	double speed = std::sqrt(twist.x*twist.x+twist.y*twist.y);
 
 	paths_pub->publish(this->path);
 	publish_paths_viz(this->path);
+
+
+	auto currentLane = navigator::opendrive::get_lane_from_xy_with_route(map, current_pos.x, current_pos.y, all_ids);
+	if (currentLane == nullptr) {
+		RCLCPP_WARN(get_logger(), "Lane could not be located.");
+		return;
+	}
+	auto currentRoadId = currentLane->road.lock()->id;
 	
+	RCLCPP_INFO(get_logger(), "(%.2f, %.2f) Road %s, Current lane: %i", current_pos.x, current_pos.y, currentRoadId.c_str(), currentLane->id);
+	//if (currentRoadId == "10" && this->path == this->route1) {
+	//	RCLCPP_INFO(get_logger(), "SWITCHED PATH");
+	//	this->path = this->route2;
+	//}
 }

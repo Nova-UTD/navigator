@@ -1,3 +1,4 @@
+# templated from Autoware perception/filters/point_cloud_fusion_nodes/param/test.param.yaml
 /**:
   ros__parameters:
     number_of_sources: 2

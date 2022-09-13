@@ -35,7 +35,7 @@ protected:
         obstacle_drawer_node = std::make_shared<navigator::obstacle_drawer::ObstacleDrawer>();
 
         // create an example cube obstacle going into the obstacle_drawer_node
-        nova_obstacle.label = navigator::obstacle_classes::PERSON;
+        nova_obstacle.label = navigator::obstacle_classes::PEDESTRIAN;
         
         // TO-DO: represent nova_obstacle as a cube
     }

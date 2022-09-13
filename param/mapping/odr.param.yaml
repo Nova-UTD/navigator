@@ -1,5 +1,5 @@
 /**:
   ros__parameters:
-    xodr_path: "data/maps/grand_loop/grand_loop.xodr"
+    xodr_path: "data/maps/town07/Town07_Opt.xodr"
     draw_detail: 1.0
     nearby_search_radius: 20.0

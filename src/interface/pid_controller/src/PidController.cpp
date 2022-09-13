@@ -15,11 +15,11 @@
 
 using namespace Voltron::PidController;
 
-PidController::PidController(float KP, float KI, float KD, float integral_cap) {
+PidController::PidController(float KP, float KI, float KD, float time_delta_cap_seconds) {
   this->KP = KP;
   this->KI = KI;
   this->KD = KD;
-  this->integral_cap = integral_cap;
+  this->time_delta_cap_seconds = time_delta_cap_seconds;
   this->target = 0;
   this->measurement = 0;
   this->integral = 0;
@@ -32,13 +32,15 @@ void PidController::set_target(float target) {this->target = target;}
 void PidController::set_measurement(float measurement) {this->measurement = measurement;}
 
 float PidController::compute(float time_delta_seconds) {
+  if(time_delta_seconds > this->time_delta_cap_seconds) {
+    time_delta_seconds = time_delta_cap_seconds;
+  }
+
   float error = this->target - measurement;
 
   float P = KP * error;
 
   this->integral += (error * time_delta_seconds);
-  this->integral = std::clamp
-    (this->integral, - this->integral_cap, this->integral_cap);
   float I = KI * this->integral;
 
   float derivative = (this->last_error - error) / time_delta_seconds;

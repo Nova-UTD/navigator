@@ -21,12 +21,10 @@
 #include "Math.hpp"
 #include "Road.h"
 #include "RefLine.h"
-#include "Junction.h"
 
 #include <string>
 #include <vector>
 #include <cmath>
-#include <unordered_set>
 
 namespace navigator
 {
@@ -45,7 +43,5 @@ namespace navigator
     std::vector<std::shared_ptr<odr::Lane>> get_nearby_lanes(OpenDriveMapPtr map, double x, double y, double distance);
 
     void parse_signals(std::unordered_map<std::string, std::vector<Signal>>& dst, const std::string &filename);
-
-    std::unordered_set<std::string> get_incoming_roads(OpenDriveMapPtr map, std::string junction_id);
   }
 }

@@ -1,9 +1,0 @@
----
-/**:
-  ros__parameters:
-    throttle_axis: 5
-    brake_axis: 2
-    steering_axis: 3
-    enable_button: 4
-    max_steering_angle: 0.506
-    junction_enable_button: 6

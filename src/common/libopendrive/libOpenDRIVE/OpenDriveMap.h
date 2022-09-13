@@ -36,8 +36,8 @@ public:
     std::string        proj4 = "";
     pugi::xml_document xml_doc;
 
-    double x_offs = -253;
-    double y_offs = 395;
+    double x_offs = 0;
+    double y_offs = 0;
 
     std::map<std::string, std::shared_ptr<Road>>     roads;
     std::map<std::string, std::shared_ptr<Junction>> junctions;

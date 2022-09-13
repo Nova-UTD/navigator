@@ -47,7 +47,7 @@ using namespace std::chrono_literals;
 OdrVisualizerNode::OdrVisualizerNode() : Node("odr_visualizer_node")
 {
 	// Handle parameters
-	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/grand_loop/grand_loop.xodr");
+	this->declare_parameter<std::string>("xodr_path", "/home/main/navigator/data/maps/town07/Town07_Opt.xodr");
 	this->declare_parameter<double>("draw_detail", 1.0);
 	this->declare_parameter<double>("nearby_search_radius", 20.0);
 

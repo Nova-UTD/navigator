@@ -1,3 +1,4 @@
+# Templated from Autoware drivers/velodyne_nodes/param/test.param.yaml
 /**:
   ros__parameters:
     ip: "0.0.0.0"

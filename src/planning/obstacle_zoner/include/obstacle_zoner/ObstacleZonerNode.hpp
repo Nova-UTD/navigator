@@ -5,10 +5,6 @@
 #include "voltron_msgs/msg/zone.hpp"
 #include "voltron_msgs/msg/obstacle3_d_array.hpp"
 #include "zone_lib/zone.hpp"
-#include "tf2/convert.h"
-#include "tf2/exceptions.h"
-#include "tf2_ros/transform_listener.h"
-#include "tf2_ros/buffer.h"
 
 using ZoneArray = voltron_msgs::msg::ZoneArray;
 using Zone = voltron_msgs::msg::Zone;
@@ -28,7 +24,7 @@ public:
 
 private:  
     //extra space to put around obstacles to avoid near misses
-    static constexpr double zone_padding = 2;
+    static constexpr double zone_padding = 0.5f;
     //size of the slow zone that goes around around the padded stop zone
     static constexpr double slow_extent = 1;
     static constexpr double slow_speed = 2; //speed to set the slow zone two
@@ -36,14 +32,8 @@ private:
     rclcpp::Publisher<ZoneArray>::SharedPtr zone_publisher;
     rclcpp::Subscription<Obstacle3DArray>::SharedPtr perception_subscription;
 
-    //need to transform bounding boxes to world space
-    std::shared_ptr<tf2_ros::TransformListener> transform_listener_{nullptr};
-    std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
-    geometry_msgs::msg::TransformStamped currentTf;
-
     void zone_perception(Obstacle3DArray::SharedPtr ptr);
-    geometry_msgs::msg::Point32 extend_from_center(double extra_distance, double x, double y, double center_x, double center_y);
-    void update_tf();
+
 };
 
 }
