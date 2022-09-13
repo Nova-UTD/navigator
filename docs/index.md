@@ -30,3 +30,10 @@ $ colcon build
 
 That's it!
 
+## CARLA demo
+1. Make sure you've installed Navigator using the steps above.
+2. Source the workspace by running `$ source install/setup.bash` from our repo root.
+3. Open Rviz2 and CARLA. We use the latest version of CARLA in our testing, which is [0.9.13](https://github.com/carla-simulator/carla/releases/tag/0.9.13) at time of writing.
+4. Launch our demo with `$ ros2 launch carla.launch.py`
+
+At this point, Navigator will connect to CARLA over our custom bridge.
