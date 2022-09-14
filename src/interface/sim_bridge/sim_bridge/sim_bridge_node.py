@@ -68,8 +68,8 @@ LIDAR_PERIOD = 1/(10.0)  # 10 Hz
 SEMANTIC_LIDAR_PERIOD = 1/(2.0)  # 10 Hz
 SPEEDOMETER_PERIOD = 1/(10.0)  # 10 Hz
 STEERING_ANGLE_PERIOD = 1/(10.0)  # 10 Hz
-OBSTACLE_QTY_VEHICLE = 10  # Spawn n cars
-OBSTACLE_QTY_PED = 0  # Spawn n peds
+OBSTACLE_QTY_VEHICLE = 25  # Spawn n cars
+OBSTACLE_QTY_PED = 25  # Spawn n peds
 
 # Map-specific constants
 MAP_ORIGIN_LAT = 0.0  # degrees
