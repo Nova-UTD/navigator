@@ -3,3 +3,11 @@ build
 install
 log
 .vscode
+*.weights
+ndt_in_gnss.csv
+ndt_log copy.csv
+ndt_log.csv
+.gitignore
+meters_to_gnss_degrees.py
+data/maps/grand_loop/carlaMapAdjust3.xodr
+data/maps/grand_loop/grand_loop_medium.pcd

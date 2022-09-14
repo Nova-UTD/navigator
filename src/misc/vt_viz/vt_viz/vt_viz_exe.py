@@ -14,100 +14,87 @@
 
 import rclpy
 from rclpy.node import Node
+from rclpy.duration import Duration
 
-from std_msgs.msg import String, Header
-from autoware_auto_msgs.msg import VehicleControlCommand
-from autoware_auto_msgs.msg import Trajectory
-from autoware_auto_msgs.msg import TrajectoryPoint
+from std_msgs.msg import String, Header, ColorRGBA
 from geometry_msgs.msg import PoseStamped, Point
 from nav_msgs.msg import Path
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
+from voltron_msgs.msg import CostedPaths, CostedPath, ZoneArray, Zone, Trajectory
 import math
 
 class VizSubscriber(Node):
 
     def __init__(self):
         super().__init__('viz_subscriber')
-        self.command_sub = self.create_subscription(
-            VehicleControlCommand,
-            '/vehicle/vehicle_command',
-            self.command_cb,
-            10)
+        #self.costed_paths_sub = self.create_subscription(CostedPaths, '/planning/paths', self.paths_cb, 10)
+        #self.path_viz_pub = self.create_publisher(Marker, '/viz/path', 10)
+        self.trajectory_sub = self.create_subscription(Trajectory, '/planning/outgoing_trajectory', self.motion_paths_cb, 10)
+        self.zones_sub = self.create_subscription(ZoneArray, '/planning/zones', self.zones_cb, 10)
+        self.zones_viz_pub = self.create_publisher(MarkerArray, '/viz/zones', 10)
+        self.trajectory_viz_pub = self.create_publisher(Marker, '/viz/trajectory', 10)
 
-        self.angle_histories = [0,0,0,0,0,0,0,0,0,0] #10 spots
+    def motion_paths_cb(self, msg: Trajectory):
+        self.get_logger().info("Received {} points".format(len(msg.points)))
+        line_strip = Marker()
+        line_strip.header.frame_id = 'map'
+        line_strip.header.stamp = self.get_clock().now().to_msg()
+        line_strip.action = Marker.MODIFY
+        line_strip.type = Marker.LINE_STRIP
+        line_strip.ns = 'paths'
+        line_strip.color = ColorRGBA(
+            r = 0.5,
+            g = 1.0,
+            b = 0.7,
+            a = 1.0
+        )
+        line_strip.pose.position.z = 0.6 # Offset from road surface
+        line_strip.scale.x = 0.5 # Meters wide.
+        line_strip.scale.y = 0.5
+        line_strip.scale.z = 0.5
+        line_strip.frame_locked = True
+        for pt in msg.points:
+            out_point = Point()
+            out_point.x = pt.x
+            out_point.y = pt.y
+            out_point.z = pt.vx*2
+            line_strip.points.append(out_point)
+        self.trajectory_viz_pub.publish(line_strip)
 
-        self.trajectory_cb = self.create_subscription(
-            Trajectory,
-            '/planning/trajectory',
-            self.trajectory_cb,
-            10)
-        self.path_pub_ = self.create_publisher(Path, '/planning/path_viz', 10)
-        self.command_viz_pub_ = self.create_publisher(Marker, '/vehicle/vehicle_command_viz', 10)
-        self.hack_header = Header()
+    def zones_cb(self, msg: ZoneArray):
+        
+        marker_array = MarkerArray()
+        
+        for idx, zone in enumerate(msg.zones):
+            zone_marker = Marker()
+            zone_marker.header.frame_id = "map";
+            zone_marker.id = idx
+            zone_marker.ns = 'zones'
+            zone_marker.frame_locked = True
+            zone_marker.type = zone_marker.LINE_STRIP
+            zone_marker.scale.x = 2.0
+            zone_marker.scale.y = 2.0
+            zone_marker.scale.z = 2.0
+            zone_marker.lifetime = Duration(seconds=0.2).to_msg()
 
-        # self.subscription  # prevent unused variable warning
+            zone_color = ColorRGBA()
+            zone_color.a = 1.0
+            zone_color.r = 1.0
+            zone_color.g = 1.0-math.exp(-zone.max_speed/5);
+            zone_color.b = 0.0
+            zone_marker.color = zone_color
 
-    def command_cb(self, msg):
-        printstring = "\n\n";
-        printstring+= "Turn: {}\n".format(msg.front_wheel_angle_rad)
-        self.angle_histories.pop(0)
-        self.angle_histories.append(msg.front_wheel_angle_rad)
-
-        average_angle = 0.0
-        for angle in self.angle_histories:
-            average_angle += angle
-        average_angle = average_angle/len(self.angle_histories)
-
-        printstring+= "Smooth angle: {}\n".format(average_angle)
-        printstring+= "Accel: {}\n".format(msg.long_accel_mps2)
-        self.get_logger().debug(printstring)
-        commandMarker = Marker()
-        commandMarker.header = self.hack_header
-        commandMarker.header.frame_id = "base_link"
-        commandMarker.type = Marker.ARROW
-        commandMarker.ns = 'vehicle_command_viz'
-        commandMarker.id = 0
-        commandMarker.action = Marker.ADD
-
-        markerStart = Point()
-        markerStart.x = 0.0
-        markerStart.y = 0.0
-        markerStart.z = 0.0
-        markerEnd = Point()
-        markerEnd.y = 5*average_angle # math.asin(msg.front_wheel_angle_rad)
-        markerEnd.x = 0.0 #math.acos(msg.front_wheel_angle_rad)
-        markerEnd.z = 0.0
-        # commandMarker.pose.position.x = 0.0
-        # commandMarker.pose.position.y = 0.0
-        # commandMarker.pose.position.z = 0.0
-        # commandMarker.pose.orientation.x = 0.0
-        # commandMarker.pose.orientation.y = 0.0
-        # commandMarker.pose.orientation.z = 0.0
-        # commandMarker.pose.orientation.w = 1.0
-        commandMarker.scale.x = 0.5
-        commandMarker.scale.y = 1.0
-        commandMarker.scale.z = 1.0
-        commandMarker.color.a = 1.0
-        commandMarker.color.r = 0.0
-        commandMarker.color.g = 1.0
-        commandMarker.color.b = 0.0
-        commandMarker.points = [markerStart, markerEnd]
-        self.command_viz_pub_.publish(commandMarker)
-    
-    def trajectory_cb(self, msg):
-        print(len(msg.points))
-        path = Path()
-        path.header = msg.header
-        poseArray = []
-        for trajPoint in msg.points:
-            pose = PoseStamped()
-            pose.pose.position.x = trajPoint.x
-            pose.pose.position.y = trajPoint.y
-            poseArray.append(pose)
-        path.poses = poseArray
-        self.path_pub_.publish(path)
-        self.hack_header = msg.header
-
+            points = []
+            for point32 in zone.poly.points:
+                pt = Point()
+                pt.x = point32.x
+                pt.y = point32.y
+                pt.z = point32.z
+                points.append(pt)
+            zone_marker.points = points
+            zone_marker.points.append(points[0]) # Complete the loop
+            marker_array.markers.append(zone_marker)
+        self.zones_viz_pub.publish(marker_array)
 
 def main(args=None):
     rclpy.init(args=args)

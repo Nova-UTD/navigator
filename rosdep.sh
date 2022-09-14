@@ -47,3 +47,4 @@ apt-get install -y ros-foxy-rviz-common
 apt-get install -y ros-foxy-rviz-default-plugins
 apt-get install -y qtbase5-dev
 apt-get install -y libqt5widgets5
+pip3 install carla
