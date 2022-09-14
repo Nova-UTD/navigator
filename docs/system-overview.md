@@ -14,32 +14,20 @@ nav_order: 1
 {:toc}
 
 ---
+## Navigator in CARLA
+![Navigator in CARLA](assets/res/v1_2_structure.drawio.png)
 
-![General structure flowchart](assets/res/system-structure.png)
+## Navigator in the real world
+![Navigator in the real world](assets/res/v1_2_structure-vehicle.drawio.png)
 
-## Section A
-This is some text.
+## Subsystems
+Navigator features five subsystems:
+- Sensing
+- Perception
+- Planning
+- Control
+- Interface
 
-## Section B
-This is some text.
+Each subsystem has its own page.
 
-### Here's an example from our code
-```cpp
-void MotionPlannerNode::send_message() {
-    if (ideal_path == nullptr || odometry == nullptr) {
-        // RCLCPP_WARN(this->get_logger(), "motion planner has no input path, skipping...");
-        return;
-    }
-    Trajectory tmp = build_trajectory(ideal_path, horizon);
-    if(zones != nullptr){
-      limit_to_zones(tmp, *zones);
-    }
-    limit_to_curvature(tmp, max_lat_accel);
-    smooth(tmp, max_accel, max_decel);
-    trajectory_publisher->publish(tmp);
-    return;
-}
-```
-
-## Section C
-This is some text.
+We also use simulation heavily for our testing and validation. See [our simulation overview](https://nova-utd.github.io/navigator/simulation/simulation-overview.html).
