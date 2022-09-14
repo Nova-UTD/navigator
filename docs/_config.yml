@@ -26,7 +26,7 @@ baseurl: "/navigator" # the subpath of your site, e.g. /blog
 url: "https://nova-utd.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 domain: "nova-utd.github.io"
 github_username:  nova-utd
-logo: "/assets/res/logo_compact.png"
+logo: "/assets/res/logo.png"
 
 # Build settings
 remote_theme: just-the-docs/just-the-docs
