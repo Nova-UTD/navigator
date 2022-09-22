@@ -35,7 +35,7 @@ Navigator is split into five main subsystems:
 - [**Perception**](/navigator/planning/planning-overview), which uses the filtered sensor data to build a rich understanding of the car's surroundings
 - [**Planning**](/navigator/planning/planning-overview), which uses this rich understanding, plus the desired destination, to decide how the car should act on a high level
 - [**Controls**](/navigator/controls/controls-overview), where the desired action is compared to the car's current state and low-level action is calculated
-- [**Interface**](/navigator/interfaces/interfaces-overview), where the low-level action is sent to the steering wheel and pedals.
+- [**Interface**](/navigator/interface/interface-overview), where the low-level action is sent to the steering wheel and pedals.
 
 We also have some important code to support testing, visualization, and simulation. Simulation plays a big role in our development, and you can find an overview of it [here](/navigator/interfaces/interfaces-overview).
 

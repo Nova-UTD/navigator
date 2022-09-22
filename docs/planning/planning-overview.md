@@ -5,7 +5,9 @@ nav_order: 4
 ---
 
 # Planning overview
+{: .no_toc }
 
+*Maintained by Egan Johnson*
 ## Table of contents
 {: .no_toc .text-delta }
 

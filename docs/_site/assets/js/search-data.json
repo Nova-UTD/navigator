@@ -115,13 +115,13 @@
   },"19": {
     "doc": "Planning",
     "title": "Planning overview",
-    "content": " ",
+    "content": "Maintained by Egan Johnson . ",
     "url": "/navigator/planning/planning-overview.html#planning-overview",
     "relUrl": "/planning/planning-overview.html#planning-overview"
   },"20": {
     "doc": "Planning",
     "title": "Table of contents",
-    "content": ". | Planning overview . | The Strategy | Zone Features | Calculating the Trajectory: Assigning speed to the path | Zone sources | . | . “Planning” refers to the part of the system that synthesizes perception and scenario information into an actionable decision that can be handed to controls. Our current control stack is designed for Demo 2 tasks, at its applicability to other tasks is limited. ",
+    "content": ". | The Strategy | Zone Features | Calculating the Trajectory: Assigning speed to the path | Zone sources | . “Planning” refers to the part of the system that synthesizes perception and scenario information into an actionable decision that can be handed to controls. Our current control stack is designed for Demo 2 tasks, at its applicability to other tasks is limited. ",
     "url": "/navigator/planning/planning-overview.html#table-of-contents",
     "relUrl": "/planning/planning-overview.html#table-of-contents"
   },"21": {
