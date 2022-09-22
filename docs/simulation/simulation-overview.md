@@ -4,8 +4,10 @@ title: Simulation
 nav_order: 5
 ---
 
-# Simulation overview:
+# Simulation overview
 {: .no_toc }
+
+*Maintained by Connor Scally*
 
 ## Table of contents
 {: .no_toc .text-delta }

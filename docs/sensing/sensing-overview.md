@@ -15,31 +15,8 @@ nav_order: 2
 
 ---
 
-Put your overview information here.
+The Sensing system is responsible for processing raw sensor data into a usable form for the Perception system.
 
-## Section A
-This is some text.
+For example, raw LiDAR data from our front and rear sensors is merged into a single reference frame, downsampled, and cropped to remove points along the vehicle itself (points of our vehicle's doors, for example).
 
-## Section B
-This is some text.
-
-### Here's an example from our code
-```cpp
-void MotionPlannerNode::send_message() {
-    if (ideal_path == nullptr || odometry == nullptr) {
-        // RCLCPP_WARN(this->get_logger(), "motion planner has no input path, skipping...");
-        return;
-    }
-    Trajectory tmp = build_trajectory(ideal_path, horizon);
-    if(zones != nullptr){
-      limit_to_zones(tmp, *zones);
-    }
-    limit_to_curvature(tmp, max_lat_accel);
-    smooth(tmp, max_accel, max_decel);
-    trajectory_publisher->publish(tmp);
-    return;
-}
-```
-
-## Section C
-This is some text.
+More info to come! But our filters aren't reinvinting the wheel.

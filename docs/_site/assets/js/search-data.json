@@ -1,278 +1,242 @@
 {"0": {
     "doc": "Controls",
     "title": "Controls overview",
-    "content": " ",
+    "content": "Maintained by Egan Johnson . ",
     "url": "/navigator/controls/controls-overview.html#controls-overview",
     "relUrl": "/controls/controls-overview.html#controls-overview"
   },"1": {
     "doc": "Controls",
     "title": "Table of contents",
-    "content": ". | Section A | Section B . | Here’s an example from our code | . | Section C | . Put your overview information here. ",
+    "content": ". | Sources of error | Current controllers | . The Controls system takes our vehicle’s current state and our target trajectory as inputs. Based on the difference between our current state and this desired trajectory, the system calculates the ideal: . | Steering angle | Brake position | Throttle position | . To make our system platform-agnostic, the Controller’s outputs are between (-1.0, 1.0) for steering and (0.0, 1.0) for throttle and brake positions. The Interface system is responsible for scaling these values to a specific platform. ",
     "url": "/navigator/controls/controls-overview.html#table-of-contents",
     "relUrl": "/controls/controls-overview.html#table-of-contents"
   },"2": {
     "doc": "Controls",
-    "title": "Section A",
-    "content": "This is some text. ",
-    "url": "/navigator/controls/controls-overview.html#section-a",
-    "relUrl": "/controls/controls-overview.html#section-a"
+    "title": "Sources of error",
+    "content": "The vehicle does not move perfectly. Physical error is introduced. There will always be errors in our model– that is, our set of assumptions about the vehicle’s physical properties and behavior. Most importantly, there’s error in our current state, one of the inputs to our controller. In order for our controller to follow the desired trajectory, it must have an accurate understanding of where the car currently is, how fast it’s going, and which way it’s facing. ",
+    "url": "/navigator/controls/controls-overview.html#sources-of-error",
+    "relUrl": "/controls/controls-overview.html#sources-of-error"
   },"3": {
     "doc": "Controls",
-    "title": "Section B",
-    "content": "This is some text. Here’s an example from our code . void MotionPlannerNode::send_message() { if (ideal_path == nullptr || odometry == nullptr) { // RCLCPP_WARN(this-&gt;get_logger(), \"motion planner has no input path, skipping...\"); return; } Trajectory tmp = build_trajectory(ideal_path, horizon); if(zones != nullptr){ limit_to_zones(tmp, *zones); } limit_to_curvature(tmp, max_lat_accel); smooth(tmp, max_accel, max_decel); trajectory_publisher-&gt;publish(tmp); return; } . ",
-    "url": "/navigator/controls/controls-overview.html#section-b",
-    "relUrl": "/controls/controls-overview.html#section-b"
+    "title": "Current controllers",
+    "content": "Our “unified controller” generates the desired steering angle and pedal positions within the same node. However, steering and pedal positions are calculated using two different controllers. As of Sept. 21, 2022, our steering controller uses Pure Pursuit, while our throttle and brake are calculated using a simple PID controller. This combination works suitably at low speeds, though something more sophisticated like MPC would be necissary for highway driving. ",
+    "url": "/navigator/controls/controls-overview.html#current-controllers",
+    "relUrl": "/controls/controls-overview.html#current-controllers"
   },"4": {
-    "doc": "Controls",
-    "title": "Section C",
-    "content": "This is some text. ",
-    "url": "/navigator/controls/controls-overview.html#section-c",
-    "relUrl": "/controls/controls-overview.html#section-c"
-  },"5": {
     "doc": "Controls",
     "title": "Controls",
     "content": " ",
     "url": "/navigator/controls/controls-overview.html",
     "relUrl": "/controls/controls-overview.html"
-  },"6": {
+  },"5": {
     "doc": "Interfaces",
     "title": "Interfaces overview",
     "content": " ",
-    "url": "/navigator/interfaces/interfaces-overview.html#interfaces-overview",
-    "relUrl": "/interfaces/interfaces-overview.html#interfaces-overview"
-  },"7": {
+    "url": "/navigator/interface/interface-overview.html#interfaces-overview",
+    "relUrl": "/interface/interface-overview.html#interfaces-overview"
+  },"6": {
     "doc": "Interfaces",
     "title": "Table of contents",
-    "content": ". | Section A | Section B . | Here’s an example from our code | . | Section C | . Put your overview information here. ",
-    "url": "/navigator/interfaces/interfaces-overview.html#table-of-contents",
-    "relUrl": "/interfaces/interfaces-overview.html#table-of-contents"
+    "content": ". | About Hail Bopp | Electrical overview | . The Interface subsystem represents the only code that is vehicle-specific by necessity. It is the link between software and hardware. Since your hardware is probably different than ours, then you’ll likely have to modify our interface code to suit your needs. The exception is our CARLA bridge, a simple script that spawns an ego vehicle and connects its sensors and actuators to ROS. In this overview, we’ll go over our hardware platform, Hail Bopp. ",
+    "url": "/navigator/interface/interface-overview.html#table-of-contents",
+    "relUrl": "/interface/interface-overview.html#table-of-contents"
+  },"7": {
+    "doc": "Interfaces",
+    "title": "About Hail Bopp",
+    "content": "Hail Bopp includes an Electronic Power Assisted Steering (EPAS) system, which is a motor on our steering column that allows us to apply steering force programatically. Our vehicle also has front and rear Velodyne Puck (VLP-16) LiDAR sensors. These generate rich, precise 3D scans of our surroundings using 16 channels of spinning lasers. Our platform uses ZED stereo cameras to gather color images and their corresponding depth information. Stereo cams can give us limited 3D information, but they are best used in conjuction with more accurate LiDAR data. We currently use an NVIDIA Jetson AGX Xavier for our onboard computing. This is likely to change soon, as we have exceeded the power capabilities of this device. Finally, an Adafruit Metro Grand Central serves as our real-time microcontroller. This device handles time-critical services, such as releasing our steering wheel if our high-level software fails. ",
+    "url": "/navigator/interface/interface-overview.html#about-hail-bopp",
+    "relUrl": "/interface/interface-overview.html#about-hail-bopp"
   },"8": {
     "doc": "Interfaces",
-    "title": "Section A",
-    "content": "This is some text. ",
-    "url": "/navigator/interfaces/interfaces-overview.html#section-a",
-    "relUrl": "/interfaces/interfaces-overview.html#section-a"
+    "title": "Electrical overview",
+    "content": ". ",
+    "url": "/navigator/interface/interface-overview.html#electrical-overview",
+    "relUrl": "/interface/interface-overview.html#electrical-overview"
   },"9": {
-    "doc": "Interfaces",
-    "title": "Section B",
-    "content": "This is some text. Here’s an example from our code . void MotionPlannerNode::send_message() { if (ideal_path == nullptr || odometry == nullptr) { // RCLCPP_WARN(this-&gt;get_logger(), \"motion planner has no input path, skipping...\"); return; } Trajectory tmp = build_trajectory(ideal_path, horizon); if(zones != nullptr){ limit_to_zones(tmp, *zones); } limit_to_curvature(tmp, max_lat_accel); smooth(tmp, max_accel, max_decel); trajectory_publisher-&gt;publish(tmp); return; } . ",
-    "url": "/navigator/interfaces/interfaces-overview.html#section-b",
-    "relUrl": "/interfaces/interfaces-overview.html#section-b"
-  },"10": {
-    "doc": "Interfaces",
-    "title": "Section C",
-    "content": "This is some text. ",
-    "url": "/navigator/interfaces/interfaces-overview.html#section-c",
-    "relUrl": "/interfaces/interfaces-overview.html#section-c"
-  },"11": {
     "doc": "Interfaces",
     "title": "Interfaces",
     "content": " ",
-    "url": "/navigator/interfaces/interfaces-overview.html",
-    "relUrl": "/interfaces/interfaces-overview.html"
-  },"12": {
+    "url": "/navigator/interface/interface-overview.html",
+    "relUrl": "/interface/interface-overview.html"
+  },"10": {
     "doc": "Perception",
     "title": "Perception overview",
-    "content": " ",
+    "content": "Maintained by Ragib Arnab . ",
     "url": "/navigator/perception/perception-overview.html#perception-overview",
     "relUrl": "/perception/perception-overview.html#perception-overview"
-  },"13": {
+  },"11": {
     "doc": "Perception",
     "title": "Table of contents",
     "content": ". | darknet_inference | obstacle_detection_3d | obstacle_classes | obstacle_drawer | lidar_fusion | lidar_obstacle_detector | . The perception component of the system takes the data from various sensors and extracts meaningful information for downstream components such as planning. Some of the tasks that are core parts of the perception include, but not limited to: . | Localization and state estimation | Obstacle and scene classifiation | Obstacle tracking and prediction | . In this page we will go each individual packages that is part of the perception component. A lot of the packages within perception are “in-progress” just as with most other packages within our system. As this project progresses, we will update the existing packages as well as add new ones to meet the growing demands of our autonomous system. ",
     "url": "/navigator/perception/perception-overview.html#table-of-contents",
     "relUrl": "/perception/perception-overview.html#table-of-contents"
-  },"14": {
+  },"12": {
     "doc": "Perception",
     "title": "darknet_inference",
     "content": "The darknet_inference package contains Python tools to build and run Darknet-based object detection models in ROS 2. The standard model that is used is YOLOv4 which can achieve real-time inference on a modern GPU with good overall accuracy. There is also an option to use the YOLOv4-tiny model to increase the inference rate but with a sacrifice to accuracy. The node for this package subscribes to a RGB image message topic and outputs 2D bounding box predictions for each class of object in its own message formats. In this current version of navigator, all the detections for the vehicle is performed in this node, which includes detecting cars and pedestrians as well as finding landmarks such as stop signs and fire hydrants. All these detections are also processed within the node itself by using parameters such as object confidence threshold and non-maximum suppression (NMS) threshold to filter out the unwanted detections. ",
     "url": "/navigator/perception/perception-overview.html#darknet_inference",
     "relUrl": "/perception/perception-overview.html#darknet_inference"
-  },"15": {
+  },"13": {
     "doc": "Perception",
     "title": "obstacle_detection_3d",
     "content": "This package takes as input the 2D detections along with 3D sensing data from lidars and depth camera to output 3D bounding boxes. 3D detection are required for behavior and planning components of our system. Currently the code simply backprojects the 2D bounding boxes into 3D using information and extends the boxes into a cuboid based on the object’s class. This is a naive approach given that the orientation information of the cuboids will be the same as the vehicle and that the lengths of the objects are fixed. The algorithm is a placeholder and will be replaced by an actual 3-D object detection algorithm in the future. ",
     "url": "/navigator/perception/perception-overview.html#obstacle_detection_3d",
     "relUrl": "/perception/perception-overview.html#obstacle_detection_3d"
-  },"16": {
+  },"14": {
     "doc": "Perception",
     "title": "obstacle_classes",
     "content": "Contains the enumeration definition for the different classes of obstacles. ",
     "url": "/navigator/perception/perception-overview.html#obstacle_classes",
     "relUrl": "/perception/perception-overview.html#obstacle_classes"
-  },"17": {
+  },"15": {
     "doc": "Perception",
     "title": "obstacle_drawer",
     "content": "A simple visualization package that takes the 3D bounding box outputs and produces visualization messages that can be depicted in RViz. ",
     "url": "/navigator/perception/perception-overview.html#obstacle_drawer",
     "relUrl": "/perception/perception-overview.html#obstacle_drawer"
-  },"18": {
+  },"16": {
     "doc": "Perception",
     "title": "lidar_fusion",
     "content": "This package fuses the 2 different lidar sources within our system into a single point cloud that will be registered into the same frame (base-link) within the system transform tree. The package also performs basic point cloud filtering. ",
     "url": "/navigator/perception/perception-overview.html#lidar_fusion",
     "relUrl": "/perception/perception-overview.html#lidar_fusion"
-  },"19": {
+  },"17": {
     "doc": "Perception",
     "title": "lidar_obstacle_detector",
     "content": "This package is tasked with detecting low-level obstacles around the vehicle for the purpose of collision prevention. The node takes as input a point cloud and output zones around the vehicle for low-level obstacles. ",
     "url": "/navigator/perception/perception-overview.html#lidar_obstacle_detector",
     "relUrl": "/perception/perception-overview.html#lidar_obstacle_detector"
-  },"20": {
+  },"18": {
     "doc": "Perception",
     "title": "Perception",
     "content": " ",
     "url": "/navigator/perception/perception-overview.html",
     "relUrl": "/perception/perception-overview.html"
-  },"21": {
+  },"19": {
     "doc": "Planning",
     "title": "Planning overview",
     "content": " ",
     "url": "/navigator/planning/planning-overview.html#planning-overview",
     "relUrl": "/planning/planning-overview.html#planning-overview"
-  },"22": {
+  },"20": {
     "doc": "Planning",
     "title": "Table of contents",
     "content": ". | Planning overview . | The Strategy | Zone Features | Calculating the Trajectory: Assigning speed to the path | Zone sources | . | . “Planning” refers to the part of the system that synthesizes perception and scenario information into an actionable decision that can be handed to controls. Our current control stack is designed for Demo 2 tasks, at its applicability to other tasks is limited. ",
     "url": "/navigator/planning/planning-overview.html#table-of-contents",
     "relUrl": "/planning/planning-overview.html#table-of-contents"
-  },"23": {
+  },"21": {
     "doc": "Planning",
     "title": "The Strategy",
     "content": "The current strategy generates a determined path (i.e. spatial trajectory), which it assigns velocities to based on the situation. There are currently three modifying factors on assigned velocity: the speed limit, the curvature of the path (to avoid taking sharp turns at high speeds), and most importantly zones. A “zone” is a closed polygon that limits the speed that the vehicle can have when passing through the enclosed space. They are generated from a variety of sources, and are used to control the vehicles behavior: if any node wishes to stop the vehicle from entering an intersection, for example, they would enclose the intersection with a zone of speed 0. ",
     "url": "/navigator/planning/planning-overview.html#the-strategy",
     "relUrl": "/planning/planning-overview.html#the-strategy"
-  },"24": {
+  },"22": {
     "doc": "Planning",
     "title": "Zone Features",
     "content": ". | Zones are defined by the points describing an enclosed polygon and a non-exceed speed | Any single zone is homogenous, meaning the non-exceed speed is constant within the zone | Zones may overlap. In this case, the lowest non-exceed speed must be obeyed | Zones may have a speed of 0 | Zones don’t evolve through time: instead, a new zone must replace the old zone | . ",
     "url": "/navigator/planning/planning-overview.html#zone-features",
     "relUrl": "/planning/planning-overview.html#zone-features"
-  },"25": {
+  },"23": {
     "doc": "Planning",
     "title": "Calculating the Trajectory: Assigning speed to the path",
     "content": "The path is turned into a trajectory by assigning speed. The trajectory should be safe, comfortable, and possible, and should obey the zones. The process for assigning velocities works as follows: . | For each point, set its speed to the speed limit of the lane | For each point, calculate the local curvature of the path. Using the path curvature, limit the speed for that point so that the lateral acceleration of the vehicle is never more than a configured maximum | For each zone, determine if it intersects with the trajectory. If it does: . | The trajectory is a discrete path, so the first point affected may be further from the edge of the zone than we would like. To observe the speed limitation starting from the very edge of the zone, insert a new point to the trajectory where it intersects the zone (both entering and exiting) | Set the speed of this new point to the lowest speed among its adjacent points the zone | For all points within the zone, set the speed to no greater than the zone speed | . | Do a backwards pass of the trajectory, and lower the speed of each point so that the speed of the next point (next in time, previous point in the pass) can be achieved with comfortable deceleration. The only time this may not be physically obtainable is immediately in front of the vehicle when it is moving too fast: in this case, lower the speed anyway and let the controller sort it out | Do a forwards pass of the trajectory, and lower the speed of each point so it can be reached from the previous point using a comfortable acceleration | . Although the path itself may extend from the origin to the destination, only the points within a certain horizon of the vehicle need to be considered for the trajectory. Notice that aside from step 1, the speed is never increased. The vehicle should be cautious, meaning that if there is a reason to go slow and a reason to go regular speed, the reason to go slow wins as a rule of thumb. Since this is true, as long as acceleration/deceleration smoothing is done last, the other steps can be done in any order. void MotionPlannerNode::send_message() { if (ideal_path == nullptr || odometry == nullptr) { // RCLCPP_WARN(this-&gt;get_logger(), \"motion planner has no input path, skipping...\"); return; } Trajectory tmp = build_trajectory(ideal_path, horizon); if(zones != nullptr){ limit_to_zones(tmp, *zones); } limit_to_curvature(tmp, max_lat_accel); smooth(tmp, max_accel, max_decel); trajectory_publisher-&gt;publish(tmp); return; } . ",
     "url": "/navigator/planning/planning-overview.html#calculating-the-trajectory-assigning-speed-to-the-path",
     "relUrl": "/planning/planning-overview.html#calculating-the-trajectory-assigning-speed-to-the-path"
-  },"26": {
+  },"24": {
     "doc": "Planning",
     "title": "Zone sources",
     "content": "Zones primarily come from two sources: the obstacle detection system and the BehaviorPlanner node. The obstacle detection system will create a zone around each obstacle. It will actually typically create two zones: one zone with a speed of 0 signifying not to move through the space at all, and one larger zone with a lower speed indicating where the vehicle may pass but should be cautious. One limitation of the zone architecture is that obstacle zones need to be larger than the actual obstacles. This is because speeds are assigned as intersections with the trajectory, which has zero width. The car does not have zero width, and so can physically go through zones that the path did not intersect. At this time, the primary function of the BehaviorPlanner node is traffic control. Using a state machine, it will create zones around intersections, and then remove them when it is safe to proceed. ## Strengths and Weaknesses . Strengths: . | Zones are an easily understood description of what the car is doing | Zones can accomplish any sort of stop-go behavior we need, including following another vehicle | . Weaknesses: . | Zones cannot describe dynamic scenarios | Zones cannot describe uncertain or branching scenarios | Only as strong as the zone-creating entities | Can be awkward for the controller, like when it is halfway out of a zone with 0 speed | . ",
     "url": "/navigator/planning/planning-overview.html#zone-sources",
     "relUrl": "/planning/planning-overview.html#zone-sources"
-  },"27": {
+  },"25": {
     "doc": "Planning",
     "title": "Planning",
     "content": " ",
     "url": "/navigator/planning/planning-overview.html",
     "relUrl": "/planning/planning-overview.html"
-  },"28": {
+  },"26": {
     "doc": "Sensing",
     "title": "Sensing overview",
     "content": " ",
     "url": "/navigator/sensing/sensing-overview.html#sensing-overview",
     "relUrl": "/sensing/sensing-overview.html#sensing-overview"
-  },"29": {
+  },"27": {
     "doc": "Sensing",
     "title": "Table of contents",
-    "content": ". | Section A | Section B . | Here’s an example from our code | . | Section C | . Put your overview information here. ",
+    "content": ". The Sensing system is responsible for processing raw sensor data into a usable form for the Perception system. For example, raw LiDAR data from our front and rear sensors is merged into a single reference frame, downsampled, and cropped to remove points along the vehicle itself (points of our vehicle’s doors, for example). More info to come! But our filters aren’t reinvinting the wheel. ",
     "url": "/navigator/sensing/sensing-overview.html#table-of-contents",
     "relUrl": "/sensing/sensing-overview.html#table-of-contents"
-  },"30": {
-    "doc": "Sensing",
-    "title": "Section A",
-    "content": "This is some text. ",
-    "url": "/navigator/sensing/sensing-overview.html#section-a",
-    "relUrl": "/sensing/sensing-overview.html#section-a"
-  },"31": {
-    "doc": "Sensing",
-    "title": "Section B",
-    "content": "This is some text. Here’s an example from our code . void MotionPlannerNode::send_message() { if (ideal_path == nullptr || odometry == nullptr) { // RCLCPP_WARN(this-&gt;get_logger(), \"motion planner has no input path, skipping...\"); return; } Trajectory tmp = build_trajectory(ideal_path, horizon); if(zones != nullptr){ limit_to_zones(tmp, *zones); } limit_to_curvature(tmp, max_lat_accel); smooth(tmp, max_accel, max_decel); trajectory_publisher-&gt;publish(tmp); return; } . ",
-    "url": "/navigator/sensing/sensing-overview.html#section-b",
-    "relUrl": "/sensing/sensing-overview.html#section-b"
-  },"32": {
-    "doc": "Sensing",
-    "title": "Section C",
-    "content": "This is some text. ",
-    "url": "/navigator/sensing/sensing-overview.html#section-c",
-    "relUrl": "/sensing/sensing-overview.html#section-c"
-  },"33": {
+  },"28": {
     "doc": "Sensing",
     "title": "Sensing",
     "content": " ",
     "url": "/navigator/sensing/sensing-overview.html",
     "relUrl": "/sensing/sensing-overview.html"
-  },"34": {
+  },"29": {
     "doc": "Simulation",
-    "title": "Simulation overview:",
-    "content": " ",
+    "title": "Simulation overview",
+    "content": "Maintained by Connor Scally . ",
     "url": "/navigator/simulation/simulation-overview.html#simulation-overview",
     "relUrl": "/simulation/simulation-overview.html#simulation-overview"
-  },"35": {
+  },"30": {
     "doc": "Simulation",
     "title": "Table of contents",
     "content": ". | Simulation Enviroment | Launching the simulator &amp; running Navigator: | Using the Simulator: | Troubleshooting: | . Before demonstrating our codebase on the vehicle, in the real world, we must first test our stack in a virtual one. The following documentation outlines essential CARLA usage and syntax, to allow for simulating our stack in a virtual enviroment. Nova utilizes CARLA for virtualization. For further information on CARLA, and to learn more about advanced usage, please see the following links: . | https://carla.org/ | https://carla.readthedocs.io/en/latest/ | . ",
     "url": "/navigator/simulation/simulation-overview.html#table-of-contents",
     "relUrl": "/simulation/simulation-overview.html#table-of-contents"
-  },"36": {
+  },"31": {
     "doc": "Simulation",
     "title": "Simulation Enviroment",
     "content": ". | Prerequisites: . | CARLA Simulator: Please follow the instructions in the above links to install CARLA on your chosen operating system | Navigator: Please see our GitHub page for the latest releases of Navigator | RVIZ (Or an equivalent ROS visualizer: The download page for RVIZ is here: http://wiki.ros.org/rviz | ROS2: The download page for ROS2 is here: https://docs.ros.org/en/foxy/index.html | Dependencies for the above: Self-explanatory, Navigator comes with most of what you need, CARLA may not, do not forget to check! | . | . ",
     "url": "/navigator/simulation/simulation-overview.html#simulation-enviroment",
     "relUrl": "/simulation/simulation-overview.html#simulation-enviroment"
-  },"37": {
+  },"32": {
     "doc": "Simulation",
     "title": "Launching the simulator &amp; running Navigator:",
     "content": ". | Launching CARLA: . | Your first step should be to navigate to your CARLA directory and launch CARLA with the CARLAUE4.sh script with the -RenderOffScreen flag. If you are on a unix system, the command will look like this: | . $ /home/share/carla/CarlaUE4.sh -RenderOffscreen . | The “RenderOffscreen” flag hides the rendering window, which saves some resources. See here for more details . | Launching the bridge: . | In a seperate terminal window, launch sim_bridge_node by: . a. Sourcing Navigator via a command such as . navigator/install/setup.bash . b. Run the bridge by issuing the follwing: ros2 run sim_bridge sim_bridge_node . | If done correctly, output should look something like this: . | . [INFO] [1645631990.794344351] [sim_bridge_node]: Connecting to CARLA on port 2000 [INFO] [1645631993.616481805] [sim_bridge_node]: Spawning ego vehicle (vehicle.audi.etron) @ Transform(Location(x=-64.644844, y=24.471010, z=0.600000), Rotation(pitch=0.000000, yaw=0.159198, roll=0.000000)) . | Launching RVIZ: . | Open a new terminal instance and source the setup script via a command like: . navigator/install/setup.bash | Run: `rviz2’ | Select File followed by Open Config Select default.rviz from the share folder. It is recommended that you have your own copy of this as well for your own configuration. | . | Launching the stack: . | Open a new terminal window. | Navigate to the root directory of Navigator. | Run source /install/setup.bash . | Run ros2 launch carla.launch.py . | Check RVIZ and terminal output. The sim_bridge will publish sensor data just as if you were driving on campus, and it will similary accept commands from our standard topics. As of writing, our custom bridge publishes: . | . | GNSS (GPS) | IMU | Front and rear Lidar (not fully functional) | Front RGB camera | Front depth camera | CARLA ground truths for | Car’s odometry (position, orientation, speed) | CARLA virtual bird’s-eye camera (/carla/birds_eye_rgb) | . The most up-to-date information on our bridge’s capabilities can be found at the top of the script itself. | . ",
     "url": "/navigator/simulation/simulation-overview.html#launching-the-simulator--running-navigator",
     "relUrl": "/simulation/simulation-overview.html#launching-the-simulator--running-navigator"
-  },"38": {
+  },"33": {
     "doc": "Simulation",
     "title": "Using the Simulator:",
     "content": ". | You can control our ego vehicle with ros2 run manual_control manual_control_node . | At the moment, this only supports keyboard control through NoMachine or similar, not SSH. | If you get a “pynput” error, try running pip3 install pynput. | . | You can change a number of simulation settings by editing our script’s contants (here). | Don’t forget to rebuild the package or use colcon build --symlink-install (recommended). | ROS param support in the works. | . | . ",
     "url": "/navigator/simulation/simulation-overview.html#using-the-simulator",
     "relUrl": "/simulation/simulation-overview.html#using-the-simulator"
-  },"39": {
+  },"34": {
     "doc": "Simulation",
     "title": "Troubleshooting:",
     "content": ". | If you get a “pynput” error, try running pip3 install pynput. | If you get a CARLA segmentation fault, it’s likely you just need to restart CARLA. This will be fixed… eventually. This should only happen after starting the bridge 10 times or so, and should not happen while the bridge is running. | . ",
     "url": "/navigator/simulation/simulation-overview.html#troubleshooting",
     "relUrl": "/simulation/simulation-overview.html#troubleshooting"
-  },"40": {
+  },"35": {
     "doc": "Simulation",
     "title": "Simulation",
     "content": " ",
     "url": "/navigator/simulation/simulation-overview.html",
     "relUrl": "/simulation/simulation-overview.html"
-  },"41": {
+  },"36": {
     "doc": "System overview",
     "title": "System overview",
-    "content": " ",
+    "content": "Maintained by Will Heitman . ",
     "url": "/navigator/system-overview.html",
     "relUrl": "/system-overview.html"
-  },"42": {
+  },"37": {
     "doc": "System overview",
     "title": "Table of contents",
-    "content": ". | Section A | Section B . | Here’s an example from our code | . | Section C | . ",
+    "content": ". | Design | Subsystems . | Example | . | . ",
     "url": "/navigator/system-overview.html#table-of-contents",
     "relUrl": "/system-overview.html#table-of-contents"
-  },"43": {
+  },"38": {
     "doc": "System overview",
-    "title": "Section A",
-    "content": "This is some text. ",
-    "url": "/navigator/system-overview.html#section-a",
-    "relUrl": "/system-overview.html#section-a"
-  },"44": {
+    "title": "Design",
+    "content": "Navigator is designed to be: . | Simple, with components that are easy to use an extend . | When a more powerful but complex algorithm is used, a simpler alternative should also be present | . | Modular, with nodes that can be swapped, added, and updated with the help of ROS2 . | Since nodes are all built using standard C++ and Python libraries, code is future-proofed. | . | Open source, with all of our code licensed under the highly permissable MIT license . | Our dependencies are also open-source | . | . ",
+    "url": "/navigator/system-overview.html#design",
+    "relUrl": "/system-overview.html#design"
+  },"39": {
     "doc": "System overview",
-    "title": "Section B",
-    "content": "This is some text. Here’s an example from our code . void MotionPlannerNode::send_message() { if (ideal_path == nullptr || odometry == nullptr) { // RCLCPP_WARN(this-&gt;get_logger(), \"motion planner has no input path, skipping...\"); return; } Trajectory tmp = build_trajectory(ideal_path, horizon); if(zones != nullptr){ limit_to_zones(tmp, *zones); } limit_to_curvature(tmp, max_lat_accel); smooth(tmp, max_accel, max_decel); trajectory_publisher-&gt;publish(tmp); return; } . ",
-    "url": "/navigator/system-overview.html#section-b",
-    "relUrl": "/system-overview.html#section-b"
-  },"45": {
-    "doc": "System overview",
-    "title": "Section C",
-    "content": "This is some text. ",
-    "url": "/navigator/system-overview.html#section-c",
-    "relUrl": "/system-overview.html#section-c"
+    "title": "Subsystems",
+    "content": ". Navigator is split into five main subsystems: . | Sensing, where raw sensor data from cameras, GNSS, and more is filtered before being passed along | Perception, which uses the filtered sensor data to build a rich understanding of the car’s surroundings | Planning, which uses this rich understanding, plus the desired destination, to decide how the car should act on a high level | Controls, where the desired action is compared to the car’s current state and low-level action is calculated | Interface, where the low-level action is sent to the steering wheel and pedals. | . We also have some important code to support testing, visualization, and simulation. Simulation plays a big role in our development, and you can find an overview of it here. Example . Our sensing system takes in a red blob from our front camera and does some white balancing to make the image more clear. The perception system identifies this red blob as a stop sign and generates a bounding box with the coordinates of the stop sign relative to the car. The planning system determines that we must set our speed to zero at the stop sign. The controls system notes that our car is still moving, and calculates that we must decelerate a certain amount. Finally, our actuation system converts this desired deceleration into a brake pedal command, which is sent out to the pedal’s motor. ",
+    "url": "/navigator/system-overview.html#subsystems",
+    "relUrl": "/system-overview.html#subsystems"
   }
 }
