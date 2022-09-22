@@ -29,32 +29,32 @@
     "url": "/navigator/controls/controls-overview.html",
     "relUrl": "/controls/controls-overview.html"
   },"5": {
-    "doc": "Interfaces",
-    "title": "Interfaces overview",
+    "doc": "Interface",
+    "title": "Interface overview",
     "content": " ",
-    "url": "/navigator/interface/interface-overview.html#interfaces-overview",
-    "relUrl": "/interface/interface-overview.html#interfaces-overview"
+    "url": "/navigator/interface/interface-overview.html#interface-overview",
+    "relUrl": "/interface/interface-overview.html#interface-overview"
   },"6": {
-    "doc": "Interfaces",
+    "doc": "Interface",
     "title": "Table of contents",
     "content": ". | About Hail Bopp | Electrical overview | . The Interface subsystem represents the only code that is vehicle-specific by necessity. It is the link between software and hardware. Since your hardware is probably different than ours, then you’ll likely have to modify our interface code to suit your needs. The exception is our CARLA bridge, a simple script that spawns an ego vehicle and connects its sensors and actuators to ROS. In this overview, we’ll go over our hardware platform, Hail Bopp. ",
     "url": "/navigator/interface/interface-overview.html#table-of-contents",
     "relUrl": "/interface/interface-overview.html#table-of-contents"
   },"7": {
-    "doc": "Interfaces",
+    "doc": "Interface",
     "title": "About Hail Bopp",
     "content": "Hail Bopp includes an Electronic Power Assisted Steering (EPAS) system, which is a motor on our steering column that allows us to apply steering force programatically. Our vehicle also has front and rear Velodyne Puck (VLP-16) LiDAR sensors. These generate rich, precise 3D scans of our surroundings using 16 channels of spinning lasers. Our platform uses ZED stereo cameras to gather color images and their corresponding depth information. Stereo cams can give us limited 3D information, but they are best used in conjuction with more accurate LiDAR data. We currently use an NVIDIA Jetson AGX Xavier for our onboard computing. This is likely to change soon, as we have exceeded the power capabilities of this device. Finally, an Adafruit Metro Grand Central serves as our real-time microcontroller. This device handles time-critical services, such as releasing our steering wheel if our high-level software fails. ",
     "url": "/navigator/interface/interface-overview.html#about-hail-bopp",
     "relUrl": "/interface/interface-overview.html#about-hail-bopp"
   },"8": {
-    "doc": "Interfaces",
+    "doc": "Interface",
     "title": "Electrical overview",
     "content": ". ",
     "url": "/navigator/interface/interface-overview.html#electrical-overview",
     "relUrl": "/interface/interface-overview.html#electrical-overview"
   },"9": {
-    "doc": "Interfaces",
-    "title": "Interfaces",
+    "doc": "Interface",
+    "title": "Interface",
     "content": " ",
     "url": "/navigator/interface/interface-overview.html",
     "relUrl": "/interface/interface-overview.html"
