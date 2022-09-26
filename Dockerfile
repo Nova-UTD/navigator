@@ -45,45 +45,19 @@ RUN apt update && \
 
 # FILES HERE should be moved to "rosdep.sh" periodically.
 RUN apt update && \
-    apt install -y ros-foxy-lgsvl-bridge \
-    ros-foxy-velodyne \
+    apt install -y ros-foxy-velodyne \
     ros-foxy-angles \
     libpcap-dev
 
-# install overlay dependencies
-
-
-# COPY --from=cacher $OVERLAY_WS/src ./src
-
-
-# build overlay source
-# COPY --from=cacher $OVERLAY_WS/src ./src
-# ARG OVERLAY_MIXINS="release"
-# RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
-#     colcon build \
-#       --packages-select \
-#         demo_nodes_cpp \
-#         demo_nodes_py \
-#       --mixin $OVERLAY_MIXINS
 ENV ROS_VERSION 2
 
 RUN . /opt/ros/foxy/setup.sh && colcon build
 
-# source entrypoint setup
-# ENV OVERLAY_WS $OVERLAY_WS
-# RUN sed --in-place --expression \
-#       '$isource "$OVERLAY_WS/install/setup.bash"' \
-#       /ros_entrypoint.sh
-
-# run launch file
 
 COPY param/ param/
 COPY data/ data/
-COPY main.launch.py main.launch.py
 
 ENV OVERLAY_WS $OVERLAY_WS
 RUN sed --in-place --expression \
       '$isource "$OVERLAY_WS/install/setup.bash"' \
       /ros_entrypoint.sh
-
-CMD ["ros2", "launch", "main.launch.py"]
