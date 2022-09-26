@@ -48,20 +48,6 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
 
  - The "RenderOffscreen" flag hides the rendering window, which saves some resources. See [here](https://carla.readthedocs.io/en/latest/start_quickstart/#command-line-options) for more details
 
-* Launching the bridge:
-
-    1. In a seperate terminal window, launch `sim_bridge_node` by:
-
-        a. Sourcing Navigator via a command such as `. navigator/install/setup.bash `
-        
-        b. Run the bridge by issuing the follwing: `ros2 run sim_bridge sim_bridge_node`
-        
-    2. If done correctly, output should look something like this:
-
-    ```
-    [INFO] [1645631990.794344351] [sim_bridge_node]: Connecting to CARLA on port 2000
-    [INFO] [1645631993.616481805] [sim_bridge_node]: Spawning ego vehicle (vehicle.audi.etron) @ Transform(Location(x=-64.644844, y=24.471010, z=0.600000),     Rotation(pitch=0.000000, yaw=0.159198, roll=0.000000))
-    ```
 
 * Launching RVIZ:
 
@@ -75,7 +61,7 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
 
     2. Navigate to the root directory of Navigator.
 
-    3. Run `source /install/setup.bash`
+    3. Run `source /install/setup.bash` (if you have bash sourcing ROS automatically (see below), that works too)
 
     4. Run `ros2 launch carla.launch.py`
 
@@ -106,3 +92,13 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
 
 - If you get a "pynput" error, try running `pip3 install pynput`.
 - If you get a CARLA segmentation fault, it's likely you just need to restart CARLA. This will be fixed... eventually. This should only happen after starting the bridge 10 times or so, and should not happen while the bridge is running.
+- If CARLA gives you a SIGFAULT error attach the -carla-rpc-port=N where N = your favorite (Not in use) port number.
+
+## Sourcing Foxy Automatically in Bash:
+
+1. Open your terminal
+2. Write the command --> `gedit ~/.bashrc` (or nano, whatever really)
+3. Go under the last line line and write --> ```source /opt/ros/foxy/setup.bash```
+4. Save and exit
+5. Now with every new shell you open, it will source automatically
+
