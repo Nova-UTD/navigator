@@ -14,7 +14,7 @@ RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN /tmp/rosdep.sh && rm -rf /var/lib/apt/lists/*
+
 
 # RUN echo "\
 # repositories: \n\
@@ -43,6 +43,8 @@ RUN apt update && \
     apt install -y libgtsam-dev libgtsam-unstable-dev && \
     rosdep update && rosdep install -y -r --from-paths src --ignore-src
 
+RUN /tmp/rosdep.sh && rm -rf /var/lib/apt/lists/*
+
 # FILES HERE should be moved to "rosdep.sh" periodically.
 RUN apt update && \
     apt install -y ros-foxy-velodyne \
@@ -56,8 +58,15 @@ RUN . /opt/ros/foxy/setup.sh && colcon build
 
 COPY param/ param/
 COPY data/ data/
+COPY carla.launch.py carla.launch.py
+COPY carla-0.9.13-cp37-cp37m-manylinux_2_27_x86_64.whl carla-0.9.13-cp37-cp37m-manylinux_2_27_x86_64.whl
+
+WORKDIR $OVERLAY_WS/venv
 
 ENV OVERLAY_WS $OVERLAY_WS
+# RUN pip install --upgrade pip && pip install carla==0.9.13
+RUN /usr/bin/python3.7 -m venv venv
+
 RUN sed --in-place --expression \
       '$isource "$OVERLAY_WS/install/setup.bash"' \
       /ros_entrypoint.sh
