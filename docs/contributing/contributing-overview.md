@@ -16,7 +16,7 @@ nav_order: 5
  
 ---
  
-As an open source project, Navigator is always evolving and improving. We open our arms to anyone who'd like to contribute. As per such, we've developed a detailed Code Guidelines & Standards, as well as documentation and branching guidelines that allow us to have a consistent developer experience regardless of author. This revolves around three main philosophies:
+As an open source project, Navigator is always evolving and improving. We open our arms to anyone who'd like to contribute. To help guide contributors, we've developed detailed Code Guidelines & Standards, as well as documentation and branching guidelines that allow us to have a consistent developer experience regardless of author. This revolves around three main philosophies:
 - Inherent Readability
 - Consistency
 - Maintainability
@@ -31,7 +31,7 @@ By following these guidelines, we can fulfill these philosophies, which allow us
 ### Branching & Feature Branches
 We will maintain both a main branch and a dev branch. main is more stable than dev. When you begin work on a feature or a bugfix, fork the dev branch, implement your change, and create a pull request back to dev once the change is relatively stable and well tested.
  
-Start branch names with '`feature_`', but other than that, name them however you want. Make sure the name descriptive and helpful, don't name a branch `feature_zcc` - that name is not helpful to someone trying to understand what the branch is for. However, `feature_zed_camera_color` clearly describes what the branch is for.
+Start branch names with '`feature_`', but other than that, name them however you want. Make the name descriptive and helpful. Don't name a branch `feature_zcc` - that name is not helpful to someone trying to understand what the branch is for. However, `feature_zed_camera_color` clearly describes what the branch is for.
  
 Make sure your commits are meaningful and grouped up. Don't commit your entire change history into a single commit, group them up so you have a timeline of your progress.
  
@@ -48,7 +48,7 @@ You can also use the [VSCode Doxygen Generator](https://marketplace.visualstudio
 Below are the different types of documentation that are required for new contributions for Navigator.
  
 ### Headers
-Each file should have documentation on waht the file accomplishes, as well as basic usage information. Below is our sample header comment template.
+Each file should have documentation on what the file accomplishes, as well as basic usage information. Below is our sample header comment template.
 ```
 /*
 * Package:   package_name
@@ -138,7 +138,7 @@ navigator/
 ```
  
 ## Code Standards and Guidelines
-Code Guidelines help us keep a cleaner, more consistent codebase. This helps us guarantee better code quality, lower code complexity and make more meaningful contributions over time. This all comes down to having better maintainability over time as we scale up our project.
+Code standards and guidelines are a set of rules and best practices that help us create cleaner, readable and more maintainable code with minimal errors. This help us keep a cleaner, more consistent codebase. This helps us guarantee better code quality, lower code complexity and make more meaningful contributions over time. This all comes down to having better maintainability over time as we scale up our project.
 
 Prefer readability over performance in most code. The obvious exception to this is code that is going to process a large amount of data (ie, the inner loop of a downsampler). However, much of our code runs relatively infrequently, so small performance gains are not worth obfuscating our code.
  
@@ -151,7 +151,7 @@ As our stack mainly contains C++ and Python code, we chose two styling guideline
 - Bracket initialization should be done on the same line as initialization
 - Indentation should be performed with a singular tab, equivalent to four spaces
 - Data members of classes (but not structs) additionally have trailing underscores. (eg: a_local_variable, a_struct_data_member,a_class_data_member_)
-- Filenames should be all lowercase and can include underscores (_) or dashes (-)
+- Filenames should be all lowercase and can include underscores (_)
 - Place a function's variables in the narrowest scope possible, and initialize variables in the declaration
  
 ## Variable initialization
