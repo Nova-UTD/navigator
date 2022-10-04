@@ -14,24 +14,6 @@ RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
 
 ENV DEBIAN_FRONTEND noninteractive
 
-
-
-# RUN echo "\
-# repositories: \n\
-#   ros2/demos: \n\
-#     type: git \n\
-#     url: https://github.com/ros2/demos.git \n\
-#     version: ${ROS_DISTRO} \n\
-# " > ../overlay.repos
-# RUN vcs import ./ < ../overlay.repos
-
-# copy manifests for caching
-# WORKDIR /opt
-# RUN mkdir -p /tmp/opt && \
-#     find ./ -name "package.xml" | \
-#       xargs cp --parents -t /tmp/opt && \
-#     find ./ -name "COLCON_IGNORE" | \
-#       xargs cp --parents -t /tmp/opt || true
 WORKDIR $OVERLAY_WS
 
 COPY src/ src/
@@ -57,6 +39,7 @@ RUN . /opt/ros/foxy/setup.sh && colcon build
 
 
 COPY param/ param/
+COPY params.yaml params.yaml
 COPY data/ data/
 COPY carla.launch.py carla.launch.py
 COPY carla-0.9.13-cp37-cp37m-manylinux_2_27_x86_64.whl carla-0.9.13-cp37-cp37m-manylinux_2_27_x86_64.whl
@@ -64,7 +47,9 @@ COPY carla-0.9.13-cp37-cp37m-manylinux_2_27_x86_64.whl carla-0.9.13-cp37-cp37m-m
 WORKDIR $OVERLAY_WS/venv
 
 ENV OVERLAY_WS $OVERLAY_WS
-# RUN pip install --upgrade pip && pip install carla==0.9.13
+RUN curl https://bootstrap.pypa.io/get-pip.py | python3.8
+RUN exec bash
+RUN pip3 install carla==0.9.12
 RUN /usr/bin/python3.7 -m venv venv
 
 RUN sed --in-place --expression \
