@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <functional>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <numeric>

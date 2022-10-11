@@ -6,7 +6,6 @@ FROM ros:humble
 # clone overlay source
 ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS
-COPY rosdep.sh /tmp/rosdep.sh
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     apt-get update && \
     apt install -y git cmake python3-pip && \
@@ -25,6 +24,7 @@ WORKDIR $OVERLAY_WS
 #     apt install -y libgtsam-dev libgtsam-unstable-dev && \
 #     rosdep update && rosdep install -y -r --from-paths src --ignore-src
 
+COPY rosdep.sh /tmp/rosdep.sh
 RUN /tmp/rosdep.sh && rm -rf /var/lib/apt/lists/*
 
 # FILES HERE should be moved to "rosdep.sh" periodically.
@@ -34,6 +34,8 @@ RUN /tmp/rosdep.sh && rm -rf /var/lib/apt/lists/*
 #     libpcap-dev
 
 ENV ROS_VERSION 2
+
+WORKDIR /navigator
 
 # RUN . /opt/ros/foxy/setup.sh && colcon build
 
