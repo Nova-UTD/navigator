@@ -135,9 +135,9 @@ def generate_launch_description():
     path_publisher = Node(
         package='path_publisher',
         executable='publisher',
-        parameters=[
-            (path.join(param_dir,"planning","path_publisher.param.yaml"))
-        ],
+        # parameters=[
+        #     (path.join(param_dir,"planning","path_publisher.param.yaml"))
+        # ],
         namespace='planning',
         output='screen',
         respawn=True
@@ -162,9 +162,9 @@ def generate_launch_description():
         namespace='planning',
         executable='BehaviorPlannerLaunch',
         output='screen',
-        parameters=[
-            (path.join(param_dir,"planning","path_publisher.param.yaml"))
-        ],
+        # parameters=[
+        #     (path.join(param_dir,"planning","path_publisher.param.yaml"))
+        # ],
         remappings=[
             
         ]
