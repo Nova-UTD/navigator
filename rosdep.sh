@@ -37,3 +37,4 @@ ros-humble-rviz2
 apt-get install -y ros-humble-robot-localization
 
 pip3 install pymap3d==2.9.1
+pip3 install transforms3d

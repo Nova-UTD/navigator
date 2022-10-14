@@ -57,3 +57,5 @@ WORKDIR /navigator
 # RUN sed --in-place --expression \
 #       '$isource "$OVERLAY_WS/install/setup.bash"' \
 #       /ros_entrypoint.sh
+COPY entrypoint.sh /opt/entrypoint.sh
+ENTRYPOINT [ "/opt/entrypoint.sh" ]
