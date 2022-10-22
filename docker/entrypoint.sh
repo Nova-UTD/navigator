@@ -16,6 +16,10 @@ source /opt/ros/foxy/setup.bash
 echo "🧭 Sourcing Navigator..."
 
 echo "🔌 Setting up CARLA API..."
-export PYTHONPATH="/navigator/data/carla-0.9.13-py3.7-linux-x86_64.egg":${PYTHONPATH}
+export CARLA_ROOT="/workspace/simulator"
+export SCENARIO_RUNNER_ROOT="/workspace/scenario_runner"
+export LEADERBOARD_ROOT="/workspace/leaderboard"
+export PYTHONPATH="${CARLA_ROOT}/PythonAPI/carla/":"${SCENARIO_RUNNER_ROOT}":"${LEADERBOARD_ROOT}":"${CARLA_ROOT}/PythonAPI/carla/dist/carla-0.9.13-py3.7-linux-x86_64.egg":${PYTHONPATH}
+# export PYTHONPATH="/navigator/data/carla-0.9.13-py3.7-linux-x86_64.egg":${PYTHONPATH}
 
 /bin/bash
