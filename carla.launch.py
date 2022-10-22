@@ -231,7 +231,7 @@ def generate_launch_description():
         unified_controller,
 
         # INTERFACE
-        carla,
+        # carla,
 
         # LOCALIZATION
         map_odom_ukf,

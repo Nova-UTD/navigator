@@ -16,7 +16,7 @@ COPY ./docker/install-dependencies.sh /tmp/install-dependencies.sh
 RUN apt update && apt install -y software-properties-common
 RUN /tmp/install-dependencies.sh && rm -rf /var/lib/apt/lists/*
 
-# RUN pip3 install -r scena
+RUN apt update && apt install -y ros-foxy-rmw-cyclonedds-cpp
 
 ENV ROS_VERSION 2
 

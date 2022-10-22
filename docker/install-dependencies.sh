@@ -30,7 +30,8 @@ ros-foxy-ros-testing \
 python3-matplotlib \
 python3-scipy \
 ros-foxy-rviz2 \
-ros-foxy-robot-localization
+ros-foxy-robot-localization \
+ros-foxy-derived-object-msgs
 
 pip3 install pymap3d==2.9.1 \
 dictor \
