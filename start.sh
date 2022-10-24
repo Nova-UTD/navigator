@@ -11,5 +11,5 @@ docker run \
     --net=host \
     -v $HOME/.Xauthority:/root/.Xauthority \
     -e="DISPLAY" \
-    --name navigator_$USER \
+    --name navigator \
     navigator
