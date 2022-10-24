@@ -25,13 +25,6 @@ def generate_launch_description():
         executable='unified_controller_node'
     )
 
-    # INTERFACE
-    carla = Node(
-        package='sim_bridge',
-        executable='sim_bridge_node',
-        parameters=['params.yaml']
-    )
-
     # LOCALIZATION
     ndt = Node(
         package='ndt_nodes',
@@ -229,9 +222,6 @@ def generate_launch_description():
     return LaunchDescription([
         # CONTROL
         unified_controller,
-
-        # INTERFACE
-        # carla,
 
         # LOCALIZATION
         map_odom_ukf,
