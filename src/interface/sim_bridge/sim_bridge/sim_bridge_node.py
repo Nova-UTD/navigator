@@ -41,13 +41,15 @@ from tf2_ros.buffer import Buffer
 import tf2_msgs
 from tf2_ros import TransformException, TransformStamped
 import pymap3d
-from cv_bridge import CvBridge
+# from cv_bridge import CvBridge
 import numpy as np
 import ros2_numpy as rnp
 from rclpy.node import Node
 import rclpy
 import sys
-sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
+
+sys.path.append('/home/share/carla-simulator/PythonAPI/carla/dist/carla-0.9.13-py3.7-linux-x86_64.egg')
+
 import carla
 import random
 
@@ -117,10 +119,10 @@ class SimBridgeNode(Node):
         carla_image_data_array = np.ndarray(
             shape=(carla_image.height, carla_image.width, 4),
             dtype=np.uint8, buffer=carla_image.raw_data)
-        img_msg = self.cv_bridge.cv2_to_imgmsg(
-            carla_image_data_array, encoding=encoding)
-        img_msg.header.stamp = self.get_clock().now().to_msg()
-        img_msg.header.frame_id = '/base_link'
+        # img_msg = self.cv_bridge.cv2_to_imgmsg(
+        #     carla_image_data_array, encoding=encoding)
+        # img_msg.header.stamp = self.get_clock().now().to_msg()
+        # img_msg.header.frame_id = '/base_link'
 
         return img_msg
 
@@ -136,11 +138,11 @@ class SimBridgeNode(Node):
         scales = np.array([65536.0, 256.0, 1.0, 0]) / (256**3 - 1) * 1000
         depth_image = np.dot(bgra_image, scales).astype(np.float32)
 
-        img_msg = self.cv_bridge.cv2_to_imgmsg(depth_image, encoding=encoding)
+        # img_msg = self.cv_bridge.cv2_to_imgmsg(depth_image, encoding=encoding)
         # the camera data is in respect to the camera's own frame
         # img_msg.header = self.get_msg_header(timestamp=carla_camera_data.timestamp)
-        img_msg.header.stamp = self.get_clock().now().to_msg()
-        img_msg.header.frame_id = '/base_link'
+        # img_msg.header.stamp = self.get_clock().now().to_msg()
+        # img_msg.header.frame_id = '/base_link'
 
         return img_msg
 
@@ -484,7 +486,7 @@ class SimBridgeNode(Node):
         # Define sensors
         self.front_lidar: carla.ServerSideSensor
         self.front_lidar_cloud = np.array([])
-        self.cv_bridge = CvBridge()
+        # self.cv_bridge = CvBridge()
 
         # Define vehicle command state
         self.steering_cmd = 0.0

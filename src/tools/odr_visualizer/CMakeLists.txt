@@ -15,4 +15,10 @@ get_filename_component(directory_name ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 project(${directory_name})
 
 find_package(nova_auto_package REQUIRED)
+
+ # Default to C++17 
+ if(NOT CMAKE_CXX_STANDARD) 
+   set(CMAKE_CXX_STANDARD 17) 
+ endif() 
+
 nova_auto_package()

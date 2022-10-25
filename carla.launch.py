@@ -25,13 +25,6 @@ def generate_launch_description():
         executable='unified_controller_node'
     )
 
-    # INTERFACE
-    carla = Node(
-        package='sim_bridge',
-        executable='sim_bridge_node',
-        parameters=['params.yaml']
-    )
-
     # LOCALIZATION
     ndt = Node(
         package='ndt_nodes',
@@ -135,9 +128,9 @@ def generate_launch_description():
     path_publisher = Node(
         package='path_publisher',
         executable='publisher',
-        parameters=[
-            (path.join(param_dir,"planning","path_publisher.param.yaml"))
-        ],
+        # parameters=[
+        #     (path.join(param_dir,"planning","path_publisher.param.yaml"))
+        # ],
         namespace='planning',
         output='screen',
         respawn=True
@@ -162,9 +155,9 @@ def generate_launch_description():
         namespace='planning',
         executable='BehaviorPlannerLaunch',
         output='screen',
-        parameters=[
-            (path.join(param_dir,"planning","path_publisher.param.yaml"))
-        ],
+        # parameters=[
+        #     (path.join(param_dir,"planning","path_publisher.param.yaml"))
+        # ],
         remappings=[
             
         ]
@@ -229,9 +222,6 @@ def generate_launch_description():
     return LaunchDescription([
         # CONTROL
         unified_controller,
-
-        # INTERFACE
-        carla,
 
         # LOCALIZATION
         map_odom_ukf,

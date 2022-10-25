@@ -18,4 +18,10 @@ find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
 find_package(nova_auto_package REQUIRED)
+
+# Default to C++17 
+if(NOT CMAKE_CXX_STANDARD) 
+    set(CMAKE_CXX_STANDARD 17) 
+endif() 
+
 nova_auto_package()
