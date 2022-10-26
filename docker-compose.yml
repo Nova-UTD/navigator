@@ -1,0 +1,32 @@
+version: '1.2'
+name: navigator
+services:
+    navigator:
+        stdin_open: true
+        tty: true
+
+        image: navigator
+        container_name: navigator_${USER}
+
+        volumes:     
+          - type: bind
+            source: $PWD
+            target: /navigator   
+          - type: bind
+            source: /home/share/carla
+            target: /workspace
+          - type: bind
+            source: ${HOME}/.Xauthority
+            target: /root/.Xauthority
+          - type: bind
+            source: /tmp/.X11-unix
+            target: /tmp/.X11-unix
+
+        environment:
+          - DISPLAY=:1
+
+        build:
+          context: .
+          dockerfile: Dockerfile
+        
+        network_mode: "host"

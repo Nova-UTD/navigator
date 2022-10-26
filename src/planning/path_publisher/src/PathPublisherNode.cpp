@@ -53,7 +53,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	path_pub_timer = this->create_wall_timer(0.5s, std::bind(&PathPublisherNode::generatePaths, this));
 
 	// Read map from file, using our path param
-	RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
+	RCLCPP_INFO(this->get_logger(), "Reading from ", xodr_path.c_str());
 	map = navigator::opendrive::load_map(xodr_path)->map;
 
 	

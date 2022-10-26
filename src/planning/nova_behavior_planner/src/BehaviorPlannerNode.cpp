@@ -24,7 +24,7 @@ BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {
   this->yield_ticks = 0;
 
   // xml parsing
-  RCLCPP_INFO(this->get_logger(), "Reading from " + xodr_path);
+  RCLCPP_INFO(this->get_logger(), "Reading from ", xodr_path.c_str());
   std::shared_ptr<navigator::opendrive::MapInfo> map_info = navigator::opendrive::load_map(xodr_path);
   this->map = map_info->map;
   this->map_info = map_info;
