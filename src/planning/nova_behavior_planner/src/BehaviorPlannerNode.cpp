@@ -17,7 +17,9 @@ using std::placeholders::_1;
 using namespace Nova::BehaviorPlanner;
 
 BehaviorPlannerNode::BehaviorPlannerNode() : rclcpp::Node("behavior_planner") {  
-  std::string xodr_path = "data/maps/town07/Town07_Opt.xodr";
+  this->declare_parameter<std::string>("xodr_path", "/navigator/data/maps/town01/town01.xodr"); //TODO: Make this a param. WSH.
+
+  std::string xodr_path = this->get_parameter("xodr_path").as_string();
   this->current_state = LANEKEEPING;
   this->reached_zone = false;
   this->stop_ticks = 0;
