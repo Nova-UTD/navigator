@@ -78,7 +78,7 @@ void BehaviorPlannerNode::send_message() {
 void BehaviorPlannerNode::update_state() {
   switch(current_state) {
     case LANEKEEPING:
-      RCLCPP_INFO(this->get_logger(), "current state: LANEKEEPING");
+      RCLCPP_INFO_ONCE(this->get_logger(), "current state: LANEKEEPING");
       
       if (upcoming_intersection()) {
         if (final_zones.zones[0].max_speed == STOP_SPEED) {

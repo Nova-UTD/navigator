@@ -144,7 +144,6 @@ class SimBridgeNode(Node):
 
     def birds_eye_cam_cb(self, data: carla.Image):
         img_msg = self.get_color_image(data)
-        self.get_logger().info("Publishing BEV")
         self.birds_eye_cam_pub.publish(img_msg)
 
     # TODO: Fix so that full scan is registered each time. WSH.
@@ -266,7 +265,7 @@ class SimBridgeNode(Node):
         if (speed > 10.2):
             cmd.throttle = 0.0  # Cap our speed at 23 mph. WSH.
             # self.get_logger().warn("Your speed of {} has maxed out".format(speed))
-        self.ego.apply_control(cmd)
+        # self.ego.apply_control(cmd)
 
     def sem_lidar_cb(self, data: carla.SemanticLidarMeasurement):
 
@@ -627,7 +626,7 @@ class SimBridgeNode(Node):
         self.client.set_timeout(20.0)
         
         scenario_manager = sc.ScenarioManager(self)
-        scenario_manager.car_stopped_at_stop_junction()
+        scenario_manager.normal(carla_autopilot=True, num_cars = 50, num_ped = 30)
 
         self.get_logger().info("Started scenario!")
         
@@ -710,6 +709,10 @@ class SimBridgeNode(Node):
         self.primary_imu = self.world.spawn_actor(
             primary_imu_bp, relative_transform, attach_to=self.ego)
         self.primary_imu.listen(self.primary_imu_cb)
+
+    def get_random_spawn(self) -> carla.Transform:
+        spawn_points = self.world.get_map().get_spawn_points()
+        return random.choice(spawn_points)
 
 
 def main(args=None):
