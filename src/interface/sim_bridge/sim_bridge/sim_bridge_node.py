@@ -144,6 +144,7 @@ class SimBridgeNode(Node):
 
     def birds_eye_cam_cb(self, data: carla.Image):
         img_msg = self.get_color_image(data)
+        self.get_logger().info("Publishing BEV")
         self.birds_eye_cam_pub.publish(img_msg)
 
     # TODO: Fix so that full scan is registered each time. WSH.
@@ -492,61 +493,61 @@ class SimBridgeNode(Node):
         self.birds_eye_cam_pub = self.create_publisher(
             Image,
             '/carla/birds_eye_rgb',
-            10
+            1
         )
 
         self.front_depth_pub = self.create_publisher(
             Image,
             '/camera_front/depth',
-            10
+            1
         )
 
         self.front_lidar_pub = self.create_publisher(
             PointCloud2,
             '/lidar_front/points_raw',
-            10
+            1
         )
 
         self.front_rgb_pub = self.create_publisher(
             Image,
             '/camera_front/rgb',
-            10
+            1
         )
 
         self.rear_lidar_pub = self.create_publisher(
             PointCloud2,
             '/lidar_rear/points_raw',
-            10
+            1
         )
 
         self.gnss_pub = self.create_publisher(
             Odometry,
             '/gnss/odom',
-            10
+            1
         )
 
         self.ground_truth_odom_pub = self.create_publisher(
             Odometry,
             '/carla/odom',
-            10
+            1
         )
 
         self.ground_truth_obst_pub = self.create_publisher(
             Obstacle3DArray,
             '/objects',
-            10
+            1
         )
 
         self.primary_imu_pub = self.create_publisher(
             Imu,
             '/imu_primary/data',
-            10
+            1
         )
 
         self.speedometer_pub = self.create_publisher(
             TwistWithCovarianceStamped,
             '/can/speedometer_twist',
-            10
+            1
         )
 
         self.steering_angle_pub = self.create_publisher(
@@ -558,7 +559,7 @@ class SimBridgeNode(Node):
         self.sem_lidar_pub = self.create_publisher(
             PointCloud2,
             '/lidar/semantic',
-            10
+            1
         )
 
         self.sem_road_lidar_pub = self.create_publisher(
@@ -649,20 +650,6 @@ class SimBridgeNode(Node):
         self.front_lidar = self.world.spawn_actor(
             lidar_bp, relative_transform, attach_to=self.ego)
         self.front_lidar.listen(self.front_lidar_cb)
-
-        # Semantic lidar
-        sem_lidar_bp = self.blueprint_library.find(
-            'sensor.lidar.ray_cast_semantic')
-        sem_lidar_bp.set_attribute('channels', '16')  # VLP-16
-        # "30" is CARLA's default FPS.
-        sem_lidar_bp.set_attribute('rotation_frequency', '30')
-        # sem_lidar_bp.set_attribute('sensor_tick', str(LIDAR_PERIOD))
-        # sem_lidar_bp.set_attribute('rotation_frequency', '40')
-        # sem_lidar_bp.set_attribute('points_per_second', '11,200') # 3.4 -0.902 0.7876
-        relative_transform = front_lidar_tf
-        self.sem_lidar = self.world.spawn_actor(
-            sem_lidar_bp, relative_transform, attach_to=self.ego)
-        self.sem_lidar.listen(self.sem_lidar_cb)
 
         # Attach GNSS sensor
         gnss_bp = self.blueprint_library.find('sensor.other.gnss')

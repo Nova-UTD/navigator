@@ -16,7 +16,7 @@ COPY ./docker/install-dependencies.sh /tmp/install-dependencies.sh
 RUN apt update && apt install -y software-properties-common
 RUN /tmp/install-dependencies.sh && rm -rf /var/lib/apt/lists/*
 
-RUN apt update && apt install -y ros-foxy-rmw-cyclonedds-cpp
+RUN apt update && echo "net.core.rmem_max=8388608\nnet.core.rmem_default=8388608\n" | sudo tee /etc/sysctl.d/60-cyclonedds.conf
 
 ENV ROS_VERSION 2
 
