@@ -18,17 +18,18 @@ Navigator is our answer to this delimma. It's built on standard technologies, is
 
 ## Installation
 1. [Install ROS2 Foxy](https://docs.ros.org/en/foxy/Installation.html) if you haven't already done so
-2. Clone our repository
+2. [Install Docker](https://www.docker.com/get-started/) if you haven't already done so
+3. Clone our repository
 ```
 $ git clone --recursive https://github.com/Nova-UTD/navigator
 $ cd navigator
 ```
-3. Build and start our docker container
+4. Build and start our docker container
 ```
 $ docker build . -t navigator
 $ ./start.sh
 ```
-4.  Build with colcon
+5.  Build with colcon
 ```
 $ colcon build
 ```

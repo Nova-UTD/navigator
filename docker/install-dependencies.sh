@@ -33,13 +33,14 @@ ros-foxy-rviz2 \
 ros-foxy-robot-localization \
 ros-foxy-derived-object-msgs
 
+apt-get install byobu \
+
 pip3 install pymap3d==2.9.1 \
 dictor \
 requests \
 opencv-python==4.2.0.32 \
 pygame \
 tabulate \
-byobu \
 pexpect \
 transforms3d \
 pep8 \
