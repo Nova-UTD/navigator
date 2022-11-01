@@ -14,8 +14,10 @@ from ament_index_python import get_package_share_directory
 def generate_launch_description():
 
     launch_path = path.realpath(__file__)
-    launch_dir = path.dirname(launch_path)
-    param_dir = path.join(launch_dir,"param")
+    # launch_dir = path.dirname(launch_path)
+    launch_dir = "/navigator"
+    # param_dir = path.join(launch_dir,"param")
+    param_dir = "/navigator/param"
     interface = "vcan0"
     map_name = "grandloop"
 
@@ -231,7 +233,7 @@ def generate_launch_description():
         unified_controller,
 
         # INTERFACE
-        # carla,
+        carla,
 
         # LOCALIZATION
         map_odom_ukf,

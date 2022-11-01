@@ -23,7 +23,12 @@ Navigator is our answer to this delimma. It's built on standard technologies, is
 $ git clone --recursive https://github.com/Nova-UTD/navigator
 $ cd navigator
 ```
-3.  Build with colcon
+3. Build and start our docker container
+```
+$ docker build . -t navigator
+$ ./start.sh
+```
+4.  Build with colcon
 ```
 $ colcon build
 ```
