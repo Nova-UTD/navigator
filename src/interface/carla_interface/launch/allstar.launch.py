@@ -130,6 +130,15 @@ def generate_launch_description():
                     ('ndt_pose', '/localization/ndt_pose'),
                     ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')]
     )
+
+    #rrt Node
+    rrt_path = Node(
+        package='rrt',
+        name='rrt_node',
+        namespace='planning',
+        executable='RRTNode',
+        output='screen',
+    )
     
     # path_planner = Node(
     #     package='behavior_planner_nodes',
@@ -271,4 +280,5 @@ def generate_launch_description():
         # behavior_planner,
         # path_publisher,
         # motion_planner
+        rrt_path,
     ])
