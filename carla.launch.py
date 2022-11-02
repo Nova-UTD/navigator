@@ -94,7 +94,13 @@ def generate_launch_description():
     )
 
     # PERCEPTION
-    
+    dynamic_grid = Node(
+        package='dynamic_grid',
+	name='dynamic_grid',
+	namespace='perception',
+	executable='dynamic_grid_constructor',
+	output='screen',
+    )
     # PLANNING
     route_planner = Node(
         package='lanelet2_global_planner_nodes',
@@ -235,7 +241,7 @@ def generate_launch_description():
         visuals,
 
         # PERCEPTION
-
+	dynamic_grid,
         # PLANNING
         zone_fusion,
         obstacle_zoner,
