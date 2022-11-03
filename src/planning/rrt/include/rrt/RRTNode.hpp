@@ -23,25 +23,29 @@ public:
 	float gps_X;
 	float gps_Y;
 	WayPointRRT(float velocity, float gps_X, float gps_Y){
-		this.velocity = velocity;
-		this.gps_X = gps_X;
-		this.gps_Y = gps_Y;
+		this->velocity = velocity;
+		this->gps_X = gps_X;
+		this->gps_Y = gps_Y;
 	}
 
 
-}
+};
 
 class WayPointPath {
 public:
 	std::vector<WayPointRRT> path;
+	WayPointPath(){
+		return;
+	}
 	WayPointPath(std::vector<WayPointRRT> tempPath){
 		path = tempPath;
 	}
 
-}
+};
 
 class RRTNode : public rclcpp::Node {
 public:
 	RRTNode();
-	WayPointPath createTree(); //TODO: check for costMap input for parameter
-}
+	WayPointPath path;
+	WayPointPath* createTree(); //TODO: check for costMap input for parameter
+};

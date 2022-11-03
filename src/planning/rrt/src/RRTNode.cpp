@@ -9,15 +9,13 @@
 #include <ctime>
 #include <cstdlib> 
 
+#include "rrt/RRTNode.hpp"
+
 using geometry_msgs::msg::Point;
 using geometry_msgs::msg::Vector3;
 using nav_msgs::msg::Odometry;
 using std_msgs::msg::ColorRGBA;
 using voltron_msgs::msg::FinalPath;
-
-#include "rrt/RRTNode.hpp"
-
-
 
 RRTNode::RRTNode() : Node("rrt_node"){
 	//cost_map_sub = this -> create_subscription<>
@@ -28,15 +26,16 @@ RRTNode::RRTNode() : Node("rrt_node"){
 	
 	// expect the cost map from  cost_map_sub to be passed through
 	// expect current position to be passed from odom_sub
-	this->path = createTree();
+	this->path = createTree()->path;
 }
 
 
-std::vector<WayPointRRT> RRTNode:createTree(){
+WayPointPath* RRTNode::createTree(){
 	//have set of states possible actions
 	//use costmap to determine which state transisitoned would be the best
 	// use heuristic to determine which path will be the best
-	return NULL;
+	WayPointPath *temp = new WayPointPath();
+	return temp;
 }
 
 
