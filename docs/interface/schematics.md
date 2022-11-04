@@ -4,15 +4,28 @@ title: Schematics
 nav_order: 6
 ---
 # Schematics
-{: .no_toc }
 
-## Table of contents
-{: .no_toc .text-delta }
 
-1. TOC
-{:toc}
+## Main Nova Schematic 
+
+![Nova Schematic](/docs/assets/res/Full%20Nova%20Schematic.jpg)
 
 ---
 
-## Power system
-![Adafruit schematic](/docs/interface/schematics.mdg)
+## Power Source Schematics
+
+![Power Source Schematics](/docs/assets/res/Power.jpg)
+
+---
+
+## USB Hub Schematics
+
+![USB Hub Schematics](/docs/assets/res/USB%20Hub.jpg)
+
+---
+
+## Adafruit Grand Central Schematics
+
+![Adafruit Grand Central Schematics](/docs/assets/res/Adafruit.jpg)
+
+
