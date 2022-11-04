@@ -8,24 +8,24 @@ nav_order: 6
 
 ## Main Nova Schematic 
 
-![Nova Schematic](/docs/assets/res/Full%20Nova%20Schematic.jpg)
+![Nova Schematic](/assets/res/Full%20Nova%20Schematic.jpg)
 
 ---
 
 ## Power Source Schematics
 
-![Power Source Schematics](/docs/assets/res/Power.jpg)
+![Power Source Schematics](/assets/res/Power.jpg)
 
 ---
 
 ## USB Hub Schematics
 
-![USB Hub Schematics](/docs/assets/res/USB%20Hub.jpg)
+![USB Hub Schematics](/assets/res/USB%20Hub.jpg)
 
 ---
 
 ## Adafruit Grand Central Schematics
 
-![Adafruit Grand Central Schematics](/docs/assets/res/Adafruit.jpg)
+![Adafruit Grand Central Schematics](/assets/res/Adafruit.jpg)
 
 
