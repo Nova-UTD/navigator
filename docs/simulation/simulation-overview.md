@@ -30,8 +30,8 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
 
     1. CARLA Simulator: Please follow the instructions in the above links to install CARLA on your chosen operating system
     2. Navigator: Please see our GitHub page for the latest releases of Navigator
-    3. RVIZ (Or an equivalent ROS visualizer: The download page for RVIZ is here: http://wiki.ros.org/rviz
-    4. ROS2: The download page for ROS2 is here: https://docs.ros.org/en/foxy/index.html 
+    3. [RVIZ](http://wiki.ros.org/rviz) (Or an equivalent ROS visualizer)
+    4. [ROS2](https://docs.ros.org/en/foxy/index.html)
     5. Dependencies for the above: Self-explanatory, Navigator comes with most of what you need, CARLA may not, do not forget to check!
 
 
@@ -54,6 +54,10 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
     1. Open a new terminal window.
     
     2. Navigate to the root directory of Navigator
+
+    3. Enable Docker to launch GUI programs
+    
+        `$ xhost +`
     
     3. Run our docker container start script. (If first time running container, refer to [step 3](/navigator/index)) 
        
