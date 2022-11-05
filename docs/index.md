@@ -14,7 +14,12 @@ Navigator is our answer to this delimma. It's built on standard technologies, is
 
 ## System requirements
 - System running Ubuntu 20.04 LTS or similar ([see here](http://docs.ros.org.ros.informatik.uni-freiburg.de/en/foxy/Installation/Alternatives/Ubuntu-Development-Setup.html#system-requirements))
-- A dedicated GPU with at least 6 GB of memory, ideally 8 GB
+  - *[**Docker**](https://docs.docker.com/desktop/) engine already installed on Ubuntu*
+- [**Ros2 Foxy**](https://docs.ros.org/en/foxy/Installation.html)
+- [**CARLA**](https://carla.readthedocs.io/en/latest/start_quickstart/)
+  - A dedicated GPU with at least 6 GB of memory, ideally 8 GB
+  - x86/x64 CPU architecture
+  - About 20 GB of space
 
 ## Installation
 1. [Install ROS2 Foxy](https://docs.ros.org/en/foxy/Installation.html) if you haven't already done so
@@ -28,10 +33,12 @@ $ cd navigator
 $ docker build . -t navigator
 $ ./start.sh
 ```
-4.  Build with colcon
+4.  Build with colcon (*cache flag only needed for first build*)
 ```
-$ colcon build
-```
+$ colcon build --symlink-install --cmake-clean-cache
+``` 
+ 
+
 
 That's it!
 
@@ -39,6 +46,6 @@ That's it!
 1. Make sure you've installed Navigator using the steps above.
 2. Source the workspace by running `$ source install/setup.bash` from our repo root.
 3. Open Rviz2 and CARLA. We use the latest version of CARLA in our testing, which is [0.9.13](https://github.com/carla-simulator/carla/releases/tag/0.9.13) at time of writing.
-4. Launch our demo with `$ ros2 launch carla.launch.py`
+4. Launch our demo with `$ ros2 launch carla carla.launch.py`
 
 At this point, Navigator will connect to CARLA over our custom bridge.
