@@ -27,7 +27,3 @@ nav_order: 6
 ## Adafruit Grand Central Schematics
 
 ![Adafruit Grand Central Schematics](/navigator/assets/res/Adafruit.jpg)
-
-## Adafruit Grand Central Schematics
-
-![Adafruit Grand Central Schematics]("/navigator/assets/res/Nova Schematics -Adafruit.drawio.png")
