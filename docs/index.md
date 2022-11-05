@@ -22,23 +22,43 @@ Navigator is our answer to this delimma. It's built on standard technologies, is
   - About 20 GB of space
 
 ## Installation
+
+> Note: Lines with "$" are on host, while lines with "#" are within the container.
+
 1. [Install ROS2 Foxy](https://docs.ros.org/en/foxy/Installation.html) if you haven't already done so
 2. Clone our repository
 ```
 $ git clone --recursive https://github.com/Nova-UTD/navigator
 $ cd navigator
 ```
-3. Build and start our docker container
+3. Build and start our Docker container
 ```
 $ docker build . -t navigator
 $ ./start.sh
 ```
-4.  Build with colcon (*cache flag only needed for first build*)
+which gives:
 ```
-$ colcon build --symlink-install --cmake-clean-cache
+wheitman@justingpu:~/navigator$ ./start.sh 
+=====================================================================
+▀█▄   ▀█▀                   ██                    ▄                   
+ █▀█   █   ▄▄▄▄   ▄▄▄▄ ▄▄▄ ▄▄▄    ▄▄▄ ▄  ▄▄▄▄   ▄██▄    ▄▄▄   ▄▄▄ ▄▄  
+ █ ▀█▄ █  ▀▀ ▄██   ▀█▄  █   ██   ██ ██  ▀▀ ▄██   ██   ▄█  ▀█▄  ██▀ ▀▀ 
+ █   ███  ▄█▀ ██    ▀█▄█    ██    █▀▀   ▄█▀ ██   ██   ██   ██  ██     
+▄█▄   ▀█  ▀█▄▄▀█▀    ▀█    ▄██▄  ▀████▄ ▀█▄▄▀█▀  ▀█▄▀  ▀█▄▄█▀ ▄██▄    
+                                ▄█▄▄▄▄▀                               
+=====================================================================
+Developed by Nova, a student-run autonomous driving group at UT Dallas
+Find out more at https://nova-utd.github.io/navigator
+🦊 Sourcing ROS2 Foxy...
+🔗 Configuring the ROS DDS...
+🧭 Sourcing Navigator...
+🔌 Setting up CARLA API...
+root@justingpu:/navigator# 
+```
+4.  Now that you're in the container, build our ROS workspace:
+```
+$ colcon build --symlink-install
 ``` 
- 
-
 
 That's it!
 
