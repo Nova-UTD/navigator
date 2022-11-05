@@ -55,12 +55,11 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
     
     2. Navigate to the root directory of Navigator
     
-    3. Run our docker container start script. (If first time running container, refer to [step 3](/navigator/index) 
+    3. Run our docker container start script. (If first time running container, refer to [step 3](/navigator/index)) 
        
         `$ ./start.sh `
     
-    4. Source the setup script via a command like: 
-    ` . install/setup.bash`
+    4. Source the setup script via a command like: `. install/setup.bash`
 
     5. Run: `rviz2`
     6. Select File followed by Open Config Select default.rviz from the share folder. It is recommended that you have your own copy of this as well             for your own configuration.
