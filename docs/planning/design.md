@@ -45,7 +45,7 @@ In order to make this possible, we have outlined some approaches/options for pla
 
 ## Proposed structure
 
-![BPC_Flow](docs/assets/rest/BPC_flow.png)
+![BPC_Flow](/navigator/assets/res/BPC_flow.png)
 
 
 ### Current-State Information Required:
@@ -64,7 +64,7 @@ Short-term local coordinate transform history
 
 Source: [1]
 
-![BPC_options](docs/assets/rest/bpc_surrounding_environment_rep_options.png)
+![BPC_options](/navigator/assets/res/bpc_surrounding_environment_rep_options.png)
 
 
 Voroni Diagrams: unsuitable for non-holonomic vehicles (cars)
@@ -105,7 +105,7 @@ Cost for travel from a given to another: Source [4]
 
 We can represent the points into a graph with vertices being possible options given current position and environment. Edges are the transition from a given point (where AV currently is) to next point. We weight  transition to be the following equation: Source [4]
 
-![Cost_math_method](docs/assets/rest/bpc_cost_map_method.png)
+![Cost_math_method](/navigator/assets/res/bpc_cost_map_method.png)
 
 
 Proposal (Egan, I think this makes sense, I also think that we may need to tweak this conversion when we try to decide algorithms that work best for RRTs - Hansika): We may additionally want a cost function more general than a summation over occupied cells. The specific case I'm thinking of is we want to encode that, where possible, the vehicle should end in drivable area at the prediction horizon- we don't want to attempt to overtake where since it looks good now, but when the horizon rolls forward the vehicle realizes it was impossible halfway through. This cannot be encoded by a cost map alone.  So a more general approach is:
@@ -135,10 +135,10 @@ Benefits:
 
 Detractions:
 	1. Jerky paths created
-	2. Strong dependence on Nearest Neighbor metric
+	2. Strong dependence on Neares Neighbor metric
 	3. Need to do collision checking for every expanded node
 
-![bpc_rrt_algo](docs/assets/rest/bpc_rrt_algo.png)
+![bpc_rrt_algo](/navigator/assets/res/bpc_rrt_algo.png)
 
 
 Approach 2: Source [3]
@@ -153,7 +153,7 @@ Disadvantages:
 
 Psuedo Code: Source [3]:
 
-![bpc_rrt_algo](docs/assets/rest/bpc_rrt*_algo.png)
+![bpc_rrt_algo](/navigator/assets/res/bpc_rrt*_algo.png)
 
 
 Approach 3:
@@ -167,14 +167,14 @@ Given a cost map, we could build off it in the following manner:
 To expand tree: souce [5]
 1. Sample a pposition uniformly at random and then sample two dimenssionaly gaussian distribution centered at the around intial path. 
 
-![bpc_rrt*_algo](docs/assets/rest/bpc_rrt_cost.png)
+![bpc_rrt*_algo](/navigator/assets/res/bpc_rrt_cost.png)
 
 
 Approach 4: CL-RRT
 
 Tree expansion: grows a tree of feasible trajectories originating from the current vehicle state that attempts to reach a specified goal set [2]
 
-![bpc_cl_rrt_algo](docs/assets/rest/bpc_cl_rrt.png)
+![bpc_cl_rrt_algo](/navigator/assets/res/bpc_cl_rrt.png)
 
 
 Further RRT approaches are described here: https://en.wikipedia.org/wiki/Rapidly-exploring_random_tree
@@ -184,7 +184,7 @@ Other choices than RRTs:
 
 Lattice Planners: We don't wnat to use this because we are getting a dynamic grid:
 
-![bpc_rrt_vs_lattice_planners](docs/assets/rest/bpc_rrt_vs.png)
+![bpc_rrt_vs_lattice_planners](/navigator/assets/res/bpc_rrt_vs.png)
 
 
 Source 1: https://www.sciencedirect.com/science/article/pii/S0968090X15003447
