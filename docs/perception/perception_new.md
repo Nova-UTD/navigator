@@ -28,7 +28,7 @@ title: Perception and Prediction Design Document (draft)
 
  
 
-    ####Prediction: 
+#### Prediction: 
 
     - Zones in place of dynamic object detection 
 
@@ -107,7 +107,7 @@ Phase 3:
 
 ******** Insert first image ****
 
-![PERCEPTION_FLOWCHART](/navigator/assets/res/perception_flow.png)
+![perception_flowchart](/navigator/assets/res/perception_flow.jpeg)
  
 
  
