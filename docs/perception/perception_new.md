@@ -194,7 +194,7 @@ A DOGMa is an evidential grid containing both occupancy and dynamic state inform
 
 Occupancy Grids 
 
-We consider DST-based occupancy grids computed from LiDAR measurements as detailed by Nuss et al. [4]. DST deals with a set of exhaustive hypotheses formed from a frame of discernment and the associated belief masses. In the case of an occupancy grid, our frame of discernment is: Ω = {F, O}, where F is free space and O is occupied space. Thus, the set of hypotheses is: {∅, {F }, {O}, {F, O}}. The null set ∅ is impossible in this context as a cell physically cannot be neither occupied nor unoccupied. Thus, our exhaustive set of hypotheses is: {{F }, {O}, {F, O}}. The sum of the belief masses over the possible hypotheses for each individual cell must equal one by definition, akin to probabilities [1]. 
+We consider DST-based occupancy grids computed from LiDAR measurements as detailed by Nuss et al. [4]. DST deals with a set of exhaustive hypotheses formed from a frame of discernment and the associated belief masses. In the case of an occupancy grid, our frame of discernment is: Ω = {F, O}, where F is free space and O is occupied space. Thus, the set of hypotheses is: \{∅, \{F \}, \{O\}, \{F, O\}\}. The null set ∅ is impossible in this context as a cell physically cannot be neither occupied nor unoccupied. Thus, our exhaustive set of hypotheses is: \{\{F \}, \{O\}, \{F, O\}\}. The sum of the belief masses over the possible hypotheses for each individual cell must equal one by definition, akin to probabilities [1]. 
   
  
  
