@@ -21,28 +21,20 @@
 #include <list>
 #include <algorithm>
 
-const double max_accel = 1.0;
-const double max_lat_accel = 0.6;
-const double max_decel = 1.0;
-
-using namespace navigator::motion_planner;
+using namespace navigator::cost_map_maker;
 using namespace navigator::zones_lib;
 
 using ZoneArray = voltron_msgs::msg::ZoneArray;
 using Zone = voltron_msgs::msg::Zone;
-using voltron_msgs::msg::Trajectory;
-using voltron_msgs::msg::TrajectoryPoint;
-
-double dist_between_points(TrajectoryPoint& p1, TrajectoryPoint& p2) {
-    return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2));
-}
+using voltron_msgs::msg::DOGMa;
+using voltron_msgs::msg::OGMa;
 
 
 CostMapMakerNode::CostMapMakerNode() : Node("cost_map_maker_node")
 {
-    trajectory_publisher = this->create_publisher<voltron_msgs::msg::Trajectory>("outgoing_cost_map", 8);
-    path_subscription = this->create_subscription<voltron_msgs::msg::FinalPath>("/planning/paths", 10, bind(&MotionPlannerNode::update_path, this, std::placeholders::_1));
-    zone_subscription = this->create_subscription<ZoneArray>("/planning/zones", 10, bind(&MotionPlannerNode::update_zones, this, std::placeholders::_1));
+    cost_map_publisher = this->create_publisher<voltron_msgs::msg::DOGMa>("outgoing_cost_map", 8);
+    DOGMa_subscription = this->create_subscription<voltron_msgs::msg::DOGMa>("*INSERT SUBSCRIPTION*", 10, bind(&MotionPlannerNode::update_DOGMa, this, std::placeholders::_1));
+    waypoint_subscription = this->create_subscription<ZoneArray>("*INSERT SUBSCRIPTION*", 10, bind(&MotionPlannerNode::update_waypoints, this, std::placeholders::_1));
     odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
     //current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
     //steering_angle_subscription = this->create_subscription<voltron_msgs::msg::SteeringPosition>("/can/steering_angle", 8, bind(&MotionPlannerNode::update_steering_angle, this, std::placeholders::_1));
@@ -52,33 +44,37 @@ CostMapMakerNode::CostMapMakerNode() : Node("cost_map_maker_node")
 }
 
 void MotionPlannerNode::send_message() {
-    if (ideal_path == nullptr) {
-        // RCLCPP_WARN(this->get_logger(), "motion planner has no input path, skipping...");
+    if (DOGMa == nullptr) {
         return;
     }
 
-    // LEFTOVER CODE //
-
-    /*auto tmp = voltron_msgs::msg::Trajectory();
-    for (size_t i = 0; i < ideal_path->points.size(); i++) {
-      auto t = voltron_msgs::msg::TrajectoryPoint();
-      auto p = ideal_path->points[i];
-      t.x = p.x;
-      t.y = p.y;
-      t.vx = ideal_path->speeds[i];
-      tmp.points.push_back(t);
+    auto cost_map_DOGMa = voltron_msgs::msg::DOGMa();
+    for (size_t time_index = 0; time_index < DOGMA->DOGMa.size(); time_index++) {
+      auto cost_map_OGMa = voltron_msgs::msg::OGMa();
+      auto cur_OGMa = DOGMa->DOGMa[time_index];
+      cost_map_OGMa.timestep = cur_OGMa.timestep;
+      for (size_t coordinate_index = 0; coordinate_index < cur_OGMa.map.size(); coordinate_index++)
+      {
+        cost_map_OGMa.map[coordinate_index].value = cur_OGMa.map[coordinate_index].value;
+        cost_map_OGMa.map[coordinate_index].value = cur_OGMa.map[coordinate_index].value;
+      }
+      cost_map_DOGMa.DOGMa.push_back(cost_map_OGMa);
     }
-    trajectory_publisher->publish(tmp);*/
+    trajectory_publisher->publish(cost_map_DOGMa);
 
 
     return;
 }
 
-void MotionPlannerNode::update_path(voltron_msgs::msg::FinalPath::SharedPtr ptr) {
-    ideal_path = ptr;
+void MotionPlannerNode::update_DOGMa(voltron_msgs::msg::DOGMa::SharedPtr ptr) {
+    DOGMa = ptr;
 }
 
-void MotionPlannerNode::update_zones(voltron_msgs::msg::ZoneArray::SharedPtr ptr)
+void MotionPlannerNode::update_waypoints(voltron_msgs::msg::ZoneArray::SharedPtr ptr)
 {
-    zones = ptr;
+
+}
+
+void MotionPlannerNode::odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg) {
+    odometry = msg;
 }
