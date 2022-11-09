@@ -9,19 +9,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_and_test:
-    runs-on: ubuntu-latest
+  container-test-job:
+    runs-on: [self-hosted]
+    container:
+      image: novautd/navigator:latest
+      ports:
+        - 80
+      volumes:
+        - my_docker_volume:/volume_mount
+      options: --cpus 1
     steps:
-      # Checks-out the repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-
-      - name: Enter Workspace
-        run: |
-          cd $GITHUB_WORKSPACE
-          echo Workspace directory: $(pwd)
-
-      - name: Build Workspace
-        run: sudo docker build . -t navigator
-
-      - name: Run Tests
-        run: sudo docker run navigator bash -c ". /opt/ros/foxy/setup.bash && . install/setup.bash && colcon test --retest-until-pass 8 --packages-skip manual_control \$(echo \$(ros2 pkg list | grep _nodes)) can_interface vt_steering_controller vt_vehicle_bridge vt_viz ne_raptor_interface && colcon test-result --verbose"
+      - name: Try building with Docker
+        run: "cd $GITHUB_WORKSPACE && colcon build --packages-select cyclonedds --cmake-clean-cache && . install/setup.bash && colcon build --cmake-clean-cache
