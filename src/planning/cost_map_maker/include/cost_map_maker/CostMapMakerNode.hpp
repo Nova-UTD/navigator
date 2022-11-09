@@ -20,8 +20,8 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include <nav_msgs/msg/odometry.hpp>
-#include "voltron_msgs/msg/DOGMa.hpp"
-#include "voltron_msgs/msg/GPSDiagnostic.hpp"
+#include "voltron_msgs/msg/dogma.hpp"
+#include "voltron_msgs/msg/g_p_s_diagnostic.hpp"
 
 using namespace std::chrono_literals;
 
