@@ -19,13 +19,13 @@
 
 class WayPointRRT{
 public:
-	float velocity;
 	float gps_X;
 	float gps_Y;
-	WayPointRRT(float velocity, float gps_X, float gps_Y){
-		this->velocity = velocity;
+  	time_t current_time;
+	WayPointRRT(float velocity, float gps_X, float gps_Y, time_t current_time){
 		this->gps_X = gps_X;
 		this->gps_Y = gps_Y;
+		this->current_time = current_time;
 	}
 
 
