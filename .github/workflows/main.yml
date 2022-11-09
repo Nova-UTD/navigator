@@ -21,4 +21,4 @@ jobs:
           echo Workspace directory: $(pwd)
 
       - name: Build Navigator using latest Docker image
-        run: docker/build_container.sh
+        run: /bin/bash docker/build_container.bash
