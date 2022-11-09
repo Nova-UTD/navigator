@@ -31,6 +31,10 @@ if [ -d "/build" ] || [ -d "/install" ]; then
     echo "🔍 Found existing build, sourcing existing build"
 fi
 
-exec bash
-
 echo "❗ Finished environment setup"
+
+if [ -z ${@+x} ]; then
+    exec bash
+else 
+    exec bash -c "$@"
+fi
