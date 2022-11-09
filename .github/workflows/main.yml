@@ -9,16 +9,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  container-test-job:
+  build_and_test:
     runs-on: [self-hosted]
-    container:
-      image: novautd/navigator:latest
-      ports:
-        - 80
-      volumes:
-        - my_docker_volume:/volume_mount
-      options: --cpus 1
     steps:
+      # Checks-out the repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-      - name: Try building with Docker
-        run: "cd $GITHUB_WORKSPACE && docker/build_container.sh"
+
+      - name: Enter Workspace
+        run: |
+          cd $GITHUB_WORKSPACE
+          echo Workspace directory: $(pwd)
+
+      - name: Build Navigator using latest Docker image
+        run: docker/build_container.sh
