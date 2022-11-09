@@ -20,8 +20,11 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include <nav_msgs/msg/odometry.hpp>
+#include "voltron_msgs/msg/zone.hpp"
+#include "voltron_msgs/msg/zone_array.hpp"
 #include "voltron_msgs/msg/dogma.hpp"
-#include "voltron_msgs/msg/g_p_s_diagnostic.hpp"
+#include "voltron_msgs/msg/ogma.hpp"
+#include "voltron_msgs/msg/gps_diagnostic.hpp"
 
 using namespace std::chrono_literals;
 
@@ -43,16 +46,16 @@ private:
     // Send final cost map to subscribers
     void send_message();
     // Subscription to *INSERT PUBLISHER* for input Dynamic Occupancy Grid
-    void update_DOGMa(voltron_msgs::msg::DOGMa::SharedPtr ptr);
+    void update_DOGMa(voltron_msgs::msg::Dogma::SharedPtr ptr);
     // Subscription to *INSERT PUBLISHER* for input waypoints
     void update_waypoints(voltron_msgs::msg::ZoneArray::SharedPtr ptr);
     // Subscription to *INSERT PUBLISHER* for the current heading of the car
     void odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg);
 
     // Cost map Publisher
-    rclcpp::Publisher<voltron_msgs::msg::DOGMa>::SharedPtr cost_map_publisher;
+    rclcpp::Publisher<voltron_msgs::msg::Dogma>::SharedPtr cost_map_publisher;
     // Dynamic Occupancy Grid Subscriber
-    rclcpp::Subscription<voltron_msgs::msg::DOGMa>::SharedPtr DOGMa_subscription;
+    rclcpp::Subscription<voltron_msgs::msg::Dogma>::SharedPtr DOGMa_subscription;
     /* TODO Add information from global waypoints */
     rclcpp::Subscription<voltron_msgs::msg::ZoneArray>::SharedPtr waypoint_subscription;
 
@@ -62,7 +65,7 @@ private:
     rclcpp::TimerBase::SharedPtr control_timer;
 
 
-    voltron_msgs::msg::DOGMa::SharedPtr DOGMa;
+    voltron_msgs::msg::Dogma::SharedPtr DOGMa;
     /* TODO Add information from global waypoints */
     voltron_msgs::msg::ZoneArray::SharedPtr waypoints;
     nav_msgs::msg::Odometry::SharedPtr odometry;
