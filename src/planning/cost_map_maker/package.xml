@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>motion_planner</name>
+  <name>cost_map_maker</name>
   <version>0.0.1</version>
-  <description>Motion Planner</description>
+  <description>Cost Map Maker</description>
   <maintainer email="jim3moore@gmail.com">Jim Moore</maintainer>
   <license>MIT</license>
 
