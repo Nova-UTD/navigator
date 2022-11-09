@@ -13,7 +13,7 @@ class GroundSeg(Node):
 
     def __init__(self):
         super().__init__('ground_seg')
-        self.height = -1.73  # initialize to the z-height of the LiDAR
+        self.height = -1.73  # initialize to the z-height of the LiDAR (in meters)
 
     #===================IGNOR=============================================
         self.publisher_ = self.create_publisher(String, 'topic', 10)
