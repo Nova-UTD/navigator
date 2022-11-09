@@ -1,12 +1,7 @@
 # Automatically build and test all packages in our workspace
 name: Build and Test
 
-on:
-  pull_request:
-    branches: [ main, dev ]
-
-  # Allows manual starting of the workflow
-  workflow_dispatch:
+on: [push, pull_request]
 
 jobs:
   build_and_test:
