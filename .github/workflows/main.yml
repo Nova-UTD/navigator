@@ -10,7 +10,7 @@ on:
 
 jobs:
   build_and_test:
-    runs-on: quad
+    runs-on: [self-hosted]
     steps:
       # Checks-out the repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
