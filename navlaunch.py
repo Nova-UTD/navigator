@@ -30,7 +30,6 @@ def process_ros_launch_line(line: str, level: MessageLevel) -> None:
     @param line[str]            Line to process
     @param level[MessageLevel]  Minimum message level to output to console
     """
-    line: str = line.decode('utf-8').rstrip() # Decode string to utf-8 and remove end whitespace
 
     # Patterns for different console message types
     pattern_PLTNI: Pattern = re.compile(r"\[[^\]]*\] \[[^\]]*\] \[[0-9]*\.[0-9]+\] \[[^\]]*\]:", re.IGNORECASE)
@@ -73,9 +72,10 @@ def start_main_launch(level: MessageLevel) -> None:
     )
 
     for line in iter(process.stdout.readline, ''):  # With Python 3, you need iter(process.stdout.readline, b'') (i.e. the sentinel passed to iter needs to be a binary string, since b'' != '')
+        line: str = line.decode('utf-8').rstrip() # Decode string to utf-8 and remove end whitespace
         if line == "" and line is not None: # If line is null or empty then skip loop
             continue
-        
+        print(line)
         Thread(target=process_ros_launch_line, args=(line, level, )).start() # Send line to process to thread [non-yield]
         Thread(target=call_node_sanity_check).start() # Send sanity check to thread [non-yield]
 
