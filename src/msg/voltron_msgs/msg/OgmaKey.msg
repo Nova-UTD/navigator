@@ -1,5 +1,5 @@
 # location of cell in OGMa
-# center of cell?
+# center of cell
 
 float64 x
 float64 y
