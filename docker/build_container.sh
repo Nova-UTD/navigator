@@ -1,0 +1,1 @@
+colcon build --packages-select cyclonedds --cmake-clean-cache && . install/setup.bash && colcon build --cmake-clean-cache

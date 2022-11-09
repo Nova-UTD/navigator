@@ -21,4 +21,4 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Try building with Docker
-        run: "cd $GITHUB_WORKSPACE && colcon build --packages-select cyclonedds --cmake-clean-cache && . install/setup.sh && colcon build --cmake-clean-cache"
+        run: "cd $GITHUB_WORKSPACE && docker/build_container.sh"
