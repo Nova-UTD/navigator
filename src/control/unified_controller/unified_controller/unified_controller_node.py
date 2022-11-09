@@ -76,12 +76,12 @@ class UnifiedController(Node):
             steering_angle = -steering_angle
 
         # log heading vector, lookahead vector
-        self.get_logger().info("Heading vector: %s" % str(heading_vector))
-        self.get_logger().info("Lookahead vector: %s" % str(vector_to_lookahead))
+        # self.get_logger().info("Heading vector: %s" % str(heading_vector))
+        # self.get_logger().info("Lookahead vector: %s" % str(vector_to_lookahead))
 
-        self.get_logger().info("Throttle position: %f" % self.accel_to_throttle(goal_accel))
-        self.get_logger().info("Steering position: %f" % self.steering_angle_to_wheel(steering_angle))
-        self.get_logger().info("Brake position: %f" % self.accel_to_brake(goal_accel))
+        # self.get_logger().info("Throttle position: %f" % self.accel_to_throttle(goal_accel))
+        # self.get_logger().info("Steering position: %f" % self.steering_angle_to_wheel(steering_angle))
+        # self.get_logger().info("Brake position: %f" % self.accel_to_brake(goal_accel))
 
 
         self.throttle_pub.publish(PeddlePosition(

@@ -1,4 +1,4 @@
 # Array of OGMa (Occupancy Grid Map)
-OGMa[] DOGMa;
+OGMa[] dogma
 
 std_msgs/Header header

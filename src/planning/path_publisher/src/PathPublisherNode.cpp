@@ -137,7 +137,7 @@ void PathPublisherNode::publish_paths_viz(FinalPath path)
 
 	// Add path to array
 	marker_array.markers.push_back(marker);
-	RCLCPP_INFO(this->get_logger(), "path viz");
+	// RCLCPP_INFO(this->get_logger(), "path viz");
 
 	viz_pub->publish(marker_array);
 }
