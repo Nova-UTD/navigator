@@ -9,23 +9,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_and_test:
+  container-test-job:
     runs-on: [self-hosted]
+    container:
+      image: novautd/navigator:latest
+      ports:
+        - 80
+      volumes:
+        - my_docker_volume:/volume_mount
+      options: --cpus 1
     steps:
-      # Checks-out the repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-
-      - name: Enter Workspace
-        run: |
-          cd $GITHUB_WORKSPACE
-          echo Workspace directory: $(pwd)
-
-      - name: Build Navigator using latest Docker image
-        run: docker run \
-            -it \
-            --rm \
-            -v $PWD:/navigator \
-            --net=host \
-            -e="DISPLAY" \
-            novautd/navigator:latest \
-            "colcon build --packages-select cyclonedds --cmake-clean-cache && . install/setup.bash && colcon build --cmake-clean-cache"
+      - name: Try building with Docker
+        run: "cd $GITHUB_WORKSPACE && colcon build --packages-select cyclonedds --cmake-clean-cache && . install/setup.bash && colcon build --cmake-clean-cache
