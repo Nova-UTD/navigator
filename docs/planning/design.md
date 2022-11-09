@@ -25,30 +25,30 @@ Configuration Space: set of all configurations of a vehicle
 #### Planning:
 We use zones to determine speed at given way points, acting like an 'on-rails' vehicle. Zones are an enclosed region of space (represented as a polygon) with a maximum speed, which may be 0 to indicate a no-entry zone. Zones may overlap (in which case the lower speed wins). Zones may come from a variety of sources but currently originate from the Behavior Planner (Traffic Planner) and the Obstacle Zoner. Zones are currently not tagged with a type or origin: all zones are anonymous and equal.
 
-Controls:
+#### Controls:
 Uses pure pursuit for steering control. The velocity controller is best not mentioned and should be replaced. 
 
-What Planning intends to accomplish:
+### What Planning intends to accomplish:
  Develop a planning system that can take in a prediction about where cars, pedestrians, and other dynamic agents will be several seconds in the future and how we can find the most efficient trajectory for our autonomous vehicle (hereinafter referred to as the AV) on a short-term distance to get from point A to B (< a hundred feet) on a long-term path determined by widely spaced waypoints (> several miles).
 
-What Planning needs:
-Input:
+### What Planning needs:
+#### Input:
 We choose to represent our prediction of the ground-truth state environment surrounding the AV several seconds in advanced using a Dynamic Occupancy Grid. This Dynamic Occupancy Grid will ideally hold information (in the form of probabilities) about whether a given grid cell (xn, yn) in a 2-Dimensional representation of real space (x, y) is occupied by an obstacle at some time tick t. This Dynamic Occupancy Grid will contain an individual grid frame (hereinafter referred to as a frame) for every discrete decisecond time tick for up to 3 seconds  in advance of the current time state t = 0.  Each of the frames in the Dynamic Occupancy Grid will be based on the local coordinate grid system around the AV. 
 
-Justification: 
+#### Justification: 
 Because safety is the highest priority when designing a AV planning system, our primary goal is to ensure that crashes never occur when our vehicle has the ability to avoid them. For simplicity, we treat all crashes with equal importance, meaning crashing with an animal, pedestrian, or other vehicles are all given equal "badness". Defining a crash as the collision between the bounding boxes of two objects within real space, the only information we need to know is when another object's bounding box will collide with our own. Knowing this, we can track all possible collisions with other dynamic and static objects through creating a Dynamic Occupancy Grid that tells us the spaces that contain other objects at some time t, for which we should not also occupy at that time t. The usefulness of the Dynamic Occupancy Grid is that all agents within our environment can be easily represented under the Grid because they all can be easily and efficiently sampled for any (x, y, t), whereas Zones struggled with efficiency and was unable to represent time altogether. 
 
-Proposed Planning System:
+#### Proposed Planning System:
 Our proposed behavior planning and controls subsystem takes in a dynamic Occupancy Grid as the input for our planning system. Our planning system will output a path of waypoints finely spaced by equal time steps to help navigate the car to the correct location.
 
 In order to make this possible, we have outlined some approaches/options for planning and controls. This document outlines our proposed methods and how they fit together to form a cohesive subsystem. It describes what our system is not responsible for as well. Finally, it compares our proposed methods to Navigator's current approach and to other popular methods in the literature.
 
-Proposed structure
+## Proposed structure
+
+![BPC_Flow](/navigator/assets/res/BPC_flow.png)
 
 
-
-
-Current-State Information Required:
+### Current-State Information Required:
 
 Position (x,y,z)
 Linear velocities (vx, vy, vz) 
@@ -60,49 +60,52 @@ angular velocities (wx, wy, wz)
 Short-term local coordinate transform history
 
 
-Representation of Surrounding Environment:
+### Representation of Surrounding Environment:
 
 Source: [1]
+
+![BPC_options](/navigator/assets/res/bpc_surrounding_environment_rep_options.png)
+
 
 Voroni Diagrams: unsuitable for non-holonomic vehicles (cars)
 
 State lattices: repeating primitive paths which connect possible states for the vehicle [1]
 
-Dynamic Occupancy Grid:
+### Dynamic Occupancy Grid:
 
-Structure of Grid:
+#### Structure of Grid:
 Each frame of the grid will be created around the local coordinate grid of the AV. It will span 40 meters to the left, 40 meters to the right, 40 meters behind, and 80 meters in front of the current position of the AV at time t = 0. Each grid cell will be made of squares spanning 0.2 meters long and wide. Each frame will represent a discrete time t = a/10 where a = (0, 30) such that our dynamic grid includes predictions from times t = (0, 3).
 
 The grid must be timestamped with when it was created so coordinate systems can be properly matched. The map is accessed via M[t, x,y], where higher values of x and y are to the front and right of the vehicle respectively. (The rear leftmost point is index (0,0)). 
 
-Information within cell:
+#### Information within cell:
 Each cell is associated with a probability of cell being occupied by an obstacle (float value). This probability will be in the range [0, 1].
 
-Conversion to Cost Map:
+### Conversion to Cost Map:
 
-Determination of Cost:
+#### Determination of Cost:
 The primary factor associated with cost will be crashes. Trajectories that lead to crashes will be given extremely high costs to deter the planner from choosing them. The Dynamic Occupancy Grid can be converted into a Cost Map. Other factors to associate with cost are: Travel distance, number of merges/turns, good traffic navigation protocols, etc. We would also use the measure of traffic in different lanes to help us determine cost of a given path.
 
-Distance From End:
+#### Distance From End:
 Each path should be assigned a cost value proportional to the maximum distance from its final position of the AV and the next waypoint.
 
 (Egan: I'm confused about this one. The point is that we maximize travel distance in the direction we want to go, and costs are relative to other paths, so consant cost increase don't matter.) (Response – Chitsein: I think I was thinking incorrectly about travel distance's relevance to the cost map – I meant for it to originally represent the travel distance between two points a and b. I realize that the RRT won't be creating paths to get from a point a to b, but will rather find all paths that could be taken by the AV, so I think making Travel Distance represent a cost proportional to the maximum distance like you suggested would be the better design. )
 
-Number of merges/turns:
+#### Number of merges/turns:
 Increasing the cost of a path every time the AV merges or makes a turn to deter from paths that make unneccessary merges or turns. For example, we probably don't want the vehicle to be merging in and out of lanes constantly on the highway to move a little faster at the expense of slowing down others cars it merges in front of and possibly increasing risk of collision.
 
-Good traffic navigation protocols:
+##### Good traffic navigation protocols:
 Increase the cost of a path that do not follow good traffic navigation protocols. For example, imagine there is a line up of cars to turn right into the highway. Based on the cost map before good traffic navigation protocols are applied, the car could choose to turn into the left lane and then try to merge at the front of the line because it would decrease the time taken to get onto the highway. However, this would go against courteous driving practices, so we should teach the AV to wait it's turn in the line.
 
 
-Calculation of Path Costs:
+#### Calculation of Path Costs:
 Each path's cost is calculated based on the summation of the costs of each grid cell at time t (C[t, x, y]) plus the other factors associated with cost, including distance from end, number of merges/turns, and good traffic navigation protocols.
 
 Cost for travel from a given to another: Source [4]
 
 We can represent the points into a graph with vertices being possible options given current position and environment. Edges are the transition from a given point (where AV currently is) to next point. We weight  transition to be the following equation: Source [4]
 
-
+![Cost_math_method](/navigator/assets/res/bpc_cost_map_method.png)
 
 
 Proposal (Egan, I think this makes sense, I also think that we may need to tweak this conversion when we try to decide algorithms that work best for RRTs - Hansika): We may additionally want a cost function more general than a summation over occupied cells. The specific case I'm thinking of is we want to encode that, where possible, the vehicle should end in drivable area at the prediction horizon- we don't want to attempt to overtake where since it looks good now, but when the horizon rolls forward the vehicle realizes it was impossible halfway through. This cannot be encoded by a cost map alone.  So a more general approach is:
@@ -132,10 +135,10 @@ Benefits:
 
 Detractions:
 	1. Jerky paths created
-	2. Strong dependence on Nearest Neighbor metric
+	2. Strong dependence on Neares Neighbor metric
 	3. Need to do collision checking for every expanded node
 
-
+![bpc_rrt_algo](/navigator/assets/res/bpc_rrt_algo.png)
 
 
 Approach 2: Source [3]
@@ -150,6 +153,7 @@ Disadvantages:
 
 Psuedo Code: Source [3]:
 
+![bpc_rrt_algo](/navigator/assets/res/bpc_rrt*_algo.png)
 
 
 Approach 3:
@@ -163,12 +167,14 @@ Given a cost map, we could build off it in the following manner:
 To expand tree: souce [5]
 1. Sample a pposition uniformly at random and then sample two dimenssionaly gaussian distribution centered at the around intial path. 
 
+![bpc_rrt*_algo](/navigator/assets/res/bpc_rrt_cost.png)
 
 
 Approach 4: CL-RRT
 
 Tree expansion: grows a tree of feasible trajectories originating from the current vehicle state that attempts to reach a specified goal set [2]
 
+![bpc_cl_rrt_algo](/navigator/assets/res/bpc_cl_rrt.png)
 
 
 Further RRT approaches are described here: https://en.wikipedia.org/wiki/Rapidly-exploring_random_tree
@@ -178,7 +184,7 @@ Other choices than RRTs:
 
 Lattice Planners: We don't wnat to use this because we are getting a dynamic grid:
 
-
+![bpc_rrt_vs_lattice_planners](/navigator/assets/res/bpc_rrt_vs.png)
 
 
 Source 1: https://www.sciencedirect.com/science/article/pii/S0968090X15003447
