@@ -1,13 +1,22 @@
-__pycache__
+# ROS
 build
 install
 log
+
+# Navigator
+nav_logs
+
+# Local dev env
 .vscode
-*.weights
+__pycache__
+
+# Data
 ndt_in_gnss.csv
 ndt_log copy.csv
 ndt_log.csv
-.gitignore
-meters_to_gnss_degrees.py
 data/maps/grand_loop/carlaMapAdjust3.xodr
 data/maps/grand_loop/grand_loop_medium.pcd
+
+# Misc
+meters_to_gnss_degrees.py
+*.weights
