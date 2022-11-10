@@ -214,6 +214,15 @@ def generate_launch_description():
         ]
     )
     
+    #rrt Node
+    rrt_path = Node(
+        package='rrt',
+        name='rrt_node',
+        namespace='planning',
+        executable='RRTNode',
+        output='screen',
+    )
+
     # VIZ
     lanelet_visualizer = Node(
         package='map_publishers',
@@ -241,5 +250,6 @@ def generate_launch_description():
         obstacle_zoner,
         behavior_planner,
         path_publisher,
-        motion_planner
+        motion_planner,
+        rrt_path
     ])
