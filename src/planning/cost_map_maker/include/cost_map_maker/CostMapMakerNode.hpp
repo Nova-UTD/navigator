@@ -22,8 +22,8 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include "voltron_msgs/msg/zone.hpp"
 #include "voltron_msgs/msg/zone_array.hpp"
-#include "voltron_msgs/msg/dogma.hpp"
-#include "voltron_msgs/msg/ogma.hpp"
+#include "voltron_msgs/msg/egma.hpp"
+#include "voltron_msgs/msg/evidential_grid.hpp"
 #include "voltron_msgs/msg/gps_diagnostic.hpp"
 
 using namespace std::chrono_literals;
@@ -45,17 +45,17 @@ private:
 
     // Send final cost map to subscribers
     void send_message();
-    // Subscription to *INSERT PUBLISHER* for input Dynamic Occupancy Grid
-    void update_DOGMa(voltron_msgs::msg::Dogma::SharedPtr ptr);
+    // Subscription to *INSERT PUBLISHER* for input Evidential Grid Map
+    void update_egma(voltron_msgs::msg::Egma::SharedPtr ptr);
     // Subscription to *INSERT PUBLISHER* for input waypoints
     void update_waypoints(voltron_msgs::msg::ZoneArray::SharedPtr ptr);
     // Subscription to *INSERT PUBLISHER* for the current heading of the car
     void odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg);
 
-    // Cost map Publisher
-    rclcpp::Publisher<voltron_msgs::msg::Dogma>::SharedPtr cost_map_publisher;
-    // Dynamic Occupancy Grid Subscriber
-    rclcpp::Subscription<voltron_msgs::msg::Dogma>::SharedPtr DOGMa_subscription;
+    // Cost Map Publisher
+    rclcpp::Publisher<voltron_msgs::msg::Egma>::SharedPtr cost_map_publisher;
+    // Evidential Grid Map Subscriber
+    rclcpp::Subscription<voltron_msgs::msg::Egma>::SharedPtr egma_subscription;
     /* TODO Add information from global waypoints */
     rclcpp::Subscription<voltron_msgs::msg::ZoneArray>::SharedPtr waypoint_subscription;
 
@@ -65,10 +65,10 @@ private:
     rclcpp::TimerBase::SharedPtr control_timer;
 
 
-    voltron_msgs::msg::Dogma::SharedPtr DOGMa;
+    voltron_msgs::msg::Egma::SharedPtr egma;
     /* TODO Add information from global waypoints */
     voltron_msgs::msg::ZoneArray::SharedPtr waypoints;
-    nav_msgs::msg::Odometry::SharedPtr odometry;
+    voltron_msgs::msg::Odometry::SharedPtr odometry;
 };
 }
 }

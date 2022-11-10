@@ -26,14 +26,14 @@ using namespace navigator::zones_lib;
 
 using ZoneArray = voltron_msgs::msg::ZoneArray;
 using Zone = voltron_msgs::msg::Zone;
-using voltron_msgs::msg::Dogma;
-using voltron_msgs::msg::Ogma;
+using voltron_msgs::msg::Egma;
+using voltron_msgs::msg::EvidentialGrid;
 
 
 CostMapMakerNode::CostMapMakerNode() : Node("cost_map_maker_node")
 {
-    cost_map_publisher = this->create_publisher<voltron_msgs::msg::Dogma>("outgoing_cost_map", 8);
-    DOGMa_subscription = this->create_subscription<voltron_msgs::msg::Dogma>("*INSERT SUBSCRIPTION*", 10, bind(&MotionPlannerNode::update_DOGMa, this, std::placeholders::_1));
+    cost_map_publisher = this->create_publisher<voltron_msgs::msg::Egma>("outgoing_cost_map", 8);
+    egma_subscription = this->create_subscription<voltron_msgs::msg::Egma>("*INSERT SUBSCRIPTION*", 10, bind(&MotionPlannerNode::update_egma, this, std::placeholders::_1));
     waypoint_subscription = this->create_subscription<ZoneArray>("*INSERT SUBSCRIPTION*", 10, bind(&MotionPlannerNode::update_waypoints, this, std::placeholders::_1));
     odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&MotionPlannerNode::odometry_pose_cb, this, std::placeholders::_1));
     //current_pose_subscription = this->create_subscription<VehicleKinematicState>("vehicle_kinematic_state", rclcpp::QoS(10), std::bind(&MotionPlannerNode::current_pose_cb, this, std::placeholders::_1));
@@ -44,30 +44,30 @@ CostMapMakerNode::CostMapMakerNode() : Node("cost_map_maker_node")
 }
 
 void MotionPlannerNode::send_message() {
-    if (DOGMa == nullptr) {
+    if (egma == nullptr) {
         return;
     }
 
-    auto cost_map_DOGMa = voltron_msgs::msg::Dogma();
-    for (size_t time_index = 0; time_index < DOGMA->DOGMa.size(); time_index++) {
-      auto cost_map_OGMa = voltron_msgs::msg::Ogma();
-      auto cur_OGMa = DOGMa->DOGMa[time_index];
-      cost_map_OGMa.timestep = cur_OGMa.timestep;
-      for (size_t coordinate_index = 0; coordinate_index < cur_OGMa.map.size(); coordinate_index++)
+    auto cost_map = voltron_msgs::msg::Egma();
+    for (size_t time_index = 0; time_index < egma->egma.size(); time_index++) {
+      auto cost_map_single_timestep = voltron_msgs::msg::EvidentialGrid();
+      auto current_evidential_grid = egma->egma[time_index];
+      cost_map_single_timestep.timestep = current_evidential_grid.timestep;
+      for (size_t coordinate_index = 0; coordinate_index < current_evidential_grid.grid.size(); coordinate_index++)
       {
-        cost_map_OGMa.map[coordinate_index].value = cur_OGMa.map[coordinate_index].value;
-        cost_map_OGMa.map[coordinate_index].value = cur_OGMa.map[coordinate_index].value;
+        cost_map_single_timestep.grid[coordinate_index].occupancy_value = current_evidential_grid.grid[coordinate_index].occupancy_value;
+        cost_map_single_timestep.grid[coordinate_index].occupancy_value = current_evidential_grid.grid[coordinate_index].occupancy_value;
       }
-      cost_map_DOGMa.DOGMa.push_back(cost_map_OGMa);
+      cost_map.egma.push_back(cost_map_single_timestep);
     }
-    trajectory_publisher->publish(cost_map_DOGMa);
+    trajectory_publisher->publish(cost_map_egma);
 
 
     return;
 }
 
-void MotionPlannerNode::update_DOGMa(voltron_msgs::msg::Dogma::SharedPtr ptr) {
-    DOGMa = ptr;
+void MotionPlannerNode::update_egma(voltron_msgs::msg::Egma::SharedPtr ptr) {
+    egma = ptr;
 }
 
 void MotionPlannerNode::update_waypoints(voltron_msgs::msg::ZoneArray::SharedPtr ptr)
