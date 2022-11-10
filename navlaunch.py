@@ -9,19 +9,17 @@ from typing import Pattern
 from launch.text_colors import text_colors as colors
 from launch.message import get_node_from_process, MessageLevels, MessageLevel, Message
 from launch.patterns import parse_PLTNI, parse_PTI, parse_LPI, parse_PI
-from launch.processes import processes
-from launch.poll import call_node_sanity_check
-
+from launch.processes import initialize_process, call_node_sanity_check
+from launch.logger import setup_logs, log
 
 def parse_node_init_message(message: str) -> None:
     """
     Takes console message of node executable initialization and adds it to process tracker
     @param message[str]     Message from console to parse
     """
-    exec_process: list = message.split("] [")[1].split("-")[0] # Get node executable
-    node_process = get_node_from_process(exec_process) # Convert executable to node package name
-    processes[node_process]: str = "SUCCESS" # Set node package status to success [initial status]
-    print(f"{colors.HEADER}Successfully initialized Node {colors.CYAN}<{node_process}>{colors.ENDC} EXECUTED AS ({exec_process})")
+    exec_name: list = message.split("] [")[1].split("-")[0] # Get node executable
+    package_name = get_node_from_process(exec_name) # Convert executable to node package name
+    initialize_process(package_name, exec_name)
 
 
 def process_ros_launch_line(line: str, level: MessageLevel) -> None:
@@ -50,10 +48,12 @@ def process_ros_launch_line(line: str, level: MessageLevel) -> None:
     elif pattern_PI.match(line): # PROCESS INFO
         msg = parse_PI(line)
     else:
-        print("UNRECOGNIZED MSG: " + str(line))
+        print(f"UNRECOGNIZED MSG: {colors.FAIL}{colors.BOLD}{str(line)}{colors.ENDC}")
+        log.error(str(line))
 
-    msg.confirm_level() # Confirm level
-    msg.print_items(msg.level >= level) # Print items if level is above our standard level
+    if msg and msg.process:
+        msg.confirm_level() # Confirm level
+        msg.print_items(msg.level >= level) # Print items if level is above our standard level
 
 
 def start_main_launch(level: MessageLevel) -> None:
@@ -61,12 +61,13 @@ def start_main_launch(level: MessageLevel) -> None:
     Starts main launch process and sends each line to threads
     @param level[MessageLevel]  Minimum message level to output to console
     """
+    setup_logs() # Calls logs to setup
     subprocess.Popen(". install/setup.bash", executable="/bin/bash", shell=True) # Source packages
     process: subprocess = subprocess.Popen( # Open ros2 launch process, create pipe and use shell mode
         "ros2 launch ros_launch.py",
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         executable="/bin/bash",
         shell=True
     )
@@ -75,7 +76,6 @@ def start_main_launch(level: MessageLevel) -> None:
         line: str = line.decode('utf-8').rstrip() # Decode string to utf-8 and remove end whitespace
         if line == "" and line is not None: # If line is null or empty then skip loop
             continue
-        print(line)
         Thread(target=process_ros_launch_line, args=(line, level, )).start() # Send line to process to thread [non-yield]
         Thread(target=call_node_sanity_check).start() # Send sanity check to thread [non-yield]
 
@@ -89,8 +89,8 @@ def prompt_initial_input() -> MessageLevel:
     print(f"\t{colors.ORANGE}🅽 🅰 🆅 🅸 🅶 🅰 🆃 🅾 🆁{colors.ENDC}") 
     print(f"{colors.BOLD}{colors.GREEN}Initializing Navigator...{colors.ENDC}")
     level: str = "" # Set to empty string for input
-    while level != "INFO" and level != "WARN" and level != "WARNING": # While loop for input validation
-        level = input(f"{colors.BOLD}{colors.GREEN}Enter message level{colors.ENDC}{colors.BOLD} [INFO, {colors.WARNING}WARN{colors.ENDC}{colors.BOLD}, {colors.FAIL}WARNING{colors.ENDC}{colors.BOLD}]:{colors.ENDC}\n")
+    while level != "INFO" and level != "WARN" and level != "FATAL": # While loop for input validation
+        level = input(f"{colors.BOLD}{colors.GREEN}Enter message level{colors.ENDC}{colors.BOLD} [INFO, {colors.WARNING}WARN{colors.ENDC}{colors.BOLD}, {colors.FAIL}FATAL{colors.ENDC}{colors.BOLD}]:{colors.ENDC}\n")
 
     print(f"{colors.UNDERLINE}{colors.ORANGE}Successful input, running Navigator{colors.ENDC}\n\n{colors.BOLD}-------------------{colors.ENDC}")
     return MessageLevel( MessageLevels[level] ) # Convert string to int from dictionary and back to MessageLevel enum

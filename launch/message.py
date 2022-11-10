@@ -3,13 +3,15 @@ import time
 from enum import IntEnum
 
 from launch.text_colors import text_colors as colors
-from launch.processes import processes, get_node_from_process
+from launch.processes import change_process_status, get_node_from_process
 from launch.logger import log
 
 MessageLevels: dict = { # Dictionary to quickly assign level to int
     'INFO': 0,
     'WARN': 1,
-    'WARNING': 2
+    'WARNING': 2,
+    'FATAL': 2,
+    'ERROR': 2
 }
 
 class MessageLevel(IntEnum): 
@@ -18,7 +20,7 @@ class MessageLevel(IntEnum):
     """
     INFO = 0
     WARN = 1
-    WARNING = 2
+    FATAL = 2
 
 class MessageType(IntEnum):
     """
@@ -43,13 +45,13 @@ class Message(object):
         """
         message_color: str = "" # Assign null color if nothing to change to
         if self.level == MessageLevel.INFO:
-            processes[self.process] = "SUCCESS"
+            change_process_status(self.process, "SUCCESS")
         elif self.level == MessageLevel.WARN:
             message_color = colors.WARNING
-            processes[self.process] = "WARNING"
-        elif self.level == MessageLevel.WARNING:
+            change_process_status(self.process, "WARNING")
+        elif self.level == MessageLevel.FATAL:
             message_color = colors.FAIL
-            processes[self.process] = "WARNING"
+            change_process_status(self.process, "FATAL")
 
         formatted_timestamp: datetime = str(datetime.datetime.fromtimestamp(self.timestamp).strftime('%H:%M:%S:%f')) # Get our message timestamp as a formatted date
         log_output: str =  f"[{str(self.level)[13:]}] [{formatted_timestamp}] [{self.process}]: {self.info}" # Holder for log output
@@ -63,8 +65,8 @@ class Message(object):
             log.info(log_output)
         elif self.level == MessageLevel.WARN:
             log.warning(log_output)
-        elif self.level == MessageLevel.WARNING:
-            log.warning(log_output)
+        elif self.level == MessageLevel.FATAL:
+            log.error(log_output)
 
     def confirm_level(self) -> None:
         """
