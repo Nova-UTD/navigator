@@ -6,7 +6,7 @@ from launch.text_colors import text_colors as colors
 TIME_FROM_LAST_CHECK = time.time() # Time from last sanity check
 SANITY_FREQUENCY = 1 # Sanity check frequency in seconds
 
-processes = {} # Holder for processes
+package_statuses = {} # Holder for processes
 
 def initialize_process(package_name: str, process_name: str) -> None:
     """
@@ -14,7 +14,7 @@ def initialize_process(package_name: str, process_name: str) -> None:
     @param package_name[str]    Package name of node
     @param process_name[str]    Name of process/executable of node
     """
-    processes[package_name] = "SUCCESS"
+    package_statuses[package_name] = "SUCCESS"
     print(f"{colors.HEADER}Successfully initialized Node {colors.CYAN}<{package_name}>{colors.ENDC} EXECUTED AS ({process_name})")
 
 def change_process_status(package_name: str, status: str) -> None:
@@ -25,15 +25,15 @@ def change_process_status(package_name: str, status: str) -> None:
     """
     if package_name == "launch": 
         return
-    if processes[package_name] != status:
-        processes[package_name] = status
+    if package_statuses[package_name] != status:
+        package_statuses[package_name] = status
         #print(f"{colors.CYAN}<{package_name}>{colors.ENDC} node changed to state {colors.HEADER}{status}{colors.ENDC}")
 
 def check_processes() -> None:
     """
-    Loops through processes and checks all
+    Loops through processes and checks all nodes
     """
-    for package_name, status in processes.items():
+    for package_name, status in package_statuses.items():
         if status != "SUCCESS":
             color = colors.WARNING
             if status == "FATAL":
@@ -54,11 +54,11 @@ def perform_node_sanity_check() -> None:
     Checks what nodes are active and compares to initial node list
     """
 
-    found_nodes: dict = {} # Dictionary to keep track of current nodes
+    alive_nodes: dict = {} # Dictionary to keep track of current nodes
     
-    for exec_name, node_name in nodes.items(): # Traverse through node dictionary
+    for exec_name, node_name in nodes.items(): # Traverse through node dictionary to create 
         if node_name != "launch": # Get all processes except for launch executable
-            found_nodes[node_name] = False
+            alive_nodes[node_name] = False
 
     process: subprocess = subprocess.Popen(
         "ros2 node list",
@@ -76,11 +76,11 @@ def perform_node_sanity_check() -> None:
         
         node_name: str = line.rsplit('/', 1)[-1] # Split raw node name from namespace and get package name
         
-        for node in found_nodes: # Loop through initially launched nodes
+        for node in alive_nodes: # Loop through initially launched nodes
             if node in node_name: # If we find our node alive, then set alive to True
-                found_nodes[node] = True
+                alive_nodes[node] = True
 
-    for name, value in found_nodes.items(): # Loop through initially launched nodes
+    for name, value in alive_nodes.items(): # Loop through initially launched nodes
         if value == True: # If node value is true, then it's still alive
             pass
             #print(f"<{name}> node is in state SUCCESS")
@@ -88,7 +88,7 @@ def perform_node_sanity_check() -> None:
             if name != "launch" and name != "ros_client_library":
                 change_process_status(name, "FATAL")
 
-    check_processes()
+    check_processes() # Check processes
 
 
 def get_node_from_process(process: str) -> str:
