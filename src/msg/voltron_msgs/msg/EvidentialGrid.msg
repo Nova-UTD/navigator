@@ -1,2 +1,4 @@
 EvidentialGridOccupancy[] grid
-Time timestep
+
+# Holds information for time
+std_msgs/Header header
