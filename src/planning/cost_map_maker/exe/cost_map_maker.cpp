@@ -1,8 +1,8 @@
 /*
- * Package:   motion_planner
- * Filename:  motion_planner.cpp
- * Author:    Jim Moore
- * Email:     jim3moore@gmail.com
+ * Package:   cost_map_maker
+ * Filename:  cost_map_maker.cpp
+ * Author:    Chitsein Htun
+ * Email:     chtun@live.com
  * Copyright: 2022, Nova UTD
  * License:   MIT License
  */
