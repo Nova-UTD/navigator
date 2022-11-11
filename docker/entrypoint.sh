@@ -15,6 +15,7 @@ source /opt/ros/foxy/setup.bash
 
 echo "🔗 Configuring the ROS DDS..."
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+source /opt/cyclone_ws/install/setup.bash
 
 echo "🧭 Sourcing Navigator..."
 
