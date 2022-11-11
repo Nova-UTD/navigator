@@ -34,7 +34,7 @@ def process_ros_launch_line(console_msg: str, msg_level: MessageLevel) -> None:
     pattern_PTI: Pattern = re.compile(r"\[[^\]]*] [0-9]*\.[0-9]+ \[0\]", re.IGNORECASE)
     pattern_LPI: Pattern = re.compile(r"\[[^\]]*\] \[[^\]]*\]:", re.IGNORECASE)
     pattern_PI: Pattern = re.compile(r"\[[^\]]*\]\s([A-Za-z0-9]+( [A-Za-z0-9]+)+)", re.IGNORECASE)
-    
+
     msg: Message = None # Set message to null type for now
     # Match console line to pattern
     if pattern_PLTNI.match(console_msg): # PROCESS LEVEL TIMESTAMP NODE INFO
@@ -53,13 +53,12 @@ def process_ros_launch_line(console_msg: str, msg_level: MessageLevel) -> None:
 
     if msg and msg.process:
         msg.confirm_level() # Confirm level
-        msg.print_items(msg.level >= level) # Print items if level is above our standard level
+        msg.print_items(msg.level >= msg_level) # Print items if level is above our standard level
 
-
-def start_main_launch(level: MessageLevel) -> None:
+def start_main_launch(msg_level: MessageLevel) -> None:
     """
     Starts main launch process and sends each line to threads
-    @param level[MessageLevel]  Minimum message level to output to console
+    @param msg_level[MessageLevel]  Minimum message level to output to console
     """
     setup_logs() # Calls logs to setup
     subprocess.Popen(". install/setup.bash", executable="/bin/bash", shell=True) # Source packages
@@ -76,7 +75,7 @@ def start_main_launch(level: MessageLevel) -> None:
         proc_log_line: str = log_line.decode('utf-8').rstrip() # Decode string to utf-8 and remove end whitespace
         if proc_log_line == "" and proc_log_line is not None: # If line is null or empty then skip loop
             continue
-        Thread(target=process_ros_launch_line, args=(proc_log_line, level, )).start() # Send line to process to thread [non-yield]
+        Thread(target=process_ros_launch_line, args=(proc_log_line, msg_level, )).start() # Send line to process to thread [non-yield]
         Thread(target=call_node_sanity_check).start() # Send sanity check to thread [non-yield]
 
 
@@ -100,8 +99,7 @@ if __name__ == "__main__":
     os.setpgrp() # create new process group, become its leader
 
     msg_level: MessageLevel = prompt_initial_input()
-    start_main_launch(msg_level)
     try: # Try finally to kill all associated processes when finished
-        pass
+        start_main_launch(msg_level)
     finally:
         os.killpg(0, signal.SIGKILL) # kill all processes in process group
