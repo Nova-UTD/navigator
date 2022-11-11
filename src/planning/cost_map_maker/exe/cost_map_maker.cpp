@@ -13,7 +13,7 @@
 
 int main(int argc, char ** argv) {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<navigator::cost_map_maker::CostMapMaker>());
+  rclcpp::spin(std::make_shared<navigator::cost_map_maker::CostMapMakerNode>());
   rclcpp::shutdown();
   return 0;
 }
