@@ -14,6 +14,7 @@ MessageLevels: dict = { # Dictionary to quickly assign level to int
     'ERROR': 2
 }
 
+
 class MessageLevel(IntEnum): 
     """
     Enumerated type to hold message level
@@ -21,6 +22,7 @@ class MessageLevel(IntEnum):
     INFO = 0
     WARN = 1
     FATAL = 2
+
 
 class MessageType(IntEnum):
     """
@@ -32,6 +34,7 @@ class MessageType(IntEnum):
     PTI = 1
     LPI = 2
     PI = 3
+
 
 class Message(object):
     """

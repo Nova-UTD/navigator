@@ -17,6 +17,7 @@ def initialize_process(package_name: str, process_name: str) -> None:
     package_statuses[package_name] = "SUCCESS"
     print(f"{colors.HEADER}Successfully initialized Node {colors.CYAN}<{package_name}>{colors.ENDC} EXECUTED AS ({process_name})")
 
+
 def change_process_status(package_name: str, status: str) -> None:
     """
     Sets a process to a certain status
@@ -29,6 +30,7 @@ def change_process_status(package_name: str, status: str) -> None:
         package_statuses[package_name] = status
         #print(f"{colors.CYAN}<{package_name}>{colors.ENDC} node changed to state {colors.HEADER}{status}{colors.ENDC}")
 
+
 def check_processes() -> None:
     """
     Loops through processes and checks all nodes
@@ -38,7 +40,8 @@ def check_processes() -> None:
             color = colors.WARNING
             if status == "FATAL":
                 color = colors.FAIL
-            print(f"{colors.CYAN}<{package_name}>{colors.ENDC} status is currently {color}{status}{colors.ENDC}")
+            print(f"{colors.CYAN}<{package_name}>{colors.ENDC} status is currently {color}{status} {colors.ENDC}")
+
 
 def call_node_sanity_check() -> None:
     """
@@ -48,6 +51,7 @@ def call_node_sanity_check() -> None:
     if (time.time() - TIME_FROM_LAST_CHECK) > SANITY_FREQUENCY: # See if elapsed time from last sanity check was over 1 second
         TIME_FROM_LAST_CHECK = time.time()
         perform_node_sanity_check()
+
 
 def perform_node_sanity_check() -> None:
     """
@@ -102,6 +106,7 @@ def get_node_from_process(process: str) -> str:
         print(f"{colors.FAIL}{colors.BOLD}<{process}> NOT FOUND, PACKAGE NOT DEFINED{colors.ENDC}")
         return process
 
+
 nodes: dict = { # Node dictionary for converting node executable to package name
     "rcl": "ros_client_library",
     "launch": "launch",
@@ -115,5 +120,6 @@ nodes: dict = { # Node dictionary for converting node executable to package name
     "ObstacleZonerLaunch": "obstacle_zoner",
     "BehaviorPlannerLaunch": "behavior_planner",
     "publisher": "path_publisher_node",
-    "motion_planner": "motion_planner_node"
+    "motion_planner": "motion_planner_node",
+    "bridge": "carla_ros_bridge"
 }

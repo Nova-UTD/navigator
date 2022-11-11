@@ -23,6 +23,7 @@ def parse_PLTNI(message: str) -> Message: # [ObstacleZonerLaunch-9] [INFO] [1666
     
     return msg
 
+
 def parse_PTI(message: str) -> Message: # [static_transform_publisher-5] 1666749993.283289 [0] static_tra
     """
     Parses string of pattern [PROCESS] [TIMESTAMP]: INFO
@@ -42,6 +43,7 @@ def parse_PTI(message: str) -> Message: # [static_transform_publisher-5] 1666749
     
     return msg
 
+
 def parse_LPI(message: str) -> Message: # [INFO] [ZoneFusionLaunch-8]: process starte
     """
     Parses string of pattern [LEVEL] [PROCESS]: INFO
@@ -60,6 +62,7 @@ def parse_LPI(message: str) -> Message: # [INFO] [ZoneFusionLaunch-8]: process s
     msg.process = process
     msg.info = info
     return msg
+
 
 def parse_PI(message: str) -> Message: # [robot_state_publisher-6] Link ardu
     """
