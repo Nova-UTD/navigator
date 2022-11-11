@@ -56,6 +56,7 @@ def process_ros_launch_line(console_msg: str, msg_level: MessageLevel) -> None:
         msg.confirm_level() # Confirm level
         msg.print_items(msg.level >= msg_level) # Print items if level is above our standard level
 
+
 def open_carla_bridge() -> None:
     process: subprocess = subprocess.Popen( # Open ros2 launch process, create pipe and use shell mode
         "ros2 launch carla_ros_bridge carla_ros_bridge.launch.py",
@@ -70,8 +71,6 @@ def open_carla_bridge() -> None:
         proc_log_line: str = log_line.decode('utf-8').rstrip() # Decode string to utf-8 and remove end whitespace
         if proc_log_line == "" and proc_log_line is not None: # If line is null or empty then skip loop
             continue
-        #print(log_line)
-        #print(proc_log_line)
         Thread(target=process_ros_launch_line, args=(proc_log_line, msg_level, )).start() # Send line to process to thread [non-yield]
 
 def start_main_launch(msg_level: MessageLevel) -> None:
