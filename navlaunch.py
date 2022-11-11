@@ -130,8 +130,8 @@ if __name__ == "__main__":
 
     msg_level: MessageLevel = prompt_initial_input()
     prompt_carla_bridge()
-    start_main_launch(msg_level)
+    
     try: # Try finally to kill all associated processes when finished
-        pass
+        start_main_launch(msg_level)
     finally:
         os.killpg(0, signal.SIGKILL) # kill all processes in process group
