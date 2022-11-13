@@ -34,6 +34,12 @@ def generate_launch_description():
         parameters=['params.yaml']
     )
 
+    leaderboard_liaison = Node(
+        package='carla',
+        executable='liaison_node',
+        parameters=[]
+    )
+
     # LOCALIZATION
     ndt = Node(
         package='ndt_nodes',
@@ -234,6 +240,7 @@ def generate_launch_description():
 
         # INTERFACE
         carla,
+        leaderboard_liaison,
 
         # LOCALIZATION
         map_odom_ukf,

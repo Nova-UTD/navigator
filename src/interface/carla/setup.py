@@ -23,7 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-
+            'liaison_node = carla.liaison_node:main'
         ],
     },
 )
