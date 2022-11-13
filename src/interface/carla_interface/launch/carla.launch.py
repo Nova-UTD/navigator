@@ -35,7 +35,7 @@ def generate_launch_description():
     )
 
     leaderboard_liaison = Node(
-        package='carla',
+        package='carla_interface',
         executable='liaison_node',
         parameters=[]
     )

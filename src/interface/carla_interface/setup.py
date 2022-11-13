@@ -2,7 +2,7 @@ from setuptools import setup
 from glob import glob
 import os
 
-package_name = 'carla'
+package_name = 'carla_interface'
 
 setup(
     name=package_name,
@@ -23,7 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'liaison_node = carla.liaison_node:main'
+            'liaison_node = carla_interface.liaison_node:main'
         ],
     },
 )

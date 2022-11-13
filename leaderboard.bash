@@ -13,7 +13,7 @@ python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
 --track=SENSORS \
 --checkpoint=/navigator/log/checkpoints.json \
 --debug-checkpoint=/navigator/log/checkpoints_debug.json \
---agent=/navigator/src/interface/carla/carla/agent.py \
+--agent=/navigator/src/interface/carla_interface/carla_interface/carla_agent.py \
 --debug=1 \
 --record=/navigator/log/carla \
 # --agent-config=${TEAM_CONFIG} \
