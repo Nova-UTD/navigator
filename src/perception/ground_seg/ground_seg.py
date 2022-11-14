@@ -6,6 +6,7 @@ import copy
 import rclpy
 from rclpy.node import Node
 
+from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
 
 
@@ -13,7 +14,18 @@ class GroundSeg(Node):
 
     def __init__(self):
         super().__init__('ground_seg')
-        self.height = -1.73  # initialize to the z-height of the LiDAR (in meters)
+
+        #===CONSTANTS===#
+        self.LiDAR_HEIGHT = -1.73  # initialize to the z-height of the LiDAR (in meters)
+        self.CAR_HEIGHT = 2  # initialize to the z-height of car (in meters)
+        self.RES = 1./3.
+        self.S = 0.09
+
+        #===PARAMETERS===#
+        self.lidar_sub = self.create_subscription(PointCloud2, 'input_points', self.ground_seg, 10)
+        self.ground_seg_pts_pub = self.create_publisher(PointCloud2, 'ground_seg_points', 10)
+
+
 
     #===================IGNOR=============================================
         self.publisher_ = self.create_publisher(String, 'topic', 10)
@@ -29,7 +41,14 @@ class GroundSeg(Node):
         self.i += 1
     #=====================================================================
 
-    def ground_seg(self, point_cloud, res=1./3., s=0.09):
+    def ground_seg(self, point_cloud: PointCloud2, res: float =None, s: float =None):
+
+        # initializing parameters if none are given
+        if res == None:
+            res = self.RES
+
+        if s == None:
+            s = self.S
 
         num_points = point_cloud.shape[0]
 
@@ -68,7 +87,7 @@ class GroundSeg(Node):
         if not math.isnan(H):
             h_G[center_x, center_y] = H
         else:
-            h_G[center_x, center_y] = self.height
+            h_G[center_x, center_y] = self.LiDAR_HEIGHT
 
         # initialize the coordinates of inner circle
         circle_inner = [[center_x, center_y]]
