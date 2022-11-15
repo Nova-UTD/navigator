@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='dynamic_grid',
+    name='ground_seg',
     version='1.0.0',
     zip_safe=True,
     maintainer='santonyuk',
@@ -9,5 +9,4 @@ setup(
     description='Deletes all the ground points',
     license='MIT',
     install_requires=['setuptools','numpy'],
-    test_require=['pytest'],
-     )a
+     )
