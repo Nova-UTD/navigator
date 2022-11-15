@@ -121,5 +121,6 @@ nodes: dict = { # Node dictionary for converting node executable to package name
     "BehaviorPlannerLaunch": "behavior_planner",
     "publisher": "path_publisher_node",
     "motion_planner": "motion_planner_node",
-    "bridge": "carla_ros_bridge"
+    "bridge": "sim_bridge_node",
+    "sim_bridge_node": "sim_bridge_node"
 }

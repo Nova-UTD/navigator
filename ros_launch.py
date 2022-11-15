@@ -19,6 +19,13 @@ def generate_launch_description():
     interface = "vcan0"
     map_name = "grandloop"
 
+    # Interface
+    carla = Node(
+        package='sim_bridge',
+        executable='sim_bridge_node',
+        parameters=['params.yaml']
+    )
+
     # CONTROL
     unified_controller = Node(
         package='unified_controller',
@@ -217,6 +224,9 @@ def generate_launch_description():
         executable='lanelet_loader'
     )
     return LaunchDescription([
+        #
+        #carla,
+
         # CONTROL
         unified_controller,
 
