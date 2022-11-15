@@ -25,8 +25,6 @@ class GroundSeg(Node):
         self.lidar_sub = self.create_subscription(PointCloud2, 'input_points', self.ground_seg, 10)
         self.ground_seg_pts_pub = self.create_publisher(PointCloud2, 'ground_seg_points', 10)
 
-
-
     #===================IGNOR=============================================
         self.publisher_ = self.create_publisher(String, 'topic', 10)
         timer_period = 0.5  # seconds
@@ -57,6 +55,7 @@ class GroundSeg(Node):
 
         # a 2D array that contains lists of 3D points in point_cloud that map to
         # a particular grid cell (according to the place of the 3D point in point_cloud)
+        # a math.ceil is rounding numbers up, for example math.ceil(4.3) = 5 and math.ceil(-3.3) = -3
         filler = np.frompyfunc(lambda x: list(), 1, 1)
         grid = np.empty((int(2 * math.ceil(max_index/res) + 1), int(2 * math.ceil(max_index/res) + 1)), dtype=np.object)
         filler(grid, grid);
@@ -135,7 +134,7 @@ class GroundSeg(Node):
         return point_cloud_seg
 
     # return the indices of a circle at level i from the center of the grid
-    def generate_circle(self, i, center_x, center_y):
+    def generate_circle(self, i: int, center_x: int, center_y: int):
 
         circle_range = range(-1*i,i+1)
         circle = [list(x) for x in itertools.product(circle_range, circle_range)]
@@ -144,7 +143,7 @@ class GroundSeg(Node):
         return circle
 
     # get the inner circle neighbors of a point
-    def get_neighbors(self, x, y, circle_inner):
+    def get_neighbors(self, x, y, circle_inner: [[int, int]]):
         neigh_indices = []
         for indices in circle_inner:
             if ((abs(x-indices[0]) < 2) and (abs(y-indices[1]) < 2)):
