@@ -23,7 +23,7 @@ class GroundSeg(Node):
         self.S = 0.09
 
         #===PARAMETERS===#
-        self.lidar_sub = self.create_subscription(PointCloud2, 'input_points', self.ground_seg, 10)
+        self.lidar_sub = self.create_subscription(PointCloud2, '/lidar_front/points_raw', self.ground_seg, 10)
         self.ground_seg_pts_pub = self.create_publisher(PointCloud2, 'ground_seg_points', 10)
 
     #===================IGNOR=============================================
@@ -31,7 +31,7 @@ class GroundSeg(Node):
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-
+    
     def timer_callback(self):
         msg = String()
         msg.data = 'Hello World: %d' % self.i
@@ -40,11 +40,11 @@ class GroundSeg(Node):
         self.i += 1
     #=====================================================================
 
-    def ground_seg(self, point_cloud: PointCloud2, res: float =None, s: float =None):
+    def ground_seg(self, msg: PointCloud2, res: float =None, s: float =None):
 
         # make an array of points from PointCloud2. 
         # ex: PointClouyd2 array --> [[x1,y1,z1], [x2,y2,z2],...]
-        point_cloud = rnp.point_cloud2.get_xyz_points(point_cloud)
+        point_cloud = rnp.numpify(msg)
 
         # initializing parameters if none are given
         if res == None:
@@ -102,14 +102,14 @@ class GroundSeg(Node):
         for i in range(1,int(math.ceil(max_index/res))+1):
 
             # generate indices at the ith inner circle level
-            circle_curr = generate_circle(i, center_x, center_y)
+            circle_curr = self.generate_circle(i, center_x, center_y)
 
             for indices in circle_curr:
                 x = indices[0]
                 y = indices[1]
 
                 # compute h_hat_G: find max h_G of neighbors
-                neigh_indeces = np.array(get_neighbors(x,y,circle_inner))
+                neigh_indeces = np.array(self.get_neighbors(x,y,circle_inner))
 
                 # compute the min and max z coordinates of each grid cell
                 points_z = np.ndarray.tolist(point_cloud[grid[x,y],2])
@@ -136,10 +136,11 @@ class GroundSeg(Node):
             # update the inner circle indices
             circle_inner = copy.deepcopy(circle_curr)
 
-        return point_cloud_seg
+        #return point_cloud_seg
+        self.ground_seg_pts_pub.publish(self.array_to_msg(point_cloud_seg))
 
     # return the indices of a circle at level i from the center of the grid
-    def generate_circle(self, i: int, center_x: int, center_y: int):
+    def generate_circle(self, i, center_x, center_y):
 
         circle_range = range(-1*i,i+1)
         circle = [list(x) for x in itertools.product(circle_range, circle_range)]
@@ -148,7 +149,7 @@ class GroundSeg(Node):
         return circle
 
     # get the inner circle neighbors of a point
-    def get_neighbors(self, x, y, circle_inner: [[int, int]]):
+    def get_neighbors(self, x, y, circle_inner):
         neigh_indices = []
         for indices in circle_inner:
             if ((abs(x-indices[0]) < 2) and (abs(y-indices[1]) < 2)):
@@ -156,6 +157,19 @@ class GroundSeg(Node):
 
         return neigh_indices
 
+    def array_to_msg(nparray: np.array):
+        data = np.zeros(len(nparray), dtype=[
+            ('x', np.float32),
+            ('y', np.float32),
+            ('z', np.float32)
+        ])
+        data['x'] = nparray[:,0]
+        data['y'] = nparray[:,1]
+        data['z'] = nparray[:,2]
+
+        msg = ros2_numpy.msgify(PointCloud2, data, stamp=header.stamp, frame_id=header.frame_id)
+
+        return msg
 
 def main(args=None):
     rclpy.init(args=args)
