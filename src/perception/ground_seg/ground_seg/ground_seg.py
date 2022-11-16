@@ -71,6 +71,8 @@ class GroundSeg(Node):
 
         for i in range(num_points):
             point = point_cloud[i,:]
+            self.get_logger().info('Publishing: "%s"' % num_points)
+            self.get_logger().info('Publishing: "%s"' % point)
             x = point[0]
             y = point[1]
             z = point[2]
