@@ -103,6 +103,13 @@ def generate_launch_description():
     )
 
     # PERCEPTION
+    ground_seg = Node(
+        package='ground_seg',
+        name='ground_seg',
+        executable='ground_seg',
+        namespace = 'perception',
+        output = 'screen',
+    )
     
     # PLANNING
     route_planner = Node(
@@ -247,6 +254,7 @@ def generate_launch_description():
         visuals,
 
         # PERCEPTION
+        ground_seg,
 
         # PLANNING
         zone_fusion,
