@@ -1,4 +1,5 @@
 import numpy as np
+import ros2_numpy as rnp
 import math
 import itertools
 import copy
@@ -40,6 +41,10 @@ class GroundSeg(Node):
     #=====================================================================
 
     def ground_seg(self, point_cloud: PointCloud2, res: float =None, s: float =None):
+
+        # make an array of points from PointCloud2. 
+        # ex: PointClouyd2 array --> [[x1,y1,z1], [x2,y2,z2],...]
+        point_cloud = rnp.point_cloud2.get_xyz_points(point_cloud)
 
         # initializing parameters if none are given
         if res == None:
