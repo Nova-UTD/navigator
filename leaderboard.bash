@@ -8,9 +8,9 @@ echo "This may take some time. Sit tight!"
 python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
 --port=2000 \
 --routes=${LEADERBOARD_ROOT}/data/routes_training.xml \
---routes-subset="80" \
+--routes-subset="10-23" \
 --repetitions=1 \
---track=SENSORS \
+--track=MAP \
 --checkpoint=/navigator/log/checkpoints.json \
 --debug-checkpoint=/navigator/log/checkpoints_debug.json \
 --agent=/navigator/src/interface/carla_interface/carla_interface/carla_agent.py \

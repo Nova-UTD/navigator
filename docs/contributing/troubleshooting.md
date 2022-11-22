@@ -16,6 +16,19 @@ nav_order: 5
  
 ---
 
+### "New publisher discovered on this topic, offering incompatible QoS"
+
+```
+[WARN] [1669075701.737584987] [leaderboard_node]: New publisher discovered on this topic, offering incompatible QoS. No messages will be received from it. Last incompatible policy: DURABILITY_QOS_POLICY
+```
+
+A warning similar to the above example will appear when a publisher and subscriber attempt to exchange messages with incompatible quality of service QoS policies.
+
+#### Solution
+Edit the QoS policy of either the relevant publisher or subscriber so that the two can "speak" to each other.
+
+For more information on QoS in ROS2, including compatibility between policies, [see here](https://docs.ros.org/en/rolling/Concepts/About-Quality-of-Service-Settings.html).
+
 ### "RuntimeError: trying to create rpc server for traffic manager..."
 ```
 ...

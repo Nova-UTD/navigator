@@ -8,7 +8,7 @@ class NavigatorAgent(ROS2Agent):
     
     def get_ros_entrypoint(self):
         return {
-            "package": "carla",
+            "package": "carla_interface",
             "launch_file": "carla.launch.py",
             "parameters": {}
         }

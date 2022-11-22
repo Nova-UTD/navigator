@@ -10,6 +10,7 @@ but more functionality will be added in the future.
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from std_msgs.msg import Bool
 
 
@@ -18,14 +19,16 @@ class LeaderboardLiaisonNode(Node):
     def __init__(self):
         # self.get_logger().info("woo")
         super().__init__('liaison_node')
-        self.status_pub = self.create_publisher(Bool, '/carla/hero/status', 1)
+        self.status_pub = self.create_publisher(
+            Bool, '/carla/hero/status', qos_profile=QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         status_timer = self.create_timer(1.0, self.publish_hero_status)
 
     def publish_hero_status(self):
         """Publish a true Bool to the leaderboard status topic"""
         status = Bool()
-        status.data = True # This means "good to go!"
+        status.data = True  # This means "good to go!"
         self.status_pub.publish(status)
+
 
 def main(args=None):
     rclpy.init(args=args)
