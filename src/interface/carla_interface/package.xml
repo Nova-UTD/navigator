@@ -4,7 +4,7 @@
   <name>carla_interface</name>
   <version>1.1.0</version>
   <description>Simple package to hold launch scripts and other tools for the CARLA Leaderboard.</description>
-  <maintainer email="w@heit.mn">Will Heitman</maintainer>
+  <maintainer email="project.nova@utdallas.edu">Will Heitman</maintainer>
   <license>MIT</license>
 
   <export>

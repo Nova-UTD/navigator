@@ -32,3 +32,7 @@ class NavigatorAgent(ROS2Agent):
             {'type': 'sensor.speedometer', 'id': 'Speed'},
         ]
         return sensors
+
+    def destroy(self):
+        print("AllStar is shutting down. Goodbye.")
+        return super().destroy()

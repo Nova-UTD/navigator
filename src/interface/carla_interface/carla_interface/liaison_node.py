@@ -1,7 +1,7 @@
 '''
 Package:   carla
 Filename:  liaison_node.py
-Author:    Will Heitman (w@heit.mn)
+Author:    Will Heitman (w at heit.mn)
 
 This node handles our ROS-based communication with the
 CARLA Leaderboard. This includes publishing to /carla/hero/status,

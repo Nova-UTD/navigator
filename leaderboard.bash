@@ -8,7 +8,7 @@ echo "This may take some time. Sit tight!"
 python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
 --port=2000 \
 --routes=${LEADERBOARD_ROOT}/data/routes_training.xml \
---routes-subset="10-23" \
+--routes-subset="10" \
 --repetitions=1 \
 --track=MAP \
 --checkpoint=/navigator/log/checkpoints.json \
