@@ -1,7 +1,7 @@
 # Automatically build and test all packages in our workspace
 name: Build and Test
 
-on: [push, pull_request]
+on: pull_request
 
 jobs:
   build_and_test:

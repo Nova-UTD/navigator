@@ -27,6 +27,11 @@ def generate_launch_description():
         executable='unified_controller_node'
     )
 
+    carla_controller = Node(
+        package='carla_controller',
+        executable='controller'
+    )
+
     # INTERFACE
     carla = Node(
         package='sim_bridge',
@@ -99,7 +104,7 @@ def generate_launch_description():
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        arguments=[path.join(launch_dir, "data", "hail_bopp.urdf")]
+        arguments=[path.join(launch_dir, "data", "allstar.urdf")]
     )
     
     visuals = Node(
@@ -236,7 +241,7 @@ def generate_launch_description():
     )
     return LaunchDescription([
         # CONTROL
-        unified_controller,
+        carla_controller,
 
         # INTERFACE
         # carla,
