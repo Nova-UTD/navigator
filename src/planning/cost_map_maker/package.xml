@@ -8,11 +8,6 @@
   <license>MIT</license>
 
   <buildtool_depend>nova_auto_package</buildtool_depend>
-
-  <depend>autoware_auto_common</depend>
-  <depend>autoware_auto_geometry</depend>
-  <depend>autoware_auto_msgs</depend>
-  <depend>autoware_auto_tf2</depend>  
   <depend>boost_geometry</depend>
   <depend>had_map_utils</depend>
   <depend>motion_common</depend>
