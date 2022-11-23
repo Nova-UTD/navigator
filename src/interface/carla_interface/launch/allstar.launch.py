@@ -114,6 +114,10 @@ def generate_launch_description():
     )
 
     # PERCEPTION
+    lidar_processor = Node(
+        package='sensor_processing',
+        executable='lidar_processing_node'
+    )
     
     # PLANNING
     route_planner = Node(
@@ -259,11 +263,12 @@ def generate_launch_description():
         visuals,
 
         # PERCEPTION
+        lidar_processor,
 
         # PLANNING
-        zone_fusion,
-        obstacle_zoner,
-        behavior_planner,
-        path_publisher,
-        motion_planner
+        # zone_fusion,
+        # obstacle_zoner,
+        # behavior_planner,
+        # path_publisher,
+        # motion_planner
     ])

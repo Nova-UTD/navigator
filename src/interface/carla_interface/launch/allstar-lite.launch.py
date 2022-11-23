@@ -44,7 +44,7 @@ def generate_launch_description():
 
     main_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            [get_package_share_directory('carla_interface'), '/carla.launch.py'])
+            [get_package_share_directory('carla_interface'), '/allstar.launch.py'])
     )
 
     return LaunchDescription([

@@ -11,7 +11,7 @@ class NavigatorAgent(ROS2Agent):
     def get_ros_entrypoint(self):
         return {
             "package": "carla_interface",
-            "launch_file": "carla.launch.py",
+            "launch_file": "allstar.launch.py",
             "parameters": {}
         }
 
