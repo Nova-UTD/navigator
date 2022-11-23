@@ -7,7 +7,6 @@ ros-foxy-velodyne-msgs \
 ros-foxy-velodyne-driver \
 ros-foxy-velodyne-laserscan \
 ros-foxy-velodyne-pointcloud \
-ros-foxy-autoware-auto-msgs \
 ros-foxy-lanelet2-core \
 ros-foxy-lanelet2-io \
 ros-foxy-lanelet2-projection \

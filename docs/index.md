@@ -72,7 +72,7 @@ That's it!
 $ ./start.sh
 ...
 root@yourhost:/navigator# ./navigator
-root@yourhost:/navigator# ros2 launch carla carla.launch.py
+root@yourhost:/navigator# ros2 launch carla_interface allstar-lite.launch.py
 ```
 This should start a series of ROS nodes, spawning an ego vehicle in the simulator along with a number of sensors:
 ```
