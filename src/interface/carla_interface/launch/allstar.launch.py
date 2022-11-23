@@ -11,6 +11,7 @@ from launch_ros.actions import Node
 
 from ament_index_python import get_package_share_directory
 
+
 def generate_launch_description():
 
     launch_path = path.realpath(__file__)
@@ -51,7 +52,8 @@ def generate_launch_description():
         executable='p2d_ndt_localizer_exe',
         namespace='localization',
         name='p2d_ndt_localizer_node',
-        parameters=[(path.join(param_dir,"localization","ndt_localizer.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "localization", "ndt_localizer.param.yaml"))],
         remappings=[
             ("points_in", "/lidars/points_fused_downsampled"),
             ("observation_republish", "/lidars/points_fused_viz"),
@@ -61,7 +63,7 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_odom',
-        parameters=[(path.join(param_dir,"atlas","map_odom.param.yaml"))],
+        parameters=[(path.join(param_dir, "atlas", "map_odom.param.yaml"))],
         remappings=[
             ("/odom0", "/gnss/odom"),
             ("/imu0", "/imu_primary/data")
@@ -69,27 +71,32 @@ def generate_launch_description():
     )
 
     # MAPPING
-    lanelet_server = Node(
-        package='lanelet2_map_provider',
-        executable='lanelet2_map_provider_exe',
-        namespace='had_maps',
-        name='lanelet2_map_provider_node',
-        parameters=[(path.join(launch_dir, "data", "maps", map_name, "lanelet_server.param.yaml"))]
-    )
+    # lanelet_server = Node(
+    #     package='lanelet2_map_provider',
+    #     executable='lanelet2_map_provider_exe',
+    #     namespace='had_maps',
+    #     name='lanelet2_map_provider_node',
+    #     parameters=[(path.join(launch_dir, "data", "maps", map_name, "lanelet_server.param.yaml"))]
+    # )
 
-    odr_viz = Node(
-        package='odr_visualizer',
-        executable='visualizer',
-        parameters=[
-            (path.join(param_dir,"mapping","odr.param.yaml"))
-        ],
-        output='screen'
-    )
+    # odr_viz = Node(
+    #     package='odr_visualizer',
+    #     executable='visualizer',
+    #     parameters=[
+    #         (path.join(param_dir,"mapping","odr.param.yaml"))
+    #     ],
+    #     output='screen'
+    # )
 
-    pcd_loader = Node(
-        package='map_publishers',
-        executable='pcd_loader',
-        parameters=[(path.join(launch_dir, "data", "maps", map_name, "map.param.yaml"))]
+    # pcd_loader = Node(
+    #     package='map_publishers',
+    #     executable='pcd_loader',
+    #     parameters=[(path.join(launch_dir, "data", "maps", map_name, "map.param.yaml"))]
+    # )
+
+    map_manager = Node(
+        package='map_management',
+        executable='map_management_node'
     )
 
     # MISC
@@ -97,7 +104,7 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0.0','0.0','0.0','0.0','0.0','0.0','1.0','odom','base_link'
+            '0.0', '0.0', '0.0', '0.0', '0.0', '0.0', '1.0', 'odom', 'base_link'
         ]
     )
 
@@ -106,7 +113,7 @@ def generate_launch_description():
         executable='robot_state_publisher',
         arguments=[path.join(launch_dir, "data", "allstar.urdf")]
     )
-    
+
     visuals = Node(
         package='vt_viz',
         name='vt_viz_node',
@@ -118,7 +125,7 @@ def generate_launch_description():
         package='sensor_processing',
         executable='lidar_processing_node'
     )
-    
+
     # PLANNING
     route_planner = Node(
         package='lanelet2_global_planner_nodes',
@@ -130,7 +137,7 @@ def generate_launch_description():
                     ('ndt_pose', '/localization/ndt_pose'),
                     ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')]
     )
-    
+
     # path_planner = Node(
     #     package='behavior_planner_nodes',
     #     name='behavior_planner_node',
@@ -170,7 +177,7 @@ def generate_launch_description():
             ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')
         ],
         parameters=[
-            (path.join(param_dir,"planning","motion_planner.param.yaml"))
+            (path.join(param_dir, "planning", "motion_planner.param.yaml"))
         ],
     )
     behavior_planner = Node(
@@ -183,7 +190,7 @@ def generate_launch_description():
         #     (path.join(param_dir,"planning","path_publisher.param.yaml"))
         # ],
         remappings=[
-            
+
         ]
     )
     obstacle_zoner = Node(
@@ -205,7 +212,8 @@ def generate_launch_description():
         name='lane_planner_node',
         namespace='planning',
         executable='lane_planner_node_exe',
-        parameters=[(path.join(param_dir,"planning","lane_planner.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "planning", "lane_planner.param.yaml"))],
         remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
     )
     parking_planner = Node(
@@ -213,7 +221,8 @@ def generate_launch_description():
         name='parking_planner_node',
         namespace='planning',
         executable='parking_planner_node_exe',
-        parameters=[(path.join(param_dir,"planning","parking_planner.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "planning", "parking_planner.param.yaml"))],
         remappings=[('HAD_Map_Service', '/had_maps/HAD_Map_Service')]
     )
 
@@ -237,7 +246,7 @@ def generate_launch_description():
             ('nova_obstacle_array', '/obstacles/array')
         ]
     )
-    
+
     # VIZ
     lanelet_visualizer = Node(
         package='map_publishers',
@@ -255,7 +264,7 @@ def generate_launch_description():
         map_odom_ukf,
 
         # MAPPING
-        odr_viz,
+        # odr_viz,
 
         # MISC
         odom_bl_link,

@@ -1,16 +1,10 @@
 '''
-Package: sensor_processing
-   File: lidar_processing_node.py
+Package: map_management
+   File: map_management_node.py
  Author: Will Heitman (w at heit dot mn)
 
-Node to filter and process raw LiDAR pointclouds
-
-This node specifically deals with quirks with the
-CARLA simulator. Namely, synching issues mean that
-raw LiDAR streams "flicker" from left-sided PCDs
-to right-sided ones. This node first merges
-these left- and right-sided PCDs into a complete
-cloud before cutting out points near the car.
+Node to subscribe to, provide, and handle map data, routes,
+and related functions.
 '''
 
 import rclpy
@@ -19,41 +13,30 @@ import numpy as np
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
-from std_msgs.msg import Float32
+from std_msgs.msg import String
 
+from xml.etree import ElementTree as ET
+import xml.dom.minidom
 
-class LidarProcessingNode(Node):
+class MapManagementNode(Node):
 
     def __init__(self):
-        super().__init__('lidar_processing_node')
-        self.lidar_sub = self.create_subscription(
-            PointCloud2, '/carla/hero/lidar', self.lidar_cb, 10)
-        self.clock_sub = self.create_subscription(
-            Clock, '/clock', self.clock_cb, 10
-        )
-        self.clean_lidar_pub = self.create_publisher(
-            PointCloud2, '/lidar_filtered', 10
+        super().__init__('map_management')
+        self.map_string_sub = self.create_subscription(
+            String, '/carla/map', self.map_string_cb, 10
         )
 
-        self.lidar_min_pub = self.create_publisher(Float32, '/lidar/min_y', 10)
-        self.lidar_max_pub = self.create_publisher(Float32, '/lidar/max_y', 10)
+        self.get_logger().info("Waiting for map data...")
 
-        self.carla_clock = Clock()
-        self.left_pcd_cached = np.zeros(0, dtype=[
-            ('x', np.float32),
-            ('y', np.float32),
-            ('z', np.float32),
-            ('intensity', np.float32)
-        ])
-        self.right_pcd_cached = np.zeros(0, dtype=[
-            ('x', np.float32),
-            ('y', np.float32),
-            ('z', np.float32),
-            ('intensity', np.float32)
-        ])
+    def map_string_cb(self, msg: String):
+        self.get_logger().info("Received map. Processing now...")
+        map_string: str = msg.data
 
-    def clock_cb(self, msg: Clock):
-        self.carla_clock = msg
+        dom_tree = xml.dom.minidom.parseString(map_string)
+        roads = dom_tree.documentElement.getElementsByTagName("road")
+
+        for road in roads:
+            self.get_logger().info(road.getAttribute('id'))
 
     def lidar_cb(self, msg: PointCloud2):
         pcd_array: np.array = rnp.numpify(msg)
@@ -94,7 +77,7 @@ class LidarProcessingNode(Node):
         msg_array['z'] = merged_z
         msg_array['intensity'] = merged_i
 
-        msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0)
+        msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0, 0.0, 5.0)
 
         merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
         merged_pcd_msg.header.frame_id = 'hero/lidar'
@@ -115,6 +98,8 @@ class LidarProcessingNode(Node):
         # Ensure these positive
         x_distance = abs(x_distance)
         y_distance = abs(y_distance)
+        floor = abs(floor)
+        ceiling = abs(ceiling)
 
         # Unfortunately, I can't find a way to avoid doing this in one go
         pcd = pcd[np.logical_not(
@@ -131,7 +116,7 @@ class LidarProcessingNode(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    lidar_processor = LidarProcessingNode()
+    lidar_processor = MapManagementNode()
 
     rclpy.spin(lidar_processor)
 
