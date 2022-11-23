@@ -23,7 +23,7 @@
     </link>
     <joint name="hero_to_base_link" type="fixed">
         <parent link="hero" />
-        <child link="base_Link" />
+        <child link="base_link" />
         <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
     </joint>
 </robot>

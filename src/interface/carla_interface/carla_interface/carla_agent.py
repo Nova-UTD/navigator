@@ -37,9 +37,9 @@ class NavigatorAgent(ROS2Agent):
              'width': 600, 'height': 400, 'fov': 120},
 
             {'type': 'sensor.camera.rgb', 'id': 'rgb_left',
-             'x': 0.0,
-             'y': 0.0,
-             'z': 2.9,
+             'x': base_link_pos[0]+0.0,
+             'y': base_link_pos[1]-0.15,
+             'z': base_link_pos[2]+1.6,
              'roll': 0.0, 'pitch': 0.0, 'yaw': -0.9,
              'width': 600, 'height': 400, 'fov': 120},
 
