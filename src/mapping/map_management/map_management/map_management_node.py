@@ -1,6 +1,6 @@
 '''
 Package: map_management
-   File: map_management_node.py
+   Filemapping.map_management.map_management.map as mapp_management_node.py
  Author: Will Heitman (w at heit dot mn)
 
 Node to subscribe to, provide, and handle map data, routes,
@@ -14,9 +14,15 @@ from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
+from sensor_msgs.msg import NavSatFix
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Point, Quaternion
+
+import pymap3d as pm
 
 from xml.etree import ElementTree as ET
-import xml.dom.minidom
+from map_management.map import Map
+
 
 class MapManagementNode(Node):
 
@@ -26,92 +32,65 @@ class MapManagementNode(Node):
             String, '/carla/map', self.map_string_cb, 10
         )
 
+        self.gnss_sub = self.create_subscription(
+            NavSatFix, '/carla/hero/gnss', self.gnss_cb, 10
+        )
+
+        self.odom_pub = self.create_publisher(
+            Odometry, '/odometry', 10
+        )
+
+        self.clock_sub = self.create_subscription(
+            Clock, '/clock', self.clock_cb, 10
+        )
+
         self.get_logger().info("Waiting for map data...")
+        self.map = None
+        self.clock = Clock()
+
+    def clock_cb(self, msg: Clock):
+        self.clock = msg
 
     def map_string_cb(self, msg: String):
         self.get_logger().info("Received map. Processing now...")
         map_string: str = msg.data
 
-        dom_tree = xml.dom.minidom.parseString(map_string)
-        roads = dom_tree.documentElement.getElementsByTagName("road")
+        self.map = Map(map_string)
 
-        for road in roads:
-            self.get_logger().info(road.getAttribute('id'))
+        self.get_logger().info("{},{}".format(self.map.lat0, self.map.lon0))
 
-    def lidar_cb(self, msg: PointCloud2):
-        pcd_array: np.array = rnp.numpify(msg)
+    def gnss_cb(self, msg: NavSatFix):
+        if self.map is None:
+            return
+        enu_xyz = pm.geodetic2enu(
+            msg.latitude,
+            msg.longitude,
+            msg.altitude,
+            self.map.lat0,
+            self.map.lon0,
+            0.0
+        )
+        self.get_logger().info("{},{},{}".format(enu_xyz[0], enu_xyz[1], enu_xyz[2]))
 
-        min_y = np.min(pcd_array['y'])
-        max_y = np.max(pcd_array['y'])
+        odom_msg = Odometry()
 
-        if (min_y < -5.0):
-            # This PCD is from the right side of the car
-            # (Recall that +y points to the left)
-            self.right_pcd_cached = pcd_array
-        elif (max_y > 5.0):
-            self.left_pcd_cached = pcd_array
-        else:
-            self.get_logger().warning('Incoming LiDAR PCD may be invalid.')
+        # The odometry is for the current time-- right now
+        odom_msg.header.stamp = self.clock.clock
 
-        merged_x = np.append(
-            self.left_pcd_cached['x'], self.right_pcd_cached['x'])
-        merged_y = np.append(
-            self.left_pcd_cached['y'], self.right_pcd_cached['y'])
-        merged_z = np.append(
-            self.left_pcd_cached['z'], self.right_pcd_cached['z'])
-        merged_i = np.append(
-            self.left_pcd_cached['intensity'], self.right_pcd_cached['intensity'])
+        # The odometry is the car's location on the map,
+        # so the child frame is "base_link"
+        odom_msg.header.frame_id = '/map'
+        odom_msg.child_frame_id = '/base_link'
 
-        total_length = self.left_pcd_cached['x'].shape[0] + \
-            self.right_pcd_cached['x'].shape[0]
+        pos = Point()
+        pos.x = enu_xyz[0]
+        pos.y = enu_xyz[1]
+        pos.z = enu_xyz[2]
+        odom_msg.pose.pose.position = pos
+        # TODO: Orientation and covariance. WSH.
 
-        msg_array = np.zeros(total_length, dtype=[
-            ('x', np.float32),
-            ('y', np.float32),
-            ('z', np.float32),
-            ('intensity', np.float32)
-        ])
-
-        msg_array['x'] = merged_x
-        msg_array['y'] = merged_y
-        msg_array['z'] = merged_z
-        msg_array['intensity'] = merged_i
-
-        msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0, 0.0, 5.0)
-
-        merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
-        merged_pcd_msg.header.frame_id = 'hero/lidar'
-        merged_pcd_msg.header.stamp = self.carla_clock.clock
-
-        self.clean_lidar_pub.publish(merged_pcd_msg)
-
-    def remove_nearby_points(self, pcd: np.array, x_distance: float, y_distance: float) -> np.array:
-        '''
-        Remove points in a rectangle around the sensor
-
-        :param pcd: a numpy array of the incoming point cloud, in the format provided by ros2_numpy.
-        :param x_distance, y_distance: points with an x/y value whose absolute value is less than this number will be removed
-
-        :returns: an array in ros2_numpy format with the nearby points removed
-        '''
-
-        # Ensure these positive
-        x_distance = abs(x_distance)
-        y_distance = abs(y_distance)
-        floor = abs(floor)
-        ceiling = abs(ceiling)
-
-        # Unfortunately, I can't find a way to avoid doing this in one go
-        pcd = pcd[np.logical_not(
-            np.logical_and(
-                np.logical_and(pcd['x'] > (x_distance*-1),
-                               pcd['x'] < x_distance),
-                np.logical_and(pcd['y'] > (y_distance*-1),
-                               pcd['y'] < y_distance),
-            ))]
-
-        return pcd
-
+        # Publish our odometry message, converted from GNSS
+        self.odom_pub.publish(odom_msg)
 
 def main(args=None):
     rclpy.init(args=args)

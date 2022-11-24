@@ -21,6 +21,7 @@
             <origin xyz="-1.7 0 0.645" rpy="0 0 0" />
         </collision>
     </link>
+    <link name="hero"/>
     <joint name="hero_to_base_link" type="fixed">
         <parent link="hero" />
         <child link="base_link" />

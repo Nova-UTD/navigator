@@ -25,5 +25,5 @@ setup(
         'console_scripts': [
             'map_management_node = map_management.map_management_node:main',
         ],
-    },
+    }
 )

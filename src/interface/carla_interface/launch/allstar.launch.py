@@ -264,6 +264,7 @@ def generate_launch_description():
         map_odom_ukf,
 
         # MAPPING
+        map_manager,
         # odr_viz,
 
         # MISC
