@@ -10,7 +10,8 @@ and related functions.
 import rclpy
 import ros2_numpy as rnp
 import numpy as np
-from rclpy.node import Node
+from rclpy.node import Node, QoSProfile
+from rclpy.qos import DurabilityPolicy
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
@@ -51,7 +52,9 @@ class MapManagementNode(Node):
         )
 
         self.grid_pub = self.create_publisher(
-            OccupancyGrid, '/grid/map', 10
+            OccupancyGrid, '/grid/map', qos_profile=QoSProfile(
+                depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL
+            )
         )
 
         self.get_logger().info("Waiting for map data...")

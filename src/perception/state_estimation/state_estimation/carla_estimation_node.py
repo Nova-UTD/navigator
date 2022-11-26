@@ -146,8 +146,8 @@ class CarlaEstimationNode(Node):
         # Publish our odometry message, converted from GNSS
         self.odom_pub.publish(odom_msg)
 
-        self.get_logger().info("{}".format(str(self.previous_y_vals)))
-        self.get_logger().info(f"CURRENT Y: {current_pos.y}")
+        # self.get_logger().info("{}".format(str(self.previous_y_vals)))
+        # self.get_logger().info(f"CURRENT Y: {current_pos.y}")
 
         # Publish our map->base_link tf
         t = TransformStamped()
