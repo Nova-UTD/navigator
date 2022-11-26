@@ -1,6 +1,6 @@
 '''
 Package: map_management
-   Filemapping.map_management.map_management.map as mapp_management_node.py
+   File: map_management_node.py
  Author: Will Heitman (w at heit dot mn)
 
 Node to subscribe to, provide, and handle map data, routes,
@@ -15,10 +15,12 @@ from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
 from sensor_msgs.msg import NavSatFix
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Point, Quaternion
+from nav_msgs.msg import Odometry, OccupancyGrid
+from geometry_msgs.msg import Point, Quaternion, TransformStamped
 
 import pymap3d as pm
+
+
 
 from xml.etree import ElementTree as ET
 from map_management.map import Map
@@ -37,16 +39,26 @@ class MapManagementNode(Node):
         )
 
         self.odom_pub = self.create_publisher(
-            Odometry, '/odometry', 10
+            Odometry, '/odometry/gnss', 10
+        )
+
+        self.odom_raw_pub = self.create_publisher(
+            Odometry, '/odometry_raw', 10
         )
 
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 10
         )
 
+        self.grid_pub = self.create_publisher(
+            OccupancyGrid, '/grid/map', 10
+        )
+
         self.get_logger().info("Waiting for map data...")
         self.map = None
         self.clock = Clock()
+
+        
 
     def clock_cb(self, msg: Clock):
         self.clock = msg
@@ -56,8 +68,12 @@ class MapManagementNode(Node):
         map_string: str = msg.data
 
         self.map = Map(map_string)
+        self.map.grid.header.frame_id = 'map'
+        self.map.grid.header.stamp = self.clock.clock
 
-        self.get_logger().info("{},{}".format(self.map.lat0, self.map.lon0))
+        self.grid_pub.publish(self.map.grid)
+
+        self.get_logger().info("{},{}".format(self.map.north, self.map.south))
 
     def gnss_cb(self, msg: NavSatFix):
         if self.map is None:
@@ -70,7 +86,6 @@ class MapManagementNode(Node):
             self.map.lon0,
             0.0
         )
-        self.get_logger().info("{},{},{}".format(enu_xyz[0], enu_xyz[1], enu_xyz[2]))
 
         odom_msg = Odometry()
 
@@ -79,17 +94,14 @@ class MapManagementNode(Node):
 
         # The odometry is the car's location on the map,
         # so the child frame is "base_link"
-        odom_msg.header.frame_id = '/map'
-        odom_msg.child_frame_id = '/base_link'
-
+        odom_msg.header.frame_id = 'map'
+        odom_msg.child_frame_id = 'base_link'
         pos = Point()
+
         pos.x = enu_xyz[0]
         pos.y = enu_xyz[1]
         pos.z = enu_xyz[2]
         odom_msg.pose.pose.position = pos
-        # TODO: Orientation and covariance. WSH.
-
-        # Publish our odometry message, converted from GNSS
         self.odom_pub.publish(odom_msg)
 
 def main(args=None):

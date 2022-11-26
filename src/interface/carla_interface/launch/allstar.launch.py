@@ -59,14 +59,14 @@ def generate_launch_description():
             ("observation_republish", "/lidars/points_fused_viz"),
         ]
     )
-    map_odom_ukf = Node(
+    map_baselink_ukf = Node(
         package='robot_localization',
         executable='ukf_node',
-        name='localization_map_odom',
-        parameters=[(path.join(param_dir, "atlas", "map_odom.param.yaml"))],
+        name='localization_map_baselink',
+        parameters=[(path.join(param_dir, "atlas", "map_baselink.param.yaml"))],
         remappings=[
-            ("/odom0", "/gnss/odom"),
-            ("/imu0", "/imu_primary/data")
+            ("/odom0", "/odometry/gnss"),
+            ("/imu0", "/carla/hero/imu")
         ]
     )
 
@@ -247,6 +247,12 @@ def generate_launch_description():
         ]
     )
 
+    # STATE ESTIMATION
+    state_estimation = Node(
+        package='state_estimation',
+        executable='carla_estimation_node'
+    )
+
     # VIZ
     lanelet_visualizer = Node(
         package='map_publishers',
@@ -261,14 +267,14 @@ def generate_launch_description():
         leaderboard_liaison,
 
         # LOCALIZATION
-        map_odom_ukf,
+        # map_baselink_ukf,
 
         # MAPPING
         map_manager,
         # odr_viz,
 
         # MISC
-        odom_bl_link,
+        # odom_bl_link,
         urdf_publisher,
         visuals,
 
@@ -281,4 +287,7 @@ def generate_launch_description():
         # behavior_planner,
         # path_publisher,
         # motion_planner
+
+        # STATE ESTIMATION
+        state_estimation,
     ])
