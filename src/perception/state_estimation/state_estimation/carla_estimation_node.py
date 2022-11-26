@@ -96,14 +96,19 @@ class CarlaEstimationNode(Node):
         wma_pose.position.x = wma_x
         wma_pose.position.y = wma_y
         wma_pose.position.z = wma_z
-        wma_yaw = 0.0 # TODO: Calculate yaw
 
-        # q = cos(theta) + sin(theta)(xi + yj + zk)
+        # IMU orientation is buggy. See imu_cb note.
+        buggy_quat = self.cached_imu.orientation
+        heading_x = buggy_quat.x * -0.48
+        heading_y = buggy_quat.y * 0.48
+        wma_yaw = math.atan2(heading_y, heading_x)
+
+        # q = cos(theta/2) + sin(theta/2)(xi + yj + zk)
         # Set x, y = 0 s.t. theta = yaw
-        wma_pose.orientation.w = math.cos(wma_yaw)
+        wma_pose.orientation.w = math.cos(wma_yaw/2)
         wma_pose.orientation.x = 0.0
         wma_pose.orientation.y = 0.0
-        wma_pose.orientation.z = math.sin(wma_yaw)
+        wma_pose.orientation.z = math.sin(wma_yaw/2)
 
         self.wma_pose = wma_pose
 
