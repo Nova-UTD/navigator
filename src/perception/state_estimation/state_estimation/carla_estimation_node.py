@@ -48,9 +48,11 @@ class CarlaEstimationNode(Node):
         self.cached_speed = CarlaSpeedometer()
 
         # Make a queue of previous poses for our weighted moving average
-        # where '10' is the size of our history and we have cols for x,y,z,yaw
-        self.history_size = 10
-        self.previous_poses = np.zeros((self.history_size, 4))
+        # where '10' is the size of our history
+        self.history_size = 5
+        self.previous_x_vals = np.zeros((self.history_size))
+        self.previous_y_vals = np.zeros((self.history_size))
+        self.previous_z_vals = np.zeros((self.history_size))
         self.wma_pose = Pose()
 
     def imu_cb(self, msg: Imu):
@@ -70,26 +72,31 @@ class CarlaEstimationNode(Node):
 
     def _update_odom_weighted_moving_average_(self, current_pos: Point):
         # Calculate noisy yaw from the change in position
-        old_pose = self.previous_poses[self.history_size-1]
+        # old_pose = self.previous_poses[self.history_size-1]
 
         # Calculate the weighted moving average (WMA) for odometry
         # 1. Discard oldest reading and add newest to 'queue'
 
-        self.previous_poses = np.roll(self.previous_poses, -1)
-        self.previous_poses[self.history_size-1] = np.array(
-            [current_pos.x, current_pos.y, current_pos.z, 0.0])
+        self.previous_x_vals = np.roll(self.previous_x_vals, -1)
+        self.previous_y_vals = np.roll(self.previous_y_vals, -1)
+        self.previous_z_vals = np.roll(self.previous_z_vals, -1)
+        self.previous_x_vals[self.history_size-1] = current_pos.x
+        self.previous_y_vals[self.history_size-1] = current_pos.y
+        self.previous_z_vals[self.history_size-1] = current_pos.z
 
         # 2. Generate weight array: [1,2,3,...,n]
         weights = np.arange(0, self.history_size)
 
         # 3. Use a numpy functions to handle the rest :->)
-        wma = np.average(self.previous_poses, axis=0, weights=weights)
+        wma_x = np.average(self.previous_x_vals, axis=0, weights=weights)
+        wma_y = np.average(self.previous_y_vals, axis=0, weights=weights)
+        wma_z = np.average(self.previous_z_vals, axis=0, weights=weights)
 
         wma_pose = Pose()
-        wma_pose.position.x = wma[0]
-        wma_pose.position.y = wma[1]
-        wma_pose.position.z = wma[2]
-        wma_yaw = wma[3]
+        wma_pose.position.x = wma_x
+        wma_pose.position.y = wma_y
+        wma_pose.position.z = wma_z
+        wma_yaw = 0.0 # TODO: Calculate yaw
 
         # q = cos(theta) + sin(theta)(xi + yj + zk)
         # Set x, y = 0 s.t. theta = yaw
@@ -134,7 +141,8 @@ class CarlaEstimationNode(Node):
         # Publish our odometry message, converted from GNSS
         self.odom_pub.publish(odom_msg)
 
-        self.get_logger().info("Current Y {}, smoothed Y{}".format(current_pos.y, self.wma_pose.position.y))
+        self.get_logger().info("{}".format(str(self.previous_y_vals)))
+        self.get_logger().info(f"CURRENT Y: {current_pos.y}")
 
         # Publish our map->base_link tf
         t = TransformStamped()
