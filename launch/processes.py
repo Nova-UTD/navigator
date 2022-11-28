@@ -107,7 +107,8 @@ def get_node_from_process(process: str) -> str:
         return process
 
 
-nodes: dict = { # Node dictionary for converting node executable to package name
+nodes: dict = { # Node dictionary for converting node executable to package name.
+                # Format is "<executable/process-name>: <package/node-name>"
     "rcl": "ros_client_library",
     "launch": "launch",
     "unified_controller_node": "unified_controller_node",

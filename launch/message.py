@@ -86,7 +86,7 @@ class Message(object):
         """
         self.type: MessageType = msg_type
         self.process: str = None
-        self.level: str = "INFO"
-        self.timestamp = time.time() # Set timestamp to current time [close enough]
+        self.level: MessageLevel = "INFO" # Assigned to string as default
+        self.timestamp[ float] = time.time() # Set timestamp to current time [close enough]
         self.node: str = None
         self.info: str = None
