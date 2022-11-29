@@ -26,7 +26,8 @@ Navigator is our answer to this delimma. It's built on standard technologies, is
 > Note: Lines with "$" are on host, while lines with "#" are within the container.
 
 1. [Install ROS2 Foxy](https://docs.ros.org/en/foxy/Installation.html) if you haven't already done so
-2. Clone our repository
+2. [Install Docker](https://www.docker.com/get-started/) if you haven't already done so
+3. Clone our repository
 ```
 $ git clone --recursive https://github.com/Nova-UTD/navigator
 $ cd navigator

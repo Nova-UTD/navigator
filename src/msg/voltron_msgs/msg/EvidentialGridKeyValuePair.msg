@@ -1,5 +1,5 @@
 # location of grid cell
-OGMaKey key
+EvidentialGridKey key
 
 # occupancy (0-1)
 float64 value

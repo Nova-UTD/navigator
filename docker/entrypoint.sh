@@ -15,6 +15,7 @@ source /opt/ros/foxy/setup.bash
 
 echo "🔗 Configuring the ROS DDS..."
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+source /opt/cyclone_ws/install/setup.bash
 
 echo "🧭 Sourcing Navigator..."
 
@@ -31,6 +32,10 @@ if [ -d "/build" ] || [ -d "/install" ]; then
     echo "🔍 Found existing build, sourcing existing build"
 fi
 
-exec bash
-
 echo "❗ Finished environment setup"
+
+if [ -z ${@+x} ]; then
+    exec bash
+else 
+    exec bash -c "$@"
+fi

@@ -1,16 +1,11 @@
 # Automatically build and test all packages in our workspace
 name: Build and Test
 
-on:
-  pull_request:
-    branches: [ main, dev ]
-
-  # Allows manual starting of the workflow
-  workflow_dispatch:
+on: [push, pull_request]
 
 jobs:
   build_and_test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted]
     steps:
       # Checks-out the repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
@@ -20,8 +15,5 @@ jobs:
           cd $GITHUB_WORKSPACE
           echo Workspace directory: $(pwd)
 
-      - name: Build Workspace
-        run: sudo docker build . -t navigator
-
-      - name: Run Tests
-        run: sudo docker run navigator bash -c ". /opt/ros/foxy/setup.bash && . install/setup.bash && colcon test --retest-until-pass 8 --packages-skip manual_control \$(echo \$(ros2 pkg list | grep _nodes)) can_interface vt_steering_controller vt_vehicle_bridge vt_viz ne_raptor_interface && colcon test-result --verbose"
+      - name: Build Navigator using latest Docker image
+        run: docker run --rm -v $PWD:/navigator --net=host -e="DISPLAY" novautd/navigator:latest "apt update && apt install -y ros-foxy-rmw-cyclonedds-cpp && colcon build --cmake-clean-cache"
