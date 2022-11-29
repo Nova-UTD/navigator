@@ -39,6 +39,7 @@ requests \
 opencv-python==4.2.0.32 \
 pygame \
 tabulate \
+byobu \
 pexpect \
 transforms3d \
 pep8 \
