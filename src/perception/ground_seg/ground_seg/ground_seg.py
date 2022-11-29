@@ -23,14 +23,14 @@ class GroundSeg(Node):
         self.S = 0.09
 
         #===PARAMETERS===#
-        self.lidar_sub = self.create_subscription(PointCloud2, '/lidar_front/points_raw', self.ground_seg, 10)
+        self.lidar_sub = self.create_subscription(PointCloud2, '/lidar_front/points_raw', self.simpl_ground_seg, 10)
         self.ground_seg_pts_pub = self.create_publisher(PointCloud2, 'ground_seg_points', 10)
 
     #===================IGNOR=============================================
-        self.publisher_ = self.create_publisher(String, 'topic', 10)
-        timer_period = 0.5  # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.i = 0
+        #self.publisher_ = self.create_publisher(String, 'topic', 10)
+        #timer_period = 0.5  # seconds
+        #self.timer = self.create_timer(timer_period, self.timer_callback)
+        #self.i = 0
     
     def timer_callback(self):
         msg = String()
@@ -39,6 +39,14 @@ class GroundSeg(Node):
         self.get_logger().info('Publishing: "%s"' % msg.data)
         self.i += 1
     #=====================================================================
+
+    def simpl_ground_seg(self, msg: PointCloud2):
+        pcd = rnp.numpify(msg)
+        pcd = pcd[pcd['z'] >= -self.CAR_HEIGHT]
+
+        #return point_cloud_seg
+        self.get_logger().info('Publishing: simpl ground seg is DONE')
+        self.ground_seg_pts_pub.publish(pcd)
 
     def ground_seg(self, msg: PointCloud2, res: float =None, s: float =None):
 
@@ -71,6 +79,8 @@ class GroundSeg(Node):
 
         for i in range(num_points):
             point = point_cloud[i,:]
+            #self.get_logger().info('Publishing: "%s"' % msg)
+            #self.get_logger().info('Publishing: "%s"' % point_cloud)
             self.get_logger().info('Publishing: "%s"' % num_points)
             self.get_logger().info('Publishing: "%s"' % point)
             x = point[0]

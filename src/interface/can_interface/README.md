@@ -13,10 +13,7 @@ interact with the CAN bus is also available.
 
 - No echo - Messages being sent are published on a different topic
   than messages being received. This means that messages we send will
-  not be "echoed" back to us by the CAN interface. This is why we need
-  our own wrapper library rather than Autoware's wrapper - Autoware
-  separates the sender code from the receiver code in such a way that
-  we would have to hear echoes.
+  not be "echoed" back to us by the CAN interface.
 
 - Multiple interfaces - This node obviously needs to be provided with
   an interface name (e.g., "can0"). It then names the used topics
