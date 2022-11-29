@@ -54,6 +54,7 @@ class Message(object):
             change_process_status(self.process, "WARNING")
         elif self.level == MessageLevel.FATAL:
             message_color = colors.FAIL
+            print("FOIDFDOKFDKOF")
             change_process_status(self.process, "FATAL")
 
         formatted_timestamp: datetime = str(datetime.datetime.fromtimestamp(self.timestamp).strftime('%H:%M:%S:%f')) # Get our message timestamp as a formatted date
@@ -87,6 +88,6 @@ class Message(object):
         self.type: MessageType = msg_type
         self.process: str = None
         self.level: MessageLevel = "INFO" # Assigned to string as default
-        self.timestamp[ float] = time.time() # Set timestamp to current time [close enough]
+        self.timestamp: float = time.time() # Set timestamp to current time [close enough]
         self.node: str = None
         self.info: str = None

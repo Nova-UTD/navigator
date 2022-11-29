@@ -26,6 +26,9 @@ def change_process_status(package_name: str, status: str) -> None:
     """
     if package_name == "launch": 
         return
+    if package_statuses.get(package_name) is None:
+        print(f"{colors.FAIL}Package <{package_name}> not properly initialized{colors.ENDC}: {status}")
+        return
     if package_statuses[package_name] != status:
         package_statuses[package_name] = status
         #print(f"{colors.CYAN}<{package_name}>{colors.ENDC} node changed to state {colors.HEADER}{status}{colors.ENDC}")
@@ -62,7 +65,8 @@ def perform_node_sanity_check() -> None:
     
     for exec_name, node_name in nodes.items(): # Traverse through node dictionary to create 
         if node_name != "launch": # Get all processes except for launch executable
-            alive_nodes[node_name] = False
+            if alive_nodes.get(node_name) is None:
+                alive_nodes[node_name] = False
 
     process: subprocess = subprocess.Popen(
         "ros2 node list",
@@ -75,11 +79,12 @@ def perform_node_sanity_check() -> None:
 
     for line in iter(process.stdout.readline, ''): # Loop through piped subprocess output
         line: str = line.decode('utf-8').rstrip() # Decode binary string to utf-8 and remove whitespace
+        
         if line == "" and line is not None: # Break from loop if null or empty string encountered (if process completed)
             break
-        
+        #print(line)
         node_name: str = line.rsplit('/', 1)[-1] # Split raw node name from namespace and get package name
-        
+        #print(node_name)
         for node in alive_nodes: # Loop through initially launched nodes
             if node in node_name: # If we find our node alive, then set alive to True
                 alive_nodes[node] = True
@@ -122,6 +127,6 @@ nodes: dict = { # Node dictionary for converting node executable to package name
     "BehaviorPlannerLaunch": "behavior_planner",
     "publisher": "path_publisher_node",
     "motion_planner": "motion_planner_node",
-    "bridge": "sim_bridge_node",
-    "sim_bridge_node": "sim_bridge_node"
+    "bridge": "carla_ros_bridge",
+    "carla_ros_bridge": "carla_ros_bridge",
 }
