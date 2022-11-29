@@ -125,6 +125,8 @@ class LidarProcessingNode(Node):
                                pcd['y'] < y_distance),
             ))]
 
+        pcd = pcd[pcd['z']>= -2.0]
+
         return pcd
 
 
