@@ -71,7 +71,11 @@ def open_carla_bridge() -> None:
         proc_log_line: str = log_line.decode('utf-8').rstrip() # Decode string to utf-8 and remove end whitespace
         if proc_log_line == "" and proc_log_line is not None: # If line is null or empty then skip loop
             continue
-        Thread(target=process_ros_launch_line, args=(proc_log_line, msg_level, )).start() # Send line to process to thread [non-yield]
+        try:
+            Thread(target=process_ros_launch_line, args=(proc_log_line, msg_level, )).start() # Send line to process to thread [non-yield]
+        except:
+            print(f"{colors.FAIL}{colors.BOLD}ISSUE WITH PROCESSING LINE: {console_msg}{colors.ENDC}")
+            log.error(str(console_msg))
 
 def start_main_launch(msg_level: MessageLevel) -> None:
     """
