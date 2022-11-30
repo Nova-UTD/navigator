@@ -102,14 +102,12 @@ class LidarProcessingNode(Node):
 
         self.clean_lidar_pub.publish(merged_pcd_msg)
 
-    def remove_nearby_points(self, pcd: np.array, x_distance: float, y_distance: float, floor: float, ceiling: float) -> np.array:
+    def remove_nearby_points(self, pcd: np.array, x_distance: float, y_distance: float) -> np.array:
         '''
         Remove points in a rectangle around the sensor
 
         :param pcd: a numpy array of the incoming point cloud, in the format provided by ros2_numpy.
         :param x_distance, y_distance: points with an x/y value whose absolute value is less than this number will be removed
-        :param floor: 
-        :param ceiling: 
 
         :returns: an array in ros2_numpy format with the nearby points removed
         '''
