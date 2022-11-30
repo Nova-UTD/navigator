@@ -96,6 +96,8 @@ class LidarProcessingNode(Node):
 
         msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0, 0.0, 5.0)
 
+        msg_array = self.remove_above_points(msg_array, .75)
+
         merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
         merged_pcd_msg.header.frame_id = 'hero/lidar'
         merged_pcd_msg.header.stamp = self.carla_clock.clock
@@ -140,11 +142,6 @@ class LidarProcessingNode(Node):
 
         :returns: an array in ros2_numpy format with the nearby points removed
         '''
-
-        # Ensure these positive
-        min_height = abs(min_height)
-        floor = abs(floor)
-        ceiling = abs(ceiling)
 
         pcd = pcd[pcd['z'] <= min_height]
 
