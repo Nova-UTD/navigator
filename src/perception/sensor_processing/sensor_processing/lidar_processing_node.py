@@ -94,7 +94,7 @@ class LidarProcessingNode(Node):
         msg_array['z'] = merged_z
         msg_array['intensity'] = merged_i
 
-        msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0, 0.0, 5.0)
+        msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0)
 
         merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
         merged_pcd_msg.header.frame_id = 'hero/lidar'
@@ -102,14 +102,12 @@ class LidarProcessingNode(Node):
 
         self.clean_lidar_pub.publish(merged_pcd_msg)
 
-    def remove_nearby_points(self, pcd: np.array, x_distance: float, y_distance: float, floor: float, ceiling: float) -> np.array:
+    def remove_nearby_points(self, pcd: np.array, x_distance: float, y_distance: float) -> np.array:
         '''
         Remove points in a rectangle around the sensor
 
         :param pcd: a numpy array of the incoming point cloud, in the format provided by ros2_numpy.
         :param x_distance, y_distance: points with an x/y value whose absolute value is less than this number will be removed
-        :param floor: 
-        :param ceiling: 
 
         :returns: an array in ros2_numpy format with the nearby points removed
         '''
@@ -117,8 +115,6 @@ class LidarProcessingNode(Node):
         # Ensure these positive
         x_distance = abs(x_distance)
         y_distance = abs(y_distance)
-        floor = abs(floor)
-        ceiling = abs(ceiling)
 
         # Unfortunately, I can't find a way to avoid doing this in one go
         pcd = pcd[np.logical_not(
@@ -128,6 +124,8 @@ class LidarProcessingNode(Node):
                 np.logical_and(pcd['y'] > (y_distance*-1),
                                pcd['y'] < y_distance),
             ))]
+
+        pcd = pcd[pcd['z']>= -2.0]
 
         return pcd
 
