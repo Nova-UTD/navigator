@@ -23,7 +23,7 @@ class GroundSeg(Node):
         self.S = 0.09
 
         #===PARAMETERS===#
-        self.lidar_sub = self.create_subscription(PointCloud2, '/lidar_front/points_raw', self.simpl_ground_seg, 10)
+        self.lidar_sub = self.create_subscription(PointCloud2, '/lidar_filtered', self.simpl_ground_seg, 10)
         self.ground_seg_pts_pub = self.create_publisher(PointCloud2, 'ground_seg_points', 10)
 
     #===================IGNOR=============================================
@@ -43,10 +43,11 @@ class GroundSeg(Node):
     def simpl_ground_seg(self, msg: PointCloud2):
         pcd = rnp.numpify(msg)
         pcd = pcd[pcd['z'] >= -self.CAR_HEIGHT]
+        msg = rnp.msgify(PointCloud2, pcd)
 
         #return point_cloud_seg
         self.get_logger().info('Publishing: simpl ground seg is DONE')
-        self.ground_seg_pts_pub.publish(pcd)
+        self.ground_seg_pts_pub.publish(msg)
 
     def ground_seg(self, msg: PointCloud2, res: float =None, s: float =None):
 

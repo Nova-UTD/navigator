@@ -102,7 +102,7 @@ class LidarProcessingNode(Node):
 
         self.clean_lidar_pub.publish(merged_pcd_msg)
 
-    def remove_nearby_points(self, pcd: np.array, x_distance: float, y_distance: float) -> np.array:
+    def remove_nearby_points(self, pcd: np.array, x_distance: float, y_distance: float, floor: float, ceiling: float) -> np.array:
         '''
         Remove points in a rectangle around the sensor
 

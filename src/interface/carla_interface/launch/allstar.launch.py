@@ -114,18 +114,17 @@ def generate_launch_description():
     )
 
     # PERCEPTION
-<<<<<<< HEAD:src/carla/launch/carla.launch.py
     ground_seg = Node(
         package='ground_seg',
         name='ground_seg',
         executable='ground_seg',
         namespace = 'perception',
         output = 'screen',
-=======
+    )
+
     lidar_processor = Node(
         package='sensor_processing',
         executable='lidar_processing_node'
->>>>>>> origin/dev:src/interface/carla_interface/launch/allstar.launch.py
     )
     
     # PLANNING
@@ -272,11 +271,8 @@ def generate_launch_description():
         visuals,
 
         # PERCEPTION
-<<<<<<< HEAD:src/carla/launch/carla.launch.py
         ground_seg,
-=======
         lidar_processor,
->>>>>>> origin/dev:src/interface/carla_interface/launch/allstar.launch.py
 
         # PLANNING
         # zone_fusion,

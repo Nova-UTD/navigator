@@ -14,7 +14,6 @@ class GroundSeg(Node):
 
     def __init__(self):
         super().__init__('ground_seg')
-
         #===CONSTANTS===#
         self.LiDAR_HEIGHT = -1.73  # initialize to the z-height of the LiDAR (in meters)
         self.CAR_HEIGHT = 2  # initialize to the z-height of car (in meters)
