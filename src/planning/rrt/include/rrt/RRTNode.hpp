@@ -8,160 +8,86 @@
 #include <vector>
 #include <set>
 #include <ctime>
+#include <cstdlib>
+#include <utility>
+#include <random>
+#include<cmath>
+#include <limits>
+
+// libOpenDRIVE stuff
+#include "OpenDriveMap.h"
+#include "Lanes.h"
+#include "Road.h"
+#include "Geometries/Line.h"
+#include "RefLine.h"
+#include "opendrive_utils/OpenDriveUtils.hpp"
 
 // Message headers
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <std_msgs/msg/color_rgba.hpp>
-#include <visualization_msgs/msg/marker.hpp>
-#include <visualization_msgs/msg/marker_array.hpp>
-#include <voltron_msgs/msg/final_path.hpp>
+#include <std_msgs/msg/header.hpp>
+#include <builtin_interfaces/msg/time.hpp>
+#include <voltron_msgs/msg/egma.hpp>
+#include <voltron_msgs/msg/evidential_grid.hpp>
+#include <voltron_msgs/msg/evidential_grid_occupancy.hpp>
+#include <voltron_msgs/msg/goal_position.hpp>
+#include <voltron_msgs/msg/rrt_path.hpp>
 
-class WayPointRRT{
-public:
-	float gps_X;
-	float gps_Y;
-  	time_t current_time;
-	WayPointRRT(float gps_X, float gps_Y, time_t current_time){
-		this->gps_X = gps_X;
-		this->gps_Y = gps_Y;
-		this->current_time = current_time;
-	}
-};
-
-class WayPointPath {
-public:
-	std::vector<WayPointRRT> path;
-	WayPointPath(){
-		return;
-	}
-	WayPointPath(std::vector<WayPointRRT> tempPath){
-		path = tempPath;
-	}
-};
-
-
-class Ogma {
-	public:
-		float og[11][9];
-		time_t time;
-		Ogma(){
-			return;
-		}
-		Ogma(float temp_og[11][9]){
-			for(int i =0; i<int(sizeof(temp_og));i++){
-				for(int j =0; j<int(sizeof(temp_og[i])); j++){
-					this->og[i][j] = temp_og[i][j];
-				}
-			}
-			this->time = std::time(0);
-		}
-		int size(){
-			return 11;
-		}
-};
-
-class Dogma{
-	public:
-		Ogma dog[10];
-		Dogma(){
-			float temp_a[11][9] = {{(float)1.0,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1}};
-			Ogma* temp = new Ogma(temp_a);
-			this->dog[0] = *temp;
-			this->dog[1] = *temp;
-			this->dog[2] = *temp;
-			this->dog[3] = *temp;
-			this->dog[4] = *temp;
-			this->dog[5] = *temp;
-			this->dog[6] = *temp;
-			this->dog[7] = *temp;
-			this->dog[8] = *temp;
-			this->dog[9] = *temp;
-		}
-};
-
-class RRTNode : public rclcpp::Node {
-public:
-	RRTNode();
-	WayPointPath path;
-	WayPointPath* createTree(); //TODO: check for costMap input for parameter
-};
-
-
-//NOT DONE: TO COMPLETE: TO TEST:
-//Code that I am continuing to work on in non ros environment to ensure the logic is correct first:
-
-//
-//  rrt.h
-//  novatiral
-//
-/*
-#pragma once
-
-#include <chrono>
-#include <functional>
-#include <memory>
-#include <string>
-#include <vector>
-#include <set>
-#include <ctime>
-
-class rrt_node{
+class TreeNode{
     public:
         int x;
         int y;
-        time_t t;
-        std::vector< rrt_node > children;
-        rrt_node (){
+        int index;
+        bool goal;
+        std::vector< TreeNode > children;
+        TreeNode (){
 
         }
-        rrt_node(int x, int y, time_t t){
-            this->x = x;
-            this->y = y;
-            this->t = t;
-            //this->children = new std::vector<rrt_node>();
-        }
+        TreeNode(int x, int y, int index) : x(x), y(y), index(index), goal(false) {}
 };
 
-class Ogma {
-    public:
-        std::vector<std::vector<float>> og;
-        time_t time;
-        Ogma(){
-            return;
-        }
-        Ogma(std::vector<std::vector<float>> temp_og){
-            this->og = std::vector< std::vector<float> >(11, std::vector<float>(8));
-            for(int i =0; i<temp_og.size();i++){
-                for(int j =0; j<temp_og[i].size(); j++){
-                    this->og[i][j] = temp_og[i][j];
-                }
-            }
-            this->time = std::time(0);
-        }
-        int size(){
-            return 11;
-        }
-};
 
-class Dogma{
-    public:
-        std::vector<Ogma> dog;
-        Dogma(){
-            std::vector<std::vector<float>> temp_a{{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1},{1,1,1,0,0,0,1,1,1}};
-            Ogma *temp = new Ogma(temp_a);
-            this->dog = std::vector< Ogma >(10);
-            this->dog[0] = *temp;
-            this->dog[1] = *temp;
-            this->dog[2] = *temp;
-            this->dog[3] = *temp;
-            this->dog[4] = *temp;
-            this->dog[5] = *temp;
-            this->dog[6] = *temp;
-            this->dog[7] = *temp;
-            this->dog[8] = *temp;
-            this->dog[9] = *temp;
-        }
+class RRTNode : public rclcpp::Node {
+	public:
+		RRTNode();
+		void findPath(voltron_msgs::msg::Egma::SharedPtr map);
+
+	private:
+
+		//class variables
+		TreeNode *closest;
+		TreeNode currentPosition;
+		TreeNode goal;
+		
+		float maxDistanceToExplore = 3;
+		float currentMinCostForSingleNode;
+		float maxVelocity = 20;
+		float tempPathCost;
+		
+		int iteration;
+		int totalLeaves;
+
+		std::pair<int,int> randomPoint;
+        std::vector< TreeNode > finalRRTPath;
+
+		//messages
+		voltron_msgs::msg::RrtPath path;
+		voltron_msgs::msg::Egma egma;
+		voltron_msgs::msg::GoalPosition goal_position;
+
+		//publishers and subscripters
+		rclcpp::Publisher<voltron_msgs::msg::Egma>::SharedPtr fakeCostMapPub;
+		rclcpp::Publisher<voltron_msgs::msg::GoalPosition>::SharedPtr fakeGoalPup;
+		rclcpp::Publisher<voltron_msgs::msg::RrtPath>::SharedPtr rrt_path_pub;
+		rclcpp::Subscription<voltron_msgs::msg::GoalPosition>::SharedPtr goal_position_sub;
+		rclcpp::Subscription<voltron_msgs::msg::Egma>::SharedPtr cost_map_sub;
+		
+		//methods to be called from find_path
+		void createPaths(voltron_msgs::msg::Egma::SharedPtr map);
+		void addNewRRTNode(voltron_msgs::msg::Egma::SharedPtr map);
+		void findClosestState(TreeNode *head);
+		void findRandomPair(int gridSize_x, int gridSize_y);
+		void bestPath(TreeNode *head, float total, std::vector< TreeNode > tempPath, voltron_msgs::msg::Egma::SharedPtr map);
+
+	
 };
-*/
