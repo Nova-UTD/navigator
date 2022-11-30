@@ -1,8 +1,15 @@
 # Parameter file
 
+/**:
+  ros__parameters:
+    # Robot description file
+    robot_description: "/navigator/data/allstar.urdf"
+
 interface:
   /**:
     ros__parameters:
+      
+
       # Carla
       drive_mode: "carla_autopilot" # "manual", "carla_autopilot", "autosteer", "automatic"
 

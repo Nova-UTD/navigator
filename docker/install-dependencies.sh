@@ -7,7 +7,6 @@ ros-foxy-velodyne-msgs \
 ros-foxy-velodyne-driver \
 ros-foxy-velodyne-laserscan \
 ros-foxy-velodyne-pointcloud \
-ros-foxy-autoware-auto-msgs \
 ros-foxy-lanelet2-core \
 ros-foxy-lanelet2-io \
 ros-foxy-lanelet2-projection \
@@ -31,7 +30,8 @@ python3-matplotlib \
 python3-scipy \
 ros-foxy-rviz2 \
 ros-foxy-robot-localization \
-ros-foxy-derived-object-msgs
+ros-foxy-derived-object-msgs \
+byobu 
 
 pip3 install pymap3d==2.9.1 \
 dictor \

@@ -7,7 +7,7 @@ nav_order: 5
 # Simulation overview
 {: .no_toc }
 
-*Maintained by Connor Scally*
+*Maintained by Connor Scally & Daniel Vayman*
 
 ## Table of contents
 {: .no_toc .text-delta }
@@ -30,15 +30,15 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
 
     1. CARLA Simulator: Please follow the instructions in the above links to install CARLA on your chosen operating system
     2. Navigator: Please see our GitHub page for the latest releases of Navigator
-    3. RVIZ (Or an equivalent ROS visualizer: The download page for RVIZ is here: http://wiki.ros.org/rviz
-    4. ROS2: The download page for ROS2 is here: https://docs.ros.org/en/foxy/index.html 
+    3. [RVIZ](http://wiki.ros.org/rviz) (Or an equivalent ROS visualizer)
+    4. [ROS2](https://docs.ros.org/en/foxy/index.html)
     5. Dependencies for the above: Self-explanatory, Navigator comes with most of what you need, CARLA may not, do not forget to check!
 
 
 
 ## Launching the simulator & running Navigator:
 
-* Launching CARLA:
+* Launching **CARLA**:
 
     1. Your first step should be to navigate to your CARLA directory and launch CARLA with the CARLAUE4.sh script with the -RenderOffScreen flag. If you are on a unix system, the command will look like this:
 
@@ -48,38 +48,39 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
 
  - The "RenderOffscreen" flag hides the rendering window, which saves some resources. See [here](https://carla.readthedocs.io/en/latest/start_quickstart/#command-line-options) for more details
 
-* Launching the bridge:
 
-    1. In a seperate terminal window, launch `sim_bridge_node` by:
+* Launching **RVIZ** (*within our Docker container*):
 
-        a. Sourcing Navigator via a command such as `. navigator/install/setup.bash `
-        
-        b. Run the bridge by issuing the follwing: `ros2 run sim_bridge sim_bridge_node`
-        
-    2. If done correctly, output should look something like this:
-
-    ```
-    [INFO] [1645631990.794344351] [sim_bridge_node]: Connecting to CARLA on port 2000
-    [INFO] [1645631993.616481805] [sim_bridge_node]: Spawning ego vehicle (vehicle.audi.etron) @ Transform(Location(x=-64.644844, y=24.471010, z=0.600000),     Rotation(pitch=0.000000, yaw=0.159198, roll=0.000000))
-    ```
-
-* Launching RVIZ:
-
-    1. Open a new terminal instance and source the setup script via a command like: `. navigator/install/setup.bash `
-    2. Run: `rviz2'
-    3. Select File followed by Open Config Select default.rviz from the share folder. It is recommended that you have your own copy of this as well             for your own configuration.
+    1. Open a new terminal window.
     
-* Launching the stack:
+    2. Navigate to the root directory of Navigator
+
+    3. Enable Docker to launch GUI programs
+    
+        `$ xhost +`
+    
+    3. Run our docker container start script. (If first time running container, refer to [step 3](/navigator/index)) 
+       
+        `$ ./start.sh `
+    
+    4. Source the setup script via a command like: `. install/setup.bash`
+
+    5. Run: `rviz2`
+    6. Select File followed by Open Config Select default.rviz from the share folder. It is recommended that you have your own copy of this as well             for your own configuration.
+    
+* Launching **Navigator**:
 
     1. Open a new terminal window.
 
     2. Navigate to the root directory of Navigator.
 
-    3. Run `source /install/setup.bash`
+    3. Run the docker container `./start.sh`
 
-    4. Run `ros2 launch carla.launch.py`
+    4. Run `source /install/setup.bash` (if you have bash sourcing ROS automatically (see below), that works too)
 
-    5. Check RVIZ and terminal output. The sim_bridge will publish sensor data just as if you were driving on campus, and it will similary accept commands      from our [standard topics](https://github.com/Nova-UTD/navigator/wiki/Topic-and-transform-structure). As of writing, our custom bridge publishes:
+    5. Run `ros2 launch carla_interface allstar-lite.launch.py`
+
+    6. Check RVIZ and terminal output. The sim_bridge will publish sensor data just as if you were driving on campus, and it will similary accept commands      from our [standard topics](https://github.com/Nova-UTD/navigator/wiki/Topic-and-transform-structure). As of writing, our custom bridge publishes:
 
     - GNSS (GPS)
     - IMU
@@ -106,3 +107,13 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
 
 - If you get a "pynput" error, try running `pip3 install pynput`.
 - If you get a CARLA segmentation fault, it's likely you just need to restart CARLA. This will be fixed... eventually. This should only happen after starting the bridge 10 times or so, and should not happen while the bridge is running.
+- If CARLA gives you a SIGFAULT error attach the -carla-rpc-port=N where N = your favorite (Not in use) port number.
+
+## Sourcing Foxy Automatically in Bash:
+
+1. Open your terminal
+2. Write the command --> `gedit ~/.bashrc` (or nano, whatever really)
+3. Go under the last line line and write --> ```source /opt/ros/foxy/setup.bash```
+4. Save and exit
+5. Now with every new shell you open, it will source automatically
+
