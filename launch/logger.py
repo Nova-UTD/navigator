@@ -18,6 +18,7 @@ def setup_logs() -> None:
     log_file_name = f"navigator-log_{formatted_date}.log"
     logging.basicConfig( # Set config of logger
         filename=os.path.join(final_directory, log_file_name),
+        format='%(asctime)s %(message)s',
         #encoding='utf-8',
         level=logging.INFO
     )
