@@ -18,279 +18,244 @@
 
 using geometry_msgs::msg::Point;
 using geometry_msgs::msg::Vector3;
-using nav_msgs::msg::Odometry;
-using std_msgs::msg::ColorRGBA;
-using voltron_msgs::msg::FinalPath;
+using std_msgs::msg::Header;
+using builtin_interfaces::msg::Time;
+using voltron_msgs::msg::Egma;
+using voltron_msgs::msg::EvidentialGrid;
+using voltron_msgs::msg::EvidentialGridOccupancy;
+using voltron_msgs::msg::GoalPosition;
+using voltron_msgs::msg::RrtPath;
+using std::placeholders::_1;
 
 //Mock occupancy grid
 
-RRTNode::RRTNode() : Node("rrt_node"){
-	//cost_map_sub = this -> create_subscriptison<>
-	/*odom_sub = this->create_subscription<Odometry>("/odometry/filtered", 1, [this](Odometry::SharedPtr msg) {
-		cached_odom = msg;
+RRTNode::RRTNode() : Node("rrt_node") {
+
+	this->goal.x = (-1);
+	this->goal.y = (-1);
+	this->goal.index = (-1);
+
+	this->fakeCostMapPub = this->create_publisher<Egma>("/planning/cost_map", 10);
+	//this->fakeGoalPup = this->create_publisher<GoalPosition>("/planning/goal_position", 10);
+
+
+	this->rrt_path_pub = this->create_publisher<RrtPath>("/planning/rrt_path", 10);
+  	this->cost_map_sub = this->create_subscription<Egma>("/planning/cost_map", 5, std::bind(&RRTNode::findPath, this, _1));
+	/*this->goal_position_sub = this->create_subscription<GoalPosition>("/planning/goal_position", 1, [this](GoalPosition::SharedPtr msg) {
+		this->goal.x = (int)msg->goal_point.x;
+		this->goal.y = (int)msg->goal_point.y;
+		this->goal.index = (-1);
+		RCLCPP_WARN(this->get_logger(), "goal published2: x: %i y: %i index: %i", this->goal.x, this->goal.y, this->goal.index);
 	});*/
-	//path_pub = this->create_publisher<WayPointPath>("path_pub",1);
+
+	/*Egma fakeEgma;
 	
-	// expect the cost map from  cost_map_sub to be passed through
-	// expect current position to be passed from odom_sub
-	this->path = createTree()->path;
-}
-
-
-WayPointPath* RRTNode::createTree(){
-	//have set of states possible actions
-	//use costmap to determine which state transisitoned would be the best
-	// use heuristic to determine which path will be the best
-	WayPointPath *temp = new WayPointPath();
-	return temp;
-}
-
-
-
-class rrt_node{
-	public:
-		int x;
-		int y;
-		time_t t;
-		std::vector< rrt_node > children;
-		rrt_node (){
-
-		}
-		rrt_node(int x, int y, time_t t){
-			this->x = x;
-			this->y = y;
-			this->t = t;
-			//this->children = new std::vector<rrt_node>();
-		}
-};
-
-
-
-float max_velocity = 20; 
-class tempRRT{
-	public:
-		float max_velocity = 20; 
-		float max_distance;
-		Dogma* map;
-		std::vector< std::unordered_set < std::pair<int,int> > > free_states;
-		rrt_node* head;
-		rrt_node* closest;
-		float current_min;
-		float conversion_factor;
-		rrt_node* current_state;
-		tempRRT(){
-			this->map = new Dogma();
-			this->max_distance = 2;
-			this->current_min = std::numeric_limits<float>::max();
-			this->head = new rrt_node(10,4,map->dog[0].time);
-			this->closest = head;
-			this->conversion_factor = 3;
-			this-> current_state = head;
-			for (int k =0; k< 10; k++){
-				std::unordered_set < std::pair<int,int> > time_step_free;
-				for (int i=0; i<map->dog[k].og.size();i++){
-					for (int j=0; j<map[i].size();j++){
-						if(map[i][j]<=0.5){
-							std::pair<int, int> temp_pair(i, j);
-							time_step_free.add(temp_pair);
-						}
-					}
-				}
-				this->free_states.push_back(time_step_free);
-			}
-		}
-
-		std::pair<int,int> randomPair(){
-			srand (time(NULL));
-			this->free_states[rand() % length+1];
-		}
-
-		void find_closest_state(rrt_node* head, std::pair<int,int> random_point){
-			if(head == NULL){
-				return;
-			}
-			float temp_min = pow((head->x - random_point.first),2) + pow((head->y - random_point.second),2);
-			if(temp_min < this->current_min){
-				this->current_min = temp_min;
-				this->closest = head;
-			}
-			for(int i=0; i<head->children.size();i++){
-				find_closest_state(head->children[i], random_point);
-			}
-			return;
-		}
-
-		rrt_node* find_new_state_to_add(int k){
-			std::pair<int,int> best(this->current_state->x, this->current_state->y);
-			float max = 1;
-			for (int i=this->closest->x; i<=this->conversion_factor; i++){
-				for(int j =this->closest->y-this->conversion_factor; j<this->closest->y+this->conversion_factor; j++){
-					std::pair<int, int> temp_pair(i,j);
-					if (this->free_states[k].first.find(temp_pair) != this->free_states[k].first.end()){
-						if(map[k][i][j] <= max){
-							if((pow((this->closest->x - i),2) + pow((this->closest->j - j),2)) < (pow((this->closest->x - best.first),2) + pow((this->closest->j - best.second),2))){
-								best = new std::pair<int, int>(i,j);
-								max = map[k][i][j];
-							}
-						}
-					}
-				}
-			}
-			rrt_node* toReturn(i,j,map[k]->time);
-			this->closest->children.push_back(toReturn);
-			return toReturn;
+	for(int i =0; i< 10; i++){
+		EvidentialGrid tempGrid;
+		for(int j = 0; j< 11; j++){
+			EvidentialGridOccupancy tempRow;
 			
+			tempRow.occupancy_value.push_back((float)1);
+			tempRow.occupancy_value.push_back((float)1);
+			tempRow.occupancy_value.push_back((float)1);		
+			tempRow.occupancy_value.push_back((float)0);
+			tempRow.occupancy_value.push_back((float)0);
+			tempRow.occupancy_value.push_back((float)0);
+			tempRow.occupancy_value.push_back((float)1);
+			tempRow.occupancy_value.push_back((float)1);
+			tempRow.occupancy_value.push_back((float)1);
+			tempGrid.grid.push_back(tempRow);
 		}
+		tempGrid.header.stamp.sec = i;
+		fakeEgma.egma.push_back(tempGrid);
+	}
+
+	fakeEgma.goal_point.x = 0;
+	fakeEgma.goal_point.y = 5;
+	fakeEgma.goal_point.z = 0;
+
+	this->fakeCostMapPub->publish(fakeEgma);
+	//RCLCPP_WARN(this->get_logger(), "egma published");
 
 
-		std::vector< rrt_node* > create_path(rrt_node* head){
-			std::vector< rrt_node* > path; 
-			for (int k = 0; k< this->free_states.size(); k++){
-				path.push_back(find_new_state_to_add(k));
-			}
-			return path;
-		}
-
-};
-
-
-
-//NOT DONE: TO COMPLETE: TO TEST:
-//Code that I am working on in non ros environment to ensure the logic is correct first:
-
-//
-//  main.cpp
-//  novatiral
-/*
-#include <chrono>
-#include <functional>
-#include <memory>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <iomanip>
-#include <ctime>
-#include <cstdlib>
-#include <set>
-#include <unordered_set>
-#include <utility>
-#include <random>
-#include<cmath>
-#include <limits>
-#include <memory>
-#include "./rrt.h"
-
-
-class tempRRT{
-    public:
-        float max_velocity = 20;
-        float max_distance;
-        Dogma* map;
-        std::vector< std::set < std::pair<int,int> > > free_states;
-        rrt_node* head;
-        rrt_node* closest;
-        std::pair<int,int> random_point;
-        float current_min;
-        float conversion_factor;
-        rrt_node* current_state;
-        tempRRT(){
-            this->map = new Dogma();
-            this->max_distance = 2;
-            this->current_min = std::numeric_limits<float>::max();
-            this->head = new rrt_node(10,4,map->dog[0].time);
-            this->closest = head;
-            this->random_point = std::make_pair(-1, -1);
-            this->conversion_factor = 3;
-            this->current_state = head;
-            for (int k =0; k< 10; k++){
-                std::set < std::pair<int,int> > time_step_free;
-                for (int i=0; i<map->dog[k].og.size();i++){
-                    for (int j=0; j<map->dog[k].og[i].size();j++){
-                        if(map->dog[k].og[i][j]<=0.5){
-                            std::pair<int, int> temp_pair(i, j);
-                            time_step_free.insert(temp_pair);
-                        }
-                    }
-                }
-                this->free_states.push_back(time_step_free);
-            }
-            
-        }
-
-        void randomPair(int k){
-            srand( static_cast<unsigned int>(time(nullptr)));
-            int i = rand() % this->free_states.size();
-            for (std::set<std::pair<int, int>>::iterator itr = free_states[k].begin(); itr != free_states[k].end(); ++itr) {
-                if(i==0){
-                    this->random_point =  *itr;
-                }
-                i--;
-            }
-            return;
-        }
-
-        void find_closest_state(rrt_node* head, std::pair<int,int> random_point){
-            if(head == NULL){
-                return;
-            }
-            float temp_min = pow((head->x - random_point.first),2) + pow((head->y - random_point.second),2);
-            if(temp_min < this->current_min){
-                this->current_min = temp_min;
-                this->closest = head;
-            }
-            for(int i=0; i<head->children.size();i++){
-                find_closest_state(&head->children[i], random_point);
-            }
-            return;
-        }
-
-        rrt_node find_new_state_to_add(int k){
-            std::pair<int,int> best(this->current_state->x, this->current_state->y);
-            randomPair(k);
-            find_closest_state(this->head, this->random_point);
-            float max = 1;
-            for (int i=this->closest->x; i<=this->conversion_factor; i++){
-                for(int j =this->closest->y-this->conversion_factor; j<this->closest->y+this->conversion_factor; j++){
-                    std::pair<int, int> temp_pair(i,j);
-                    if (this->free_states[k].count(temp_pair)){
-                        if(this->map->dog[k].og[i][j] <= max){
-                            if((pow((this->random_point.first - i),2) + pow((this->random_point.second- j),2)) < (pow((this->random_point.first - best.first),2) + pow((this->random_point.second - best.second),2))){
-                                best = std::make_pair(i,j);
-                                max = map->dog[k].og[i][j];
-                            }
-                        }
-                    }
-                }
-            }
-            rrt_node toReturn(best.first,best.second,map->dog[k].time);
-            this->closest->children.push_back(toReturn);
-            return toReturn;
-            
-        }
-
-
-        std::vector< rrt_node > create_path(){
-            std::vector< rrt_node > path;
-            for (int k = 0; k< this->free_states.size(); k++){
-                path.push_back(find_new_state_to_add(k));
-            }
-            for(int i=0; i<path.size();i++){
-                std::cout<<path[i].x<<" "<<path[i].y<<" "<<path[i].t<<std::endl;
-            }
-            return path;
-        }
-
-};
-
-
-
-
-
-int main(int argc, const char * argv[]) {
-    // insert code here...
-    tempRRT rrt;
-    rrt.create_path();
-    return 0;
+	GoalPosition fakeGoal;
+	fakeGoal.goal_point.x = (float)0;
+	fakeGoal.goal_point.y = (float)5;
+	this->fakeGoalPup->publish(fakeGoal);
+	//RCLCPP_WARN(this->get_logger(), "goal published: x: %.6f y: %.6f", fakeGoal.goal_point.x, fakeGoal.goal_point.y);
+	*/
 }
 
-*/
+void RRTNode::findRandomPair(int gridSize_x, int gridSize_y){
+	int i = rand() % gridSize_x;
+	int j = rand() % gridSize_y;
+	this->randomPoint = std::make_pair(i,j);
+	return;
+}
+
+void RRTNode::findClosestState(TreeNode *head){
+	if(head == nullptr){
+		return;
+	}
+	
+	float temp_min = pow(head->x - this->randomPoint.first,2) + pow(head->y - this->randomPoint.second,2);
+	
+	if(temp_min < this->currentMinCostForSingleNode && head->x>=randomPoint.first){
+		this->currentMinCostForSingleNode = temp_min;
+		this->closest = head;
+	}
+
+	for(int i=0; i<(int)head->children.size();i++){
+		findClosestState(&head->children[i]);
+	}
+
+	return;
+}
+
+void RRTNode::addNewRRTNode(Egma::SharedPtr map){
+	std::pair<int,int> best(this->currentPosition.x, this->currentPosition.y);
+
+	findRandomPair(map->egma[0].grid.size(), map->egma[0].grid[0].occupancy_value.size());
+	//RCLCPP_WARN(this->get_logger(), "random point: x: %i, y: %i", this->randomPoint.first, this->randomPoint.second);
+
+	this->currentMinCostForSingleNode = std::numeric_limits<float>::max();
+	findClosestState(&this->currentPosition);
+	//RCLCPP_WARN(this->get_logger(), "closest state: x: %i, y: %i index: %i", this->closest->x, this->closest->y, this->closest->index);
+	//RCLCPP_WARN(this->get_logger(), "closest state address:  %p", (void*)&closest);
+
+	float nodeMinOccupancyValue = 1;
+	int k = this->closest->index+1;
+
+	if(k >= (int)map->egma.size()){
+		return;
+	}
+
+	int column = this->closest->y-this->maxDistanceToExplore;
+	if(column < 0){
+		column = 0;
+	}
+	
+	for (int i=this->closest->x; i>=(this->closest->x-this->maxDistanceToExplore) && i>=0; i--){
+		for(int j=column; j<(this->closest->y+this->maxDistanceToExplore) && j<= (int)map->egma[k].grid[i].occupancy_value.size(); j++){
+			if (map->egma[k].grid[i].occupancy_value[j] <= 0.5){
+				if(map->egma[k].grid[i].occupancy_value[j] <= nodeMinOccupancyValue){
+					if((pow((this->randomPoint.first - i),2) + pow((this->randomPoint.second- j),2)) < (pow((this->randomPoint.first - best.first),2) + pow((this->randomPoint.second - best.second),2))){
+						best = std::make_pair(i,j);
+						nodeMinOccupancyValue = map->egma[k].grid[i].occupancy_value[j];
+					}
+				}
+			}
+		}
+	}
+
+	if(best.first == this->closest->x && best.second == this->closest->y){
+		return;
+	}
+	//RCLCPP_WARN(this->get_logger(), "best state: x: %i, y: %i", best.first, best.second);
+
+	TreeNode toAppend(best.first,best.second,k);
+	if(toAppend.x == this->goal.x && toAppend.y == this->goal.y){
+		this->iteration = 1000;
+		toAppend.goal= true;
+	}
+	this->closest->children.push_back(toAppend);
+	//RCLCPP_WARN(this->get_logger(), "children size: %i", (int)this->closest->children.size());
+	//RCLCPP_WARN(this->get_logger(), "child: x: %i y: %i \n", this->closest->children[0].x, (int)this->closest->children[0].y);
+
+	return;
+}
+
+void RRTNode::createPaths(Egma::SharedPtr map){
+	srand( static_cast<unsigned int>(time(nullptr))) ;
+	
+	while(this->iteration < 1000){
+		addNewRRTNode(map);
+		iteration++;
+	}
+	
+	return;
+}
+
+void RRTNode::bestPath(TreeNode *head, float total, std::vector< TreeNode > path, Egma::SharedPtr map){
+	if(head == nullptr){
+		if(total< this->tempPathCost){
+			this->finalRRTPath = path;
+			this->tempPathCost = total;
+		}
+		return;
+	}
+	
+	std::vector<TreeNode> tempPath(path.begin(), path.end());
+	tempPath.push_back(*head);
+
+	if(head->x ==this->goal.x && head->y ==this->goal.y){
+		this->finalRRTPath = tempPath;
+		this->tempPathCost=-1;
+		return;
+	}
+
+	total+=map->egma[head->index].grid[head->x].occupancy_value[head->y];
+
+	for(int i =0; i< (int)head->children.size();i++){
+		bestPath(&head->children[i], total, tempPath, map);
+	}
+	if(head->children.size() ==0){
+		bestPath(nullptr, total, tempPath, map);
+	}
+
+	return;
+} 
+
+void RRTNode::findPath(Egma::SharedPtr map){
+	/*while(this->goal.x == (-1)){
+		RCLCPP_WARN(this->get_logger(), "in while: ");
+	}*/
+
+	this->goal.x = map->goal_point.x;
+	this->goal.y = map->goal_point.y;
+	this->goal.index = (-1);
+
+	this->currentPosition = TreeNode(10,4, 0);
+	this->closest = &currentPosition;
+
+	this->currentMinCostForSingleNode = std::numeric_limits<float>::max();
+	this->tempPathCost = std::numeric_limits<float>::max();
+
+	this->iteration = 0;
+	this->totalLeaves = 1;
+
+	createPaths(map);
+	std::vector<TreeNode> tempVec;
+	bestPath(&this->currentPosition, 0, tempVec, map);
+
+	RrtPath msg;
+	//RCLCPP_WARN(this->get_logger(), "size of path: %i", (int)this->finalRRTPath.size());
+
+	for(int i=0; i< (int)this->finalRRTPath.size(); i++){
+		Point path_pt;
+		path_pt.x = finalRRTPath[i].x;
+		path_pt.y = finalRRTPath[i].y;
+		path_pt.z = 0;
+		msg.points.push_back(path_pt);
+		//RCLCPP_WARN(this->get_logger(), "point: %.i with x: %.6f y: %.6f z: ", i, path_pt.x, path_pt.y, path_pt.z);
+
+		msg.stamps.push_back(map->egma[finalRRTPath[i].index].header.stamp);
+		//RCLCPP_WARN(this->get_logger(), "stamp: %i", map->egma[finalRRTPath[i].index].header.stamp.sec);
+
+		if(i < (int)this->finalRRTPath.size() -1){
+			float changeX = finalRRTPath[i].x - finalRRTPath[i+1].x;
+			float changeY = finalRRTPath[i].y - finalRRTPath[i+1].y;
+			float theta = atan(changeX/changeY);
+			msg.thetas.push_back(theta);
+			//RCLCPP_WARN(this->get_logger(), "theta: %.6f", theta);
+
+		}
+	}
+
+	this->rrt_path_pub->publish(msg);
+
+	//this->goal.x = (-1);
+	//this->goal.y = (-1);
+
+}
+
