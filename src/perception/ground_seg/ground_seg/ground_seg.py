@@ -43,7 +43,7 @@ class GroundSeg(Node):
     def simpl_ground_seg(self, msg: PointCloud2):
         pcd = rnp.numpify(msg)
 
-        #removes pcd data (z axis) below car height
+        #removes pcd data (z axis) below car height (2)
         pcd = pcd[pcd['z'] >= -self.CAR_HEIGHT]
         msg = rnp.msgify(PointCloud2, pcd)
 
