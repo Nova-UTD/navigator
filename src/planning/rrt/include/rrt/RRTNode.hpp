@@ -24,8 +24,12 @@
 
 // Message headers
 #include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <std_msgs/msg/header.hpp>
+#include <nav_msgs/msg/path.hpp>
 #include <builtin_interfaces/msg/time.hpp>
 #include <voltron_msgs/msg/egma.hpp>
 #include <voltron_msgs/msg/evidential_grid.hpp>
@@ -71,14 +75,15 @@ class RRTNode : public rclcpp::Node {
         std::vector< TreeNode > finalRRTPath;
 
 		//messages
-		voltron_msgs::msg::RrtPath path;
-		voltron_msgs::msg::Egma egma;
-		voltron_msgs::msg::GoalPosition goal_position;
+		//voltron_msgs::msg::RrtPath path;
+		//voltron_msgs::msg::Egma egma;
+		//voltron_msgs::msg::GoalPosition goal_position;
 
-		//publishers and subscripters
-		rclcpp::Publisher<voltron_msgs::msg::Egma>::SharedPtr fakeCostMapPub;
-		rclcpp::Publisher<voltron_msgs::msg::GoalPosition>::SharedPtr fakeGoalPup;
-		rclcpp::Publisher<voltron_msgs::msg::RrtPath>::SharedPtr rrt_path_pub;
+		//publishers and subscribers
+		//rclcpp::Publisher<voltron_msgs::msg::Egma>::SharedPtr fakeCostMapPub;
+		//rclcpp::Publisher<voltron_msgs::msg::GoalPosition>::SharedPtr fakeGoalPup;
+		//rclcpp::Publisher<voltron_msgs::msg::RrtPath>::SharedPtr rrt_path_pub;
+		rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr rrt_path_publisher;
 		rclcpp::Subscription<voltron_msgs::msg::GoalPosition>::SharedPtr goal_position_sub;
 		rclcpp::Subscription<voltron_msgs::msg::Egma>::SharedPtr cost_map_sub;
 		
