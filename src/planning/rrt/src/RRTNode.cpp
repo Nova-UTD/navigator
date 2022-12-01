@@ -17,8 +17,12 @@
 #include "rrt/RRTNode.hpp"
 
 using geometry_msgs::msg::Point;
+using geometry_msgs::msg::Quaternion;
+using geometry_msgs::msg::Pose;
+using geometry_msgs::msg::PoseStamped;
 using geometry_msgs::msg::Vector3;
 using std_msgs::msg::Header;
+using nav_msgs::msg::Path;
 using builtin_interfaces::msg::Time;
 using voltron_msgs::msg::Egma;
 using voltron_msgs::msg::EvidentialGrid;
@@ -35,11 +39,12 @@ RRTNode::RRTNode() : Node("rrt_node") {
 	this->goal.y = (-1);
 	this->goal.index = (-1);
 
-	this->fakeCostMapPub = this->create_publisher<Egma>("/planning/cost_map", 10);
+	//this->fakeCostMapPub = this->create_publisher<Egma>("/planning/cost_map", 10);
 	//this->fakeGoalPup = this->create_publisher<GoalPosition>("/planning/goal_position", 10);
 
 
-	this->rrt_path_pub = this->create_publisher<RrtPath>("/planning/rrt_path", 10);
+	//this->rrt_path_pub = this->create_publisher<RrtPath>("/planning/rrt_path_temp", 10);
+	this->rrt_path_publisher = this->create_publisher<Path>("/planning/rrt_path", 10);
   	this->cost_map_sub = this->create_subscription<Egma>("/planning/cost_map", 5, std::bind(&RRTNode::findPath, this, _1));
 	/*this->goal_position_sub = this->create_subscription<GoalPosition>("/planning/goal_position", 1, [this](GoalPosition::SharedPtr msg) {
 		this->goal.x = (int)msg->goal_point.x;
@@ -47,8 +52,8 @@ RRTNode::RRTNode() : Node("rrt_node") {
 		this->goal.index = (-1);
 		RCLCPP_WARN(this->get_logger(), "goal published2: x: %i y: %i index: %i", this->goal.x, this->goal.y, this->goal.index);
 	});*/
-
-	/*Egma fakeEgma;
+/*
+	Egma fakeEgma;
 	
 	for(int i =0; i< 10; i++){
 		EvidentialGrid tempGrid;
@@ -76,14 +81,14 @@ RRTNode::RRTNode() : Node("rrt_node") {
 
 	this->fakeCostMapPub->publish(fakeEgma);
 	//RCLCPP_WARN(this->get_logger(), "egma published");
-
-
+*/
+/*
 	GoalPosition fakeGoal;
 	fakeGoal.goal_point.x = (float)0;
 	fakeGoal.goal_point.y = (float)5;
-	this->fakeGoalPup->publish(fakeGoal);
+	this->fakeGoalPup->publish(fakeGoal);*/
 	//RCLCPP_WARN(this->get_logger(), "goal published: x: %.6f y: %.6f", fakeGoal.goal_point.x, fakeGoal.goal_point.y);
-	*/
+	
 }
 
 void RRTNode::findRandomPair(int gridSize_x, int gridSize_y){
@@ -228,31 +233,41 @@ void RRTNode::findPath(Egma::SharedPtr map){
 	std::vector<TreeNode> tempVec;
 	bestPath(&this->currentPosition, 0, tempVec, map);
 
-	RrtPath msg;
+	//RrtPath msg;
+	Path tempMsg;
 	//RCLCPP_WARN(this->get_logger(), "size of path: %i", (int)this->finalRRTPath.size());
+	tempMsg.header.frame_id = "map";
 
 	for(int i=0; i< (int)this->finalRRTPath.size(); i++){
-		Point path_pt;
-		path_pt.x = finalRRTPath[i].x;
-		path_pt.y = finalRRTPath[i].y;
-		path_pt.z = 0;
-		msg.points.push_back(path_pt);
+		Point pathPt;
+		PoseStamped tempPose;
+		tempPose.header.frame_id = "map";
+		pathPt.x = finalRRTPath[i].x;
+		pathPt.y = finalRRTPath[i].y;
+		pathPt.z = 0;
+		//msg.points.push_back(pathPt);
+		tempPose.pose.position = pathPt;
 		//RCLCPP_WARN(this->get_logger(), "point: %.i with x: %.6f y: %.6f z: ", i, path_pt.x, path_pt.y, path_pt.z);
 
-		msg.stamps.push_back(map->egma[finalRRTPath[i].index].header.stamp);
+		//msg.stamps.push_back(map->egma[finalRRTPath[i].index].header.stamp);
+		tempPose.header.stamp = map->egma[finalRRTPath[i].index].header.stamp;
 		//RCLCPP_WARN(this->get_logger(), "stamp: %i", map->egma[finalRRTPath[i].index].header.stamp.sec);
 
 		if(i < (int)this->finalRRTPath.size() -1){
 			float changeX = finalRRTPath[i].x - finalRRTPath[i+1].x;
 			float changeY = finalRRTPath[i].y - finalRRTPath[i+1].y;
 			float theta = atan(changeX/changeY);
-			msg.thetas.push_back(theta);
+			tempPose.pose.orientation.w = sin(theta/2);
+			tempPose.pose.orientation.z = cos(theta/2);
+			//msg.thetas.push_back(theta);
 			//RCLCPP_WARN(this->get_logger(), "theta: %.6f", theta);
 
 		}
+		tempMsg.poses.push_back(tempPose);
 	}
 
-	this->rrt_path_pub->publish(msg);
+	//this->rrt_path_pub->publish(msg);
+	this->rrt_path_publisher->publish(tempMsg);
 
 	//this->goal.x = (-1);
 	//this->goal.y = (-1);
