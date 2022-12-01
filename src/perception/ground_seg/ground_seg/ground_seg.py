@@ -6,7 +6,7 @@ import copy
 
 import rclpy
 from rclpy.node import Node
-
+from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
 
@@ -44,6 +44,9 @@ class GroundSeg(Node):
         pcd = rnp.numpify(msg)
         pcd = pcd[pcd['z'] >= -self.CAR_HEIGHT]
         msg = rnp.msgify(PointCloud2, pcd)
+
+        msg.header.frame_id = 'hero/lidar'
+        msg.header.stamp = Clock().clock
 
         #return point_cloud_seg
         self.get_logger().info('Publishing: simpl ground seg is DONE')
