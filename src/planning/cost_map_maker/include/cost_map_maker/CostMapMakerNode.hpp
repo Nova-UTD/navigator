@@ -8,23 +8,34 @@
  */
 
 /*
-    Currently, this node republishes data from the path publisher. In the future,
-    It will take in zones from the traffic planner and obstacle zoner
-    and assign speeds to the path.
+    Currently, this node gets an Evidential Grid Map input from perception and creates a cost map accordingly to ensure safety and good driving practices.
+    It does so by giving collisions an extremely high costs and making spaces closer to the next waypoint less costly. *TO BE CONTINUED*
 */
 
 #pragma once
 
 #include <chrono> // Time literals
 #include <vector>
+#include <string>
 
+// libOpenDRIVE includes
+#include "OpenDriveMap.h"
+#include "Lanes.h"
+#include "Road.h"
+#include "Geometries/Line.h"
+#include "RefLine.h"
+#include "opendrive_utils/OpenDriveUtils.hpp"
+
+// Message includes
 #include "rclcpp/rclcpp.hpp"
 #include <nav_msgs/msg/odometry.hpp>
-#include "voltron_msgs/msg/zone.hpp"
-#include "voltron_msgs/msg/zone_array.hpp"
-#include "voltron_msgs/msg/dogma.hpp"
-#include "voltron_msgs/msg/ogma.hpp"
-#include "voltron_msgs/msg/gps_diagnostic.hpp"
+#include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
+#include "voltron_msgs/msg/egma.hpp"
+#include "voltron_msgs/msg/evidential_grid.hpp"
+#include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 using namespace std::chrono_literals;
 
@@ -45,19 +56,19 @@ private:
 
     // Send final cost map to subscribers
     void send_message();
-    // Subscription to *INSERT PUBLISHER* for input Dynamic Occupancy Grid
-    void update_DOGMa(voltron_msgs::msg::Dogma::SharedPtr ptr);
+    // Subscription to *INSERT PUBLISHER* for input Evidential Grid Map
+    void update_egma(voltron_msgs::msg::Egma::SharedPtr ptr);
     // Subscription to *INSERT PUBLISHER* for input waypoints
-    void update_waypoints(voltron_msgs::msg::ZoneArray::SharedPtr ptr);
+    void update_waypoints(geometry_msgs::msg::Vector3::SharedPtr ptr);
     // Subscription to *INSERT PUBLISHER* for the current heading of the car
     void odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg);
 
-    // Cost map Publisher
-    rclcpp::Publisher<voltron_msgs::msg::Dogma>::SharedPtr cost_map_publisher;
-    // Dynamic Occupancy Grid Subscriber
-    rclcpp::Subscription<voltron_msgs::msg::Dogma>::SharedPtr DOGMa_subscription;
+    // Cost Map Publisher
+    rclcpp::Publisher<voltron_msgs::msg::Egma>::SharedPtr cost_map_publisher;
+    // Evidential Grid Map Subscriber
+    rclcpp::Subscription<voltron_msgs::msg::Egma>::SharedPtr egma_subscription;
     /* TODO Add information from global waypoints */
-    rclcpp::Subscription<voltron_msgs::msg::ZoneArray>::SharedPtr waypoint_subscription;
+    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr waypoint_subscription;
 
     // Odometry Subscriber
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odomtery_pose_subscription;
@@ -65,9 +76,12 @@ private:
     rclcpp::TimerBase::SharedPtr control_timer;
 
 
-    voltron_msgs::msg::Dogma::SharedPtr DOGMa;
+    // EGMa from prediction
+    voltron_msgs::msg::Egma::SharedPtr egma;
+
     /* TODO Add information from global waypoints */
-    voltron_msgs::msg::ZoneArray::SharedPtr waypoints;
+    navigator::opendrive::OpenDriveMapPtr carla_map;
+    geometry_msgs::msg::Vector3::SharedPtr waypoints;
     nav_msgs::msg::Odometry::SharedPtr odometry;
 };
 }

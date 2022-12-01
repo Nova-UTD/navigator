@@ -1,5 +1,5 @@
-#array of key value pairs, which contains location and occupancy
-EvidentialGridKeyValuePair[] map
+EvidentialGridOccupancy[] grid
 
-#time step for particular EG
+# Holds information for time
 std_msgs/Header header
+

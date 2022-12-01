@@ -138,6 +138,15 @@ def generate_launch_description():
                     ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')]
     )
 
+    #rrt Node
+    rrt_path = Node(
+        package='rrt',
+        name='rrt_node',
+        namespace='planning',
+        executable='RRTNode',
+        output='screen',
+    )
+
     # path_planner = Node(
     #     package='behavior_planner_nodes',
     #     name='behavior_planner_node',
@@ -286,7 +295,8 @@ def generate_launch_description():
         # obstacle_zoner,
         # behavior_planner,
         # path_publisher,
-        # motion_planner
+        rrt_path,
+
 
         # STATE ESTIMATION
         state_estimation,
