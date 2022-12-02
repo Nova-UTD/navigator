@@ -121,6 +121,14 @@ def generate_launch_description():
     )
 
     # PERCEPTION
+    ground_seg = Node(
+        package='ground_seg',
+        name='ground_seg',
+        executable='ground_seg',
+        namespace = 'perception',
+        output = 'screen',
+    )
+
     lidar_processor = Node(
         package='sensor_processing',
         executable='lidar_processing_node'
@@ -288,6 +296,7 @@ def generate_launch_description():
         visuals,
 
         # PERCEPTION
+        ground_seg,
         lidar_processor,
 
         # PLANNING
