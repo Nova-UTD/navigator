@@ -111,7 +111,7 @@ def generate_launch_description():
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        arguments=[path.join(launch_dir, "data", "allstar.urdf")]
+        arguments=[path.join(launch_dir, "data", "carla.urdf")]
     )
 
     visuals = Node(
@@ -143,7 +143,7 @@ def generate_launch_description():
         package='rrt',
         name='rrt_node',
         namespace='planning',
-        executable='RRTNode',
+        executable='rrt_node',
         output='screen',
     )
 

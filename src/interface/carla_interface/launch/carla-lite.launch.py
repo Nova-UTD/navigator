@@ -34,7 +34,7 @@ def generate_launch_description():
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
         launch_arguments={
             'host': 'localhost',
-            'port': '2000',
+            'port': '20{}'.format(environ['ROS_DOMAIN_ID']),
             'synchronous_mode': 'True',
             'town': 'Town01',
             'register_all_sensors': 'False',
@@ -44,7 +44,7 @@ def generate_launch_description():
 
     main_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            [get_package_share_directory('carla_interface'), '/allstar.launch.py'])
+            [get_package_share_directory('carla_interface'), '/carla.launch.py'])
     )
 
     return LaunchDescription([
