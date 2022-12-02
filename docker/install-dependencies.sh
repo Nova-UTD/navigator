@@ -37,6 +37,7 @@ pip3 install pymap3d==2.9.1 \
 dictor \
 requests \
 opencv-python==4.2.0.32 \
+open3d \
 pygame \
 tabulate \
 pexpect \
