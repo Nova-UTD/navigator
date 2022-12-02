@@ -41,7 +41,7 @@ class DynamicGridConstructor(Node):
 		pcd.points = o3d.utility.Vector3dVector(data)
 		arr = np.asarray(pcd.points)
 		print(arr.size)
-		occ = pcd_to_sensor_grid(arr)
+		occ = self.pcd_to_sensor_grid(arr)
 
 		width = 120
 		height = 120
