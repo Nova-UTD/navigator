@@ -16,4 +16,4 @@ jobs:
           echo Workspace directory: $(pwd)
 
       - name: Build Navigator using latest Docker image
-        run: sh docker.sh && "apt update && apt install -y ros-foxy-rmw-cyclonedds-cpp && colcon build --cmake-clean-cache"
+        run: docker run --rm -v $PWD:/navigator --net=host -e="DISPLAY" novautd/navigator:latest "apt update && apt install -y ros-foxy-rmw-cyclonedds-cpp && colcon build --cmake-clean-cache"
