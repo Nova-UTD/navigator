@@ -37,7 +37,7 @@ class GroundSeg(Node):
         msg.header.stamp = Clock().clock
 
         #return point_cloud_seg
-        self.get_logger().info('Publishing: simpl ground seg is DONE')
+        # self.get_logger().info('Publishing: simpl ground seg is DONE')
         self.ground_seg_pts_pub.publish(msg)
 
     def ground_seg(self, msg: PointCloud2, res: float =None, s: float =None):
