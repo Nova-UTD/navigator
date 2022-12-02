@@ -12,18 +12,31 @@ from shadowcasting import ShadowCaster
 import rclpy
 from rclpy.node import Node
 import ros2_numpy as rnp
+from sensor_msgs.msg import PointCloud2
+from std_msgs.msg import String
+from voltron_msgs.msg import StaticGrid
+from voltron_msgs.msg import GridRow
+
 
 class DynamicGridConstructor(Node):
 	def __init__(self):
+		super().__init__('dynamic_grid')
 		self.dynamic_grid = []
 		self.RESULT_PATH = './'
-	def create_grid():
+		self.point_cloud_sub = self.create_subscription(PointCloud2, 'ground_seg_points', self.create_grid, 10)
+		self.grid_pub = self.create_publisher(StaticGrid, 'static_grid', 10)
+
+		#self.point_cloud_pub = self.create_publisher(PointCloud2, 'ground_seg_points', 10)
+
+
+	def create_grid(self, point_cloud: PointCloud2):
+
 		for  i in range(1,100):
 			temp_cell = grid_cell.GridCell()
 			self.dynamic_grid.append(temp_cell)
 
-		df = pd.read_csv('input.csv')
-		data = df.to_numpy()
+		#df = pd.read_csv('input.csv')
+		data = rnp.numpify(point_cloud)
 		pcd = o3d.geometry.PointCloud()
 		pcd.points = o3d.utility.Vector3dVector(data)
 		arr = np.asarray(pcd.points)
@@ -51,6 +64,14 @@ class DynamicGridConstructor(Node):
 				else:
 					static_occ[x][y] = 1
 
+		StaticGrid grid
+		for row in static_occ:
+			GridRow tempRow
+			for value in row:
+				tempRow.append(value)
+			grid.append(tempRow)
+		
+		self.grid_pub.publish(grid)
 		
 		return static_occ
 	
@@ -59,7 +80,7 @@ class DynamicGridConstructor(Node):
 			points[2] = 0
 		return points
 	
-	def pcd_to_sensor_grid(points: np.ndarray):
+	def pcd_to_sensor_grid(self, points: np.ndarray):
 		rows = 80
 		cols = 120
 		#this grid creates the base for the egma we will send over to BPC
