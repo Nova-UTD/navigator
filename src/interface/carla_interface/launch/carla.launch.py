@@ -138,7 +138,7 @@ def generate_launch_description():
         package='dynamic_grid',
         name='dynamic_grid',
         namespace='perception',
-        executable='dynamic_grid_constructor',
+        executable='dynamic_grid_node',
         output='screen',
     )
     # PLANNING

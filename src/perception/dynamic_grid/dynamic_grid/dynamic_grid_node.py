@@ -255,11 +255,13 @@ class ShadowCaster:
 class DynamicGridNode(Node):
 	def __init__(self):
 		super().__init__('dynamic_grid_node')
+		self.get_logger().info('#####################################################################################')
 		self.dynamic_grid = []
 		self.RESULT_PATH = './'
-		self.point_cloud_sub = self.create_subscription(PointCloud2, 'ground_seg_points', self.create_grid, 10)
+		self.point_cloud_sub = self.create_subscription(PointCloud2, '/lidar_filtered', self.create_grid, 10)
+		
 		self.grid_pub = self.create_publisher(OccupancyGrid, 'static_grid', 10)
-
+		
 		#self.point_cloud_pub = self.create_publisher(PointCloud2, 'ground_seg_points', 10)
 
 
@@ -267,22 +269,29 @@ class DynamicGridNode(Node):
 
 		#df = pd.read_csv('input.csv')
 		data = rnp.numpify(point_cloud)
+		points = np.zeros([len(data['x']),3])
+		points[...,0] = data['x']
+		points[...,1] = data['y']
+		points[...,2] = data['z']
+		#data = rnp.numpify(point_cloud)
+		self.get_logger().info(str(points))
+		#self.get_logger().info('#####################################################################################')
 		#pcd = o3d.geometry.PointCloud()
 		#pcd.points = o3d.utility.Vector3dVector(data)
 		#arr = np.asarray(pcd.points)
 		#print(arr.size)
 		occ = self.pcd_to_sensor_grid(data)
 
-		width = 120
-		height = 120
+		width = 600
+		height = 600
 		fov = ShadowCaster(width, height)
 		for y in range(height):
 			for x in range(width):
 				if x == 0 or y == 0 or x == width - 1 or y == height - 1:
 					occ[x][y] = False
 
-		result = fov.cast_shadow(occ, 59, 59, 240)
-		static_occ = np.zeros([height, width])
+		result = fov.cast_shadow(occ, 299, 299, 240)
+		static_occ = np.zeros([height, width], dtype=int)
 		for y in range(height):
 			for x in range(width):
 				if result[x][y]:
@@ -302,14 +311,18 @@ class DynamicGridNode(Node):
 		'''
 		#self.grid_pub.publish(grid)
 		msg = OccupancyGrid()
-		msg.header = Clock().clock
-		msg.map_load_time = Clock().clock
+		msg.header.stamp = Clock().clock
+		msg.header.frame_id = 'base_link'
+		msg.info.map_load_time = Clock().clock
 		msg.info.resolution = 0.4
 		msg.info.width = width
 		msg.info.height = height
-		msg.data = static_occ.flatten()
+		self.get_logger().info(str(static_occ.flatten()))
+		msg.data = []
+		for i in static_occ.flatten():
+			msg.data.append(i)
 
-		self.grid_pub.data.publish(msg)
+		self.grid_pub.publish(msg)
 		return static_occ
 	
 	def pcd_flattener(points: np.ndarray):
@@ -318,8 +331,8 @@ class DynamicGridNode(Node):
 		return points
 	
 	def pcd_to_sensor_grid(self, points: np.ndarray):
-		rows = 120
-		cols = 120
+		rows = 600
+		cols = 600
 		#this grid creates the base for the egma we will send over to BPC
 		sensor_grid = [[True for i in range(cols)] for j in range(rows)]
 		for point in points:
@@ -342,5 +355,6 @@ def main(args=None):
 	rclpy.init(args=args)
 	dynamic_grid = DynamicGridNode()
 	rclpy.spin(dynamic_grid)
+	#self.get_logger().info('#####################################################################################')
 	dynamic_grid.destroy_node()
 	rclpy.shutdown()
