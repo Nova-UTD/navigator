@@ -23,24 +23,10 @@ class GroundSeg(Node):
         self.S = 0.09
 
         #===PARAMETERS===#
-        self.lidar_sub = self.create_subscription(PointCloud2, '/lidar_filtered', self.simpl_ground_seg, 10)
-        self.ground_seg_pts_pub = self.create_publisher(PointCloud2, 'ground_seg_points', 10)
+        self.lidar_sub = self.create_subscription(PointCloud2, '/lidar_filtered', self.simple_ground_seg, 10)
+        self.ground_seg_pts_pub = self.create_publisher(PointCloud2, '/lidar_finished', 10)
 
-    #===================IGNOR=============================================
-        #self.publisher_ = self.create_publisher(String, 'topic', 10)
-        #timer_period = 0.5  # seconds
-        #self.timer = self.create_timer(timer_period, self.timer_callback)
-        #self.i = 0
-    
-    def timer_callback(self):
-        msg = String()
-        msg.data = 'Hello World: %d' % self.i
-        self.publisher_.publish(msg)
-        self.get_logger().info('Publishing: "%s"' % msg.data)
-        self.i += 1
-    #=====================================================================
-
-    def simpl_ground_seg(self, msg: PointCloud2):
+    def simple_ground_seg(self, msg: PointCloud2):
         pcd = rnp.numpify(msg)
 
         #removes pcd data (z axis) below car height (2)

@@ -94,15 +94,41 @@ class LidarProcessingNode(Node):
         msg_array['z'] = merged_z
         msg_array['intensity'] = merged_i
 
-        msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0)
+        
+        
 
-        msg_array = self.remove_above_points(msg_array, .75)
+        msg_array = self.transform_to_base_link(msg_array)
+        msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0)
+        msg_array = self.remove_above_points(msg_array, 3.0)
+        msg_array = self.remove_ground_points(msg_array, 0.2)
+        
 
         merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
-        merged_pcd_msg.header.frame_id = 'hero/lidar'
+        merged_pcd_msg.header.frame_id = 'base_link'
         merged_pcd_msg.header.stamp = self.carla_clock.clock
 
         self.clean_lidar_pub.publish(merged_pcd_msg)
+
+    def transform_to_base_link(self, pcd: np.array) -> np.array:
+        '''
+        Transform input cloud into car's origin frame
+        :param pcd: Original pcd in another coordinate frame (e.g. hero/lidar)
+        :returns: Transformed pcd as a ros2_numpy array
+        '''
+
+        # TODO: Actually look up transform and perform translation
+        #       and rotation accordingly.
+        pcd['z'] += 2.08
+        return pcd
+
+    def remove_ground_points(self, pcd: np.array, height: float) -> np.array:
+        '''
+        Simple function to remove points below a certain height.
+        :param pcd: a numpy array of the incoming point cloud, in the format provided by ros2_numpy.
+        :param height: points with a z value less than this will be removed
+        :returns: an array in ros2_numpy format with low points removed
+        '''
+        return pcd[pcd['z'] >= height]
 
     def remove_nearby_points(self, pcd: np.array, x_distance: float, y_distance: float) -> np.array:
         '''
