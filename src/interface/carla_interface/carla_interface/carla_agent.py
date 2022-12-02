@@ -11,7 +11,7 @@ class NavigatorAgent(ROS2Agent):
     def get_ros_entrypoint(self):
         return {
             "package": "carla_interface",
-            "launch_file": "allstar.launch.py",
+            "launch_file": "carla.launch.py",
             "parameters": {}
         }
 
@@ -80,5 +80,5 @@ class NavigatorAgent(ROS2Agent):
         return sensors
 
     def destroy(self):
-        print("AllStar is shutting down. Goodbye.")
+        print("Navigator Agent is shutting down. Goodbye.")
         return super().destroy()

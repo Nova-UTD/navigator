@@ -78,7 +78,7 @@ Nova utilizes CARLA for virtualization. For further information on CARLA, and to
 
     4. Run `source /install/setup.bash` (if you have bash sourcing ROS automatically (see below), that works too)
 
-    5. Run `ros2 launch carla_interface allstar-lite.launch.py`
+    5. Run `ros2 launch carla_interface carla-lite.launch.py`
 
     6. Check RVIZ and terminal output. The sim_bridge will publish sensor data just as if you were driving on campus, and it will similary accept commands      from our [standard topics](https://github.com/Nova-UTD/navigator/wiki/Topic-and-transform-structure). As of writing, our custom bridge publishes:
 
