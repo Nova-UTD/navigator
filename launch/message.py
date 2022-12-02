@@ -3,7 +3,7 @@ import time
 from enum import IntEnum
 
 from launch.text_colors import text_colors as colors
-from launch.processes import change_process_status, get_node_from_process
+from launch.processes import change_package_status, get_node_from_process
 from launch.logger import log
 
 MessageLevels: dict = { # Dictionary to quickly assign level to int
@@ -48,14 +48,13 @@ class Message(object):
         """
         message_color: str = "" # Assign null color if nothing to change to
         if self.level == MessageLevel.INFO:
-            change_process_status(self.process, "SUCCESS")
+            change_package_status(self.process, "SUCCESS")
         elif self.level == MessageLevel.WARN:
             message_color = colors.WARNING
-            change_process_status(self.process, "WARNING")
+            change_package_status(self.process, "WARNING")
         elif self.level == MessageLevel.FATAL:
             message_color = colors.FAIL
-            print("FOIDFDOKFDKOF")
-            change_process_status(self.process, "FATAL")
+            change_package_status(self.process, "FATAL")
 
         formatted_timestamp: datetime = str(datetime.datetime.fromtimestamp(self.timestamp).strftime('%H:%M:%S:%f')) # Get our message timestamp as a formatted date
         log_output: str =  f"[{str(self.level)[13:]}] [{formatted_timestamp}] [{self.process}]: {self.info}" # Holder for log output

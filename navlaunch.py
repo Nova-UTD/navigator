@@ -9,8 +9,9 @@ from typing import Pattern
 from launch.text_colors import text_colors as colors
 from launch.message import get_node_from_process, MessageLevels, MessageLevel, Message
 from launch.patterns import parse_PLTNI, parse_PTI, parse_LPI, parse_PI
-from launch.processes import initialize_process, call_node_sanity_check
+from launch.processes import initialize_process, start_sanity_check_loop
 from launch.logger import setup_logs, log
+
 
 def parse_node_init_message(console_msg: str) -> None:
     """
@@ -28,14 +29,14 @@ def process_ros_launch_line(console_msg: str, msg_level: MessageLevel) -> None:
     @param console_msg[str]         Line to process
     @param msg_level[MessageLevel]  Minimum message level to output to console
     """
-
     # Patterns for different console message types
-    #pattern_PLTNI: Pattern = re.compile(r"\[[^\]]*\] \[[A-Za-z0-9]+\] \[[0-9]*\.[0-9]+\] \[[^\]]*\]:", re.IGNORECASE)
     pattern_PLTNI: Pattern = re.compile(r"\[[^\]]*\] \[[^\]]*\] \[[0-9]*\.[0-9]+\] \[[^\]]*\]:", re.IGNORECASE)
     pattern_PTI: Pattern = re.compile(r"\[[^\]]*] [0-9]*\.[0-9]+ \[0\]", re.IGNORECASE)
     pattern_LPI: Pattern = re.compile(r"\[[^\]]*\] \[[^\]]*\]:", re.IGNORECASE)
     pattern_PI: Pattern = re.compile(r"\[[^\]]*\]\s([A-Za-z0-9]+( [A-Za-z0-9]+)+)", re.IGNORECASE)
-
+    pattern = re.compile(r"\[[^\]]*\]\s+\[[^\]]*\]\s+\[[^\]]*\]\s+\[[^\]]*\]:")
+    
+    console_msg = console_msg.replace("[0m", "") # Remove escape characters
     msg: Message = None # Set message to null type for now
     # Match console line to pattern
     if pattern_PLTNI.match(console_msg): # PROCESS LEVEL TIMESTAMP NODE INFO
@@ -77,6 +78,7 @@ def open_carla_bridge() -> None:
             print(f"{colors.FAIL}{colors.BOLD}ISSUE WITH PROCESSING LINE: {console_msg}{colors.ENDC}")
             log.error(str(console_msg))
 
+
 def start_main_launch(msg_level: MessageLevel) -> None:
     """
     Starts main launch process and sends each line to threads
@@ -85,20 +87,20 @@ def start_main_launch(msg_level: MessageLevel) -> None:
     setup_logs() # Calls logs to setup
     subprocess.Popen(". install/setup.bash", executable="/bin/bash", shell=True) # Source packages
     process: subprocess = subprocess.Popen( # Open ros2 launch process, create pipe and use shell mode
-        "ros2 launch ros_launch.py",
+        "source install/setup.bash && ros2 launch carla_interface allstar-lite.launch.py",
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         executable="/bin/bash",
         shell=True
     )
-
+    
+    Thread(target=start_sanity_check_loop).start() # Start sanity check loop
     for log_line in iter(process.stdout.readline, ''):  # With Python 3, you need iter(process.stdout.readline, b'') (i.e. the sentinel passed to iter needs to be a binary string, since b'' != '')
         proc_log_line: str = log_line.decode('utf-8').rstrip() # Decode string to utf-8 and remove end whitespace
         if proc_log_line == "" and proc_log_line is not None: # If line is null or empty then skip loop
             continue
         Thread(target=process_ros_launch_line, args=(proc_log_line, msg_level, )).start() # Send line to process to thread [non-yield]
-        Thread(target=call_node_sanity_check).start() # Send sanity check to thread [non-yield]
 
 
 def prompt_initial_input() -> MessageLevel:

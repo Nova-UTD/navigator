@@ -258,8 +258,7 @@ def generate_launch_description():
         package='map_publishers',
         executable='lanelet_loader'
     )
-
-    nodes = [
+    return LaunchDescription([
         # CONTROL
         carla_controller,
 
@@ -283,13 +282,12 @@ def generate_launch_description():
         lidar_processor,
 
         # PLANNING
-        zone_fusion,
-        obstacle_zoner,
-        behavior_planner,
-        path_publisher,
-        motion_planner
-    ]
+        # zone_fusion,
+        # obstacle_zoner,
+        # behavior_planner,
+        # path_publisher,
+        # motion_planner
 
-    for node in nodes:
-        print(node)
-    return LaunchDescription(nodes)
+        # STATE ESTIMATION
+        state_estimation,
+    ])
