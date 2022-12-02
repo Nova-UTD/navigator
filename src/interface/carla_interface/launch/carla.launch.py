@@ -134,6 +134,13 @@ def generate_launch_description():
         executable='lidar_processing_node'
     )
 
+    dynamic_grid = Node(
+        package='dynamic_grid',
+        name='dynamic_grid',
+        namespace='perception',
+        executable='dynamic_grid_constructor',
+        output='screen',
+    )
     # PLANNING
     route_planner = Node(
         package='lanelet2_global_planner_nodes',
@@ -298,7 +305,7 @@ def generate_launch_description():
         # PERCEPTION
         ground_seg,
         lidar_processor,
-
+        dynamic_grid,
         # PLANNING
         # zone_fusion,
         # obstacle_zoner,
