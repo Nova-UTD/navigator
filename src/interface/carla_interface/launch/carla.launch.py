@@ -111,7 +111,7 @@ def generate_launch_description():
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        arguments=[path.join(launch_dir, "data", "allstar.urdf")]
+        arguments=[path.join(launch_dir, "data", "carla.urdf")]
     )
 
     visuals = Node(
@@ -121,11 +121,26 @@ def generate_launch_description():
     )
 
     # PERCEPTION
+    ground_seg = Node(
+        package='ground_seg',
+        name='ground_seg',
+        executable='ground_seg',
+        namespace = 'perception',
+        output = 'screen',
+    )
+
     lidar_processor = Node(
         package='sensor_processing',
         executable='lidar_processing_node'
     )
 
+    dynamic_grid = Node(
+        package='dynamic_grid',
+        name='dynamic_grid',
+        namespace='perception',
+        executable='dynamic_grid_node',
+        output='screen',
+    )
     # PLANNING
     route_planner = Node(
         package='lanelet2_global_planner_nodes',
@@ -143,7 +158,7 @@ def generate_launch_description():
         package='rrt',
         name='rrt_node',
         namespace='planning',
-        executable='RRTNode',
+        executable='rrt_node',
         output='screen',
     )
 
@@ -288,8 +303,9 @@ def generate_launch_description():
         visuals,
 
         # PERCEPTION
+        ground_seg,
         lidar_processor,
-
+        dynamic_grid,
         # PLANNING
         # zone_fusion,
         # obstacle_zoner,

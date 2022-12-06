@@ -72,7 +72,7 @@ That's it!
 $ ./docker.sh
 ...
 root@yourhost:/navigator# ./navigator
-root@yourhost:/navigator# ros2 launch carla_interface allstar-lite.launch.py
+root@yourhost:/navigator# ros2 launch carla_interface carla-lite.launch.py
 ```
 This should start a series of ROS nodes, spawning an ego vehicle in the simulator along with a number of sensors:
 ```

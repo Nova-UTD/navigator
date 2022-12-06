@@ -3,7 +3,7 @@
 /**:
   ros__parameters:
     # Robot description file
-    robot_description: "/navigator/data/allstar.urdf"
+    robot_description: "/navigator/data/carla.urdf"
 
 interface:
   /**:
