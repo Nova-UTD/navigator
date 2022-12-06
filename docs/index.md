@@ -35,11 +35,11 @@ $ cd navigator
 3. Build and start our Docker container
 ```
 $ docker build . -t navigator
-$ ./start.sh
+$ ./docker.sh
 ```
 which gives:
 ```
-wheitman@justingpu:~/navigator$ ./start.sh 
+wheitman@justingpu:~/navigator$ ./docker.sh 
 =====================================================================
 ▀█▄   ▀█▀                   ██                    ▄                   
  █▀█   █   ▄▄▄▄   ▄▄▄▄ ▄▄▄ ▄▄▄    ▄▄▄ ▄  ▄▄▄▄   ▄██▄    ▄▄▄   ▄▄▄ ▄▄  
@@ -69,7 +69,7 @@ That's it!
 
 3. Run the following commands to start our system and connect it to CARLA:
 ```
-$ ./start.sh
+$ ./docker.sh
 ...
 root@yourhost:/navigator# ./navigator
 root@yourhost:/navigator# ros2 launch carla_interface allstar-lite.launch.py
@@ -87,7 +87,7 @@ This should start a series of ROS nodes, spawning an ego vehicle in the simulato
 4. Visualize the output by starting Rviz2. You can run Rviz2 directly from a second container instance:
 ```
 $ xhost + # Authorize Docker to launch GUI programs
-$ ./start.sh
+$ ./docker.sh
 ...
 root@yourhost:/navigator# rviz2
 ```
