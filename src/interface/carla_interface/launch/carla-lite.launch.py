@@ -34,7 +34,7 @@ def generate_launch_description():
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
         launch_arguments={
             'host': 'localhost',
-            'port': '2000',
+            'port': str(2000 + environ['ROS_DOMAIN_ID']),
             'synchronous_mode': 'True',
             'town': 'Town01',
             'register_all_sensors': 'False',

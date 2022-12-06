@@ -32,8 +32,6 @@
 #include <nav_msgs/msg/path.hpp>
 #include <builtin_interfaces/msg/time.hpp>
 #include <voltron_msgs/msg/egma.hpp>
-#include <voltron_msgs/msg/evidential_grid.hpp>
-#include <voltron_msgs/msg/evidential_grid_occupancy.hpp>
 #include <voltron_msgs/msg/goal_position.hpp>
 #include <voltron_msgs/msg/rrt_path.hpp>
 
