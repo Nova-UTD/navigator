@@ -311,7 +311,7 @@ def generate_launch_description():
         # obstacle_zoner,
         # behavior_planner,
         # path_publisher,
-        rrt_path,
+        # rrt_path,
 
 
         # STATE ESTIMATION
