@@ -19,8 +19,8 @@ RUN /opt/docker_ws/install-dependencies.sh && rm -rf /var/lib/apt/lists/*
 COPY ./docker ./opt/docker_ws
 
 # Copy and build our modified version of CycloneDDS, important ROS middleware
-COPY ./src/external/cyclonedds /opt/cyclone_ws/cyclonedds
-COPY ./src/external/rmw_cyclonedds /opt/cyclone_ws/rmw_cyclonedds
+COPY ./src/tools/cyclonedds /opt/cyclone_ws/cyclonedds
+COPY ./src/tools/rmw_cyclonedds /opt/cyclone_ws/rmw_cyclonedds
 WORKDIR /opt/cyclone_ws
 RUN . /opt/ros/foxy/setup.sh && colcon build
 
