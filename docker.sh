@@ -11,6 +11,7 @@ docker run \
     -v $PWD:/navigator \
     -v /home/share/carla:/workspace \
     --net=host \
+    --privileged \
     -v $HOME/.Xauthority:/root/.Xauthority \
     -e="DISPLAY" \
     -e ROS_DOMAIN_ID \
