@@ -26,6 +26,16 @@ RUN . /opt/ros/foxy/setup.sh && colcon build
 
 RUN apt update && echo "net.core.rmem_max=8388608\nnet.core.rmem_default=8388608\n" | sudo tee /etc/sysctl.d/60-cyclonedds.conf
 
+#################
+# CLEAN UP ZONE #
+#################
+# Code here should either be moved to install-dependencies.sh or removed
+# before each major release.
+RUN apt update && apt install -y ros-foxy-octomap octovis
+#################
+#  END CLEANUP  #
+#################
+
 ENV ROS_VERSION 2
 
 WORKDIR /navigator

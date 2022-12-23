@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>mapping</name>
+  <version>1.0.0</version>
+  <description>Map creation, provision, and storage tools.</description>
+  <maintainer email="project.nova@utdallas.edu">Will Heitman</maintainer>
+  <license>MIT License</license>
+
+  <buildtool_depend>nova_auto_package</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>octomap</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
