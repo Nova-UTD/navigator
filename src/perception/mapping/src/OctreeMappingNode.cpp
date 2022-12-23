@@ -10,9 +10,11 @@
 #include "mapping/OctreeMappingNode.hpp"
 
 using namespace navigator::perception;
-using namespace octomap;
+using namespace std::chrono_literals;
 
-void print_query_info(point3d query, OcTreeNode *node)
+using sensor_msgs::msg::PointCloud2;
+
+void print_query_info(octomap::point3d query, octomap::OcTreeNode *node)
 {
   if (node != NULL)
   {
@@ -26,7 +28,9 @@ OctreeMappingNode::OctreeMappingNode() : Node("octree_mapping_node")
 {
   RCLCPP_INFO(this->get_logger(), "Hello, world!");
 
-  OcTree tree(0.1);
+  pcd_sub = this->create_subscription<PointCloud2>("/lidar_filtered", 10, std::bind(&OctreeMappingNode::point_cloud_cb, this, std::placeholders::_1));
+
+  octomap::OcTree tree(0.1);
 
   for (int x = -20; x < 20; x++)
   {
@@ -34,7 +38,7 @@ OctreeMappingNode::OctreeMappingNode() : Node("octree_mapping_node")
     {
       for (int z = -20; z < 20; z++)
       {
-        point3d endpoint((float)x * 0.05f, (float)y * 0.05f, (float)z * 0.05f);
+        octomap::point3d endpoint((float)x * 0.05f, (float)y * 0.05f, (float)z * 0.05f);
         tree.updateNode(endpoint, true); // integrate 'occupied' measurement
       }
     }
@@ -48,7 +52,7 @@ OctreeMappingNode::OctreeMappingNode() : Node("octree_mapping_node")
     {
       for (int z = -30; z < 30; z++)
       {
-        point3d endpoint((float)x * 0.02f - 1.0f, (float)y * 0.02f - 1.0f, (float)z * 0.02f - 1.0f);
+        octomap::point3d endpoint((float)x * 0.02f - 1.0f, (float)y * 0.02f - 1.0f, (float)z * 0.02f - 1.0f);
         tree.updateNode(endpoint, false); // integrate 'free' measurement
       }
     }
@@ -57,25 +61,34 @@ OctreeMappingNode::OctreeMappingNode() : Node("octree_mapping_node")
   std::cout << std::endl;
   std::cout << "performing some queries:" << std::endl;
 
-  point3d query(0., 0., 0.);
-  OcTreeNode *result = tree.search(query);
+  octomap::point3d query(0., 0., 0.);
+  octomap::OcTreeNode *result = tree.search(query);
   print_query_info(query, result);
 
-  query = point3d(-1., -1., -1.);
+  query = octomap::point3d(-1., -1., -1.);
   result = tree.search(query);
   print_query_info(query, result);
 
-  query = point3d(1., 1., 1.);
+  query = octomap::point3d(1., 1., 1.);
   result = tree.search(query);
   print_query_info(query, result);
 
-  std::cout << std::endl;
-  tree.writeBinary("simple_tree.bt");
-  std::cout << "wrote example file simple_tree.bt" << std::endl
-            << std::endl;
-  std::cout << "now you can use octovis to visualize: octovis simple_tree.bt" << std::endl;
-  std::cout << "Hint: hit 'F'-key in viewer to see the freespace" << std::endl
-            << std::endl;
+  // std::cout << std::endl;
+  // tree.writeBinary("simple_tree.bt");
+  // std::cout << "wrote example file simple_tree.bt" << std::endl
+  //           << std::endl;
+  // std::cout << "now you can use octovis to visualize: octovis simple_tree.bt" << std::endl;
+  // std::cout << "Hint: hit 'F'-key in viewer to see the freespace" << std::endl
+  //           << std::endl;
+}
+
+void OctreeMappingNode::point_cloud_cb(PointCloud2::SharedPtr msg)
+{
+  RCLCPP_INFO(get_logger(), "YEET!");
+  octomap::Pointcloud octo_cloud;
+  pcl::PointCloud<pcl::PointXYZI> cloud;
+
+  pcl::fromROSMsg(*msg, cloud);
 }
 
 OctreeMappingNode::~OctreeMappingNode()
