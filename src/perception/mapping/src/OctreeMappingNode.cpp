@@ -12,6 +12,9 @@
 using namespace navigator::perception;
 using namespace std::chrono_literals;
 
+using geometry_msgs::msg::TransformStamped;
+using geometry_msgs::msg::Vector3;
+using rosgraph_msgs::msg::Clock;
 using sensor_msgs::msg::PointCloud2;
 
 void print_query_info(octomap::point3d query, octomap::OcTreeNode *node)
@@ -29,6 +32,10 @@ OctreeMappingNode::OctreeMappingNode() : Node("octree_mapping_node")
   RCLCPP_INFO(this->get_logger(), "Hello, world!");
 
   pcd_sub = this->create_subscription<PointCloud2>("/lidar_filtered", 10, std::bind(&OctreeMappingNode::point_cloud_cb, this, std::placeholders::_1));
+  clock_sub = this->create_subscription<Clock>(
+      "/clock", 10,
+      [this](Clock::SharedPtr msg)
+      { this->clock = *msg; });
 
   octomap::OcTree tree(0.1);
 
@@ -82,13 +89,59 @@ OctreeMappingNode::OctreeMappingNode() : Node("octree_mapping_node")
   //           << std::endl;
 }
 
-void OctreeMappingNode::point_cloud_cb(PointCloud2::SharedPtr msg)
+void OctreeMappingNode::point_cloud_cb(PointCloud2::SharedPtr ros_cloud)
 {
   RCLCPP_INFO(get_logger(), "YEET!");
   octomap::Pointcloud octo_cloud;
-  pcl::PointCloud<pcl::PointXYZI> cloud;
+  pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
 
-  pcl::fromROSMsg(*msg, cloud);
+  // Convert from ROS to PCL format
+  pcl::fromROSMsg(*ros_cloud, pcl_cloud);
+
+  // Transform from base_link->map
+  TransformStamped t;
+
+  clock.clock.nanosec -= 1e8;
+
+  try
+  {
+    t = tf_buffer_->lookupTransform(
+        "map", ros_cloud->header.frame_id,
+        this->clock.clock);
+  }
+  catch (const tf2::TransformException &ex)
+  {
+    // This warning will be called no more than once every 5 seconds
+    // https://docs.ros2.org/latest/api/rclcpp/logging_8hpp.html#a451bee77c253ec72f4984bb577ff818a
+    RCLCPP_WARN_THROTTLE(
+        this->get_logger(), *this->get_clock(), 5000, "Could not transform %s to %s: %s",
+        "map", ros_cloud->header.frame_id.c_str(), ex.what());
+    return;
+  }
+
+  // Convert the TransformStamped message that we just received
+  // into an Eigen-style transform
+  Eigen::Matrix4f baselink_to_map_tf = tf2::transformToEigen(t.transform).matrix().cast<float>();
+
+  // Use the Eigen transform to transform the pcl cloud to the global "map" frame
+  pcl::transformPointCloud(pcl_cloud, pcl_cloud, baselink_to_map_tf);
+
+  Vector3 tf_translation = t.transform.translation;
+  octomap::point3d sensor_origin(
+      tf_translation.x, tf_translation.y, tf_translation.z);
+
+  tree.insertPointCloud(pclToOctreeCloud(pcl_cloud), sensor_origin);
+}
+
+octomap::Pointcloud OctreeMappingNode::pclToOctreeCloud(pcl::PointCloud<pcl::PointXYZI> inputCloud)
+{
+  octomap::Pointcloud result;
+  for (pcl::PointXYZI pt : inputCloud)
+  {
+    RCLCPP_INFO(this->get_logger(), std::to_string(pt.x).c_str());
+    result.push_back(pt.x, pt.y, pt.z);
+  }
+  return result;
 }
 
 OctreeMappingNode::~OctreeMappingNode()

@@ -36,11 +36,6 @@ def generate_launch_description():
         executable='mcl_node'
     )
 
-    state_estimation = Node(
-        package='state_estimation',
-        executable='carla_estimation_node'
-    )
-
     carla_spawner = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([get_package_share_directory(
             'carla_spawn_objects'), '/carla_spawn_objects.launch.py']),
@@ -68,6 +63,16 @@ def generate_launch_description():
         }.items(),
     )
 
+    state_estimation = Node(
+        package='state_estimation',
+        executable='carla_estimation_node'
+    )
+
+    map_manager = Node(
+        package='map_management',
+        executable='map_management_node'
+    )
+
     return LaunchDescription([
 
         # INTERFACE
@@ -88,5 +93,6 @@ def generate_launch_description():
 
 
         # STATE ESTIMATION
+        map_manager,
         state_estimation,
     ])
