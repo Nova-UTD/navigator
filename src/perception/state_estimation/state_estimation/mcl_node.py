@@ -20,9 +20,10 @@ Publishes:
 
 import math
 import rclpy
-import mcl
+from state_estimation import mcl
 import ros2_numpy as rnp
 import numpy as np
+import open3d as o3d
 from rclpy.node import Node
 
 from carla_msgs.msg import CarlaSpeedometer
@@ -38,7 +39,9 @@ class MCLNode(Node):
 
     def __init__(self):
         super().__init__('mcl_node')
-        map_xy =
+        map_points = np.asarray(o3d.io.read_point_cloud(
+            "/workspace/simulator/HDMaps/Town01.pcd").points)
+        self.get_logger().info(str(map_points))
 
 
 def main(args=None):

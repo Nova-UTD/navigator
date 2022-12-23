@@ -31,6 +31,11 @@ def generate_launch_description():
         executable='lidar_processing_node'
     )
 
+    mcl = Node(
+        package='state_estimation',
+        executable='mcl_node'
+    )
+
     state_estimation = Node(
         package='state_estimation',
         executable='carla_estimation_node'
@@ -56,7 +61,7 @@ def generate_launch_description():
             'host': 'localhost',
             'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
             'synchronous_mode': 'True',
-            'town': 'Town10HD',
+            'town': 'Town02',
             'register_all_sensors': 'False',
             'ego_vehicle_role_name': 'hero',
             'timeout': '10'
@@ -71,6 +76,7 @@ def generate_launch_description():
         leaderboard_liaison,
 
         # LOCALIZATION
+        # mcl
 
         # MAPPING
 
