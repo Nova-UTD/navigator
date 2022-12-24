@@ -91,7 +91,6 @@ OctreeMappingNode::OctreeMappingNode() : Node("octree_mapping_node")
 
 void OctreeMappingNode::point_cloud_cb(PointCloud2::SharedPtr ros_cloud)
 {
-  RCLCPP_INFO(get_logger(), "YEET!");
   octomap::Pointcloud octo_cloud;
   pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
 
@@ -138,12 +137,15 @@ octomap::Pointcloud OctreeMappingNode::pclToOctreeCloud(pcl::PointCloud<pcl::Poi
   octomap::Pointcloud result;
   for (pcl::PointXYZI pt : inputCloud)
   {
-    RCLCPP_INFO(this->get_logger(), std::to_string(pt.x).c_str());
+    // RCLCPP_INFO(this->get_logger(), std::to_string(pt.x).c_str());
     result.push_back(pt.x, pt.y, pt.z);
   }
+  RCLCPP_INFO(this->get_logger(), "Adding %d points", inputCloud.size());
   return result;
 }
 
 OctreeMappingNode::~OctreeMappingNode()
 {
+  RCLCPP_INFO(this->get_logger(), "Saving map.");
+  tree.writeBinary("simple_tree.bt");
 }
