@@ -2,6 +2,10 @@
 
 # To build: 'docker build -t navigator .'
 
+# Give the Docker container access to the x server,
+# which allows it to show graphical applications
+xhost +
+
 # The below command is to run a docker container. The container must already be built. 
 # It passes the ROS_DOMAIN_ID from host. To generate this "randomly" based on your username, 
 # see https://gist.github.com/wheitman/ceaec50cd4cb79a496f43e6c0e20a8b2
