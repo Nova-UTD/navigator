@@ -12,86 +12,41 @@
 using namespace navigator::perception;
 using namespace std::chrono_literals;
 
+using carla_msgs::msg::CarlaWorldInfo;
 using geometry_msgs::msg::TransformStamped;
 using geometry_msgs::msg::Vector3;
 using rosgraph_msgs::msg::Clock;
 using sensor_msgs::msg::PointCloud2;
 
-void print_query_info(octomap::point3d query, octomap::OcTreeNode *node)
-{
-  if (node != NULL)
-  {
-    std::cout << "occupancy probability at " << query << ":\t " << node->getOccupancy() << std::endl;
-  }
-  else
-    std::cout << "occupancy probability at " << query << ":\t is unknown" << std::endl;
-}
-
 OctreeMappingNode::OctreeMappingNode() : Node("octree_mapping_node")
 {
   RCLCPP_INFO(this->get_logger(), "Hello, world!");
 
-  pcd_sub = this->create_subscription<PointCloud2>("/lidar_filtered", 10, std::bind(&OctreeMappingNode::point_cloud_cb, this, std::placeholders::_1));
   clock_sub = this->create_subscription<Clock>(
       "/clock", 10,
       [this](Clock::SharedPtr msg)
       { this->clock = *msg; });
 
-  octomap::OcTree tree(0.1);
+  pcd_sub = this->create_subscription<PointCloud2>("/lidar_filtered", 10, std::bind(&OctreeMappingNode::pointCloudCb, this, std::placeholders::_1));
 
-  for (int x = -20; x < 20; x++)
-  {
-    for (int y = -20; y < 20; y++)
-    {
-      for (int z = -20; z < 20; z++)
-      {
-        octomap::point3d endpoint((float)x * 0.05f, (float)y * 0.05f, (float)z * 0.05f);
-        tree.updateNode(endpoint, true); // integrate 'occupied' measurement
-      }
-    }
-  }
+  world_info_sub = this->create_subscription<CarlaWorldInfo>(
+      "/carla/world_info", 10,
+      std::bind(&OctreeMappingNode::worldInfoCb, this, std::placeholders::_1));
 
-  // insert some measurements of free cells
-
-  for (int x = -30; x < 30; x++)
-  {
-    for (int y = -30; y < 30; y++)
-    {
-      for (int z = -30; z < 30; z++)
-      {
-        octomap::point3d endpoint((float)x * 0.02f - 1.0f, (float)y * 0.02f - 1.0f, (float)z * 0.02f - 1.0f);
-        tree.updateNode(endpoint, false); // integrate 'free' measurement
-      }
-    }
-  }
-
-  std::cout << std::endl;
-  std::cout << "performing some queries:" << std::endl;
-
-  octomap::point3d query(0., 0., 0.);
-  octomap::OcTreeNode *result = tree.search(query);
-  print_query_info(query, result);
-
-  query = octomap::point3d(-1., -1., -1.);
-  result = tree.search(query);
-  print_query_info(query, result);
-
-  query = octomap::point3d(1., 1., 1.);
-  result = tree.search(query);
-  print_query_info(query, result);
-
-  // std::cout << std::endl;
-  // tree.writeBinary("simple_tree.bt");
-  // std::cout << "wrote example file simple_tree.bt" << std::endl
-  //           << std::endl;
-  // std::cout << "now you can use octovis to visualize: octovis simple_tree.bt" << std::endl;
-  // std::cout << "Hint: hit 'F'-key in viewer to see the freespace" << std::endl
-  //           << std::endl;
+  this->map_marker_timer = this->create_wall_timer(this->MAP_UPDATE_PERIOD,
+                                                   bind(&OctreeMappingNode::publishMapMarker, this));
 }
 
-void OctreeMappingNode::point_cloud_cb(PointCloud2::SharedPtr ros_cloud)
+void OctreeMappingNode::publishMapMarker()
 {
-  octomap::Pointcloud octo_cloud;
+  RCLCPP_INFO(this->get_logger(), "Updating map.");
+}
+
+void OctreeMappingNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
+{
+  if (this->tree->size() < 0)
+
+    octomap::Pointcloud octo_cloud;
   pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
 
   // Convert from ROS to PCL format
@@ -100,6 +55,8 @@ void OctreeMappingNode::point_cloud_cb(PointCloud2::SharedPtr ros_cloud)
   // Transform from base_link->map
   TransformStamped t;
 
+  // Avoid "future time" error from TF2 due to slight delay
+  // in incoming LiDAR data
   clock.clock.nanosec -= 1e8;
 
   try
@@ -129,7 +86,7 @@ void OctreeMappingNode::point_cloud_cb(PointCloud2::SharedPtr ros_cloud)
   octomap::point3d sensor_origin(
       tf_translation.x, tf_translation.y, tf_translation.z);
 
-  tree.insertPointCloud(pclToOctreeCloud(pcl_cloud), sensor_origin);
+  tree->insertPointCloud(pclToOctreeCloud(pcl_cloud), sensor_origin);
 }
 
 octomap::Pointcloud OctreeMappingNode::pclToOctreeCloud(pcl::PointCloud<pcl::PointXYZI> inputCloud)
@@ -144,8 +101,54 @@ octomap::Pointcloud OctreeMappingNode::pclToOctreeCloud(pcl::PointCloud<pcl::Poi
   return result;
 }
 
+std::string OctreeMappingNode::getFilenameFromMapName()
+{
+  std::string file_name = this->map_name;
+  file_name.erase(
+      remove(file_name.begin(), file_name.end(), '/'),
+      file_name.end()); // remove '/' from string
+
+  std::size_t ind = file_name.find("CarlaMaps"); // Remove "CarlaMaps" from name
+  if (ind != std::string::npos)
+  {
+    file_name.erase(ind, std::string("CarlaMaps").length());
+    std::cout << file_name << "\n";
+  }
+
+  std::transform(file_name.begin(), file_name.end(),
+                 file_name.begin(), ::tolower); // Convert to lowercase
+
+  file_name += ".bt";
+  return file_name;
+}
+
+void OctreeMappingNode::saveOctreeBinary()
+{
+  std::string file_name = getFilenameFromMapName();
+  RCLCPP_INFO(this->get_logger(), "Saving map to " + file_name);
+
+  tree->writeBinary(file_name);
+}
+
+void OctreeMappingNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
+{
+  if (this->tree != nullptr)
+    return; // Tree already initialized
+
+  this->map_name = msg->map_name;
+  std::string file_name = getFilenameFromMapName();
+  RCLCPP_INFO(this->get_logger(), "Reading map from " + file_name);
+
+  bool successfully_read = this->tree->readBinary(file_name);
+
+  if (!successfully_read)
+  {
+    this->tree = std::make_shared<octomap::OcTree>(this->OCTREE_RESOLUTION);
+    RCLCPP_INFO(this->get_logger(), "Map file did not exist. A new one will be created.");
+  }
+}
+
 OctreeMappingNode::~OctreeMappingNode()
 {
-  RCLCPP_INFO(this->get_logger(), "Saving map.");
-  tree.writeBinary("simple_tree.bt");
+  saveOctreeBinary();
 }
