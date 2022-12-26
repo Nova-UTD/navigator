@@ -73,6 +73,14 @@ def generate_launch_description():
         executable='map_management_node'
     )
 
+    rviz = Node(
+        package='rviz2',
+        namespace='',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d' + '/navigator/data/mcl.rviz']
+    )
+
     return LaunchDescription([
 
         # INTERFACE
@@ -87,10 +95,10 @@ def generate_launch_description():
 
         # MISC
         urdf_publisher,
+        rviz,
 
         # PERCEPTION
         lidar_processor,
-
 
         # STATE ESTIMATION
         map_manager,
