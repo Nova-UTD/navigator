@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /Cameras1
+        - /RobotModel1
       Splitter Ratio: 0.5
     Tree Height: 372
   - Class: rviz_common/Selection
@@ -58,9 +59,9 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 0.9699028730392456
+      Max Intensity: 0.9891543388366699
       Min Color: 0; 0; 0
-      Min Intensity: 0.7140870690345764
+      Min Intensity: 0.7118430137634277
       Name: PointCloud2
       Position Transformer: XYZ
       Selectable: true
@@ -160,6 +161,55 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /odometry/processed
       Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /map/voxels/viz
+      Value: false
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hero:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        model_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -203,7 +253,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 33.27769088745117
+      Distance: 50.527706146240234
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -218,10 +268,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6403982639312744
+      Pitch: 1.5397965908050537
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 6.263583660125732
+      Yaw: 2.821732997894287
     Saved: ~
 Window Geometry:
   Center RGB:

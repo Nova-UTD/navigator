@@ -12,9 +12,11 @@
 // Message definitions
 #include <carla_msgs/msg/carla_world_info.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <rosgraph_msgs/msg/clock.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/color_rgba.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 
 #include <octomap/octomap.h>
@@ -55,10 +57,9 @@ namespace navigator
       // TODO: Convert to ROS parameters
       const double OCTREE_RESOLUTION = 0.2; // meters
       std::chrono::milliseconds MAP_UPDATE_PERIOD = 500ms;
-
-      // std::unique_ptr<navigator::can_interface::CanBus> can_bus;
-      // rclcpp::TimerBase::SharedPtr incoming_message_timer;
-      //
+      const std::string MAP_SAVE_PATH = "/navigator/data/maps/";
+      const double HIGH_RES_DISTANCE = 10; // meters
+      const double MED_RES_DISTANCE = 40;  // meters
 
       // Publishers
       rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr voxel_marker_pub;
@@ -77,8 +78,8 @@ namespace navigator
 
       rosgraph_msgs::msg::Clock clock;
       std::string map_name;
+      geometry_msgs::msg::TransformStamped map_bl_transform;
       std::shared_ptr<octomap::OcTree> tree;
-      bool tree_is_initialized = false;
 
       std::string getFilenameFromMapName();
       octomap::Pointcloud pclToOctreeCloud(pcl::PointCloud<pcl::PointXYZI> inputCloud);
