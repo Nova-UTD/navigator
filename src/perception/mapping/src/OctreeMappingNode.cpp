@@ -44,9 +44,11 @@ void OctreeMappingNode::publishMapMarker()
 
 void OctreeMappingNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
 {
-  if (this->tree->size() < 0)
+  if (this->tree == nullptr)
+    return; // Tree not yet initialized
+  RCLCPP_INFO(this->get_logger(), "PCD received!");
 
-    octomap::Pointcloud octo_cloud;
+  octomap::Pointcloud octo_cloud;
   pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
 
   // Convert from ROS to PCL format
@@ -132,6 +134,7 @@ void OctreeMappingNode::saveOctreeBinary()
 
 void OctreeMappingNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
 {
+  RCLCPP_INFO(this->get_logger(), "World info cb");
   if (this->tree != nullptr)
     return; // Tree already initialized
 
@@ -139,12 +142,18 @@ void OctreeMappingNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
   std::string file_name = getFilenameFromMapName();
   RCLCPP_INFO(this->get_logger(), "Reading map from " + file_name);
 
+  this->tree = std::make_shared<octomap::OcTree>(OCTREE_RESOLUTION);
+
   bool successfully_read = this->tree->readBinary(file_name);
 
   if (!successfully_read)
   {
     this->tree = std::make_shared<octomap::OcTree>(this->OCTREE_RESOLUTION);
     RCLCPP_INFO(this->get_logger(), "Map file did not exist. A new one will be created.");
+  }
+  else
+  {
+    RCLCPP_INFO(this->get_logger(), "Reading complete.");
   }
 }
 
