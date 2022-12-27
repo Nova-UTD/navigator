@@ -43,9 +43,13 @@ Using the open-source [Octomap](https://octomap.github.io/) library in conjuncti
    5. Publish the pose as an `Odometry` message.
 4. After the pose is updated from the LiDAR cloud, this cloud should be added to the map.
 5. Steps 2-4 should be repeated in a loop.
-6. Upon termination, the octree map should be saved to a file using the name from (1).
+6. A timer should prompt a `visualization_msgs/Marker` to be published periodically that visualizes the voxel map.
+7. Upon termination, the octree map should be saved to a file using the name from (1).
+
+#### Progressive resolution of visualization
+
+![Progressive map visualization](assets/res/progressive_map_resolution.drawio.png)
 
 ### Assumptions
 
 - The robot will only move along a 2D plane. That is, only 3-DOF motion will be assumed, and the localization will be calculated accordingly.
-
