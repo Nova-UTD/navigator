@@ -62,7 +62,7 @@ namespace navigator
       const double MED_RES_DISTANCE = 40;  // meters
 
       // Publishers
-      rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr voxel_marker_pub;
+      rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr voxel_marker_pub;
 
       // Subscribers
       rclcpp::Subscription<carla_msgs::msg::CarlaWorldInfo>::SharedPtr world_info_sub;

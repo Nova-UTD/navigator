@@ -36,7 +36,7 @@ OctreeMappingNode::OctreeMappingNode() : Node("octree_mapping_node")
       "/carla/world_info", 10,
       std::bind(&OctreeMappingNode::worldInfoCb, this, std::placeholders::_1));
 
-  voxel_marker_pub = this->create_publisher<Marker>("/map/voxels/viz", 10);
+  voxel_marker_pub = this->create_publisher<PointCloud2>("/map/voxels/viz", 10);
 
   this->map_marker_timer = this->create_wall_timer(this->MAP_UPDATE_PERIOD,
                                                    bind(&OctreeMappingNode::publishMapMarker, this));
@@ -48,24 +48,9 @@ void OctreeMappingNode::publishMapMarker()
   if (this->tree == nullptr)
     return;
 
-  // Set up a Marker message that we can add our voxels to
-  Marker voxel_list;
-  voxel_list.header.frame_id = "map";
-  voxel_list.header.stamp = this->clock.clock;
-  voxel_list.ns = "voxel_map";
-  voxel_list.action = voxel_list.ADD;
-  voxel_list.type = voxel_list.CUBE_LIST;
-  ColorRGBA voxel_color;
-  voxel_color.r = 1.0;
-  voxel_color.b = 1.0;
-  voxel_color.a = 0.5;
-  Vector3 scale;
-  scale.x = 0.8;
-  scale.y = 0.8;
-  scale.z = 0.8;
-  voxel_list.scale = scale;
-  voxel_list.color = voxel_color;
-  voxel_list.frame_locked = true;
+  pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
+
+  // Convert from ROS to PCL format
 
   // This is the current location of our vehicle, set by lidarCb()
   Vector3 center_ros = map_bl_transform.transform.translation;
@@ -82,23 +67,31 @@ void OctreeMappingNode::publishMapMarker()
 
   // Iterate through each point in the tree
   for (
-      octomap::OcTree::leaf_bbx_iterator it = tree->begin_leafs_bbx(hi_res_bbx_min_pt, hi_res_bbx_max_pt, 14),
+      octomap::OcTree::leaf_bbx_iterator it = tree->begin_leafs_bbx(hi_res_bbx_min_pt, hi_res_bbx_max_pt),
                                          end = tree->end_leafs_bbx();
       it != end; ++it)
   {
 
     if (it->getOccupancy() < 0.8)
       continue; // Skip unoccupied cells
-    RCLCPP_INFO(this->get_logger(), "Occ: %f, val: %f", it->getOccupancy(), it->getValue());
+    // RCLCPP_INFO(this->get_logger(), "Occ: %f, val: %f", it->getOccupancy(), it->getValue());
     // manipulate node, e.g.:44
     octomap::point3d voxel_center = it.getCoordinate();
-    Point voxel_center_msg;
-    voxel_center_msg.x = voxel_center.x();
-    voxel_center_msg.y = voxel_center.y();
-    voxel_center_msg.z = voxel_center.z();
-    voxel_list.points.push_back(voxel_center_msg);
+    pcl::PointXYZI voxel_center_pcl;
+    voxel_center_pcl.x = voxel_center.x();
+    voxel_center_pcl.y = voxel_center.y();
+    voxel_center_pcl.z = voxel_center.z();
+
+    pcl_cloud.push_back(voxel_center_pcl);
   }
-  voxel_marker_pub->publish(voxel_list);
+
+  PointCloud2 ros_cloud;
+
+  pcl::toROSMsg(pcl_cloud, ros_cloud);
+  ros_cloud.header.frame_id = "map";
+  ros_cloud.header.stamp = this->clock.clock;
+
+  voxel_marker_pub->publish(ros_cloud);
 }
 
 void OctreeMappingNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
