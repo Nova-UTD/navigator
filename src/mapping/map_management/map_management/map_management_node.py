@@ -13,6 +13,8 @@ import numpy as np
 from rclpy.node import Node, QoSProfile
 from rclpy.qos import DurabilityPolicy
 from rosgraph_msgs.msg import Clock
+
+from carla_msgs.msg import CarlaWorldInfo
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
 from sensor_msgs.msg import NavSatFix
@@ -20,7 +22,6 @@ from nav_msgs.msg import Odometry, OccupancyGrid
 from geometry_msgs.msg import Point, Quaternion, TransformStamped
 
 import pymap3d as pm
-
 
 
 from xml.etree import ElementTree as ET
@@ -38,6 +39,17 @@ class MapManagementNode(Node):
         self.gnss_sub = self.create_subscription(
             NavSatFix, '/carla/hero/gnss', self.gnss_cb, 10
         )
+
+        self.world_info_sub = self.create_subscription(
+            CarlaWorldInfo, '/carla/world_info', self.world_info_cb, 10
+        )
+
+        self.world_info_pub = self.create_publisher(
+            CarlaWorldInfo, '/carla/world_info', 10
+        )
+
+        self.world_info_repub_timer = self.create_timer(
+            0.5, self.repub_world_info)
 
         self.odom_pub = self.create_publisher(
             Odometry, '/odometry/gnss', 10
@@ -60,8 +72,7 @@ class MapManagementNode(Node):
         self.get_logger().info("Waiting for map data...")
         self.map = None
         self.clock = Clock()
-
-        
+        self.world_info = CarlaWorldInfo()
 
     def clock_cb(self, msg: Clock):
         self.clock = msg
@@ -89,7 +100,6 @@ class MapManagementNode(Node):
             self.map.lon0,
             0.0
         )
-
         odom_msg = Odometry()
 
         # The odometry is for the current time-- right now
@@ -106,6 +116,13 @@ class MapManagementNode(Node):
         pos.z = enu_xyz[2]
         odom_msg.pose.pose.position = pos
         self.odom_pub.publish(odom_msg)
+
+    def world_info_cb(self, msg: CarlaWorldInfo):
+        self.world_info = msg
+
+    def repub_world_info(self):
+        self.world_info_pub.publish(self.world_info)
+
 
 def main(args=None):
     rclpy.init(args=args)
