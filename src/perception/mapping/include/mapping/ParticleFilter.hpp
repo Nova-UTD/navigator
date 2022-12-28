@@ -1,6 +1,6 @@
 /*
  * Package:   mapping
- * Filename:  OctreeMappingNode.hpp
+ * Filename:  ParticleFilter.hpp
  * Author:    Will Heitman
  * Email:     w at heit dot mn
  * Copyright: 2023, Nova UTD
@@ -15,6 +15,7 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <rosgraph_msgs/msg/clock.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/color_rgba.hpp>
 #include <visualization_msgs/msg/marker.hpp>
@@ -46,11 +47,11 @@ namespace navigator
   namespace perception
   {
 
-    class OctreeMappingNode : public rclcpp::Node
+    class OctoSlamNode : public rclcpp::Node
     {
     public:
-      OctreeMappingNode();
-      virtual ~OctreeMappingNode();
+      OctoSlamNode();
+      virtual ~OctoSlamNode();
 
     private:
       // Constants
@@ -60,16 +61,19 @@ namespace navigator
       const std::string MAP_SAVE_PATH = "/navigator/data/maps/";
       const double HIGH_RES_DISTANCE = 10; // meters
       const double MED_RES_DISTANCE = 40;  // meters
+      const std::string INITIAL_GUESS_ODOM_TOPIC = "/odometry/gnss_smoothed";
 
       // Publishers
       rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr voxel_marker_pub;
 
       // Subscribers
       rclcpp::Subscription<carla_msgs::msg::CarlaWorldInfo>::SharedPtr world_info_sub;
+      rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr initial_odom_sub;
       rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pcd_sub;
       rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub;
 
       // Callbacks
+      void initialOdomCb(nav_msgs::msg::Odometry::SharedPtr msg);
       void pointCloudCb(sensor_msgs::msg::PointCloud2::SharedPtr msg);
       void worldInfoCb(carla_msgs::msg::CarlaWorldInfo::SharedPtr msg);
 

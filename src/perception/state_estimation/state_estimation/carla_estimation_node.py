@@ -39,7 +39,7 @@ class CarlaEstimationNode(Node):
         )
 
         self.odom_pub = self.create_publisher(
-            Odometry, '/odometry/processed', 10
+            Odometry, '/odometry/gnss_smoothed', 10
         )
 
         self.tf_broadcaster = TransformBroadcaster(self)

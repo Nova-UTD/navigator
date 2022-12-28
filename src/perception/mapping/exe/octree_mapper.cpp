@@ -10,13 +10,13 @@
 #include <iostream>
 #include <memory> // std::make_shared
 #include "rclcpp/rclcpp.hpp"
-#include "mapping/OctreeMappingNode.hpp"
+#include "mapping/OctoSlamNode.hpp"
 
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
 
-  rclcpp::spin(std::make_shared<navigator::perception::OctreeMappingNode>());
+  rclcpp::spin(std::make_shared<navigator::perception::OctoSlamNode>());
   rclcpp::shutdown();
   return 0;
 }

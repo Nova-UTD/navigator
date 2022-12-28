@@ -1,13 +1,13 @@
 /*
  * Package:   mapping
- * Filename:  OctreeMappingNode.cpp
+ * Filename:  OctoSlamNode.cpp
  * Author:    Will Heitman
  * Email:     w at heit dot mn
  * Copyright: 2023, Nova UTD
  * License:   MIT License
  */
 
-#include "mapping/OctreeMappingNode.hpp"
+#include "mapping/OctoSlamNode.hpp"
 
 using namespace navigator::perception;
 using namespace std::chrono_literals;
@@ -16,33 +16,51 @@ using carla_msgs::msg::CarlaWorldInfo;
 using geometry_msgs::msg::Point;
 using geometry_msgs::msg::TransformStamped;
 using geometry_msgs::msg::Vector3;
+using nav_msgs::msg::Odometry;
 using rosgraph_msgs::msg::Clock;
 using sensor_msgs::msg::PointCloud2;
 using std_msgs::msg::ColorRGBA;
 using visualization_msgs::msg::Marker;
 
-OctreeMappingNode::OctreeMappingNode() : Node("octree_mapping_node")
+struct Particle
 {
-  RCLCPP_INFO(this->get_logger(), "Hello, world!");
+  double x;
+  double y;
+  double theta;
+  double weight;
+};
 
+OctoSlamNode::OctoSlamNode() : Node("octree_mapping_node")
+{
+  // Subscribe to and use CARLA's clock
   clock_sub = this->create_subscription<Clock>(
       "/clock", 10,
       [this](Clock::SharedPtr msg)
       { this->clock = *msg; });
 
-  pcd_sub = this->create_subscription<PointCloud2>("/lidar_filtered", 10, std::bind(&OctreeMappingNode::pointCloudCb, this, std::placeholders::_1));
+  pcd_sub = this->create_subscription<PointCloud2>(
+      "/lidar_filtered", 10,
+      std::bind(&OctoSlamNode::pointCloudCb, this, std::placeholders::_1));
+
+  initial_odom_sub = this->create_subscription<Odometry>(
+      INITIAL_GUESS_ODOM_TOPIC, 10,
+      std::bind(&OctoSlamNode::initialOdomCb, this, std::placeholders::_1));
 
   world_info_sub = this->create_subscription<CarlaWorldInfo>(
       "/carla/world_info", 10,
-      std::bind(&OctreeMappingNode::worldInfoCb, this, std::placeholders::_1));
+      std::bind(&OctoSlamNode::worldInfoCb, this, std::placeholders::_1));
 
   voxel_marker_pub = this->create_publisher<PointCloud2>("/map/voxels/viz", 10);
 
   this->map_marker_timer = this->create_wall_timer(this->MAP_UPDATE_PERIOD,
-                                                   bind(&OctreeMappingNode::publishMapMarker, this));
+                                                   bind(&OctoSlamNode::publishMapMarker, this));
 }
 
-void OctreeMappingNode::publishMapMarker()
+void OctoSlamNode::initialOdomCb(Odometry::SharedPtr msg)
+{
+}
+
+void OctoSlamNode::publishMapMarker()
 {
   // If the tree is uninitialized, skip
   if (this->tree == nullptr)
@@ -94,7 +112,7 @@ void OctreeMappingNode::publishMapMarker()
   voxel_marker_pub->publish(ros_cloud);
 }
 
-void OctreeMappingNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
+void OctoSlamNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
 {
   if (this->tree == nullptr)
     return; // Tree not yet initialized
@@ -146,7 +164,7 @@ void OctreeMappingNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
  * @param inputCloud The PCL-formatted cloud
  * @return octomap::Pointcloud
  */
-octomap::Pointcloud OctreeMappingNode::pclToOctreeCloud(pcl::PointCloud<pcl::PointXYZI> inputCloud)
+octomap::Pointcloud OctoSlamNode::pclToOctreeCloud(pcl::PointCloud<pcl::PointXYZI> inputCloud)
 {
   octomap::Pointcloud result;
   for (pcl::PointXYZI pt : inputCloud)
@@ -162,7 +180,7 @@ octomap::Pointcloud OctreeMappingNode::pclToOctreeCloud(pcl::PointCloud<pcl::Poi
  *
  * @return std::string
  */
-std::string OctreeMappingNode::getFilenameFromMapName()
+std::string OctoSlamNode::getFilenameFromMapName()
 {
   std::string file_name = this->map_name;
   file_name.erase(
@@ -187,7 +205,7 @@ std::string OctreeMappingNode::getFilenameFromMapName()
  * @brief Save the octree to disk in the Octomap format.
  *
  */
-void OctreeMappingNode::saveOctreeBinary()
+void OctoSlamNode::saveOctreeBinary()
 {
   std::string file_name = getFilenameFromMapName();
   RCLCPP_INFO(this->get_logger(), "Saving map to " + file_name);
@@ -200,7 +218,7 @@ void OctreeMappingNode::saveOctreeBinary()
  *
  * @param msg The world info message containing the map name
  */
-void OctreeMappingNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
+void OctoSlamNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
 {
   if (this->tree != nullptr)
     return; // Tree already initialized
@@ -228,7 +246,7 @@ void OctreeMappingNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
  * @brief Destroy the Octree node, saving the map to disk first.
  *
  */
-OctreeMappingNode::~OctreeMappingNode()
+OctoSlamNode::~OctoSlamNode()
 {
   saveOctreeBinary();
 }
