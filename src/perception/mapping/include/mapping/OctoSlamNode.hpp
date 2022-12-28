@@ -9,10 +9,13 @@
 
 #pragma once
 
+#include "mapping/ParticleFilter.hpp"
+
 // Message definitions
 #include <carla_msgs/msg/carla_world_info.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <rosgraph_msgs/msg/clock.hpp>
 #include <nav_msgs/msg/odometry.hpp>
@@ -65,12 +68,13 @@ namespace navigator
 
       // Publishers
       rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr voxel_marker_pub;
+      rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr particle_viz_pub;
 
       // Subscribers
       rclcpp::Subscription<carla_msgs::msg::CarlaWorldInfo>::SharedPtr world_info_sub;
       rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr initial_odom_sub;
-      rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pcd_sub;
       rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub;
+      rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pcd_sub;
 
       // Callbacks
       void initialOdomCb(nav_msgs::msg::Odometry::SharedPtr msg);
@@ -83,6 +87,7 @@ namespace navigator
       rosgraph_msgs::msg::Clock clock;
       std::string map_name;
       geometry_msgs::msg::TransformStamped map_bl_transform;
+      std::shared_ptr<navigator::perception::ParticleFilter> filter;
       std::shared_ptr<octomap::OcTree> tree;
 
       std::string getFilenameFromMapName();

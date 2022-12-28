@@ -5,8 +5,8 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Status1
-        - /Cameras1
+        - /Grid1
+        - /Filtered LiDAR1
         - /RobotModel1
         - /Voxel Map1
       Splitter Ratio: 0.5
@@ -30,7 +30,7 @@ Visualization Manager:
     - Alpha: 0.5
       Cell Size: 1
       Class: rviz_default_plugins/Grid
-      Color: 160; 160; 164
+      Color: 85; 170; 255
       Enabled: true
       Line Style:
         Line Width: 0.029999999329447746
@@ -60,10 +60,10 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 0.9757815003395081
+      Max Intensity: 0.9832907915115356
       Min Color: 0; 0; 0
-      Min Intensity: 0.7122449278831482
-      Name: PointCloud2
+      Min Intensity: 0.7132543325424194
+      Name: Filtered LiDAR
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 3
@@ -143,7 +143,7 @@ Visualization Manager:
         Value: true
       Enabled: true
       Keep: 100
-      Name: Odometry
+      Name: Smoothed GNSS
       Position Tolerance: 0.10000000149011612
       Shape:
         Alpha: 1
@@ -160,7 +160,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /odometry/processed
+        Value: /odometry/gnss_smoothed
       Value: true
     - Alpha: 1
       Class: rviz_default_plugins/RobotModel
@@ -234,8 +234,8 @@ Visualization Manager:
       Value: true
   Enabled: true
   Global Options:
-    Background Color: 48; 48; 48
-    Fixed Frame: map
+    Background Color: 222; 255; 251
+    Fixed Frame: base_link
     Frame Rate: 30
   Name: root
   Tools:
@@ -275,25 +275,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 13.649337768554688
+      Distance: 36.33726501464844
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 46.8541259765625
-        Y: -244.36404418945312
-        Z: 10.938464164733887
+        X: -2.502208709716797
+        Y: -0.21934127807617188
+        Z: 1.417266845703125
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5241958498954773
+      Pitch: 0.7309356927871704
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.3595786094665527
+      Yaw: 3.120251178741455
     Saved: ~
 Window Geometry:
   Center RGB:

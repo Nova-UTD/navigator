@@ -51,6 +51,7 @@ OctoSlamNode::OctoSlamNode() : Node("octree_mapping_node")
       std::bind(&OctoSlamNode::worldInfoCb, this, std::placeholders::_1));
 
   voxel_marker_pub = this->create_publisher<PointCloud2>("/map/voxels/viz", 10);
+  particle_viz_pub = this->create_publisher<PointCloud2>("/map/particles/viz", 10);
 
   this->map_marker_timer = this->create_wall_timer(this->MAP_UPDATE_PERIOD,
                                                    bind(&OctoSlamNode::publishMapMarker, this));
@@ -58,6 +59,17 @@ OctoSlamNode::OctoSlamNode() : Node("octree_mapping_node")
 
 void OctoSlamNode::initialOdomCb(Odometry::SharedPtr msg)
 {
+  if (this->filter == nullptr)
+  {
+    PoseWithCovarianceStamped initial_guess;
+    initial_guess.pose = msg->pose;
+    initial_guess.header = msg->header;
+    this->filter = std::make_shared<ParticleFilter>(initial_guess, 100);
+    RCLCPP_INFO(this->get_logger(), "Particle filter has been created.");
+
+    PointCloud2 particle_cloud = this->filter->asPointCloud();
+    particle_viz_pub->publish(particle_cloud);
+  }
 }
 
 void OctoSlamNode::publishMapMarker()
