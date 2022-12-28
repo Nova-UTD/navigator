@@ -143,6 +143,9 @@ class CarlaEstimationNode(Node):
 
         odom_msg.pose.pose = self.wma_pose
 
+        odom_msg.pose.covariance[0] = 2.0  # This is the variance of x
+        odom_msg.pose.covariance[7] = 2.0  # This is the variance of y
+
         # Publish our odometry message, converted from GNSS
         self.odom_pub.publish(odom_msg)
 

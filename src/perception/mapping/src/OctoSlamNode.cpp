@@ -59,6 +59,7 @@ OctoSlamNode::OctoSlamNode() : Node("octree_mapping_node")
 
 void OctoSlamNode::initialOdomCb(Odometry::SharedPtr msg)
 {
+  // Initialize our filter given the initial guess
   if (this->filter == nullptr)
   {
     PoseWithCovarianceStamped initial_guess;
@@ -97,7 +98,7 @@ void OctoSlamNode::publishMapMarker()
 
   // Iterate through each point in the tree
   for (
-      octomap::OcTree::leaf_bbx_iterator it = tree->begin_leafs_bbx(hi_res_bbx_min_pt, hi_res_bbx_max_pt),
+      octomap::OcTree::leaf_bbx_iterator it = tree->begin_leafs_bbx(hi_res_bbx_min_pt, hi_res_bbx_max_pt, 15),
                                          end = tree->end_leafs_bbx();
       it != end; ++it)
   {

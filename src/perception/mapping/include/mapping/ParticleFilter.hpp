@@ -75,9 +75,10 @@ namespace navigator
       void predictParticleMotion();
       void updateParticleWeights();
       void resample();
+      PoseWithCovarianceStamped generatePose();
 
       PointCloud2 asPointCloud();
-      PoseWithCovarianceStamped update(PointCloud2);
+      PoseWithCovarianceStamped update(PointCloud2 observation, double dx, double dy, double dh);
 
     private:
       std::vector<Particle> generateParticles(Pose u, Pose stdev, int N);

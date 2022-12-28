@@ -5,12 +5,30 @@
  * Email:     w at heit dot mn
  * Copyright: 2023, Nova UTD
  * License:   MIT License
+ *
+ * General steps to particle filters:
+ * 1. Generate a random set of particles in a normal distribution around an initial guess
+ * 2. Given odometry, predict the motion of all particles and update their poses
+ * 3. Given observations, assign a weight (probability) to each particle
+ * 4. Resample the particles, removing or copying each, based on their weights
+ * 5. Calculate the pose using the mean and stddev of the particles
+ * 6. Repeat 2-5 in a loop.
  */
 
 #include "mapping/ParticleFilter.hpp"
 
+#include <iostream>
+
 using namespace navigator::perception;
 using namespace std::chrono_literals;
+
+PoseWithCovarianceStamped ParticleFilter::update(PointCloud2 observation, double dx, double dy, double dh)
+{
+  this->predictParticleMotion();
+  this->updateParticleWeights();
+  this->resample();
+  return this->generatePose();
+}
 
 std::vector<Particle> ParticleFilter::generateParticles(Pose u, Pose stdev, int N)
 {
@@ -29,6 +47,7 @@ std::vector<Particle> ParticleFilter::generateParticles(Pose u, Pose stdev, int 
     p.h = norm_h(gen);
     p.w = prob;
     random_particles.push_back(p);
+    std::cout << p.x << ", " << p.y << ", " << p.h << std::endl;
   }
 
   return random_particles;
@@ -77,7 +96,7 @@ PointCloud2 ParticleFilter::asPointCloud()
     pt.x = p.x;
     pt.y = p.y;
     pt.z = 0.0;
-    pt.r = 255;
+    pt.r = 100;
     pt.g = 255;
     pt.b = 0;
 
