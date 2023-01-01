@@ -11,8 +11,10 @@ import rclpy
 import ros2_numpy as rnp
 import numpy as np
 from rclpy.node import Node
+from builtin_interfaces.msg import Time
 
 from carla_msgs.msg import CarlaSpeedometer
+from diagnostic_msgs.msg import DiagnosticStatus
 from geometry_msgs.msg import Pose, Point, Quaternion, TransformStamped, Vector3
 from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
@@ -30,22 +32,28 @@ class CarlaEstimationNode(Node):
             Odometry, '/odometry/gnss', self.odom_cb, 10
         )
 
+        self.clock_sub = self.create_subscription(
+            Clock, '/clock', self.clock_cb, 10)
+
         self.imu_sub = self.create_subscription(
             Imu, '/carla/hero/imu', self.imu_cb, 10
-        )
-
-        self.speed_sub = self.create_subscription(
-            CarlaSpeedometer, '/carla/hero/speedometer', self.speedometer_cb, 10
         )
 
         self.odom_pub = self.create_publisher(
             Odometry, '/odometry/gnss_smoothed', 10
         )
 
+        self.status_pub = self.create_publisher(
+            DiagnosticStatus, '/status', 1
+        )
+
+        self.status_timer = self.create_timer(1.0, self.update_status)
+
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.cached_imu = Imu()
-        self.cached_speed = CarlaSpeedometer()
+        self.latest_timestamp = Time()
+        self.clock = Clock()
 
         # Make a queue of previous poses for our weighted moving average
         # where '10' is the size of our history
@@ -56,19 +64,28 @@ class CarlaEstimationNode(Node):
         self.wma_pose = Pose()
 
     def imu_cb(self, msg: Imu):
-        # BUG: IMU orientation quaternion is whack.
-        # x & y are (-.48,0.0) for north, (0.0,-.48) for east,
-        # (.48,0.0) for south, and (0.0,.48) for west.
-
-        # Fix orientation quat manually, assuming flat ground
-        # This means that roll and pitch (quat x & y) will be zero
-        heading_x = msg.orientation.x / -.48
-        heading_y = msg.orientation.y / .48
-
         self.cached_imu = msg
+        msg.header.stamp
 
-    def speedometer_cb(self, msg: CarlaSpeedometer):
-        self.cached_speed = msg
+    def clock_cb(self, msg: Clock):
+        self.clock = msg
+
+    def update_status(self):
+        status = DiagnosticStatus()
+        status.name = self.get_name()  # Get the node name
+
+        # Check if message is stale
+        current_time = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
+        data_received_time = self.latest_timestamp.sec + \
+            self.latest_timestamp.nanosec * 1e-9
+        time_since_data_received = current_time - data_received_time > 1.0
+        if time_since_data_received > 1.0:
+            status.level = DiagnosticStatus.STALE
+            status.message = f"No GNSS data received in {time_since_data_received} seconds"
+        else:
+            status.level = DiagnosticStatus.OK
+            # No message necessary if OK.
+        self.status_pub.publish(status)
 
     def _update_odom_weighted_moving_average_(self, current_pos: Point):
         # Calculate noisy yaw from the change in position
@@ -132,7 +149,7 @@ class CarlaEstimationNode(Node):
 
         current_pos: Point = msg.pose.pose.position
 
-        # 4. Form an odom message to store our result
+        # Form an odom message to store our result
         odom_msg = Odometry()
 
         # Copy the header from the GNSS odom message
@@ -149,6 +166,9 @@ class CarlaEstimationNode(Node):
         # Publish our odometry message, converted from GNSS
         self.odom_pub.publish(odom_msg)
 
+        # Update our timestamp (used to check staleness)
+        self.latest_timestamp = odom_msg.header.stamp
+
         # self.get_logger().info("{}".format(str(self.previous_y_vals)))
         # self.get_logger().info(f"CURRENT Y: {current_pos.y}")
 
@@ -162,7 +182,9 @@ class CarlaEstimationNode(Node):
         transl.z = self.wma_pose.position.z
         t.transform.translation = transl
         t.transform.rotation = self.wma_pose.orientation
-        self.tf_broadcaster.sendTransform(t)
+
+        # Uncomment to enable direct map->base_link tf
+        # self.tf_broadcaster.sendTransform(t)
 
 
 def main(args=None):
