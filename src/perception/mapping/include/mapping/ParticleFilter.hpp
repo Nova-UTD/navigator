@@ -59,6 +59,23 @@ namespace navigator
       double x;
       double y;
       double h; // heading, in radians
+
+      Pose(double x = 0.0, double y = 0.0, double h = 0.0) : x(x), y(y), h(h)
+      {
+      }
+
+      Pose operator+(const Pose &a) const
+      {
+        Pose result(a.x + x, a.y + y, a.h + h);
+        result.h = fmod(result.h, M_2_PI);
+        return result;
+      }
+      Pose operator-(const Pose &a) const
+      {
+        Pose result(a.x - x, a.y - y, a.h - h);
+        result.h = fmod(result.h, M_2_PI);
+        return result;
+      }
     };
     struct Particle : Pose
     {
@@ -72,13 +89,13 @@ namespace navigator
       virtual ~ParticleFilter();
 
       void addMeasurement(Imu imu_msg);
-      void predictParticleMotion();
+      void predictParticleMotion(Pose new_gnss_pose);
       void updateParticleWeights();
       void resample();
       PoseWithCovarianceStamped generatePose();
 
       PointCloud2 asPointCloud();
-      PoseWithCovarianceStamped update(PointCloud2 observation, double dx, double dy, double dh);
+      PoseWithCovarianceStamped update(pcl::PointCloud<pcl::PointXYZI> observation, Pose gnss_pose);
 
     private:
       std::vector<Particle> generateParticles(Pose u, Pose stdev, int N);
@@ -87,6 +104,7 @@ namespace navigator
       std::mt19937 gen{rd()};
       std::vector<Particle> particles;
       rclcpp::Time latest_time;
+      Pose gnss_pose_cached;
     };
 
   }

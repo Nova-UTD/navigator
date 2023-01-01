@@ -22,12 +22,43 @@
 using namespace navigator::perception;
 using namespace std::chrono_literals;
 
-PoseWithCovarianceStamped ParticleFilter::update(PointCloud2 observation, double dx, double dy, double dh)
+PoseWithCovarianceStamped ParticleFilter::update(pcl::PointCloud<pcl::PointXYZI> observation, Pose gnss_pose)
 {
-  this->predictParticleMotion();
+  this->predictParticleMotion(gnss_pose);
   this->updateParticleWeights();
   this->resample();
   return this->generatePose();
+}
+
+/**
+ * @brief Add predicted displacement, plus noise, to each particle
+ *
+ * @param new_gnss_pose The latest (x,y,h) from the GNSS.
+ */
+void ParticleFilter::predictParticleMotion(Pose new_gnss_pose)
+{
+  Pose displacement = new_gnss_pose - gnss_pose_cached;
+
+  std::normal_distribution<> dist_x{displacement.x, 4.0}; // 4m error -- actual GNSS error is ~2m
+  std::normal_distribution<> dist_y{displacement.y, 4.0};
+  std::normal_distribution<> dist_h{displacement.h, 0.35}; // ~20 degrees error
+
+  // Add predicted displacement, plus noise, to each particle
+  for (Particle p : this->particles)
+  {
+    p.x += (displacement.x + dist_x(gen));
+    p.y += (displacement.y + dist_y(gen));
+    p.h += (displacement.h + dist_h(gen));
+    p.h = fmod(displacement.h, M_2_PI); // Wrap to [0, 2*pi]
+  }
+}
+
+void ParticleFilter::updateParticleWeights()
+{
+}
+
+void ParticleFilter::resample()
+{
 }
 
 std::vector<Particle> ParticleFilter::generateParticles(Pose u, Pose stdev, int N)
@@ -53,7 +84,7 @@ std::vector<Particle> ParticleFilter::generateParticles(Pose u, Pose stdev, int 
   return random_particles;
 }
 
-double quatToYaw(double w, double x, double y, double z)
+double quaternionToYaw(double w, double x, double y, double z)
 {
   double t1 = 2.0 * (w * z + x * y);
   double t2 = 1.0 - 2.0 * (y * y + z * z);
@@ -67,7 +98,7 @@ ParticleFilter::ParticleFilter(PoseWithCovarianceStamped initial_guess, int N)
   this->N = N;
 
   auto q = initial_guess.pose.pose.orientation;
-  double h = quatToYaw(q.w, q.x, q.y, q.z);
+  double h = quaternionToYaw(q.w, q.x, q.y, q.z);
 
   Pose initial_guess_pose{
       initial_guess.pose.pose.position.x,
@@ -85,6 +116,48 @@ ParticleFilter::ParticleFilter(PoseWithCovarianceStamped initial_guess, int N)
       initial_guess_pose, initial_guess_stdev, N);
 
   this->latest_time = initial_guess.header.stamp;
+}
+
+PoseWithCovarianceStamped ParticleFilter::generatePose()
+{
+  Pose mean_pose;
+  Pose variance_pose;
+
+  // 1. Calculate mean
+  for (Particle p : this->particles)
+  {
+    mean_pose.x += p.x;
+    mean_pose.y += p.y;
+    mean_pose.h += p.h;
+  }
+
+  mean_pose.x /= this->particles.size();
+  mean_pose.y /= this->particles.size();
+  mean_pose.h /= this->particles.size();
+  mean_pose.h = fmod(mean_pose.h, M_2_PI); // Wrap to [0, 2*pi]
+
+  // 2. Calculate variance
+  // https://en.wikipedia.org/wiki/Variance#Discrete_random_variable
+  for (Particle p : this->particles)
+  {
+    variance_pose.x += pow(p.x - mean_pose.x, 2);
+    variance_pose.y += pow(p.y - mean_pose.y, 2);
+    variance_pose.h += pow(p.h - mean_pose.h, 2);
+  }
+  variance_pose.x /= this->particles.size();
+  variance_pose.y /= this->particles.size();
+  variance_pose.h /= this->particles.size();
+  variance_pose.h = fmod(variance_pose.h, M_2_PI); // Wrap to [0, 2*pi]
+
+  auto pose_msg = PoseWithCovarianceStamped();
+  pose_msg.pose.pose.position.x = mean_pose.x;
+  pose_msg.pose.pose.position.y = mean_pose.y;
+  pose_msg.pose.pose.orientation.w = cos(mean_pose.h / 2);
+  pose_msg.pose.pose.orientation.x = 0.0;
+  pose_msg.pose.pose.orientation.y = 0.0;
+  pose_msg.pose.pose.orientation.z = sin(mean_pose.h / 2);
+
+  return PoseWithCovarianceStamped();
 }
 
 PointCloud2 ParticleFilter::asPointCloud()

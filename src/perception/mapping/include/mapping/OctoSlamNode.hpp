@@ -60,7 +60,7 @@ namespace navigator
       // Constants
       // TODO: Convert to ROS parameters
       const double OCTREE_RESOLUTION = 0.2; // meters
-      std::chrono::milliseconds MAP_UPDATE_PERIOD = 500ms;
+      std::chrono::milliseconds MAP_UPDATE_PERIOD = 200ms;
       const std::string MAP_SAVE_PATH = "/navigator/data/maps/";
       const double HIGH_RES_DISTANCE = 10; // meters
       const double MED_RES_DISTANCE = 40;  // meters
@@ -77,7 +77,7 @@ namespace navigator
       rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pcd_sub;
 
       // Callbacks
-      void initialOdomCb(nav_msgs::msg::Odometry::SharedPtr msg);
+      void gnssOdomCb(nav_msgs::msg::Odometry::SharedPtr msg);
       void pointCloudCb(sensor_msgs::msg::PointCloud2::SharedPtr msg);
       void worldInfoCb(carla_msgs::msg::CarlaWorldInfo::SharedPtr msg);
 
@@ -87,6 +87,7 @@ namespace navigator
       rosgraph_msgs::msg::Clock clock;
       std::string map_name;
       geometry_msgs::msg::TransformStamped map_bl_transform;
+      pcl::PointCloud<pcl::PointXYZI> latest_cloud; // TODO: Make this shared_ptr?
       std::shared_ptr<navigator::perception::ParticleFilter> filter;
       std::shared_ptr<octomap::OcTree> tree;
 

@@ -44,7 +44,7 @@ OctoSlamNode::OctoSlamNode() : Node("octree_mapping_node")
 
   initial_odom_sub = this->create_subscription<Odometry>(
       INITIAL_GUESS_ODOM_TOPIC, 10,
-      std::bind(&OctoSlamNode::initialOdomCb, this, std::placeholders::_1));
+      std::bind(&OctoSlamNode::gnssOdomCb, this, std::placeholders::_1));
 
   world_info_sub = this->create_subscription<CarlaWorldInfo>(
       "/carla/world_info", 10,
@@ -57,7 +57,16 @@ OctoSlamNode::OctoSlamNode() : Node("octree_mapping_node")
                                                    bind(&OctoSlamNode::publishMapMarker, this));
 }
 
-void OctoSlamNode::initialOdomCb(Odometry::SharedPtr msg)
+double quatToYaw(double w, double x, double y, double z)
+{
+  double t1 = 2.0 * (w * z + x * y);
+  double t2 = 1.0 - 2.0 * (y * y + z * z);
+  double yaw = atan2(t1, t2);
+
+  return yaw;
+}
+
+void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
 {
   // Initialize our filter given the initial guess
   if (this->filter == nullptr)
@@ -67,10 +76,23 @@ void OctoSlamNode::initialOdomCb(Odometry::SharedPtr msg)
     initial_guess.header = msg->header;
     this->filter = std::make_shared<ParticleFilter>(initial_guess, 100);
     RCLCPP_INFO(this->get_logger(), "Particle filter has been created.");
-
-    PointCloud2 particle_cloud = this->filter->asPointCloud();
-    particle_viz_pub->publish(particle_cloud);
   }
+
+  // Extract yaw from msg quaternion
+  auto q = msg->pose.pose.orientation;
+  double yaw = quatToYaw(q.w, q.x, q.y, q.z);
+
+  navigator::perception::Pose gnss_pose(
+      msg->pose.pose.position.x,
+      msg->pose.pose.position.y,
+      yaw);
+
+  // filter->update() runs one iteration of the particle filter,
+  // handling all internal steps, then returns the result pose.
+  PoseWithCovarianceStamped filter_result = this->filter->update(this->latest_cloud, gnss_pose);
+
+  PointCloud2 particle_cloud = this->filter->asPointCloud();
+  particle_viz_pub->publish(particle_cloud);
 }
 
 void OctoSlamNode::publishMapMarker()
@@ -169,6 +191,7 @@ void OctoSlamNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
       tf_translation.x, tf_translation.y, tf_translation.z);
 
   tree->insertPointCloud(pclToOctreeCloud(pcl_cloud), sensor_origin);
+  this->latest_cloud = pcl_cloud; // Cache the latest LiDAR data for the particle filter
 }
 
 /**
