@@ -40,6 +40,7 @@
 
 #include <tf2/exceptions.h>
 #include <tf2_eigen/tf2_eigen.h>
+#include "tf2_ros/transform_broadcaster.h"
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 
@@ -59,16 +60,18 @@ namespace navigator
     private:
       // Constants
       // TODO: Convert to ROS parameters
-      const double OCTREE_RESOLUTION = 0.2; // meters
+      const double OCTREE_RESOLUTION = 0.2;   // meters
+      const int MAX_VISUALIZATION_DEPTH = 16; // A depth of 16 = 0.2 meters, 15 = 0.4 meters, 14 = 0.8...
       std::chrono::milliseconds MAP_UPDATE_PERIOD = 200ms;
       const std::string MAP_SAVE_PATH = "/navigator/data/maps/";
-      const double HIGH_RES_DISTANCE = 10; // meters
+      const double HIGH_RES_DISTANCE = 20; // meters
       const double MED_RES_DISTANCE = 40;  // meters
       const std::string INITIAL_GUESS_ODOM_TOPIC = "/odometry/gnss_smoothed";
 
       // Publishers
       rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr voxel_marker_pub;
       rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr particle_viz_pub;
+      std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster;
 
       // Subscribers
       rclcpp::Subscription<carla_msgs::msg::CarlaWorldInfo>::SharedPtr world_info_sub;

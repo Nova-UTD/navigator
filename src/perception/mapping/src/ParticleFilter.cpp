@@ -157,7 +157,7 @@ PoseWithCovarianceStamped ParticleFilter::generatePose()
   pose_msg.pose.pose.orientation.y = 0.0;
   pose_msg.pose.pose.orientation.z = sin(mean_pose.h / 2);
 
-  return PoseWithCovarianceStamped();
+  return pose_msg;
 }
 
 PointCloud2 ParticleFilter::asPointCloud()

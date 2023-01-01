@@ -55,6 +55,8 @@ OctoSlamNode::OctoSlamNode() : Node("octree_mapping_node")
 
   this->map_marker_timer = this->create_wall_timer(this->MAP_UPDATE_PERIOD,
                                                    bind(&OctoSlamNode::publishMapMarker, this));
+
+  this->tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 }
 
 double quatToYaw(double w, double x, double y, double z)
@@ -91,6 +93,17 @@ void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
   // handling all internal steps, then returns the result pose.
   PoseWithCovarianceStamped filter_result = this->filter->update(this->latest_cloud, gnss_pose);
 
+  map_bl_transform = TransformStamped();
+
+  map_bl_transform.header.stamp = this->clock.clock;
+  map_bl_transform.header.frame_id = "map";
+  map_bl_transform.child_frame_id = "hero";
+  map_bl_transform.transform.translation.x = msg->pose.pose.position.x;
+  map_bl_transform.transform.translation.y = msg->pose.pose.position.y;
+  map_bl_transform.transform.translation.z = msg->pose.pose.position.z; // This should be zero.
+  map_bl_transform.transform.rotation = msg->pose.pose.orientation;
+  this->tf_broadcaster->sendTransform(map_bl_transform);
+
   PointCloud2 particle_cloud = this->filter->asPointCloud();
   particle_viz_pub->publish(particle_cloud);
 }
@@ -110,17 +123,17 @@ void OctoSlamNode::publishMapMarker()
 
   // Set the bounds of our bounding box
   octomap::point3d hi_res_bbx_min_pt(
-      center_ros.x - MED_RES_DISTANCE,
-      center_ros.y - MED_RES_DISTANCE,
-      center_ros.z - MED_RES_DISTANCE);
+      center_ros.x - HIGH_RES_DISTANCE,
+      center_ros.y - HIGH_RES_DISTANCE,
+      center_ros.z - HIGH_RES_DISTANCE);
   octomap::point3d hi_res_bbx_max_pt(
-      center_ros.x + MED_RES_DISTANCE,
-      center_ros.y + MED_RES_DISTANCE,
-      center_ros.z + MED_RES_DISTANCE);
+      center_ros.x + HIGH_RES_DISTANCE,
+      center_ros.y + HIGH_RES_DISTANCE,
+      center_ros.z + HIGH_RES_DISTANCE);
 
   // Iterate through each point in the tree
   for (
-      octomap::OcTree::leaf_bbx_iterator it = tree->begin_leafs_bbx(hi_res_bbx_min_pt, hi_res_bbx_max_pt, 15),
+      octomap::OcTree::leaf_bbx_iterator it = tree->begin_leafs_bbx(hi_res_bbx_min_pt, hi_res_bbx_max_pt, MAX_VISUALIZATION_DEPTH),
                                          end = tree->end_leafs_bbx();
       it != end; ++it)
   {
@@ -149,6 +162,9 @@ void OctoSlamNode::publishMapMarker()
 
 void OctoSlamNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
 {
+  auto now = this->get_clock()->now();
+  double start_seconds = now.seconds() + now.nanoseconds() * 1e-9;
+
   if (this->tree == nullptr)
     return; // Tree not yet initialized
 
@@ -157,27 +173,6 @@ void OctoSlamNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
 
   // Convert from ROS to PCL format
   pcl::fromROSMsg(*ros_cloud, pcl_cloud);
-
-  // Avoid "future time" error from TF2 due to slight delay
-  // in incoming LiDAR data
-  clock.clock.nanosec -= 1e8;
-
-  // Transform from base_link->map
-  try
-  {
-    map_bl_transform = tf_buffer_->lookupTransform(
-        "map", ros_cloud->header.frame_id,
-        this->clock.clock);
-  }
-  catch (const tf2::TransformException &ex)
-  {
-    // This warning will be called no more than once every 5 seconds
-    // https://docs.ros2.org/latest/api/rclcpp/logging_8hpp.html#a451bee77c253ec72f4984bb577ff818a
-    RCLCPP_WARN_THROTTLE(
-        this->get_logger(), *this->get_clock(), 5000, "Could not transform %s to %s: %s",
-        "map", ros_cloud->header.frame_id.c_str(), ex.what());
-    return;
-  }
 
   // Convert the TransformStamped message that we just received
   // into an Eigen-style transform
@@ -192,6 +187,11 @@ void OctoSlamNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
 
   tree->insertPointCloud(pclToOctreeCloud(pcl_cloud), sensor_origin);
   this->latest_cloud = pcl_cloud; // Cache the latest LiDAR data for the particle filter
+  now = this->get_clock()->now();
+  double end_seconds = now.seconds() + now.nanoseconds() * 1e-9;
+
+  double delta_t = end_seconds - start_seconds;
+  RCLCPP_INFO(this->get_logger(), "Took %f seconds", delta_t);
 }
 
 /**
@@ -207,7 +207,7 @@ octomap::Pointcloud OctoSlamNode::pclToOctreeCloud(pcl::PointCloud<pcl::PointXYZ
   {
     result.push_back(pt.x, pt.y, pt.z);
   }
-  RCLCPP_INFO(this->get_logger(), "Adding %d points", inputCloud.size());
+  RCLCPP_DEBUG(this->get_logger(), "Adding %d points", inputCloud.size());
   return result;
 }
 
