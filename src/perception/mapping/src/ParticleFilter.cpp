@@ -21,14 +21,24 @@
 
 using namespace navigator::perception;
 using namespace std::chrono_literals;
+typedef pcl::PointCloud<pcl::PointXYZI> PclCloud;
 
-PoseWithCovarianceStamped ParticleFilter::update(pcl::PointCloud<pcl::PointXYZI> observation, Pose gnss_pose)
+PoseWithCovarianceStamped ParticleFilter::update(PclCloud observation, Pose gnss_pose)
 {
+  std::printf("Updating...\n");
+
+  // TODO: Make this more efficient. This copy is likely expensive.
+  this->latest_observation = std::make_shared<PclCloud>(PclCloud(observation));
+
   this->predictParticleMotion(gnss_pose);
+  std::printf("Motion update complete.\n");
   this->updateParticleWeights();
+  std::printf("Weight update complete.\n");
   this->resample();
+  std::printf("Resample complete.\n");
 
   gnss_pose_cached = gnss_pose;
+  std::printf("Update COMPLETE!\n");
   return this->generatePose();
 }
 
@@ -41,20 +51,20 @@ void ParticleFilter::predictParticleMotion(Pose new_gnss_pose)
 {
   Pose displacement = new_gnss_pose - gnss_pose_cached;
 
-  std::printf("Displacement: (%f,%f,%f)\n",
-              displacement.x,
-              displacement.y,
-              displacement.h);
+  // std::printf("Displacement: (%f,%f,%f)\n",
+  //             displacement.x,
+  //             displacement.y,
+  //             displacement.h);
 
   std::normal_distribution<> dist_x{displacement.x, 4.0}; // 4m error -- actual GNSS error is ~2m
   std::normal_distribution<> dist_y{displacement.y, 4.0};
   std::normal_distribution<> dist_h{displacement.h, 0.35}; // ~20 degrees error
 
   // Add predicted displacement, plus noise, to each particle
-  std::printf("Was:    (%f,%f,%f)\n",
-              this->particles.front().x,
-              this->particles.front().y,
-              this->particles.front().h);
+  // std::printf("Was:    (%f,%f,%f)\n",
+  //             this->particles.front().x,
+  //             this->particles.front().y,
+  //             this->particles.front().h);
 
   auto p = this->particles.begin();
   while (p != this->particles.end())
@@ -66,18 +76,89 @@ void ParticleFilter::predictParticleMotion(Pose new_gnss_pose)
     p++;
   }
 
-  std::printf("Is now: (%f,%f,%f)\n",
-              this->particles.front().x,
-              this->particles.front().y,
-              this->particles.front().h);
+  // std::printf("Is now: (%f,%f,%f)\n",
+  //             this->particles.front().x,
+  //             this->particles.front().y,
+  //             this->particles.front().h);
+}
+
+double ParticleFilter::getAlignmentRatio(const Particle p, PclCloud observation)
+{
+  double particle_score = 0.0;
+
+  // 1. Transform observation from sensor frame to map frame
+
+  Eigen::Matrix4f baselink_to_map_tf = Eigen::Matrix4f::Zero();
+  /**
+   * https://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations
+   *
+   * cos(h) -sin(h) 0   x
+   * sin(h)  cos(h) 0   y
+   * 0       0      1   z
+   * 0       0      0   1
+   */
+  baselink_to_map_tf(0, 0) = cos(p.h);
+  baselink_to_map_tf(0, 1) = -1 * sin(p.h);
+  baselink_to_map_tf(1, 0) = sin(p.h);
+  baselink_to_map_tf(1, 1) = cos(p.h);
+  baselink_to_map_tf(2, 2) = 1.0;
+  baselink_to_map_tf(0, 3) = cos(p.x);
+  baselink_to_map_tf(1, 3) = cos(p.y);
+  baselink_to_map_tf(3, 3) = 1.0;
+
+  // Use the Eigen transform to transform the pcl cloud to the global "map" frame
+  pcl::transformPointCloud(observation, observation, baselink_to_map_tf);
+
+  for (pcl::PointXYZI pt : observation)
+  {
+    octomap::OcTreeNode *node = this->tree.search(pt.x, pt.y, pt.z);
+    if (node == nullptr)
+      continue;                             // No points awarded if node not yet added to octree
+    particle_score += node->getOccupancy(); // [0.0, 1.0]
+  }
+  return particle_score;
 }
 
 void ParticleFilter::updateParticleWeights()
 {
+  double total_score = 0.0; // Used to normalize the probability
+
+  // Loop through each particle
+  auto p = this->particles.begin();
+  while (p != this->particles.end())
+  {
+    double score = getAlignmentRatio(*p, PclCloud(*this->latest_observation));
+    p->w = score;
+    total_score += score;
+    p++;
+  }
+
+  // Normalize such that the sum of all weights = 1.0
+  p = this->particles.begin();
+  while (p != this->particles.end())
+  {
+    p->w /= total_score;
+    p++;
+  }
 }
 
 void ParticleFilter::resample()
 {
+  Particle most_likely_particle;
+  auto p = this->particles.begin();
+  while (p != this->particles.end())
+  {
+    if (p->w > most_likely_particle.w)
+    {
+      most_likely_particle = *p;
+    }
+    p++;
+  }
+  std::printf("Highest score: (%f, %f, %f) with %f",
+              most_likely_particle.x,
+              most_likely_particle.y,
+              most_likely_particle.h,
+              most_likely_particle.w);
 }
 
 std::vector<Particle> ParticleFilter::generateParticles(Pose u, Pose stdev, int N)
@@ -112,9 +193,9 @@ double quaternionToYaw(double w, double x, double y, double z)
   return yaw;
 }
 
-ParticleFilter::ParticleFilter(PoseWithCovarianceStamped initial_guess, int N)
+ParticleFilter::ParticleFilter(PoseWithCovarianceStamped initial_guess, int N, const octomap::OcTree &tree) : tree(tree), N(N)
 {
-  this->N = N;
+  std::cout << "Tree has " << this->tree.size() << " nodes\n";
 
   auto q = initial_guess.pose.pose.orientation;
   double h = quaternionToYaw(q.w, q.x, q.y, q.z);
@@ -176,10 +257,10 @@ PoseWithCovarianceStamped ParticleFilter::generatePose()
   pose_msg.pose.pose.orientation.y = 0.0;
   pose_msg.pose.pose.orientation.z = sin(mean_pose.h / 2);
 
-  std::printf("Pose is now: (%f,%f,%f)\n",
-              mean_pose.x,
-              mean_pose.y,
-              mean_pose.h);
+  // std::printf("Pose is now: (%f,%f,%f)\n",
+  //             mean_pose.x,
+  //             mean_pose.y,
+  //             mean_pose.h);
 
   return pose_msg;
 }

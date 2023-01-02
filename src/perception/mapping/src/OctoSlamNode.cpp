@@ -70,15 +70,19 @@ double quatToYaw(double w, double x, double y, double z)
 
 void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
 {
+  RCLCPP_INFO(this->get_logger(), "073");
   // Initialize our filter given the initial guess
   if (this->filter == nullptr)
   {
+    if (this->tree == nullptr)
+      return;
     PoseWithCovarianceStamped initial_guess;
     initial_guess.pose = msg->pose;
     initial_guess.header = msg->header;
-    this->filter = std::make_shared<ParticleFilter>(initial_guess, 100);
+    this->filter = std::make_shared<ParticleFilter>(initial_guess, 1000, *this->tree);
     RCLCPP_INFO(this->get_logger(), "Particle filter has been created.");
   }
+  RCLCPP_INFO(this->get_logger(), "083");
 
   // Extract yaw from msg quaternion
   auto q = msg->pose.pose.orientation;
@@ -92,6 +96,7 @@ void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
   // filter->update() runs one iteration of the particle filter,
   // handling all internal steps, then returns the result pose.
   PoseWithCovarianceStamped filter_result = this->filter->update(this->latest_cloud, gnss_pose);
+  RCLCPP_INFO(this->get_logger(), "097");
 
   map_bl_transform = TransformStamped();
 
@@ -106,10 +111,12 @@ void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
 
   PointCloud2 particle_cloud = this->filter->asPointCloud();
   particle_viz_pub->publish(particle_cloud);
+  RCLCPP_INFO(this->get_logger(), "110");
 }
 
 void OctoSlamNode::publishMapMarker()
 {
+  RCLCPP_INFO(this->get_logger(), "113");
   // If the tree is uninitialized, skip
   if (this->tree == nullptr)
     return;
@@ -162,6 +169,7 @@ void OctoSlamNode::publishMapMarker()
 
 void OctoSlamNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
 {
+  RCLCPP_INFO(this->get_logger(), "165");
   auto now = this->get_clock()->now();
   double start_seconds = now.seconds() + now.nanoseconds() * 1e-9;
 
@@ -261,6 +269,12 @@ void OctoSlamNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
 
   this->map_name = msg->map_name;
   std::string file_name = getFilenameFromMapName();
+
+  // if (file_name == ".bt")
+  // {
+  //   RCLCPP_WARN(this->get_logger(), "Map name is empty, waiting until map is loaded." + file_name);
+  // }
+
   RCLCPP_INFO(this->get_logger(), "Reading map from " + file_name);
 
   this->tree = std::make_shared<octomap::OcTree>(OCTREE_RESOLUTION);

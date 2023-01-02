@@ -85,7 +85,7 @@ namespace navigator
     class ParticleFilter
     {
     public:
-      ParticleFilter(PoseWithCovarianceStamped initial_guess, int N);
+      ParticleFilter(PoseWithCovarianceStamped initial_guess, int N, const octomap::OcTree &tree);
       virtual ~ParticleFilter();
 
       void addMeasurement(Imu imu_msg);
@@ -99,12 +99,15 @@ namespace navigator
 
     private:
       std::vector<Particle> generateParticles(Pose u, Pose stdev, int N);
+      double getAlignmentRatio(const Particle p, pcl::PointCloud<pcl::PointXYZI> observation);
       int N; // The number of particles
       std::random_device rd{};
       std::mt19937 gen{rd()};
       std::vector<Particle> particles;
       rclcpp::Time latest_time;
+      std::shared_ptr<pcl::PointCloud<pcl::PointXYZI>> latest_observation; // in vehicle reference frame
       Pose gnss_pose_cached;
+      const octomap::OcTree &tree;
     };
 
   }
