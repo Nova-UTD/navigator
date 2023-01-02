@@ -94,14 +94,10 @@ class LidarProcessingNode(Node):
         msg_array['z'] = merged_z
         msg_array['intensity'] = merged_i
 
-        
-        
-
         msg_array = self.transform_to_base_link(msg_array)
         msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0)
-        msg_array = self.remove_above_points(msg_array, 3.0)
+        msg_array = self.remove_points_above(msg_array, 2.0)
         msg_array = self.remove_ground_points(msg_array, 0.2)
-        
 
         merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
         merged_pcd_msg.header.frame_id = 'base_link'
@@ -153,23 +149,24 @@ class LidarProcessingNode(Node):
                                pcd['y'] < y_distance),
             ))]
 
-        pcd = pcd[pcd['z']>= -2.0]
+        pcd = pcd[pcd['z'] >= -2.0]
 
         return pcd
 
-    def remove_above_points(self, pcd: np.array, min_height: float) -> np.array:
+    def remove_points_above(self, pcd: np.array, height: float) -> np.array:
         '''
         Remove points above the height of the sensor specified around the sensor
 
         :param pcd: a numpy array of the incoming point cloud, in the format provided by ros2_numpy.
-        :param min_height: points with an z value whose absolute value is less than this number will be removed
+        :param min_height: points with an z value whose absolute value is greater than this number will be removed
 
         :returns: an array in ros2_numpy format with the nearby points removed
         '''
 
-        pcd = pcd[pcd['z'] <= min_height]
+        pcd = pcd[pcd['z'] <= height]
 
         return pcd
+
 
 def main(args=None):
     rclpy.init(args=args)
