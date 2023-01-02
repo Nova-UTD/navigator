@@ -70,7 +70,6 @@ double quatToYaw(double w, double x, double y, double z)
 
 void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
 {
-  RCLCPP_INFO(this->get_logger(), "073");
   // Initialize our filter given the initial guess
   if (this->filter == nullptr)
   {
@@ -82,7 +81,6 @@ void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
     this->filter = std::make_shared<ParticleFilter>(initial_guess, 1000, *this->tree);
     RCLCPP_INFO(this->get_logger(), "Particle filter has been created.");
   }
-  RCLCPP_INFO(this->get_logger(), "083");
 
   // Extract yaw from msg quaternion
   auto q = msg->pose.pose.orientation;
@@ -111,12 +109,10 @@ void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
 
   PointCloud2 particle_cloud = this->filter->asPointCloud();
   particle_viz_pub->publish(particle_cloud);
-  RCLCPP_INFO(this->get_logger(), "110");
 }
 
 void OctoSlamNode::publishMapMarker()
 {
-  RCLCPP_INFO(this->get_logger(), "113");
   // If the tree is uninitialized, skip
   if (this->tree == nullptr)
     return;
@@ -169,7 +165,6 @@ void OctoSlamNode::publishMapMarker()
 
 void OctoSlamNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
 {
-  RCLCPP_INFO(this->get_logger(), "165");
   auto now = this->get_clock()->now();
   double start_seconds = now.seconds() + now.nanoseconds() * 1e-9;
 

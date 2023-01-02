@@ -39,7 +39,17 @@ PoseWithCovarianceStamped ParticleFilter::update(PclCloud observation, Pose gnss
 
   gnss_pose_cached = gnss_pose;
   std::printf("Update COMPLETE!\n");
-  return this->generatePose();
+  PoseWithCovarianceStamped result = this->generatePose();
+  printf("Result: (%f,%f,%f)/(%f,%f,%f,%f), N=%u\n",
+         result.pose.pose.position.x,
+         result.pose.pose.position.y,
+         result.pose.pose.position.z,
+         result.pose.pose.orientation.w,
+         result.pose.pose.orientation.x,
+         result.pose.pose.orientation.y,
+         result.pose.pose.orientation.z,
+         this->particles.size());
+  return result;
 }
 
 /**
@@ -82,7 +92,7 @@ void ParticleFilter::predictParticleMotion(Pose new_gnss_pose)
   //             this->particles.front().h);
 }
 
-double ParticleFilter::getAlignmentRatio(const Particle p, PclCloud observation)
+double ParticleFilter::getAlignmentRatio(const Pose p, PclCloud observation)
 {
   double particle_score = 0.0;
 
@@ -111,7 +121,7 @@ double ParticleFilter::getAlignmentRatio(const Particle p, PclCloud observation)
 
   for (pcl::PointXYZI pt : observation)
   {
-    octomap::OcTreeNode *node = this->tree.search(pt.x, pt.y, pt.z);
+    octomap::OcTreeNode *node = this->tree.search(pt.x, pt.y, pt.z, 15); // Depth of 15 = 0.4m
     if (node == nullptr)
       continue;                             // No points awarded if node not yet added to octree
     particle_score += node->getOccupancy(); // [0.0, 1.0]
@@ -119,66 +129,55 @@ double ParticleFilter::getAlignmentRatio(const Particle p, PclCloud observation)
   return particle_score;
 }
 
+/**
+ * @brief Perform Sequential Importance Sampling
+ *
+ */
 void ParticleFilter::updateParticleWeights()
 {
   double total_score = 0.0; // Used to normalize the probability
 
   // Loop through each particle
-  auto p = this->particles.begin();
-  while (p != this->particles.end())
+  for (uint i = 0; i < particles.size(); i++)
   {
-    double score = getAlignmentRatio(*p, PclCloud(*this->latest_observation));
-    p->w = score;
+    double score = getAlignmentRatio(particles.at(i), PclCloud(*this->latest_observation));
+    weights.at(i) *= score; // Bayes theorem: P(x|z) = (likelihood * prior) / normalization
     total_score += score;
-    p++;
   }
 
   // Normalize such that the sum of all weights = 1.0
-  p = this->particles.begin();
-  while (p != this->particles.end())
+  auto w = this->weights.begin();
+  while (w != this->weights.end())
   {
-    p->w /= total_score;
-    p++;
+    *w /= total_score;
+    w++;
   }
 }
 
 void ParticleFilter::resample()
 {
-  Particle most_likely_particle;
-  auto p = this->particles.begin();
-  while (p != this->particles.end())
-  {
-    if (p->w > most_likely_particle.w)
-    {
-      most_likely_particle = *p;
-    }
-    p++;
-  }
-  std::printf("Highest score: (%f, %f, %f) with %f",
-              most_likely_particle.x,
-              most_likely_particle.y,
-              most_likely_particle.h,
-              most_likely_particle.w);
+  std::default_random_engine rand_eng;
+  std::discrete_distribution<int> distribution(weights.begin(), weights.end());
 }
 
-std::vector<Particle> ParticleFilter::generateParticles(Pose u, Pose stdev, int N)
+std::vector<Pose> ParticleFilter::generateParticles(Pose u, Pose stdev, int N)
 {
   std::normal_distribution<> norm_x{u.x, stdev.x};
   std::normal_distribution<> norm_y{u.y, stdev.y};
   std::normal_distribution<> norm_h{u.h, stdev.h};
-  std::vector<Particle> random_particles;
+  std::vector<Pose> random_particles;
 
   double prob = 1.0 / N;
 
   for (int i = 0; i < N; i++)
   {
-    Particle p;
+    Pose p;
     p.x = norm_x(gen);
     p.y = norm_y(gen);
     p.h = norm_h(gen);
-    p.w = prob;
+
     random_particles.push_back(p);
-    std::cout << p.x << ", " << p.y << ", " << p.h << std::endl;
+    weights.push_back(prob);
   }
 
   return random_particles;
@@ -224,7 +223,7 @@ PoseWithCovarianceStamped ParticleFilter::generatePose()
   Pose variance_pose;
 
   // 1. Calculate mean
-  for (Particle p : this->particles)
+  for (Pose p : this->particles)
   {
     mean_pose.x += p.x;
     mean_pose.y += p.y;
@@ -238,7 +237,7 @@ PoseWithCovarianceStamped ParticleFilter::generatePose()
 
   // 2. Calculate variance
   // https://en.wikipedia.org/wiki/Variance#Discrete_random_variable
-  for (Particle p : this->particles)
+  for (Pose p : this->particles)
   {
     variance_pose.x += pow(p.x - mean_pose.x, 2);
     variance_pose.y += pow(p.y - mean_pose.y, 2);
@@ -268,7 +267,7 @@ PoseWithCovarianceStamped ParticleFilter::generatePose()
 PointCloud2 ParticleFilter::asPointCloud()
 {
   pcl::PointCloud<pcl::PointXYZRGB> pcl_cloud;
-  for (Particle p : this->particles)
+  for (Pose p : this->particles)
   {
     pcl::PointXYZRGB pt;
     pt.x = p.x;
