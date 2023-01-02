@@ -30,16 +30,32 @@ PoseWithCovarianceStamped ParticleFilter::update(PclCloud observation, Pose gnss
   // TODO: Make this more efficient. This copy is likely expensive.
   this->latest_observation = std::make_shared<PclCloud>(PclCloud(observation));
 
+  auto start = std::chrono::high_resolution_clock::now();
   this->predictParticleMotion(gnss_pose);
-  std::printf("Motion update complete.\n");
+  auto stop = std::chrono::high_resolution_clock::now();
+  int duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+  std::printf("Motion update complete in %i ms\n", duration);
+
+  start = std::chrono::high_resolution_clock::now();
   this->updateParticleWeights();
-  std::printf("Weight update complete.\n");
+  stop = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+  std::printf("Weight update complete in %i ms\n", duration);
+
+  start = std::chrono::high_resolution_clock::now();
   this->resample();
-  std::printf("Resample complete.\n");
+  stop = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+  std::printf("Resample complete in %i ms\n", duration);
 
   gnss_pose_cached = gnss_pose;
-  std::printf("Update COMPLETE!\n");
-  PoseWithCovarianceStamped result = this->generatePose();
+
+  start = std::chrono::high_resolution_clock::now();
+  PoseWithCovarianceStamped result = generatePose();
+  stop = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+  std::printf("Weight update complete in %i ms\n", duration);
+
   printf("Result: (%f,%f,%f)/(%f,%f,%f,%f), N=%u\n",
          result.pose.pose.position.x,
          result.pose.pose.position.y,
@@ -92,7 +108,7 @@ void ParticleFilter::predictParticleMotion(Pose new_gnss_pose)
   //             this->particles.front().h);
 }
 
-double ParticleFilter::getAlignmentRatio(const Pose p, PclCloud observation)
+double ParticleFilter::getAlignmentRatio(const Particle p, PclCloud observation)
 {
   double particle_score = 0.0;
 
@@ -112,8 +128,8 @@ double ParticleFilter::getAlignmentRatio(const Pose p, PclCloud observation)
   baselink_to_map_tf(1, 0) = sin(p.h);
   baselink_to_map_tf(1, 1) = cos(p.h);
   baselink_to_map_tf(2, 2) = 1.0;
-  baselink_to_map_tf(0, 3) = cos(p.x);
-  baselink_to_map_tf(1, 3) = cos(p.y);
+  baselink_to_map_tf(0, 3) = p.x;
+  baselink_to_map_tf(1, 3) = p.y;
   baselink_to_map_tf(3, 3) = 1.0;
 
   // Use the Eigen transform to transform the pcl cloud to the global "map" frame
@@ -138,46 +154,59 @@ void ParticleFilter::updateParticleWeights()
   double total_score = 0.0; // Used to normalize the probability
 
   // Loop through each particle
-  for (uint i = 0; i < particles.size(); i++)
+  auto p = this->particles.begin();
+  while (p != this->particles.end())
   {
-    double score = getAlignmentRatio(particles.at(i), PclCloud(*this->latest_observation));
-    weights.at(i) *= score; // Bayes theorem: P(x|z) = (likelihood * prior) / normalization
+    double score = getAlignmentRatio(*p, PclCloud(*this->latest_observation));
+    p->w *= score; // Bayes theorem: P(x|z) = (likelihood * prior) / normalization
     total_score += score;
+    p++;
   }
 
   // Normalize such that the sum of all weights = 1.0
-  auto w = this->weights.begin();
-  while (w != this->weights.end())
+  for (int i = 0; i < particles.size(); i++)
   {
-    *w /= total_score;
-    w++;
+    particles.at(i).w /= total_score;
+    weights.at(i) = particles.at(i).w;
   }
 }
 
 void ParticleFilter::resample()
 {
   std::default_random_engine rand_eng;
-  std::discrete_distribution<int> distribution(weights.begin(), weights.end());
+
+  // A distribution from (0, weights.size()) where the probability
+  // of each element being chosen is based on each weight, such that
+  // higher weights are more likely to be selected.
+  std::discrete_distribution<int> weighted_dist(weights.begin(), weights.end());
+
+  std::vector<Particle> resampled_particles;
+
+  for (int i = 0; i < N; i++)
+  {
+    resampled_particles.push_back(particles[weighted_dist(gen)]);
+  }
+
+  particles = resampled_particles;
 }
 
-std::vector<Pose> ParticleFilter::generateParticles(Pose u, Pose stdev, int N)
+std::vector<Particle> ParticleFilter::generateParticles(Pose u, Pose stdev, int N)
 {
   std::normal_distribution<> norm_x{u.x, stdev.x};
   std::normal_distribution<> norm_y{u.y, stdev.y};
   std::normal_distribution<> norm_h{u.h, stdev.h};
-  std::vector<Pose> random_particles;
+  std::vector<Particle> random_particles;
 
   double prob = 1.0 / N;
 
   for (int i = 0; i < N; i++)
   {
-    Pose p;
+    Particle p;
     p.x = norm_x(gen);
     p.y = norm_y(gen);
     p.h = norm_h(gen);
-
+    p.w = prob;
     random_particles.push_back(p);
-    weights.push_back(prob);
   }
 
   return random_particles;
@@ -194,7 +223,8 @@ double quaternionToYaw(double w, double x, double y, double z)
 
 ParticleFilter::ParticleFilter(PoseWithCovarianceStamped initial_guess, int N, const octomap::OcTree &tree) : tree(tree), N(N)
 {
-  std::cout << "Tree has " << this->tree.size() << " nodes\n";
+  weights.resize(N);
+  particles.resize(N);
 
   auto q = initial_guess.pose.pose.orientation;
   double h = quaternionToYaw(q.w, q.x, q.y, q.z);
@@ -223,7 +253,7 @@ PoseWithCovarianceStamped ParticleFilter::generatePose()
   Pose variance_pose;
 
   // 1. Calculate mean
-  for (Pose p : this->particles)
+  for (Particle p : this->particles)
   {
     mean_pose.x += p.x;
     mean_pose.y += p.y;
@@ -237,7 +267,7 @@ PoseWithCovarianceStamped ParticleFilter::generatePose()
 
   // 2. Calculate variance
   // https://en.wikipedia.org/wiki/Variance#Discrete_random_variable
-  for (Pose p : this->particles)
+  for (Particle p : this->particles)
   {
     variance_pose.x += pow(p.x - mean_pose.x, 2);
     variance_pose.y += pow(p.y - mean_pose.y, 2);
@@ -267,7 +297,7 @@ PoseWithCovarianceStamped ParticleFilter::generatePose()
 PointCloud2 ParticleFilter::asPointCloud()
 {
   pcl::PointCloud<pcl::PointXYZRGB> pcl_cloud;
-  for (Pose p : this->particles)
+  for (Particle p : this->particles)
   {
     pcl::PointXYZRGB pt;
     pt.x = p.x;

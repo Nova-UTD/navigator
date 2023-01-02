@@ -78,6 +78,10 @@ namespace navigator
         return result;
       }
     };
+    struct Particle : Pose
+    {
+      double w; // weight, the probability of a particle from [0.,1.]
+    };
 
     class ParticleFilter
     {
@@ -95,12 +99,12 @@ namespace navigator
       PoseWithCovarianceStamped update(pcl::PointCloud<pcl::PointXYZI> observation, Pose gnss_pose);
 
     private:
-      std::vector<Pose> generateParticles(Pose u, Pose stdev, int N);
-      double getAlignmentRatio(const Pose p, pcl::PointCloud<pcl::PointXYZI> observation);
+      std::vector<Particle> generateParticles(Pose u, Pose stdev, int N);
+      double getAlignmentRatio(const Particle p, pcl::PointCloud<pcl::PointXYZI> observation);
       int N; // The number of particles
       std::random_device rd{};
       std::mt19937 gen{rd()};
-      std::vector<Pose> particles;
+      std::vector<Particle> particles;
       std::vector<double> weights;
       rclcpp::Time latest_time;
       std::shared_ptr<pcl::PointCloud<pcl::PointXYZI>> latest_observation; // in vehicle reference frame

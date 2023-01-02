@@ -78,7 +78,7 @@ void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
     PoseWithCovarianceStamped initial_guess;
     initial_guess.pose = msg->pose;
     initial_guess.header = msg->header;
-    this->filter = std::make_shared<ParticleFilter>(initial_guess, 1000, *this->tree);
+    this->filter = std::make_shared<ParticleFilter>(initial_guess, 100, *this->tree);
     RCLCPP_INFO(this->get_logger(), "Particle filter has been created.");
   }
 
