@@ -98,10 +98,10 @@ void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
   map_bl_transform.header.stamp = this->clock.clock;
   map_bl_transform.header.frame_id = "map";
   map_bl_transform.child_frame_id = "hero";
-  map_bl_transform.transform.translation.x = msg->pose.pose.position.x;
-  map_bl_transform.transform.translation.y = msg->pose.pose.position.y;
-  map_bl_transform.transform.translation.z = msg->pose.pose.position.z; // This should be zero.
-  map_bl_transform.transform.rotation = msg->pose.pose.orientation;
+  map_bl_transform.transform.translation.x = filter_result.pose.pose.position.x;
+  map_bl_transform.transform.translation.y = filter_result.pose.pose.position.y;
+  map_bl_transform.transform.translation.z = filter_result.pose.pose.position.z; // This should be zero.
+  map_bl_transform.transform.rotation = filter_result.pose.pose.orientation;
   this->tf_broadcaster->sendTransform(map_bl_transform);
 
   PointCloud2 particle_cloud = this->filter->asPointCloud();
@@ -118,7 +118,7 @@ void OctoSlamNode::publishMapMarker()
 
   // Convert from ROS to PCL format
 
-  // This is the current location of our vehicle, set by lidarCb()
+  // Location of vehicle as a ROS vector
   Vector3 center_ros = map_bl_transform.transform.translation;
 
   // Set the bounds of our bounding box

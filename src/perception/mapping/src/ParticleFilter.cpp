@@ -27,6 +27,8 @@ PoseWithCovarianceStamped ParticleFilter::update(pcl::PointCloud<pcl::PointXYZI>
   this->predictParticleMotion(gnss_pose);
   this->updateParticleWeights();
   this->resample();
+
+  gnss_pose_cached = gnss_pose;
   return this->generatePose();
 }
 
@@ -39,18 +41,35 @@ void ParticleFilter::predictParticleMotion(Pose new_gnss_pose)
 {
   Pose displacement = new_gnss_pose - gnss_pose_cached;
 
+  std::printf("Displacement: (%f,%f,%f)\n",
+              displacement.x,
+              displacement.y,
+              displacement.h);
+
   std::normal_distribution<> dist_x{displacement.x, 4.0}; // 4m error -- actual GNSS error is ~2m
   std::normal_distribution<> dist_y{displacement.y, 4.0};
   std::normal_distribution<> dist_h{displacement.h, 0.35}; // ~20 degrees error
 
   // Add predicted displacement, plus noise, to each particle
-  for (Particle p : this->particles)
+  std::printf("Was:    (%f,%f,%f)\n",
+              this->particles.front().x,
+              this->particles.front().y,
+              this->particles.front().h);
+
+  auto p = this->particles.begin();
+  while (p != this->particles.end())
   {
-    p.x += (displacement.x + dist_x(gen));
-    p.y += (displacement.y + dist_y(gen));
-    p.h += (displacement.h + dist_h(gen));
-    p.h = fmod(displacement.h, M_2_PI); // Wrap to [0, 2*pi]
+    p->x += (displacement.x + dist_x(gen));
+    p->y += (displacement.y + dist_y(gen));
+    p->h += (displacement.h + dist_h(gen));
+    p->h = fmod(displacement.h, M_2_PI); // Wrap to [0, 2*pi]
+    p++;
   }
+
+  std::printf("Is now: (%f,%f,%f)\n",
+              this->particles.front().x,
+              this->particles.front().y,
+              this->particles.front().h);
 }
 
 void ParticleFilter::updateParticleWeights()
@@ -156,6 +175,11 @@ PoseWithCovarianceStamped ParticleFilter::generatePose()
   pose_msg.pose.pose.orientation.x = 0.0;
   pose_msg.pose.pose.orientation.y = 0.0;
   pose_msg.pose.pose.orientation.z = sin(mean_pose.h / 2);
+
+  std::printf("Pose is now: (%f,%f,%f)\n",
+              mean_pose.x,
+              mean_pose.y,
+              mean_pose.h);
 
   return pose_msg;
 }
