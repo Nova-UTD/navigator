@@ -22,7 +22,7 @@ _Maintained by Will Heitman_
 
 ```
 Map
-├── getRoute(): Lane[]
+├── get_route(): Lane[]
 ├── header: Header (contains north, x0, and other geo ref data)
 ├── shapes: STRTree
 ├── shapes: STRTree
@@ -43,10 +43,10 @@ Map
 │           ├── s: float
 │           ├── signals: Signal[] (speed limit signs, traffic lights, ...)
 │           └── lanes: Lane[]
-│               ├── lsec: LaneSection (parent reference)
-│               ├── road: Road (grandparent reference)
 │               ├── Lane A
 │               │   ├── id: int
+│               │   ├── lsec: LaneSection (parent reference)
+│               │   ├── road: Road (grandparent reference)
 │               │   ├── type: LaneType ("shoulder", "sidewalk", "driving", ...)
 │               │   ├── predecessors: Lane[]
 │               │   ├── successors: Lane[]

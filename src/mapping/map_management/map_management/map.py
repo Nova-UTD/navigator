@@ -74,8 +74,8 @@ class Map():
                 # TODO: Add support for arcs
 
             centerline = LineString(centerline_pts)
-            plt.plot([point[0] for point in centerline.coords],
-                     [point[1] for point in centerline.coords])
+            # plt.plot([point[0] for point in centerline.coords],
+            #          [point[1] for point in centerline.coords])
 
             # now find left width
             lane_sections = road.getElementsByTagName("laneSection")
@@ -118,10 +118,10 @@ class Map():
             right_bound = centerline.parallel_offset(
                 right_width, side='right', resolution=1)
 
-            plt.plot([point[0] for point in left_bound.coords],
-                     [point[1] for point in left_bound.coords])
-            plt.plot([point[0] for point in right_bound.coords],
-                     [point[1] for point in right_bound.coords])
+            # plt.plot([point[0] for point in left_bound.coords],
+            #          [point[1] for point in left_bound.coords])
+            # plt.plot([point[0] for point in right_bound.coords],
+            #          [point[1] for point in right_bound.coords])
 
         # plt.show()
 
