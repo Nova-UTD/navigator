@@ -59,15 +59,6 @@ OctoSlamNode::OctoSlamNode() : Node("octree_mapping_node")
   this->tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 }
 
-double quatToYaw(double w, double x, double y, double z)
-{
-  double t1 = 2.0 * (w * z + x * y);
-  double t2 = 1.0 - 2.0 * (y * y + z * z);
-  double yaw = atan2(t1, t2);
-
-  return yaw;
-}
-
 void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
 {
   // Initialize our filter given the initial guess
@@ -75,16 +66,26 @@ void OctoSlamNode::gnssOdomCb(Odometry::SharedPtr msg)
   {
     if (this->tree == nullptr)
       return;
-    PoseWithCovarianceStamped initial_guess;
-    initial_guess.pose = msg->pose;
-    initial_guess.header = msg->header;
-    this->filter = std::make_shared<ParticleFilter>(initial_guess, 100, *this->tree);
+    this->filter = std::make_shared<ParticleFilter>(100, *this->tree);
+
+    auto q_msg = msg->pose.pose.orientation;
+    Eigen::Quaternionf q(q_msg.w, q_msg.x, q_msg.y, q_msg.z);
+    auto heading = q.toRotationMatrix().eulerAngles(0, 1, 2)[2];
+
+    double stdev[3] = {3.0, 3.0, 0.3};
+
+    this->filter->init(
+        msg->pose.pose.position.x,
+        msg->pose.pose.position.y,
+        heading,
+        stdev);
     RCLCPP_INFO(this->get_logger(), "Particle filter has been created.");
   }
 
   // Extract yaw from msg quaternion
-  auto q = msg->pose.pose.orientation;
-  double yaw = quatToYaw(q.w, q.x, q.y, q.z);
+  auto q_msg = msg->pose.pose.orientation;
+  Eigen::Quaternionf q(q_msg.w, q_msg.x, q_msg.y, q_msg.z);
+  double yaw = q.toRotationMatrix().eulerAngles(0, 1, 2)[2];
 
   navigator::perception::Pose gnss_pose(
       msg->pose.pose.position.x,

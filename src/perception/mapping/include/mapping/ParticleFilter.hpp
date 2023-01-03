@@ -81,35 +81,41 @@ namespace navigator
     struct Particle : Pose
     {
       double w; // weight, the probability of a particle from [0.,1.]
+      Particle(double x = 0.0, double y = 0.0, double h = 0.0, double w = 0.0) : Pose(x, y, h), w(w)
+      {
+      }
     };
 
     class ParticleFilter
     {
     public:
-      ParticleFilter(PoseWithCovarianceStamped initial_guess, int N, const octomap::OcTree &tree);
+      ParticleFilter(int num_particles, const octomap::OcTree &tree) : tree(tree), num_particles(num_particles), is_initialized(false) {}
       virtual ~ParticleFilter();
 
+      void init(double x, double y, double h, double std[]);
+
       void addMeasurement(Imu imu_msg);
-      void predictParticleMotion(Pose new_gnss_pose);
-      void updateParticleWeights();
+      void predictMotion(Pose new_gnss_pose);
+      void updateWeights();
       void resample();
+
+      const bool isReady() const;
+
       PoseWithCovarianceStamped generatePose();
 
       PointCloud2 asPointCloud();
       PoseWithCovarianceStamped update(pcl::PointCloud<pcl::PointXYZI> observation, Pose gnss_pose);
 
     private:
-      std::vector<Particle> generateParticles(Pose u, Pose stdev, int N);
-      double getAlignmentRatio(const Particle p, pcl::PointCloud<pcl::PointXYZI> observation);
-      int N; // The number of particles
-      std::random_device rd{};
-      std::mt19937 gen{rd()};
-      std::vector<Particle> particles;
+      int num_particles;
+      bool is_initialized;
       std::vector<double> weights;
-      rclcpp::Time latest_time;
-      std::shared_ptr<pcl::PointCloud<pcl::PointXYZI>> latest_observation; // in vehicle reference frame
+      std::vector<Particle> particles;
       Pose gnss_pose_cached;
+      pcl::PointCloud<pcl::PointXYZI> latest_observation;
       const octomap::OcTree &tree;
+
+      double getParticleScore(const Particle p, pcl::PointCloud<pcl::PointXYZI> observation);
     };
 
   }

@@ -23,21 +23,26 @@ using namespace navigator::perception;
 using namespace std::chrono_literals;
 typedef pcl::PointCloud<pcl::PointXYZI> PclCloud;
 
+const bool ParticleFilter::isReady() const
+{
+  return is_initialized;
+}
+
 PoseWithCovarianceStamped ParticleFilter::update(PclCloud observation, Pose gnss_pose)
 {
   std::printf("Updating...\n");
 
   // TODO: Make this more efficient. This copy is likely expensive.
-  this->latest_observation = std::make_shared<PclCloud>(PclCloud(observation));
+  this->latest_observation = observation;
 
   auto start = std::chrono::high_resolution_clock::now();
-  this->predictParticleMotion(gnss_pose);
+  this->predictMotion(gnss_pose);
   auto stop = std::chrono::high_resolution_clock::now();
   int duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
   std::printf("Motion update complete in %i ms\n", duration);
 
   start = std::chrono::high_resolution_clock::now();
-  this->updateParticleWeights();
+  this->updateWeights();
   stop = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
   std::printf("Weight update complete in %i ms\n", duration);
@@ -73,7 +78,7 @@ PoseWithCovarianceStamped ParticleFilter::update(PclCloud observation, Pose gnss
  *
  * @param new_gnss_pose The latest (x,y,h) from the GNSS.
  */
-void ParticleFilter::predictParticleMotion(Pose new_gnss_pose)
+void ParticleFilter::predictMotion(Pose new_gnss_pose)
 {
   Pose displacement = new_gnss_pose - gnss_pose_cached;
 
@@ -92,12 +97,14 @@ void ParticleFilter::predictParticleMotion(Pose new_gnss_pose)
   //             this->particles.front().y,
   //             this->particles.front().h);
 
+  std::default_random_engine rand_gen;
+
   auto p = this->particles.begin();
   while (p != this->particles.end())
   {
-    p->x += (displacement.x + dist_x(gen));
-    p->y += (displacement.y + dist_y(gen));
-    p->h += (displacement.h + dist_h(gen));
+    p->x += (displacement.x + dist_x(rand_gen));
+    p->y += (displacement.y + dist_y(rand_gen));
+    p->h += (displacement.h + dist_h(rand_gen));
     p->h = fmod(displacement.h, M_2_PI); // Wrap to [0, 2*pi]
     p++;
   }
@@ -106,9 +113,11 @@ void ParticleFilter::predictParticleMotion(Pose new_gnss_pose)
   //             this->particles.front().x,
   //             this->particles.front().y,
   //             this->particles.front().h);
+
+  gnss_pose_cached = new_gnss_pose;
 }
 
-double ParticleFilter::getAlignmentRatio(const Particle p, PclCloud observation)
+double ParticleFilter::getParticleScore(const Particle p, PclCloud observation)
 {
   double particle_score = 0.0;
 
@@ -149,7 +158,7 @@ double ParticleFilter::getAlignmentRatio(const Particle p, PclCloud observation)
  * @brief Perform Sequential Importance Sampling
  *
  */
-void ParticleFilter::updateParticleWeights()
+void ParticleFilter::updateWeights()
 {
   double total_score = 0.0; // Used to normalize the probability
 
@@ -157,7 +166,7 @@ void ParticleFilter::updateParticleWeights()
   auto p = this->particles.begin();
   while (p != this->particles.end())
   {
-    double score = getAlignmentRatio(*p, PclCloud(*this->latest_observation));
+    double score = getParticleScore(*p, latest_observation);
     p->w *= score; // Bayes theorem: P(x|z) = (likelihood * prior) / normalization
     total_score += score;
     p++;
@@ -182,69 +191,74 @@ void ParticleFilter::resample()
 
   std::vector<Particle> resampled_particles;
 
-  for (int i = 0; i < N; i++)
+  const double GNSS_DISTANCE_THRESHOLD = 3.0; // Particles further than this distance will be removed.
+
+  for (int i = 0; i < num_particles; i++)
   {
-    resampled_particles.push_back(particles[weighted_dist(gen)]);
+    Particle random_particle = particles[weighted_dist(rand_eng)];
+
+    double distance_from_gnss = sqrt(
+        pow(gnss_pose_cached.x - random_particle.x, 2) +
+        pow(gnss_pose_cached.y - random_particle.y, 2));
+
+    if (distance_from_gnss > GNSS_DISTANCE_THRESHOLD)
+    {
+      resampled_particles.push_back(Particle(
+          gnss_pose_cached.x,
+          gnss_pose_cached.y,
+          gnss_pose_cached.h,
+          random_particle.w));
+    }
+    else
+    {
+      resampled_particles.push_back(random_particle);
+    }
   }
 
   particles = resampled_particles;
 }
 
-std::vector<Particle> ParticleFilter::generateParticles(Pose u, Pose stdev, int N)
+/**
+ * @brief
+ *
+ * @param x Initial x position from GNSS (m)
+ * @param y Initial y position from GNSS (m)
+ * @param heading Initial heading from GNSS (m)
+ * @param std [stdev_x, stdev_y, stdev_heading] (m)
+ */
+void ParticleFilter::init(double x, double y, double heading, double std[])
 {
-  std::normal_distribution<> norm_x{u.x, stdev.x};
-  std::normal_distribution<> norm_y{u.y, stdev.y};
-  std::normal_distribution<> norm_h{u.h, stdev.h};
-  std::vector<Particle> random_particles;
+  weights.resize(num_particles);
+  particles.resize(num_particles);
 
-  double prob = 1.0 / N;
+  gnss_pose_cached = Pose(x, y, heading);
 
-  for (int i = 0; i < N; i++)
+  // Standard deviations for x, y, and theta
+  double std_x, std_y, std_heading;
+  std_x = std[0];
+  std_y = std[1];
+  std_heading = std[2];
+
+  // Normal distributions
+  std::normal_distribution<double> dist_x(x, std_x);
+  std::normal_distribution<double> dist_y(y, std_y);
+  std::normal_distribution<double> dist_theta(heading, std_heading);
+
+  std::default_random_engine rand_gen;
+
+  // create particles and set their values
+  for (int i = 0; i < num_particles; ++i)
   {
     Particle p;
-    p.x = norm_x(gen);
-    p.y = norm_y(gen);
-    p.h = norm_h(gen);
-    p.w = prob;
-    random_particles.push_back(p);
+    p.x = dist_x(rand_gen); // take a random value from the Gaussian Normal distribution and update the attribute
+    p.y = dist_y(rand_gen);
+    p.h = dist_theta(rand_gen);
+    p.w = 1;
+
+    particles[i] = p;
+    weights[i] = p.w;
   }
-
-  return random_particles;
-}
-
-double quaternionToYaw(double w, double x, double y, double z)
-{
-  double t1 = 2.0 * (w * z + x * y);
-  double t2 = 1.0 - 2.0 * (y * y + z * z);
-  double yaw = atan2(t1, t2);
-
-  return yaw;
-}
-
-ParticleFilter::ParticleFilter(PoseWithCovarianceStamped initial_guess, int N, const octomap::OcTree &tree) : tree(tree), N(N)
-{
-  weights.resize(N);
-  particles.resize(N);
-
-  auto q = initial_guess.pose.pose.orientation;
-  double h = quaternionToYaw(q.w, q.x, q.y, q.z);
-
-  Pose initial_guess_pose{
-      initial_guess.pose.pose.position.x,
-      initial_guess.pose.pose.position.y,
-      h};
-
-  Pose initial_guess_stdev{
-      // Why these indices? See http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/PoseWithCovariance.html
-      initial_guess.pose.covariance[0],
-      initial_guess.pose.covariance[7],
-      0.5 // radians
-  };
-
-  this->particles = generateParticles(
-      initial_guess_pose, initial_guess_stdev, N);
-
-  this->latest_time = initial_guess.header.stamp;
+  is_initialized = true;
 }
 
 PoseWithCovarianceStamped ParticleFilter::generatePose()
@@ -278,13 +292,19 @@ PoseWithCovarianceStamped ParticleFilter::generatePose()
   variance_pose.h /= this->particles.size();
   variance_pose.h = fmod(variance_pose.h, M_2_PI); // Wrap to [0, 2*pi]
 
+  // Construct quaternion from roll=0, pitch=0, yaw
+  Eigen::Quaternionf q;
+  q = Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitX()) *
+      Eigen::AngleAxisf(0.0, Eigen::Vector3f::UnitY()) *
+      Eigen::AngleAxisf(mean_pose.h, Eigen::Vector3f::UnitZ());
+
   auto pose_msg = PoseWithCovarianceStamped();
   pose_msg.pose.pose.position.x = mean_pose.x;
   pose_msg.pose.pose.position.y = mean_pose.y;
-  pose_msg.pose.pose.orientation.w = cos(mean_pose.h / 2);
-  pose_msg.pose.pose.orientation.x = 0.0;
-  pose_msg.pose.pose.orientation.y = 0.0;
-  pose_msg.pose.pose.orientation.z = sin(mean_pose.h / 2);
+  pose_msg.pose.pose.orientation.w = q.w();
+  pose_msg.pose.pose.orientation.x = q.x();
+  pose_msg.pose.pose.orientation.y = q.y();
+  pose_msg.pose.pose.orientation.z = q.z();
 
   // std::printf("Pose is now: (%f,%f,%f)\n",
   //             mean_pose.x,
@@ -314,7 +334,6 @@ PointCloud2 ParticleFilter::asPointCloud()
   pcl::toROSMsg(pcl_cloud, ros_cloud);
 
   ros_cloud.header.frame_id = "map";
-  ros_cloud.header.stamp = this->latest_time;
 
   return ros_cloud;
 }
