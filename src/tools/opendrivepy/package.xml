@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>opendrivepy</name>
+  <version>1.0.0</version>
+  <description>Tools for reading and operating on OpenDRIVE map data</description>
+
+  <maintainer email="project.nova@utdallas.edu">Will Heitman</maintainer>
+
+  <license>MIT</license>
+
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>python-transforms3d-pip</depend>
+  <depend>python3-numpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>tf_transformations</depend>
+
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <test_depend>ament_cmake_nose</test_depend>
+  <test_depend>python3-nose</test_depend>
+  <test_depend>rclpy</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

@@ -21,6 +21,9 @@ from sensor_msgs.msg import NavSatFix
 from nav_msgs.msg import Odometry, OccupancyGrid
 from geometry_msgs.msg import Point, Quaternion, TransformStamped
 
+import opendrivepy as odrpy
+from opendrivepy.map import Map as OdrMap
+
 import pymap3d as pm
 
 
@@ -98,6 +101,7 @@ class MapManagementNode(Node):
         map_string: str = msg.data
 
         self.map = Map(map_string)
+        new_map = OdrMap(map_string)
         self.map.grid.header.frame_id = 'map'
         self.map.grid.header.stamp = self.clock.clock
 

@@ -86,7 +86,7 @@ class Map():
             left_sections = lsec.getElementsByTagName("left")
 
             if len(left_sections) == 0:
-                print(f"{road_name} has no left section!")
+                # print(f"{road_name} has no left section!")
                 left_width = 0.0
             else:
                 left_lanes = left_sections[0].getElementsByTagName("lane")
@@ -101,7 +101,7 @@ class Map():
             right_sections = lsec.getElementsByTagName("right")
 
             if len(right_sections) == 0:
-                print(f"{road_name} has no right section!")
+                # print(f"{road_name} has no right section!")
                 right_width = 0.0
             else:
                 right_lanes = right_sections[0].getElementsByTagName("lane")
@@ -123,7 +123,7 @@ class Map():
             plt.plot([point[0] for point in right_bound.coords],
                      [point[1] for point in right_bound.coords])
 
-        plt.show()
+        # plt.show()
 
         self.grid.data = np.ones(
             (metadata.height, metadata.width), dtype=int).flatten().tolist()
