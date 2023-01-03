@@ -32,9 +32,9 @@ class MapManagementNode(Node):
 
     def __init__(self):
         super().__init__('map_management')
-        self.map_string_sub = self.create_subscription(
-            String, '/carla/map', self.map_string_cb, 10
-        )
+        # self.map_string_sub = self.create_subscription(
+        #     String, '/carla/map', self.map_string_cb, 10
+        # )
 
         self.gnss_sub = self.create_subscription(
             NavSatFix, '/carla/hero/gnss', self.gnss_cb, 10
@@ -69,12 +69,28 @@ class MapManagementNode(Node):
             )
         )
 
+        self.map_string = ""
+
+        self.grid_pub_timer = self.create_timer(1, self.publish_map_grid)
+
         self.get_logger().info("Waiting for map data...")
         self.map = None
         self.clock = Clock()
         self.world_info = CarlaWorldInfo()
 
+    def publish_map_grid(self):
+        if (self.map is None):
+            return
+        self.grid_pub.publish(self.map.grid)
+
     def clock_cb(self, msg: Clock):
+        if self.map_string == "":
+            with open('/navigator/map_string.xml', 'r') as f:
+                self.map_string = f.read()
+            map_msg = String()
+            map_msg.data = self.map_string
+            self.map_string_cb(map_msg)
+
         self.clock = msg
 
     def map_string_cb(self, msg: String):
@@ -84,8 +100,6 @@ class MapManagementNode(Node):
         self.map = Map(map_string)
         self.map.grid.header.frame_id = 'map'
         self.map.grid.header.stamp = self.clock.clock
-
-        self.grid_pub.publish(self.map.grid)
 
         self.get_logger().info("{},{}".format(self.map.north, self.map.south))
 

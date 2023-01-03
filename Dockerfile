@@ -32,6 +32,7 @@ RUN apt update && echo "net.core.rmem_max=8388608\nnet.core.rmem_default=8388608
 # Code here should either be moved to install-dependencies.sh or removed
 # before each major release.
 RUN apt update && apt install -y ros-foxy-octomap octovis ros-foxy-pcl-ros ros-foxy-tf2-eigen
+RUN pip3 install shapely==2.0.0
 #################
 #  END CLEANUP  #
 #################
