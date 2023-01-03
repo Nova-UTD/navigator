@@ -14,10 +14,10 @@ class Road:
     id: int
     length: float
     junction: int
-    speed_limit: float
-    type: RoadType
-    next: Road
-    prev: Road
-    refline: LineString
-    lane_offset: LineString
-    sections: list[LaneSection]
+    speed_limit_ms: float = 10  # meters per second, per ROS standards
+    type: RoadType = 'town'
+    next: Road = None
+    prev: Road = None
+    refline: LineString = None
+    lane_offset: LineString = None
+    sections: list[LaneSection] = None

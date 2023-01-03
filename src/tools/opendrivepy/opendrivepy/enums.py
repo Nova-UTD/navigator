@@ -23,6 +23,7 @@ class LaneType(Enum):
 class RoadType(Enum):
     BICYCLE = 1
     LOW_SPEED = auto()
+    JUNCTION = auto()
     MOTORWAY = auto()
     PEDESTRIAN = auto()
     RURAL = auto()
@@ -34,3 +35,4 @@ class RoadType(Enum):
     TOWN_PRIVATE = auto()
     TOWN = auto()
     UNKNOWN = auto()
+    NONE = auto
