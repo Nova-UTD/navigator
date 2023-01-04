@@ -5,6 +5,7 @@ import numpy as np
 from shapely.geometry import LineString, Point, Polygon, MultiPolygon
 from shapely.prepared import prep, PreparedGeometry
 from shapely.strtree import STRtree
+from tqdm import tqdm, trange
 
 import xml.etree.ElementTree as ET
 
@@ -34,10 +35,10 @@ class Map:
         self.roads = self._parse_roads_(self._root_)
         self.road_tree = self._build_road_area_tree_()
 
-        p = Point(42, -220)
-        print(self.road_tree.intersects(p))
+        # p = Point(42, -220)
+        # print(self.road_tree.intersects(p))
 
-        self.road_grid = self._build_road_grid_(1.0, self.road_tree)
+        self.road_grid = self._build_road_grid_(0.4, self.road_tree)
 
         # result = self.road_tree.query(
         #     Point(42, -220), predicate="within").tolist()
@@ -49,7 +50,7 @@ class Map:
 
         plt.show()
 
-    def _build_road_grid_(self, cell_size: float, tree: PreparedGeometry) -> np.array:
+    def _build_road_grid_(self, cell_size: float, tree: STRtree) -> np.array:
         width_m = self.header.east_bound - self.header.west_bound
         width = math.ceil(width_m/cell_size)
 
@@ -65,7 +66,10 @@ class Map:
         points = []
         X = X.flatten()
         Y = Y.flatten()
-        for i in range(0, len(X)):
+
+        tqdm_range = trange(0, len(X))
+        tqdm_range.set_description("Creating Points")
+        for i in tqdm_range:
             points.append(Point(X[i], Y[i]))
 
         x_hits = []
@@ -73,7 +77,18 @@ class Map:
 
         plt.show()
 
-        result = np.array(tree.contains(points),
+        hits = []
+
+        progress = tqdm(points)
+        progress.set_description("Querying Points")
+        for point in progress:
+            res = tree.query(point, predicate="within").tolist()
+            if len(res) == 0:
+                hits.append(False)
+            else:
+                hits.append(True)
+
+        result = np.array(hits,
                           dtype=int).reshape(height, width)
 
         plt.imshow(result)
@@ -83,8 +98,6 @@ class Map:
         #     x_hits.append(hit.x)
         #     y_hits.append(hit.y)
         # plt.scatter(x_hits, y_hits)
-
-        print(result)
 
         # print(points[1:10])
 
@@ -101,7 +114,7 @@ class Map:
                     if lane.type == LaneType.DRIVING:
                         geoms.append(lane.shape)
 
-        return prep(MultiPolygon(geoms))
+        return STRtree(geoms)
 
     def _parse_header_(self, root: ET.Element) -> Header:
         header = root.find('header')
