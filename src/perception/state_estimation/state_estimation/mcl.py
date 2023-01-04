@@ -22,44 +22,41 @@ This code is adapted from Roger Labbe: https://github.com/rlabbe/Kalman-and-Baye
 
 '''
 
+from numpy.random import seed
 import math
 import numpy as np
+from numpy.random import randn, random
 import scipy
+import scipy.stats
 import time
+import matplotlib.pyplot as plt
 
 
 class MCL:
 
-    def __init__(self, map: np.array, initial_xyh: np.array):
-        self.map = map
-        self.initial_xyh = initial_xyh
-        self.time = time.time()
+    def create_gaussian_particles(self, mean, std, N):
+        particles = np.empty((N, 3))
+        particles[:, 0] = mean[0] + (randn(N) * std[0])
+        particles[:, 1] = mean[1] + (randn(N) * std[1])
+        particles[:, 2] = mean[2] + (randn(N) * std[2])
+        particles[:, 2] %= 2 * np.pi
+        return particles
 
-    def predict_new_poses(self, particles: np.array, s: float, dh: float, std: np.array):
-        """Given speed s and heading change dh, plus 
-        std [speed_std, heading_std], update the states of all particles.
-
-        Args:
-            particles (np.array): _description_
-            s (float): _description_
-            dh (float): _description_
-            std (np.array): _description_
-        """
+    def predict(self, particles, u, std, dt=1.):
+        """ move according to control input u (heading change, velocity)
+        with noise Q (std heading change, std velocity)`"""
 
         N = len(particles)
-        dt = time.time() - self.time
-        self.time = time.time()
-
         # update heading
-        particles[:, 2] += dh*dt + (np.random.randn(N) * std[0])
+        particles[:, 2] += u[0] + (randn(N) * std[0])
         particles[:, 2] %= 2 * np.pi
 
         # move in the (noisy) commanded direction
-        dist = (s * dt) + (np.random.randn(N) * std[1])
+        dist = (u[1] * dt) + (randn(N) * std[1])
         particles[:, 0] += np.cos(particles[:, 2]) * dist
         particles[:, 1] += np.sin(particles[:, 2]) * dist
 
-    def update_weights(self, particles: np.array, weights: np.array, z, R, landmarks):
+    def update(self, particles, weights, z, R, landmarks):
         for i, landmark in enumerate(landmarks):
             distance = np.linalg.norm(particles[:, 0:2] - landmark, axis=1)
             weights *= scipy.stats.norm(distance, R).pdf(z[i])
@@ -67,31 +64,141 @@ class MCL:
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
 
-    def estimate(self, particles: np.array, weights: np.array):
-        """Returns the mean and variance of the weighted particles
-
-        Args:
-            particles (np.array): The weighted particles.
-            weights (np.array): The weights
-
-        Returns:
-            _type_: _description_
-        """        """returns mean and variance of the weighted particles"""
+    def estimate(self, particles, weights):
+        """returns mean and variance of the weighted particles"""
 
         pos = particles[:, 0:2]
         mean = np.average(pos, weights=weights, axis=0)
         var = np.average((pos - mean)**2, weights=weights, axis=0)
         return mean, var
 
-    def resample(self, particles, weights):
+    def simple_resample(particles, weights):
         N = len(particles)
         cumulative_sum = np.cumsum(weights)
         cumulative_sum[-1] = 1.  # avoid round-off error
-        indexes = np.searchsorted(cumulative_sum, np.random.random(N))
+        indexes = np.searchsorted(cumulative_sum, random(N))
 
         # resample according to indexes
         particles[:] = particles[indexes]
         weights.fill(1.0 / N)
 
-    def neff(weights):
+    def neff(self, weights):
         return 1. / np.sum(np.square(weights))
+
+    def resample_from_index(self, particles, weights, indexes):
+        particles[:] = particles[indexes]
+        weights.resize(len(particles))
+        weights.fill(1.0 / len(weights))
+
+    def create_uniform_particles(self, x_range, y_range, hdg_range, N):
+        particles = np.empty((N, 3))
+        particles[:, 0] = np.random.uniform(x_range[0], x_range[1], size=N)
+        particles[:, 1] = np.random.uniform(y_range[0], y_range[1], size=N)
+        particles[:, 2] = np.random.uniform(hdg_range[0], hdg_range[1], size=N)
+        particles[:, 2] %= 2 * np.pi
+        return particles
+
+    def run_pf1(self, N, iters=18, sensor_std_err=.1,
+                do_plot=True, plot_particles=False,
+                xlim=(0, 20), ylim=(0, 20),
+                initial_x=None):
+        landmarks = np.array([[-1, 2], [5, 10], [12, 14], [18, 21]])
+        NL = len(landmarks)
+
+        plt.figure()
+
+        # create particles and weights
+        if initial_x is not None:
+            particles = self.create_gaussian_particles(
+                mean=initial_x, std=(5, 5, np.pi/4), N=N)
+        else:
+            particles = self.create_uniform_particles(
+                (0, 20), (0, 20), (0, 6.28), N)
+        weights = np.ones(N) / N
+
+        if plot_particles:
+            alpha = .20
+            if N > 5000:
+                alpha *= np.sqrt(5000)/np.sqrt(N)
+            plt.scatter(particles[:, 0], particles[:, 1],
+                        alpha=alpha, color='g')
+
+        xs = []
+        robot_pos = np.array([0., 0.])
+        for x in range(iters):
+            robot_pos += (1, 1)
+
+            # distance from robot to each landmark
+            zs = (np.linalg.norm(landmarks - robot_pos, axis=1) +
+                  (randn(NL) * sensor_std_err))
+
+            # move diagonally forward to (x+1, x+1)
+            self.predict(particles, u=(0.00, 1.414), std=(.2, .05))
+
+            # incorporate measurements
+            self.update(particles, weights, z=zs, R=sensor_std_err,
+                        landmarks=landmarks)
+
+            # resample if too few effective particles
+            if self.neff(weights) < N/2:
+                indexes = self.systematic_resample(weights)
+                self.resample_from_index(particles, weights, indexes)
+                assert np.allclose(weights, 1/N)
+            mu, var = self.estimate(particles, weights)
+            xs.append(mu)
+
+            if plot_particles:
+                plt.scatter(particles[:, 0], particles[:, 1],
+                            color='k', marker=',', s=1)
+            p1 = plt.scatter(robot_pos[0], robot_pos[1], marker='+',
+                             color='k', s=180, lw=3)
+            p2 = plt.scatter(mu[0], mu[1], marker='s', color='r')
+
+        xs = np.array(xs)
+        #plt.plot(xs[:, 0], xs[:, 1])
+        plt.legend([p1, p2], ['Actual', 'PF'], loc=4, numpoints=1)
+        plt.xlim(*xlim)
+        plt.ylim(*ylim)
+        print('final position error, variance:\n\t',
+              mu - np.array([iters, iters]), var)
+        plt.show()
+
+    # From Roger Labbe's filterpy
+    # https://github.com/rlabbe/filterpy/blob/master/filterpy/monte_carlo/resampling.py
+    def systematic_resample(self, weights):
+        """ Performs the systemic resampling algorithm used by particle filters.
+        This algorithm separates the sample space into N divisions. A single random
+        offset is used to to choose where to sample from for all divisions. This
+        guarantees that every sample is exactly 1/N apart.
+        Parameters
+        ----------
+        weights : list-like of float
+            list of weights as floats
+        Returns
+        -------
+        indexes : ndarray of ints
+            array of indexes into the weights defining the resample. i.e. the
+            index of the zeroth resample is indexes[0], etc.
+        """
+        N = len(weights)
+
+        # make N subdivisions, and choose positions with a consistent random offset
+        positions = (random() + np.arange(N)) / N
+
+        indexes = np.zeros(N, 'i')
+        cumulative_sum = np.cumsum(weights)
+        i, j = 0, 0
+        while i < N:
+            if positions[i] < cumulative_sum[j]:
+                indexes[i] = j
+                i += 1
+            else:
+                j += 1
+        return indexes
+
+
+if __name__ == "__main__":
+    print("YEET")
+    seed(2)
+    mcl = MCL()
+    mcl.run_pf1(N=5000, plot_particles=False)

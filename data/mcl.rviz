@@ -11,7 +11,6 @@ Panels:
         - /TF1/Frames1
         - /Map1
         - /Map1/Position1
-        - /Marker1
       Splitter Ratio: 0.5
     Tree Height: 482
   - Class: rviz_common/Selection
@@ -325,17 +324,17 @@ Visualization Manager:
       Use Timestamp: true
       Value: true
     - Class: rviz_default_plugins/Marker
-      Enabled: true
+      Enabled: false
       Name: Marker
       Namespaces:
-        grid: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /grid/bounds
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 222; 255; 251
@@ -386,9 +385,9 @@ Visualization Manager:
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 61.48091125488281
-        Y: -159.14126586914062
-        Z: -15.628528594970703
+        X: 76.50320434570312
+        Y: -228.4760284423828
+        Z: -15.613195419311523
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
