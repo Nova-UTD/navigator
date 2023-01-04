@@ -87,8 +87,11 @@ class Map:
         result = np.array(hits,
                           dtype=np.int8).reshape(height, width)
 
+        # 100 = completely occupied. Only affects occupied cells.
+        result *= 100
+
         plt.imshow(result)
-        plt.show()
+        # plt.show()
 
         self.header.grid_height = height
         self.header.grid_width = width

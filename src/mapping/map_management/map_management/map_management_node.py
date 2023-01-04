@@ -7,34 +7,33 @@ Node to subscribe to, provide, and handle map data, routes,
 and related functions.
 '''
 
+import math
+from array import array as Array
+from xml.etree import ElementTree as ET
+
+import numpy as np
+import opendrivepy as odrpy
+import pymap3d as pm
 import rclpy
 import ros2_numpy as rnp
-import numpy as np
+from carla_msgs.msg import CarlaWorldInfo
+from geometry_msgs.msg import Point, Pose, Quaternion, TransformStamped
+from nav_msgs.msg import MapMetaData, OccupancyGrid, Odometry
+from opendrivepy.map import Map
 from rclpy.node import Node, QoSProfile
 from rclpy.qos import DurabilityPolicy
 from rosgraph_msgs.msg import Clock
-
-from carla_msgs.msg import CarlaWorldInfo
-from sensor_msgs.msg import PointCloud2
-from std_msgs.msg import String
-from sensor_msgs.msg import NavSatFix
-from nav_msgs.msg import Odometry, OccupancyGrid, MapMetaData
-from geometry_msgs.msg import Point, Quaternion, TransformStamped, Pose
-
-import opendrivepy as odrpy
-from opendrivepy.map import Map
-from array import array as Array
-
-import pymap3d as pm
-
-
-from xml.etree import ElementTree as ET
+from sensor_msgs.msg import NavSatFix, PointCloud2
+from std_msgs.msg import ColorRGBA, String
+from visualization_msgs.msg import Marker
 
 
 class MapManagementNode(Node):
 
     def __init__(self):
         super().__init__('map_management')
+        self.odr_map: Map = None
+
         self.map_string_sub = self.create_subscription(
             String, '/carla/map', self.map_string_cb, 10
         )
@@ -72,6 +71,9 @@ class MapManagementNode(Node):
             )
         )
 
+        self.grid_bounds_pub = self.create_publisher(
+            Marker, '/grid/bounds', 10)
+
         self.map_string = ""
 
         self.grid_pub_timer = self.create_timer(1, self.publish_map_grid)
@@ -83,10 +85,26 @@ class MapManagementNode(Node):
 
     def publish_map_grid(self):
         if (self.road_grid is None):
-            print("Road grid unset")
             return
-        print("Pub time!")
         self.grid_pub.publish(self.road_grid)
+
+        marker = Marker()
+        marker.action = Marker.ADD
+        marker.color.r = 1.0
+        marker.color.a = 1.0
+        marker.frame_locked = True
+        marker.header.frame_id = 'map'
+        marker.header.stamp = self.clock.clock
+        marker.id = 1
+        marker.ns = 'grid'
+        marker.pose.position.x = self.odr_map.header.x_0
+        marker.pose.position.y = self.odr_map.header.y_0
+        marker.scale.x = 20.0
+        marker.scale.y = 10.0
+        marker.scale.z = 10.0
+        marker.type = Marker.ARROW
+
+        self.grid_bounds_pub.publish(marker)
 
     def clock_cb(self, msg: Clock):
         if self.map_string == "":
@@ -101,7 +119,7 @@ class MapManagementNode(Node):
         self.get_logger().info("Received map. Processing now...")
         map_string: str = msg.data
 
-        grid_resolution = 0.2
+        grid_resolution = 0.4
         self.odr_map: Map = Map(map_string, grid_resolution=grid_resolution)
 
         road_grid_arr: np.array = self.odr_map.road_grid
@@ -115,9 +133,14 @@ class MapManagementNode(Node):
         meta.resolution = grid_resolution
 
         origin = Pose()
-        origin.position.x = self.odr_map.header.x_0
-        origin.position.y = self.odr_map.header.y_0
+        origin.position.x = self.odr_map.header.west_bound
+        origin.position.y = self.odr_map.header.south_bound
+        # origin.orientation.w = math.cos(-1*math.pi / 4)
+        # origin.orientation.z = math.sin(-1*math.pi / 4)
         meta.origin = origin
+
+        print(
+            f"Grid origin: ({origin.position.x},{origin.position.y},{origin.position.z}) @ {math.acos(origin.orientation.z)*2}")
 
         road_grid_msg.info = meta
         road_grid_msg.header.frame_id = 'map'
@@ -125,7 +148,7 @@ class MapManagementNode(Node):
         self.road_grid = road_grid_msg
 
     def gnss_cb(self, msg: NavSatFix):
-        if self.map is None:
+        if self.odr_map is None:
             return
         enu_xyz = pm.geodetic2enu(
             msg.latitude,
