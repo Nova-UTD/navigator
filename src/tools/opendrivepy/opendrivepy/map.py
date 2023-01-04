@@ -23,7 +23,7 @@ class Map:
     """The root OpenDRIVE object.
     """
 
-    def __init__(self, map_str: str):
+    def __init__(self, map_str: str, grid_resolution=1.0):
         """Initialize the map and add roads, lanes, etc to it
 
         Args:
@@ -38,7 +38,8 @@ class Map:
         # p = Point(42, -220)
         # print(self.road_tree.intersects(p))
 
-        self.road_grid = self._build_road_grid_(0.4, self.road_tree)
+        self.road_grid = self._build_road_grid_(
+            grid_resolution, self.road_tree)
 
         # result = self.road_tree.query(
         #     Point(42, -220), predicate="within").tolist()
@@ -47,8 +48,6 @@ class Map:
 
         self.controllers = []
         self.junctions = []
-
-        plt.show()
 
     def _build_road_grid_(self, cell_size: float, tree: STRtree) -> np.array:
         width_m = self.header.east_bound - self.header.west_bound
@@ -72,9 +71,6 @@ class Map:
         for i in tqdm_range:
             points.append(Point(X[i], Y[i]))
 
-        x_hits = []
-        y_hits = []
-
         plt.show()
 
         hits = []
@@ -89,22 +85,16 @@ class Map:
                 hits.append(True)
 
         result = np.array(hits,
-                          dtype=int).reshape(height, width)
+                          dtype=np.int8).reshape(height, width)
 
         plt.imshow(result)
+        plt.show()
 
-        # for hit in result:
-        #     print(hit)
-        #     x_hits.append(hit.x)
-        #     y_hits.append(hit.y)
-        # plt.scatter(x_hits, y_hits)
+        self.header.grid_height = height
+        self.header.grid_width = width
+        self.header.grid_resolution = cell_size
 
-        # print(points[1:10])
-
-        # plt.scatter(185.1, -135.0, s=10, c='r')
-        # plt.scatter(100, -150, s=10, c='r')
-
-        # print(f"Grid will be {width} x {height}")
+        return result
 
     def _build_road_area_tree_(self) -> PreparedGeometry:
         geoms = []
@@ -300,10 +290,10 @@ class Map:
             shape_pts += right_bound_coords
             lane.shape = Polygon(shape_pts)
 
-            plt.fill([point[0] for point in lane.shape.exterior.coords],
-                     [point[1] for point in lane.shape.exterior.coords], "paleturquoise")
-            plt.plot([point[0] for point in lane.shape.exterior.coords],
-                     [point[1] for point in lane.shape.exterior.coords], 'k')
+            # plt.fill([point[0] for point in lane.shape.exterior.coords],
+            #          [point[1] for point in lane.shape.exterior.coords], "paleturquoise")
+            # plt.plot([point[0] for point in lane.shape.exterior.coords],
+            #          [point[1] for point in lane.shape.exterior.coords], 'k')
 
             i += 1
             right_bound = left_bound
@@ -335,11 +325,11 @@ class Map:
             shape_pts += right_bound_coords
             lane.shape = Polygon(shape_pts)
 
-            plt.fill([point[0] for point in lane.shape.exterior.coords],
-                     [point[1] for point in lane.shape.exterior.coords], "lightseagreen")
+            # plt.fill([point[0] for point in lane.shape.exterior.coords],
+            #          [point[1] for point in lane.shape.exterior.coords], "lightseagreen")
 
-            plt.plot([point[0] for point in lane.shape.exterior.coords],
-                     [point[1] for point in lane.shape.exterior.coords], 'k')
+            # plt.plot([point[0] for point in lane.shape.exterior.coords],
+            #          [point[1] for point in lane.shape.exterior.coords], 'k')
             i -= 1
             left_bound = right_bound
 

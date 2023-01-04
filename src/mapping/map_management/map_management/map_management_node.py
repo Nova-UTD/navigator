@@ -18,26 +18,26 @@ from carla_msgs.msg import CarlaWorldInfo
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
 from sensor_msgs.msg import NavSatFix
-from nav_msgs.msg import Odometry, OccupancyGrid
-from geometry_msgs.msg import Point, Quaternion, TransformStamped
+from nav_msgs.msg import Odometry, OccupancyGrid, MapMetaData
+from geometry_msgs.msg import Point, Quaternion, TransformStamped, Pose
 
 import opendrivepy as odrpy
-from opendrivepy.map import Map as OdrMap
+from opendrivepy.map import Map
+from array import array as Array
 
 import pymap3d as pm
 
 
 from xml.etree import ElementTree as ET
-from map_management.map import Map
 
 
 class MapManagementNode(Node):
 
     def __init__(self):
         super().__init__('map_management')
-        # self.map_string_sub = self.create_subscription(
-        #     String, '/carla/map', self.map_string_cb, 10
-        # )
+        self.map_string_sub = self.create_subscription(
+            String, '/carla/map', self.map_string_cb, 10
+        )
 
         self.gnss_sub = self.create_subscription(
             NavSatFix, '/carla/hero/gnss', self.gnss_cb, 10
@@ -82,9 +82,11 @@ class MapManagementNode(Node):
         self.world_info = CarlaWorldInfo()
 
     def publish_map_grid(self):
-        if (self.map is None):
+        if (self.road_grid is None):
+            print("Road grid unset")
             return
-        self.grid_pub.publish(self.map.grid)
+        print("Pub time!")
+        self.grid_pub.publish(self.road_grid)
 
     def clock_cb(self, msg: Clock):
         if self.map_string == "":
@@ -92,20 +94,35 @@ class MapManagementNode(Node):
                 self.map_string = f.read()
             map_msg = String()
             map_msg.data = self.map_string
+            self.clock = msg
             self.map_string_cb(map_msg)
-
-        self.clock = msg
 
     def map_string_cb(self, msg: String):
         self.get_logger().info("Received map. Processing now...")
         map_string: str = msg.data
 
-        self.map = Map(map_string)
-        new_map = OdrMap(map_string)
-        self.map.grid.header.frame_id = 'map'
-        self.map.grid.header.stamp = self.clock.clock
+        grid_resolution = 0.2
+        self.odr_map: Map = Map(map_string, grid_resolution=grid_resolution)
 
-        self.get_logger().info("{},{}".format(self.map.north, self.map.south))
+        road_grid_arr: np.array = self.odr_map.road_grid
+        road_grid_msg = OccupancyGrid()
+        road_grid_msg.data = Array('b', road_grid_arr.ravel().astype(np.int8))
+
+        meta = MapMetaData()
+        meta.height = road_grid_arr.shape[0]
+        meta.width = road_grid_arr.shape[1]
+        meta.map_load_time = self.clock.clock
+        meta.resolution = grid_resolution
+
+        origin = Pose()
+        origin.position.x = self.odr_map.header.x_0
+        origin.position.y = self.odr_map.header.y_0
+        meta.origin = origin
+
+        road_grid_msg.info = meta
+        road_grid_msg.header.frame_id = 'map'
+        road_grid_msg.header.stamp = self.clock.clock
+        self.road_grid = road_grid_msg
 
     def gnss_cb(self, msg: NavSatFix):
         if self.map is None:
@@ -114,8 +131,8 @@ class MapManagementNode(Node):
             msg.latitude,
             msg.longitude,
             msg.altitude,
-            self.map.lat0,
-            self.map.lon0,
+            self.odr_map.header.lat_0,
+            self.odr_map.header.lon_0,
             0.0
         )
         odom_msg = Odometry()

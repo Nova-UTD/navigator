@@ -11,3 +11,6 @@ class Header:
     lon_0: float
     x_0: float
     y_0: float
+    grid_width: float = None
+    grid_height: float = None
+    grid_resolution: float = None
