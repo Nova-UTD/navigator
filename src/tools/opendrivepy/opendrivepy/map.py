@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import math
-from shapely.geometry import LineString, Polygon
+import numpy as np
+from shapely.geometry import LineString, Point, Polygon, MultiPolygon
+from shapely.prepared import prep, PreparedGeometry
+from shapely.strtree import STRtree
+
 import xml.etree.ElementTree as ET
 
 # Strictly for testing/debug
 import matplotlib.pyplot as plt
 
-from .enums import RoadType
+from .enums import LaneType, RoadType
 from .header import Header
 from .lane import Lane
 from .lane_section import LaneSection
@@ -15,16 +19,89 @@ from .road import Road
 
 
 class Map:
+    """The root OpenDRIVE object.
+    """
+
     def __init__(self, map_str: str):
+        """Initialize the map and add roads, lanes, etc to it
+
+        Args:
+            map_str (str): XML OpenDRIVE map data
+        """
         self._root_ = ET.fromstring(map_str)
 
         self.header = self._parse_header_(self._root_)
         self.roads = self._parse_roads_(self._root_)
+        self.road_tree = self._build_road_area_tree_()
 
-        self.shapes = []
-        self.roads = []
+        p = Point(42, -220)
+        print(self.road_tree.intersects(p))
+
+        self.road_grid = self._build_road_grid_(1.0, self.road_tree)
+
+        # result = self.road_tree.query(
+        #     Point(42, -220), predicate="within").tolist()
+        # result_shape = self.road_tree.geometries.take(result).tolist()
+        # print(self.road_tree.geometries)
+
         self.controllers = []
         self.junctions = []
+
+        plt.show()
+
+    def _build_road_grid_(self, cell_size: float, tree: PreparedGeometry) -> np.array:
+        width_m = self.header.east_bound - self.header.west_bound
+        width = math.ceil(width_m/cell_size)
+
+        height_m = self.header.north_bound - self.header.south_bound
+        height = math.ceil(height_m/cell_size)
+
+        x0 = self.header.west_bound
+        x1 = self.header.east_bound
+        y0 = self.header.south_bound
+        y1 = self.header.north_bound
+
+        Y, X = np.mgrid[y0:y1:height*1j, x0:x1:width*1j]
+        points = []
+        X = X.flatten()
+        Y = Y.flatten()
+        for i in range(0, len(X)):
+            points.append(Point(X[i], Y[i]))
+
+        x_hits = []
+        y_hits = []
+
+        plt.show()
+
+        result = np.array(tree.contains(points),
+                          dtype=int).reshape(height, width)
+
+        plt.imshow(result)
+
+        # for hit in result:
+        #     print(hit)
+        #     x_hits.append(hit.x)
+        #     y_hits.append(hit.y)
+        # plt.scatter(x_hits, y_hits)
+
+        print(result)
+
+        # print(points[1:10])
+
+        # plt.scatter(185.1, -135.0, s=10, c='r')
+        # plt.scatter(100, -150, s=10, c='r')
+
+        # print(f"Grid will be {width} x {height}")
+
+    def _build_road_area_tree_(self) -> PreparedGeometry:
+        geoms = []
+        for road in self.roads:
+            for lsec in road.sections:
+                for lane in lsec.lanes:
+                    if lane.type == LaneType.DRIVING:
+                        geoms.append(lane.shape)
+
+        return prep(MultiPolygon(geoms))
 
     def _parse_header_(self, root: ET.Element) -> Header:
         header = root.find('header')
@@ -52,6 +129,8 @@ class Map:
         return Header(north, south, east, west, lat0, lon0, x0, y0)
 
     def _parse_roads_(self, root: ET.Element) -> list[Road]:
+        roads = []
+
         for road_xml in root.iter('road'):
             attrs = road_xml.attrib
 
@@ -88,10 +167,14 @@ class Map:
                 else:
                     raise RuntimeError('Invalid speed unit')
 
+            road.lane_offset = float(road_xml.find(
+                'lanes').find('laneOffset').attrib['a'])
+
             self._generate_refline_(road_xml, road)
             self._parse_lane_sections_(road_xml, road)
+            roads.append(road)
 
-        plt.show()
+        return roads
 
     def _generate_refline_(self, road_xml: ET.Element, road: Road):
         points = []
@@ -127,14 +210,22 @@ class Map:
         #          [point[1] for point in road.refline.coords], linewidth=8.0)
 
     def _parse_lane_sections_(self, road_xml: ET.Element, road: Road):
+        sections = []
         for lsec_xml in road_xml.find('lanes').iter('laneSection'):
             attrs = lsec_xml.attrib
             lsec = LaneSection(float(attrs['s']), road=road)
+
             self._parse_lanes_(lsec_xml, lsec)
+
+            sections.append(lsec)
+
+        road.sections = sections
 
     def _parse_lanes_(self, lsec_xml: ET.Element, lsec: LaneSection):
         lsec.lanes = []
         width_dict = {}
+
+        whitelist = [146, 9, 10, 133]
 
         # Iterate through <left>, <center>, and <right>
         for subsec_xml in lsec_xml.iter():
@@ -143,9 +234,19 @@ class Map:
                 lane = Lane(
                     lsec=lsec,
                     road=lsec.road,
-                    id=int(attrs['id']),
-                    type=attrs['type']
+                    id=int(attrs['id'])
                 )
+
+                if attrs['type'] == 'driving':
+                    lane.type = LaneType.DRIVING
+                elif attrs['type'] == 'sidewalk':
+                    lane.type = LaneType.SIDEWALK
+                elif attrs['type'] == 'shoulder':
+                    lane.type = LaneType.SHOULDER
+                elif attrs['type'] == 'none':
+                    lane.type = LaneType.NONE
+                else:
+                    lane.type = LaneType.OTHER  # TODO: Add the other types
                 lsec.lanes.append(lane)
                 width_xml = lane_xml.find('width')
                 if lane.id == 0:
@@ -161,6 +262,8 @@ class Map:
         # Procedure:
         # 1. Start with lane #0 and iterate up
 
+        lane_offset = lane.road.lane_offset
+
         # Left (positive) lanes
         i = 1
         right_bound: LineString = lsec.road.refline
@@ -171,7 +274,9 @@ class Map:
         while lsec.findLane(i) is not None:
             lane = lsec.findLane(i)
             lane_width = width_dict[i]
-            left_bound = right_bound.parallel_offset(lane_width, 'left')
+            lane_offset = lane.road.lane_offset
+            left_bound = right_bound.parallel_offset(
+                lane_width + lane_offset, 'left')
             lane.left_bound = left_bound
             lane.right_bound = right_bound
 
@@ -182,24 +287,31 @@ class Map:
             shape_pts += right_bound_coords
             lane.shape = Polygon(shape_pts)
 
-            whitelist = [1, 12, 16]
-            if 1:
-                plt.fill([point[0] for point in lane.shape.exterior.coords],
-                         [point[1] for point in lane.shape.exterior.coords], "r")
+            plt.fill([point[0] for point in lane.shape.exterior.coords],
+                     [point[1] for point in lane.shape.exterior.coords], "paleturquoise")
+            plt.plot([point[0] for point in lane.shape.exterior.coords],
+                     [point[1] for point in lane.shape.exterior.coords], 'k')
 
             i += 1
             right_bound = left_bound
 
         # Right (positive) lanes
         i = -1
-        left_bound: LineString = lsec.road.refline
+
+        # TODO: Fix this. Does not work with arcs with laneOffset
+        if lane_offset > 0.05:
+            left_bound = lsec.road.refline.parallel_offset(
+                -1*lane_offset, 'right')
+        else:
+            left_bound: LineString = lsec.road.refline
 
         # Keep going right until we exit the lane ("None")
         while lsec.findLane(i) is not None:
             lane = lsec.findLane(i)
             lane_width = width_dict[i]
 
-            right_bound = left_bound.parallel_offset(lane_width, 'right')
+            right_bound = left_bound.parallel_offset(
+                lane_width, 'right')
             lane.left_bound = left_bound
             lane.right_bound = right_bound
 
@@ -209,11 +321,12 @@ class Map:
             right_bound_coords.reverse()
             shape_pts += right_bound_coords
             lane.shape = Polygon(shape_pts)
-            whitelist = [1, 12, 16]
-            if 1:
-                plt.fill([point[0] for point in lane.shape.exterior.coords],
-                         [point[1] for point in lane.shape.exterior.coords], "b")
-                print(f"{lane.road.id}: {lane_width}")
+
+            plt.fill([point[0] for point in lane.shape.exterior.coords],
+                     [point[1] for point in lane.shape.exterior.coords], "lightseagreen")
+
+            plt.plot([point[0] for point in lane.shape.exterior.coords],
+                     [point[1] for point in lane.shape.exterior.coords], 'k')
             i -= 1
             left_bound = right_bound
 

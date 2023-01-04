@@ -13,7 +13,7 @@ class Lane:
     lsec: LaneSection
     road: Road
     id: int
-    type: LaneType
+    type: LaneType = None
     predecessors: list[Lane] = None
     successors: list[Lane] = None
     shape: Polygon = None
