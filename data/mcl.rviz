@@ -7,10 +7,10 @@ Panels:
         - /Global Options1
         - /Status1
         - /Smoothed GNSS1
-        - /TF1
         - /TF1/Frames1
-        - /Map1
         - /Map1/Position1
+        - /LiDAR1
+        - /PointCloud21
       Splitter Ratio: 0.5
     Tree Height: 482
   - Class: rviz_common/Selection
@@ -47,39 +47,6 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz_default_plugins/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: Intensity
-      Decay Time: 0
-      Enabled: false
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 0.9708789587020874
-      Min Color: 0; 0; 0
-      Min Intensity: 0.7196741700172424
-      Name: Filtered LiDAR
-      Position Transformer: XYZ
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.30000001192092896
-      Style: Flat Squares
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /lidar_filtered
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: false
     - Class: rviz_common/Group
       Displays:
         - Class: rviz_default_plugins/Image
@@ -268,32 +235,10 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Class: rviz_default_plugins/TF
-      Enabled: true
+      Enabled: false
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        base_link:
-          Value: true
-        hero:
-          Value: true
-        hero/depth_camera:
-          Value: true
-        hero/gnss:
-          Value: true
-        hero/imu:
-          Value: true
-        hero/lidar:
-          Value: true
-        hero/rgb_center:
-          Value: true
-        hero/rgb_left:
-          Value: true
-        hero/rgb_right:
-          Value: true
-        hero/semantic_camera:
-          Value: true
-        model_link:
-          Value: true
       Marker Scale: 100
       Name: TF
       Show Arrows: true
@@ -302,7 +247,7 @@ Visualization Manager:
       Tree:
         {}
       Update Interval: 0
-      Value: true
+      Value: false
     - Alpha: 0.699999988079071
       Class: rviz_default_plugins/Map
       Color Scheme: map
@@ -335,10 +280,80 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /grid/bounds
       Value: false
+    - Class: rviz_common/Group
+      Displays:
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz_default_plugins/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: Intensity
+          Decay Time: 0
+          Enabled: false
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Max Intensity: 0.9708789587020874
+          Min Color: 0; 0; 0
+          Min Intensity: 0.7196741700172424
+          Name: Filtered LiDAR
+          Position Transformer: XYZ
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.30000001192092896
+          Style: Flat Squares
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /lidar_filtered
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: false
+      Enabled: true
+      Name: LiDAR
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 85; 255
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.30000001192092896
+      Style: Flat Squares
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /lidar_semantic_filtered
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 222; 255; 251
-    Fixed Frame: map
+    Fixed Frame: base_link
     Frame Rate: 30
   Name: root
   Tools:
@@ -378,16 +393,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 383.59442138671875
+      Distance: 40.527950286865234
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 76.50320434570312
-        Y: -228.4760284423828
-        Z: -15.613195419311523
+        X: 0.40324702858924866
+        Y: -1.925870418548584
+        Z: -0.9542250037193298
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -396,7 +411,7 @@ Visualization Manager:
       Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.1371119022369385
+      Yaw: 3.1371090412139893
     Saved: ~
 Window Geometry:
   Center RGB:

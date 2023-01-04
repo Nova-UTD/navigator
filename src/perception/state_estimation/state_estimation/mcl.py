@@ -91,6 +91,24 @@ class MCL:
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
 
+    def update_weights(self, particles, weights, cloud: np.array, cells: np.array):
+        """Update weights by checking each particle's alignment in the occupancy grid.
+
+        Args:
+            particles (_type_): _description_
+            weights (_type_): _description_
+            cloud (np.array): [[x,y], [x,y], ...]
+            cells (np.array): Each cell is either 0 or 1, where 1 is occupied.
+        """
+        # Round each point in the cloud down to an int
+        cloud = cloud.astype(np.int8)
+
+        # Now each point represents an index in cells. Convenient!
+        cloud -= self.map_origin
+
+        for pt in cloud:
+            print(pt)
+
     def estimate(self, particles: np.array, weights) -> tuple:
         """Return mean and variance of particles
 
@@ -133,20 +151,30 @@ class MCL:
         particles[:, 2] %= 2 * np.pi
         return particles
 
-    def __init__(self, initial_pose: np.array, map: np.array, N=100):
+    def __init__(self, initial_pose: np.array, map: np.array, map_origin=np.array([0.0, 0.0]), N=100):
         self.particles = self.create_gaussian_particles(
             mean=initial_pose, std=(5, 5, np.pi/4), N=N)
 
         self.weights = np.ones(N) / N
 
         self.map = map
+        self.map_origin = map_origin
 
-    def step(self, heading_change: float, speed: float, cloud: np.array):
+    def step(self, heading_change: float, speed: float, cloud: np.array) -> tuple:
         self.predict(self.particles, np.array(
             [heading_change, speed]), std=np.array([0.2, 1.0]))
 
-        self.update_orig(self.particles, self.weights, z=zs, R=sensor_std_err,
-                         landmarks=landmarks)
+        self.update_weights(self.particles, self.weights, cloud, self.map)
+
+        # Determine if a resample is necessary
+        # N/2 is a good threshold
+        if self.neff(self.weights) < self.N/2:
+            indexes = self.systematic_resample(self.weights)
+            self.resample_from_index(self.particles, self.weights, indexes)
+            assert np.allclose(self.weights, 1/self.N)
+        mu, var = self.estimate(self.particles, self.weights)
+
+        return mu, var
 
     def run_pf1(self, N, iters=18, sensor_std_err=.1,
                 plot_particles=False,
