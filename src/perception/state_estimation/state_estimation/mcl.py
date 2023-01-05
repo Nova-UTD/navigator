@@ -99,6 +99,21 @@ class MCL:
             cells (np.array): Each cell is either 0 or 1, where 1 is occupied.
         """
 
+        # The cloud is given in the vehicle frame.
+        # We need it in the map frame
+        alignments = []
+        for particle in particles:
+
+            # First rotate
+            theta = particle[2]
+            r = np.array([[np.cos(theta), -1*np.sin(theta)],
+                          [np.sin(theta), np.cos(theta)]])
+
+            transformed_cloud = np.dot(cloud, r.T)
+
+            # Then translate
+            transformed_cloud[:] += particle[0:2]
+
         # Translate relative to map origin
         cloud = np.subtract(cloud, self.map_origin)
 

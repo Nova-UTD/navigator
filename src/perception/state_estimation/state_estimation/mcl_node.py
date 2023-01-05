@@ -58,6 +58,9 @@ class MCLNode(Node):
         self.map_sub = self.create_subscription(
             OccupancyGrid, '/grid/map', self.map_cb, 10)
 
+        self.particle_cloud_pub = self.create_publisher(
+            PointCloud2, '/mcl/particles', 10)
+
         self.tf_broadcaster = TransformBroadcaster(self)
 
     def clock_cb(self, msg: Clock):
@@ -74,6 +77,25 @@ class MCLNode(Node):
         delta[2] %= 2*np.pi
         return delta
 
+    def publish_particle_cloud(self):
+        particles = self.filter.particles
+        N = len(particles)
+        cloud_array = np.zeros(N, dtype=[
+            ('x', np.float32),
+            ('y', np.float32),
+            ('z', np.float32),
+            ('i', np.float32)
+        ])
+        cloud_array['x'] = particles[:, 0]
+        cloud_array['y'] = particles[:, 1]
+        cloud_array['z'] = particles[:, 2]
+        cloud_array['i'] = self.filter.weights
+
+        msg: PointCloud2 = rnp.msgify(PointCloud2, cloud_array)
+        msg.header.stamp = self.clock.clock
+        msg.header.frame_id = 'map'
+        self.particle_cloud_pub.publish(msg)
+
     def cloud_cb(self, msg: PointCloud2):
         # Update our filter
         if self.filter is None:
@@ -85,6 +107,7 @@ class MCLNode(Node):
         cloud = np.vstack((cloud_formatted['x'], cloud_formatted['y'])).T
 
         mu, var = self.filter.step(delta, cloud)
+        self.publish_particle_cloud()
 
         # Form a map->base_link transform
         t = TransformStamped()
