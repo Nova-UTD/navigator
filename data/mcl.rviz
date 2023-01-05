@@ -213,7 +213,8 @@ Visualization Manager:
       Show Arrows: true
       Show Axes: true
       Show Names: false
-      Tree: {}
+      Tree:
+        {}
       Update Interval: 0
       Value: false
     - Alpha: 0.699999988079071
@@ -333,9 +334,9 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 0.015624839812517166
+      Max Intensity: 0.015573475509881973
       Min Color: 0; 0; 0
-      Min Intensity: 2.8460502221605566e-07
+      Min Intensity: 0.0007359013543464243
       Name: Particles
       Position Transformer: XYZ
       Selectable: true
@@ -394,25 +395,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 47.96500778198242
+      Distance: 88.74186706542969
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 31.161922454833984
-        Y: -186.46646118164062
-        Z: -23.16124725341797
+        X: 193.52784729003906
+        Y: -176.3299102783203
+        Z: 1.423309326171875
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.267532467842102
+      Pitch: 1.4625447988510132
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 6.023437023162842
+      Yaw: -2.4952902793884277
     Saved: ~
 Window Geometry:
   Center RGB:

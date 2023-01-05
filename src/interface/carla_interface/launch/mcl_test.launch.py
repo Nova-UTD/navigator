@@ -59,7 +59,7 @@ def generate_launch_description():
 
     state_estimation = Node(
         package='state_estimation',
-        executable='carla_estimation_node'
+        executable='gnss_processing_node'
     )
 
     map_manager = Node(

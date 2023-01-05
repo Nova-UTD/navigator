@@ -13,6 +13,8 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 
 from carla_msgs.msg import CarlaRoute
+from geometry_msgs.msg import Pose, PoseStamped
+from nav_msgs.msg import Path
 from rosgraph_msgs.msg import Clock
 from std_msgs.msg import Bool, ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
@@ -36,11 +38,34 @@ class LeaderboardLiaisonNode(Node):
         self.wp_marker_pub = self.create_publisher(
             MarkerArray, '/viz/wayppoints', 10)
 
+        self.route_path_pub = self.create_publisher(Path, '/route/path', 10)
+        self.route_repub_timer = self.create_timer(1.0, self.publish_route)
+
         self.client = carla.Client('localhost', 2005)
         self.world = self.client.get_world()
+        self.route = None
 
     def clock_cb(self, msg: Clock):
         self.clock = msg
+
+    def publish_route(self):
+
+        if self.route is None:
+            return  # Route not yet received
+
+        # Publish the route as a path
+        path = Path()
+
+        for pose in self.route.poses:
+            pose: Pose
+            pose_stamped = PoseStamped()
+            pose_stamped.pose = pose
+            path.poses.append(pose_stamped)
+
+        path.header.frame_id = 'map'
+        path.header.stamp = self.clock.clock
+
+        self.route_path_pub.publish(path)
 
     def route_cb(self, msg: CarlaRoute):
         self.get_logger().info("Received route with {} waypoints".format(len(msg.poses)))

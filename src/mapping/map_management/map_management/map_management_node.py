@@ -87,6 +87,8 @@ class MapManagementNode(Node):
     def publish_map_grid(self):
         if (self.road_grid is None):
             return
+
+        self.road_grid.header.stamp = self.clock.clock
         self.grid_pub.publish(self.road_grid)
 
         marker = Marker()

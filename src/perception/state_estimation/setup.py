@@ -24,7 +24,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'carla_estimation_node = state_estimation.carla_estimation_node:main',
+            'gnss_processing_node = state_estimation.gnss_processing_node:main',
             'mcl_node = state_estimation.mcl_node:main',
         ],
     }

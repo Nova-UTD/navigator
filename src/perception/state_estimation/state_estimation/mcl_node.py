@@ -118,6 +118,8 @@ class MCLNode(Node):
             delta, cloud, self.gnss_pose)
         self.publish_particle_cloud()
 
+        self.get_logger().info(f"Diff: {str(self.gnss_pose-result_pose)}")
+
         # Turn our filter result into a transform
         t = TransformStamped()
         t.header.frame_id = 'map'

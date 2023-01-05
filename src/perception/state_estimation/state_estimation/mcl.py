@@ -206,6 +206,12 @@ class MCL:
         self.map_origin = map_origin
         self.grid_resolution = grid_resolution
 
+    def reset(self, initial_pose=np.array([0.0, 0.0, 0.0]), N=100):
+        self.particles = self.create_gaussian_particles(
+            mean=initial_pose, std=(2, 2, np.pi/8), N=N)
+
+        self.weights = np.ones(N) / N
+
     def step(self, delta: np.array, cloud: np.array, gnss_pose: np.array) -> tuple:
 
         self.predict(self.particles, delta, std=np.array([0.0, 0.0, 0.0]))
@@ -221,6 +227,11 @@ class MCL:
             self.resample_from_index(self.particles, self.weights, indexes)
             assert np.allclose(self.weights, 1/N)
         mu, var = self.estimate(self.particles, self.weights)
+
+        gnss_difference = np.linalg.norm(mu - gnss_pose)
+
+        if gnss_difference > 5:
+            self.reset(gnss_pose, N=100)
 
         return mu, var
 

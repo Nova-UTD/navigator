@@ -23,7 +23,7 @@ from sensor_msgs.msg import Imu
 from tf2_ros import TransformBroadcaster
 
 
-class CarlaEstimationNode(Node):
+class GnssProcessingNode(Node):
 
     def __init__(self):
         super().__init__('gnss_estimation_node')
@@ -190,14 +190,14 @@ class CarlaEstimationNode(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    carla_estimation_node = CarlaEstimationNode()
+    gnss_processing_node = GnssProcessingNode()
 
-    rclpy.spin(carla_estimation_node)
+    rclpy.spin(gnss_processing_node)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    carla_estimation_node.destroy_node()
+    gnss_processing_node.destroy_node()
     rclpy.shutdown()
 
 
