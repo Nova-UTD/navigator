@@ -117,8 +117,8 @@ class MCLNode(Node):
         t.transform.translation.x = mu[0]
         t.transform.translation.y = mu[1]
         # print(mu)
-        t.transform.rotation.w = math.cos(mu[2])
-        t.transform.rotation.z = math.sin(mu[2])
+        t.transform.rotation.w = math.cos(mu[2] / 2)
+        t.transform.rotation.z = math.sin(mu[2] / 2)
 
         self.tf_broadcaster.sendTransform(t)
 
@@ -126,7 +126,7 @@ class MCLNode(Node):
 
     def gnss_cb(self, msg: Odometry):
         pose_msg = msg.pose.pose
-        yaw = 2*math.acos(pose_msg.orientation.z) + math.pi/4
+        yaw = 2*math.asin(pose_msg.orientation.z)
         self.gnss_pose = np.array([
             pose_msg.position.x,
             pose_msg.position.y,
