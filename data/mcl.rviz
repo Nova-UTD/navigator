@@ -329,13 +329,13 @@ Visualization Manager:
           Color: 255; 85; 255
           Color Transformer: FlatColor
           Decay Time: 0
-          Enabled: false
+          Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Max Intensity: 4096
           Min Color: 0; 0; 0
           Min Intensity: 0
-          Name: Ground Points
+          Name: Road Points
           Position Transformer: XYZ
           Selectable: true
           Size (Pixels): 3
@@ -349,7 +349,7 @@ Visualization Manager:
             Value: /lidar_semantic_filtered
           Use Fixed Frame: true
           Use rainbow: true
-          Value: false
+          Value: true
       Enabled: true
       Name: LiDAR
     - Alpha: 1
@@ -367,10 +367,10 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 0.009999999776482582
+      Max Intensity: 0.022561317309737206
       Min Color: 0; 0; 0
-      Min Intensity: 0.009999999776482582
-      Name: PointCloud2
+      Min Intensity: 0.0013574237236753106
+      Name: Particles
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 3
@@ -428,16 +428,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 109.29571533203125
+      Distance: 114.23975372314453
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -12.734338760375977
-        Y: -162.1498565673828
-        Z: -39.06887435913086
+        X: -3.800645351409912
+        Y: -246.51663208007812
+        Z: -33.063331604003906
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false

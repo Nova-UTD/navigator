@@ -116,7 +116,7 @@ class MCLNode(Node):
         t.child_frame_id = 'hero'
         t.transform.translation.x = mu[0]
         t.transform.translation.y = mu[1]
-        print(mu)
+        # print(mu)
         t.transform.rotation.w = math.cos(mu[2])
         t.transform.rotation.z = math.sin(mu[2])
 

@@ -102,6 +102,7 @@ class MCL:
         # The cloud is given in the vehicle frame.
         # We need it in the map frame
         alignments = []
+
         for particle in particles:
 
             # First rotate
@@ -114,12 +115,31 @@ class MCL:
             # Then translate
             transformed_cloud[:] += particle[0:2]
 
-        # Translate relative to map origin
-        cloud = np.subtract(cloud, self.map_origin)
+            # Translate relative to map origin
+            transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
 
-        # Round each point in the cloud down to an int
-        # Now each point represents an index in cells. Convenient!
-        cloud = cloud.astype(np.int8)
+            # Round each point in the cloud down to an int
+            # Now each point represents an index in cells. Convenient!
+            grid_indices = transformed_cloud.astype(np.int8)
+
+            hits = 0
+
+            for index in grid_indices[::10]:
+                if cells[index[0], index[1]] == 100:
+                    # print("Hit!")
+                    hits += 1
+                # elif cells[index[0], index[1]] != 0:
+                #     print(cells[index[0], index[1]])
+
+            alignment = hits / len(cloud)
+            alignments.append(alignment)
+
+        # print(alignments)
+
+        weights *= alignments
+
+        weights += 1.e-300      # avoid round-off to zero
+        weights /= sum(weights)  # normalize
 
     def estimate(self, particles: np.array, weights) -> tuple:
         """Return mean and variance of particles
