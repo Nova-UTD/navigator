@@ -53,25 +53,23 @@ class MCL:
 
         return particles
 
-    def predict(self, particles: np.array, u: np.array, std: np.array, dt=1.) -> None:
+    def predict(self, particles: np.array, delta: np.array, std: np.array) -> None:
         """Move each particle based on a noisy motion prediction
 
         Args:
             particles (np.array): array of particles
-            u (np.array): [heading change, velocity]
-            std (np.array): [std_heading_change, std_velocity]
-            dt (float, optional): Time since last motion update. Defaults to 1..
+            delta (np.array): [dx, dy, dtheta]
+            std (np.array): standard deviation of delta
         """
 
         N = len(particles)
-        # update heading
-        particles[:, 2] += u[0] + (randn(N) * std[0])
-        particles[:, 2] %= 2 * np.pi
+        # print(particles)
+        # print(delta)
+        particles[:] += delta  # + (randn(N) * std)
+        particles += (randn(N, 3) * std)
 
-        # move in the (noisy) commanded direction
-        dist = (u[1] * dt) + (randn(N) * std[1])
-        particles[:, 0] += np.cos(particles[:, 2]) * dist
-        particles[:, 1] += np.sin(particles[:, 2]) * dist
+        # Wrap heading to [0, 2*pi]
+        particles[:, 2] %= 2 * np.pi
 
     def update_orig(self, particles: np.array, weights: np.array, z: np.array, R: np.array, landmarks: np.array) -> None:
         """Update the weights of each particle based on our current observation
@@ -100,14 +98,13 @@ class MCL:
             cloud (np.array): [[x,y], [x,y], ...]
             cells (np.array): Each cell is either 0 or 1, where 1 is occupied.
         """
+
+        # Translate relative to map origin
+        cloud = np.subtract(cloud, self.map_origin)
+
         # Round each point in the cloud down to an int
-        cloud = cloud.astype(np.int8)
-
         # Now each point represents an index in cells. Convenient!
-        cloud -= self.map_origin
-
-        for pt in cloud:
-            print(pt)
+        cloud = cloud.astype(np.int8)
 
     def estimate(self, particles: np.array, weights) -> tuple:
         """Return mean and variance of particles
@@ -151,27 +148,27 @@ class MCL:
         particles[:, 2] %= 2 * np.pi
         return particles
 
-    def __init__(self, initial_pose: np.array, map: np.array, map_origin=np.array([0.0, 0.0]), N=100):
+    def __init__(self, grid: np.array, initial_pose=np.array([0.0, 0.0, 0.0]), map_origin=np.array([0.0, 0.0]), N=100):
         self.particles = self.create_gaussian_particles(
             mean=initial_pose, std=(5, 5, np.pi/4), N=N)
 
         self.weights = np.ones(N) / N
 
-        self.map = map
+        self.grid = grid
         self.map_origin = map_origin
 
-    def step(self, heading_change: float, speed: float, cloud: np.array) -> tuple:
-        self.predict(self.particles, np.array(
-            [heading_change, speed]), std=np.array([0.2, 1.0]))
+    def step(self, delta: np.array, cloud: np.array) -> tuple:
+        self.predict(self.particles, delta, std=np.array([1.0, 1.0, 0.2]))
 
-        self.update_weights(self.particles, self.weights, cloud, self.map)
+        self.update_weights(self.particles, self.weights, cloud, self.grid)
 
         # Determine if a resample is necessary
         # N/2 is a good threshold
-        if self.neff(self.weights) < self.N/2:
+        N = len(self.particles)
+        if self.neff(self.weights) < N/2:
             indexes = self.systematic_resample(self.weights)
             self.resample_from_index(self.particles, self.weights, indexes)
-            assert np.allclose(self.weights, 1/self.N)
+            assert np.allclose(self.weights, 1/N)
         mu, var = self.estimate(self.particles, self.weights)
 
         return mu, var

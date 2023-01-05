@@ -95,6 +95,6 @@ def generate_launch_description():
         lidar_processor,
 
         # STATE ESTIMATION
-        # map_manager,
+        map_manager,
         state_estimation,
     ])

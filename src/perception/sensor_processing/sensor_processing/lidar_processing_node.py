@@ -128,9 +128,7 @@ class LidarProcessingNode(Node):
         pcd_array: np.array = rnp.numpify(msg)
 
         # Only keep ground points for now
-        self.get_logger().info(str(len(pcd_array)))
         pcd_array = pcd_array[pcd_array['ObjTag'] == 7]
-        self.get_logger().info(f"Is now {str(len(pcd_array))}")
 
         min_y = np.min(pcd_array['y'])
         max_y = np.max(pcd_array['y'])

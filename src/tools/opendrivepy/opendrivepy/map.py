@@ -90,7 +90,7 @@ class Map:
         # 100 = completely occupied. Only affects occupied cells.
         result *= 100
 
-        plt.imshow(result)
+        # plt.imshow(result)
         # plt.show()
 
         self.header.grid_height = height

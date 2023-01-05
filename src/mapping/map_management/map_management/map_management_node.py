@@ -33,6 +33,7 @@ class MapManagementNode(Node):
     def __init__(self):
         super().__init__('map_management')
         self.odr_map: Map = None
+        self.road_grid = None
 
         self.map_string_sub = self.create_subscription(
             String, '/carla/map', self.map_string_cb, 10
@@ -145,6 +146,9 @@ class MapManagementNode(Node):
         road_grid_msg.info = meta
         road_grid_msg.header.frame_id = 'map'
         road_grid_msg.header.stamp = self.clock.clock
+
+        if self.road_grid is None:
+            self.get_logger().info("Setting road grid")
         self.road_grid = road_grid_msg
 
     def gnss_cb(self, msg: NavSatFix):
