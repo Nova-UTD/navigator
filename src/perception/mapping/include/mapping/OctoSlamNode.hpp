@@ -66,7 +66,7 @@ namespace navigator
       const std::string MAP_SAVE_PATH = "/navigator/data/maps/";
       const double HIGH_RES_DISTANCE = 20; // meters
       const double MED_RES_DISTANCE = 40;  // meters
-      const std::string INITIAL_GUESS_ODOM_TOPIC = "/odometry/gnss_smoothed";
+      const std::string INITIAL_GUESS_ODOM_TOPIC = "/odometry/gnss_processed";
 
       // Publishers
       rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr voxel_marker_pub;

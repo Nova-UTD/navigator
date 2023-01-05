@@ -55,7 +55,7 @@ class MapManagementNode(Node):
             0.5, self.repub_world_info)
 
         self.odom_pub = self.create_publisher(
-            Odometry, '/odometry/gnss', 10
+            Odometry, '/odometry/gnss_raw', 10
         )
 
         self.odom_raw_pub = self.create_publisher(
@@ -67,7 +67,7 @@ class MapManagementNode(Node):
         )
 
         self.grid_pub = self.create_publisher(
-            OccupancyGrid, '/grid/map', qos_profile=QoSProfile(
+            OccupancyGrid, '/grid/drivable', qos_profile=QoSProfile(
                 depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL
             )
         )

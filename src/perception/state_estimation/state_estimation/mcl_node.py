@@ -23,13 +23,11 @@ import math
 import numpy as np
 import rclpy
 import ros2_numpy as rnp
-from geometry_msgs.msg import (Point, Pose, Quaternion, TransformStamped,
-                               Vector3)
+from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, PointCloud2
-from state_estimation import mcl
 from tf2_ros import TransformBroadcaster
 
 from .mcl import MCL
@@ -53,10 +51,10 @@ class MCLNode(Node):
             PointCloud2, '/lidar_semantic_filtered', self.cloud_cb, 10)
 
         self.gnss_sub = self.create_subscription(
-            Odometry, '/odometry/gnss_smoothed', self.gnss_cb, 10)
+            Odometry, '/odometry/gnss_processed', self.gnss_cb, 10)
 
         self.map_sub = self.create_subscription(
-            OccupancyGrid, '/grid/map', self.map_cb, 10)
+            OccupancyGrid, '/grid/drivable', self.map_cb, 10)
 
         self.particle_cloud_pub = self.create_publisher(
             PointCloud2, '/mcl/particles', 10)
@@ -97,31 +95,43 @@ class MCLNode(Node):
         self.particle_cloud_pub.publish(msg)
 
     def cloud_cb(self, msg: PointCloud2):
-        # Update our filter
+        """Update our filter with the latest observations and publish the result
+
+        Args:
+            msg (PointCloud2): Our latest observations from e.g. road segmentation
+        """
+
+        # Wait until filter is created
         if self.filter is None:
             return
 
+        # Change in pose since last filter update
         delta = self.get_motion_delta(self.old_gnss_pose, self.gnss_pose)
 
+        # The filter accepts clouds as a (N,2) array. Format accordingly.
         cloud_formatted = rnp.numpify(msg)
         cloud = np.vstack((cloud_formatted['x'], cloud_formatted['y'])).T
 
-        mu, var = self.filter.step(delta, cloud, self.gnss_pose)
+        # step() is the critical function that feeds data into the filter
+        # and returns a pose and covariance.
+        result_pose, pose_variance = self.filter.step(
+            delta, cloud, self.gnss_pose)
         self.publish_particle_cloud()
 
-        # Form a map->base_link transform
+        # Turn our filter result into a transform
         t = TransformStamped()
         t.header.frame_id = 'map'
         t.header.stamp = self.clock.clock
         t.child_frame_id = 'hero'
-        t.transform.translation.x = mu[0]
-        t.transform.translation.y = mu[1]
-        # print(mu)
-        t.transform.rotation.w = math.cos(mu[2] / 2)
-        t.transform.rotation.z = math.sin(mu[2] / 2)
+        t.transform.translation.x = result_pose[0]
+        t.transform.translation.y = result_pose[1]
+        t.transform.rotation.w = math.cos(result_pose[2] / 2)
+        t.transform.rotation.z = math.sin(result_pose[2] / 2)
 
+        # Broadcast our transform
         self.tf_broadcaster.sendTransform(t)
 
+        # Cache our gnss_pose to calculate the delta later
         self.old_gnss_pose = self.gnss_pose
 
     def gnss_cb(self, msg: Odometry):
@@ -135,7 +145,7 @@ class MCLNode(Node):
 
     def map_cb(self, msg: OccupancyGrid):
         if self.grid is not None:
-            return  # If the map is already initialized, no need to continue
+            return  # Exit if the map is already initialized
         if self.gnss_pose is None:
             return  # Wait for initial guess from GNSS
 

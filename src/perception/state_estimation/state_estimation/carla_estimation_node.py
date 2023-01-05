@@ -29,7 +29,7 @@ class CarlaEstimationNode(Node):
         super().__init__('gnss_estimation_node')
 
         self.odom_sub = self.create_subscription(
-            Odometry, '/odometry/gnss', self.odom_cb, 10
+            Odometry, '/odometry/gnss_raw', self.odom_cb, 10
         )
 
         self.clock_sub = self.create_subscription(
@@ -40,7 +40,7 @@ class CarlaEstimationNode(Node):
         )
 
         self.odom_pub = self.create_publisher(
-            Odometry, '/odometry/gnss_smoothed', 10
+            Odometry, '/odometry/gnss_processed', 10
         )
 
         self.status_pub = self.create_publisher(

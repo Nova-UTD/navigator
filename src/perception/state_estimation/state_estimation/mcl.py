@@ -18,7 +18,10 @@ The particles (poses) gradually converge.
 A particle is an np.array: [x, y, heading, weight]
 
 ACKNOWLEDGEMENT:
-This code is adapted from Roger Labbe: https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/
+This code is adapted from Roger Labbe's work: 
+https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/12-Particle-Filters.ipynb
+
+For a detailed explanation of how the filter works, visit the above link.
 
 '''
 
@@ -109,8 +112,6 @@ class MCL:
 
         for particle in particles:
 
-            start = time.time()
-
             # First rotate
             theta = particle[2]
             r = np.array([[np.cos(theta), -1*np.sin(theta)],
@@ -131,13 +132,6 @@ class MCL:
             # # Now each point represents an index in cells. Convenient!
             grid_indices = transformed_cloud.astype(int)
 
-            # plt.imshow(cells)
-            # print(str(transformed_cloud))
-            # print(str(grid_indices))
-            # plt.scatter(grid_indices[:, 0], grid_indices[:, 1])
-
-            # print(f"A took {time.time() - start}")
-
             start = time.time()
 
             hits = 0
@@ -146,22 +140,11 @@ class MCL:
                 if index[0] >= cells.shape[0] or index[1] >= cells.shape[1]:
                     continue
                 if cells[index[1], index[0]] == 100:
-                    # print("Hit!")
-                    hits += 10
-                # elif cells[index[0], index[1]] != 0:
-            #     #     print(cells[index[0], index[1]])
+                    hits += 1
 
-            # hits = cells[grid_indices[::10]].sum()
-
-            alignment = hits / len(cloud)
-            alignments.append(alignment)
+            alignments.append(hits)
 
         alignments = np.array(alignments)
-
-        # print(
-        #     f"{np.min(alignments)} has weight {weights[np.argmin(alignments)]}")
-        # print(
-        #     f"{np.max(alignments)} has weight {weights[np.argmax(alignments)]}")
 
         particles[:, 2] = gnss_pose[2]
 
@@ -183,7 +166,6 @@ class MCL:
             tuple: _description_
         """
 
-        # pos = particles[:, 0:2]
         mean = np.average(particles, weights=weights, axis=0)
         var = np.average((particles - mean)**2, weights=weights, axis=0)
         return mean, var
@@ -242,71 +224,6 @@ class MCL:
 
         return mu, var
 
-    def run_pf1(self, N, iters=18, sensor_std_err=.1,
-                plot_particles=False,
-                xlim=(0, 20), ylim=(0, 20),
-                initial_x=None):
-        landmarks = np.array([[-1, 2], [5, 10], [12, 14], [18, 21]])
-        NL = len(landmarks)
-
-        plt.figure()
-
-        # create particles and weights
-        if initial_x is not None:
-            particles: np.array = self.create_gaussian_particles(
-                mean=initial_x, std=(5, 5, np.pi/4), N=N)
-        else:
-            particles: np.array = self.create_uniform_particles(
-                (0, 20), (0, 20), (0, 6.28), N)
-        weights = np.ones(N) / N
-
-        if plot_particles:
-            alpha = .20
-            if N > 5000:
-                alpha *= np.sqrt(5000)/np.sqrt(N)
-            plt.scatter(particles[:, 0], particles[:, 1],
-                        alpha=alpha, color='g')
-
-        xs = []
-        robot_pos = np.array([0., 0.])
-        for x in range(iters):
-            robot_pos += (1, 1)
-
-            # distance from robot to each landmark
-            zs = (np.linalg.norm(landmarks - robot_pos, axis=1) +
-                  (randn(NL) * sensor_std_err))
-
-            # move diagonally forward to (x+1, x+1)
-            self.predict(particles, u=(0.00, 1.414), std=(.2, .05))
-
-            # incorporate measurements
-            self.update_orig(particles, weights, z=zs, R=sensor_std_err,
-                             landmarks=landmarks)
-
-            # resample if too few effective particles
-            if self.neff(weights) < N/2:
-                indexes = self.systematic_resample(weights)
-                self.resample_from_index(particles, weights, indexes)
-                assert np.allclose(weights, 1/N)
-            mu, var = self.estimate(particles, weights)
-            xs.append(mu)
-
-            if plot_particles:
-                plt.scatter(particles[:, 0], particles[:, 1],
-                            color='k', marker=',', s=1)
-            p1 = plt.scatter(robot_pos[0], robot_pos[1], marker='+',
-                             color='k', s=180, lw=3)
-            p2 = plt.scatter(mu[0], mu[1], marker='s', color='r')
-
-        xs = np.array(xs)
-        #plt.plot(xs[:, 0], xs[:, 1])
-        plt.legend([p1, p2], ['Actual', 'PF'], loc=4, numpoints=1)
-        plt.xlim(*xlim)
-        plt.ylim(*ylim)
-        print('final position error, variance:\n\t',
-              mu - np.array([iters, iters]), var)
-        plt.show()
-
     # From Roger Labbe's filterpy
     # https://github.com/rlabbe/filterpy/blob/master/filterpy/monte_carlo/resampling.py
     def systematic_resample(self, weights: np.array) -> np.array:
@@ -339,9 +256,3 @@ class MCL:
             else:
                 j += 1
         return indexes
-
-
-if __name__ == "__main__":
-    seed(2)
-    mcl = MCL(np.array([0.0, 0.0, 0.0]), np.zeros((254, 254)))
-    mcl.run_pf1(N=5000, plot_particles=False)

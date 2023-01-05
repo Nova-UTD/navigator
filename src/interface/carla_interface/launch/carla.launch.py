@@ -63,9 +63,10 @@ def generate_launch_description():
         package='robot_localization',
         executable='ukf_node',
         name='localization_map_baselink',
-        parameters=[(path.join(param_dir, "atlas", "map_baselink.param.yaml"))],
+        parameters=[
+            (path.join(param_dir, "atlas", "map_baselink.param.yaml"))],
         remappings=[
-            ("/odom0", "/odometry/gnss"),
+            ("/odom0", "/odometry/gnss_raw"),
             ("/imu0", "/carla/hero/imu")
         ]
     )
@@ -125,8 +126,8 @@ def generate_launch_description():
         package='ground_seg',
         name='ground_seg',
         executable='ground_seg',
-        namespace = 'perception',
-        output = 'screen',
+        namespace='perception',
+        output='screen',
     )
 
     lidar_processor = Node(
@@ -153,7 +154,7 @@ def generate_launch_description():
                     ('vehicle_kinematic_state', '/vehicle/vehicle_kinematic_state')]
     )
 
-    #rrt Node
+    # rrt Node
     rrt_path = Node(
         package='rrt',
         name='rrt_node',
