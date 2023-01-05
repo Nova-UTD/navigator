@@ -89,19 +89,23 @@ class MCL:
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
 
-    def update_weights(self, particles, weights, cloud: np.array, cells: np.array):
+    def update_weights(self, particles, weights, cloud: np.array, cells: np.array, gnss_pose):
         """Update weights by checking each particle's alignment in the occupancy grid.
 
         Args:
             particles (_type_): _description_
             weights (_type_): _description_
             cloud (np.array): [[x,y], [x,y], ...]
-            cells (np.array): Each cell is either 0 or 1, where 1 is occupied.
+            cells (np.array): n rows (x) from map_origin to origin+height_meters, m columns (y)
+            from map_origin to origin+width_meters.
         """
 
         # The cloud is given in the vehicle frame.
         # We need it in the map frame
         alignments = []
+        # for idx, cell in np.ndenumerate(cells[::10, ::10]):
+        #     if cell == 100:
+        #         plt.scatter(idx[1]*10, idx[0]*10, c='k')
 
         for particle in particles:
 
@@ -118,16 +122,26 @@ class MCL:
             # Translate relative to map origin
             transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
 
-            # Round each point in the cloud down to an int
-            # Now each point represents an index in cells. Convenient!
-            grid_indices = transformed_cloud.astype(np.int8)
+            # Scale to cells
+            transformed_cloud /= self.grid_resolution
+
+            # # Round each point in the cloud down to an int
+            # # Now each point represents an index in cells. Convenient!
+            grid_indices = transformed_cloud.astype(int)
+
+            # plt.imshow(cells)
+            # print(str(transformed_cloud))
+            # print(str(grid_indices))
+            # plt.scatter(grid_indices[:, 0], grid_indices[:, 1])
 
             hits = 0
 
             for index in grid_indices[::10]:
-                if cells[index[0], index[1]] == 100:
+                if index[0] >= cells.shape[0] or index[1] >= cells.shape[1]:
+                    continue
+                if cells[index[1], index[0]] == 100:
                     # print("Hit!")
-                    hits += 1
+                    hits += 10
                 # elif cells[index[0], index[1]] != 0:
                 #     print(cells[index[0], index[1]])
 
@@ -135,8 +149,13 @@ class MCL:
             alignments.append(alignment)
 
         # print(alignments)
+        plt.show()
+
+        particles[:, 2] = gnss_pose[2]
 
         weights *= alignments
+        # dists = np.linalg.norm(particles[:, 0:2] - gnss_pose[0:2], axis=1)
+        # weights[dists < 5.0] *= 0.1  # Penalize particles too far from the GNSS
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
@@ -183,19 +202,21 @@ class MCL:
         particles[:, 2] %= 2 * np.pi
         return particles
 
-    def __init__(self, grid: np.array, initial_pose=np.array([0.0, 0.0, 0.0]), map_origin=np.array([0.0, 0.0]), N=100):
+    def __init__(self, grid: np.array, grid_resolution: float, initial_pose=np.array([0.0, 0.0, 0.0]), map_origin=np.array([0.0, 0.0]), N=100):
         self.particles = self.create_gaussian_particles(
-            mean=initial_pose, std=(5, 5, np.pi/4), N=N)
+            mean=initial_pose, std=(2, 2, np.pi/8), N=N)
 
         self.weights = np.ones(N) / N
 
         self.grid = grid
         self.map_origin = map_origin
+        self.grid_resolution = grid_resolution
 
-    def step(self, delta: np.array, cloud: np.array) -> tuple:
+    def step(self, delta: np.array, cloud: np.array, gnss_pose: np.array) -> tuple:
         self.predict(self.particles, delta, std=np.array([1.0, 1.0, 0.2]))
 
-        self.update_weights(self.particles, self.weights, cloud, self.grid)
+        self.update_weights(self.particles, self.weights,
+                            cloud, self.grid, gnss_pose)
 
         # Determine if a resample is necessary
         # N/2 is a good threshold

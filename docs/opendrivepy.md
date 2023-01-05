@@ -57,3 +57,14 @@ Map
 └── junctions: Junction[]
 ```
 
+![image-20230103235217600](/home/main/.config/Typora/typora-user-images/image-20230103235217600.png)
+
+<small>Above: Lane polygons. Errors with the rendering of curved lanes and lane ocause some imperfection.</small>
+
+![image-20230103235227882](/home/main/.config/Typora/typora-user-images/image-20230103235227882.png)
+
+<small>Above: Drivable map using prepared geometry</small>
+
+![image-20230104001856539](/home/main/.config/Typora/typora-user-images/image-20230104001856539.png)
+
+<small>Above: Drivable map using STRTree</small>

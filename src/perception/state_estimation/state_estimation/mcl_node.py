@@ -71,7 +71,7 @@ class MCLNode(Node):
             return np.zeros(3)
 
         delta = current_pose-old_pose
-        delta[2] *= -1  # Why? I don't know
+        # delta[2] *= -1  # Why? I don't know
 
         # Wrap heading to [0, 2*pi]
         delta[2] %= 2*np.pi
@@ -106,7 +106,7 @@ class MCLNode(Node):
         cloud_formatted = rnp.numpify(msg)
         cloud = np.vstack((cloud_formatted['x'], cloud_formatted['y'])).T
 
-        mu, var = self.filter.step(delta, cloud)
+        mu, var = self.filter.step(delta, cloud, self.gnss_pose)
         self.publish_particle_cloud()
 
         # Form a map->base_link transform
@@ -126,7 +126,7 @@ class MCLNode(Node):
 
     def gnss_cb(self, msg: Odometry):
         pose_msg = msg.pose.pose
-        yaw = 2*math.acos(pose_msg.orientation.z)
+        yaw = 2*math.acos(pose_msg.orientation.z) + math.pi/4
         self.gnss_pose = np.array([
             pose_msg.position.x,
             pose_msg.position.y,
@@ -143,7 +143,8 @@ class MCLNode(Node):
                                dtype=np.int8).reshape(msg.info.height, msg.info.width)
 
         origin = msg.info.origin.position
-        self.filter = MCL(self.grid, initial_pose=self.gnss_pose,
+        res = msg.info.resolution
+        self.filter = MCL(self.grid, res, initial_pose=self.gnss_pose,
                           map_origin=np.array([origin.x, origin.y]))
 
         self.get_logger().info("MCL filter created")
