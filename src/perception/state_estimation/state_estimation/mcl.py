@@ -117,9 +117,9 @@ class MCL:
             tuple: _description_
         """
 
-        pos = particles[:, 0:2]
-        mean = np.average(pos, weights=weights, axis=0)
-        var = np.average((pos - mean)**2, weights=weights, axis=0)
+        # pos = particles[:, 0:2]
+        mean = np.average(particles, weights=weights, axis=0)
+        var = np.average((particles - mean)**2, weights=weights, axis=0)
         return mean, var
 
     def simple_resample(particles: np.array, weights: np.array) -> None:

@@ -40,10 +40,14 @@ class MCLNode(Node):
     def __init__(self):
         super().__init__('mcl_node')
 
+        self.clock = Clock()
         self.filter = None
         self.gnss_pose = None
         self.old_gnss_pose = None
         self.grid: np.array = None
+
+        self.clock_sub = self.create_subscription(
+            Clock, '/clock', self.clock_cb, 10)
 
         self.cloud_sub = self.create_subscription(
             PointCloud2, '/lidar_semantic_filtered', self.cloud_cb, 10)
@@ -54,11 +58,17 @@ class MCLNode(Node):
         self.map_sub = self.create_subscription(
             OccupancyGrid, '/grid/map', self.map_cb, 10)
 
+        self.tf_broadcaster = TransformBroadcaster(self)
+
+    def clock_cb(self, msg: Clock):
+        self.clock = msg
+
     def get_motion_delta(self, old_pose, current_pose):
         if old_pose is None:
             return np.zeros(3)
 
         delta = current_pose-old_pose
+        delta[2] *= -1  # Why? I don't know
 
         # Wrap heading to [0, 2*pi]
         delta[2] %= 2*np.pi
@@ -74,7 +84,21 @@ class MCLNode(Node):
         cloud_formatted = rnp.numpify(msg)
         cloud = np.vstack((cloud_formatted['x'], cloud_formatted['y'])).T
 
-        self.filter.step(delta, cloud)
+        mu, var = self.filter.step(delta, cloud)
+
+        # Form a map->base_link transform
+        t = TransformStamped()
+        t.header.frame_id = 'map'
+        t.header.stamp = self.clock.clock
+        t.child_frame_id = 'hero'
+        t.transform.translation.x = mu[0]
+        t.transform.translation.y = mu[1]
+        print(mu)
+        t.transform.rotation.w = math.cos(mu[2])
+        t.transform.rotation.z = math.sin(mu[2])
+
+        self.tf_broadcaster.sendTransform(t)
+
         self.old_gnss_pose = self.gnss_pose
 
     def gnss_cb(self, msg: Odometry):
