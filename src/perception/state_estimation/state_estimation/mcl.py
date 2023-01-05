@@ -109,6 +109,8 @@ class MCL:
 
         for particle in particles:
 
+            start = time.time()
+
             # First rotate
             theta = particle[2]
             r = np.array([[np.cos(theta), -1*np.sin(theta)],
@@ -134,28 +136,38 @@ class MCL:
             # print(str(grid_indices))
             # plt.scatter(grid_indices[:, 0], grid_indices[:, 1])
 
+            # print(f"A took {time.time() - start}")
+
+            start = time.time()
+
             hits = 0
 
-            for index in grid_indices[::10]:
+            for index in grid_indices[::100]:
                 if index[0] >= cells.shape[0] or index[1] >= cells.shape[1]:
                     continue
                 if cells[index[1], index[0]] == 100:
                     # print("Hit!")
                     hits += 10
                 # elif cells[index[0], index[1]] != 0:
-                #     print(cells[index[0], index[1]])
+            #     #     print(cells[index[0], index[1]])
+
+            # hits = cells[grid_indices[::10]].sum()
 
             alignment = hits / len(cloud)
             alignments.append(alignment)
 
-        # print(alignments)
-        plt.show()
+        alignments = np.array(alignments)
+
+        # print(
+        #     f"{np.min(alignments)} has weight {weights[np.argmin(alignments)]}")
+        # print(
+        #     f"{np.max(alignments)} has weight {weights[np.argmax(alignments)]}")
 
         particles[:, 2] = gnss_pose[2]
 
         weights *= alignments
-        # dists = np.linalg.norm(particles[:, 0:2] - gnss_pose[0:2], axis=1)
-        # weights[dists < 5.0] *= 0.1  # Penalize particles too far from the GNSS
+        dists = np.linalg.norm(particles[:, 0:2] - gnss_pose[0:2], axis=1)
+        weights[dists > 4.0] *= 0.1  # Penalize particles too far from the GNSS
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
@@ -213,7 +225,8 @@ class MCL:
         self.grid_resolution = grid_resolution
 
     def step(self, delta: np.array, cloud: np.array, gnss_pose: np.array) -> tuple:
-        self.predict(self.particles, delta, std=np.array([1.0, 1.0, 0.2]))
+
+        self.predict(self.particles, delta, std=np.array([0.0, 0.0, 0.0]))
 
         self.update_weights(self.particles, self.weights,
                             cloud, self.grid, gnss_pose)

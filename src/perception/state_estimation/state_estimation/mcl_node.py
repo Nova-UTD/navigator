@@ -126,7 +126,7 @@ class MCLNode(Node):
 
     def gnss_cb(self, msg: Odometry):
         pose_msg = msg.pose.pose
-        yaw = 2*math.acos(pose_msg.orientation.z) + math.pi/4
+        yaw = 2*math.asin(pose_msg.orientation.z)
         self.gnss_pose = np.array([
             pose_msg.position.x,
             pose_msg.position.y,
