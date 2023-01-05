@@ -24,7 +24,8 @@ class CarlaController(Node):
         )
 
         # Clock subscription
-        self.clock_sub = self.create_subscription(Clock, '/clock', self._tick_, 10)
+        self.clock_sub = self.create_subscription(
+            Clock, '/clock', self._tick_, 10)
         self._cached_clock_ = Clock()
 
         # self.control_timer = self.create_timer(0.05, self.generate_commands)
@@ -39,15 +40,15 @@ class CarlaController(Node):
         command.header.frame_id = 'base_link'
         command.header.stamp = self._cached_clock_.clock
 
-        # # If the current time in seconds is even, drive forward
-        # # Else drive backward
-        # if self._cached_clock_.clock.sec % 2 == 0:
-        #     command.reverse = False
-        # else:
-        #     command.reverse = True
+        # If the current time in seconds is even, drive forward
+        # Else drive backward
+        if self._cached_clock_.clock.sec % 2 == 0:
+            command.reverse = False
+        else:
+            command.reverse = True
 
-        # # Go slowly
-        # command.throttle = 0.0
+        # Go slowly
+        command.throttle = 1.0
 
         # Pubish our finished command
         self.command_pub.publish(command)
