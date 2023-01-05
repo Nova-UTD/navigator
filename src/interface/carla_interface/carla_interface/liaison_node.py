@@ -17,6 +17,8 @@ from rosgraph_msgs.msg import Clock
 from std_msgs.msg import Bool, ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
+import carla
+
 
 class LeaderboardLiaisonNode(Node):
 
@@ -27,10 +29,16 @@ class LeaderboardLiaisonNode(Node):
             Bool, '/carla/hero/status', qos_profile=QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         status_timer = self.create_timer(1.0, self.publish_hero_status)
 
-        self.waypoint_sub = self.create_subscription(CarlaRoute, '/carla/hero/global_plan', self.route_cb, 10)
-        self.clock_sub = self.create_subscription(Clock, '/clock', self.clock_cb, 10)
-        self.wp_marker_pub = self.create_publisher(MarkerArray, '/viz/wayppoints', 10)
-    
+        self.waypoint_sub = self.create_subscription(
+            CarlaRoute, '/carla/hero/global_plan', self.route_cb, 10)
+        self.clock_sub = self.create_subscription(
+            Clock, '/clock', self.clock_cb, 10)
+        self.wp_marker_pub = self.create_publisher(
+            MarkerArray, '/viz/wayppoints', 10)
+
+        self.client = carla.Client('localhost', 2005)
+        self.world = self.client.get_world()
+
     def clock_cb(self, msg: Clock):
         self.clock = msg
 
@@ -47,8 +55,9 @@ class LeaderboardLiaisonNode(Node):
         wp_marker.type = Marker.ARROW
         wp_marker.action = Marker.ADD
         marker_color = ColorRGBA()
-        marker_color.r, marker_color.g, marker_color.b, marker_color.a = (1.0, 1.0, 1.0, 10)
-        
+        marker_color.r, marker_color.g, marker_color.b, marker_color.a = (
+            1.0, 1.0, 1.0, 10)
+
         wp_marker.color = marker_color
         wp_marker.scale.x = 5.0
         wp_marker.scale.y = 2.0
@@ -65,6 +74,16 @@ class LeaderboardLiaisonNode(Node):
         status = Bool()
         status.data = True  # This means "good to go!"
         self.status_pub.publish(status)
+
+        list_actor = self.world.get_actors()
+        for actor_ in list_actor:
+            if isinstance(actor_, carla.TrafficLight):
+                # for any light, first set the light state, then set time. for yellow it is
+                # carla.TrafficLightState.Yellow and Red it is carla.TrafficLightState.Red
+                actor_.set_state(carla.TrafficLightState.Green)
+                actor_.set_green_time(1000.0)
+                # actor_.set_green_time(5000.0)
+                # actor_.set_yellow_time(1000.0)
 
 
 def main(args=None):
