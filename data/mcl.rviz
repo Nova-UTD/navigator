@@ -4,15 +4,8 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
-        - /Status1
-        - /Cameras1
-        - /Smoothed GNSS1
-        - /TF1
         - /TF1/Frames1
-        - /Map1
         - /Map1/Position1
-        - /LiDAR1
       Splitter Ratio: 0.5
     Tree Height: 409
   - Class: rviz_common/Selection
@@ -241,7 +234,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker
       Namespaces:
-        grid: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -382,7 +375,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 222; 255; 251
-    Fixed Frame: map
+    Fixed Frame: hero
     Frame Rate: 30
   Name: root
   Tools:
@@ -422,25 +415,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 470.4307861328125
+      Distance: 81.63724517822266
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 123.81538391113281
-        Y: -202.107421875
-        Z: -6.311923980712891
+        X: 15.403695106506348
+        Y: -19.2863826751709
+        Z: -18.217315673828125
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 0.7097971439361572
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.1528899669647217
+      Yaw: 2.1047351360321045
     Saved: ~
 Window Geometry:
   Center RGB:

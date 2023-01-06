@@ -50,10 +50,10 @@ def generate_launch_description():
             'host': 'localhost',
             'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
             'synchronous_mode': 'True',
-            'town': 'Town02',
+            'town': 'Town12',
             'register_all_sensors': 'False',
             'ego_vehicle_role_name': 'hero',
-            'timeout': '10'
+            'timeout': '30'
         }.items(),
     )
 

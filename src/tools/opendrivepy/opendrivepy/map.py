@@ -91,7 +91,7 @@ class Map:
         result *= 100
 
         # plt.imshow(result)
-        # plt.show()
+        plt.show()
 
         self.header.grid_height = height
         self.header.grid_width = width
@@ -137,7 +137,10 @@ class Map:
     def _parse_roads_(self, root: ET.Element) -> list[Road]:
         roads = []
 
-        for road_xml in root.iter('road'):
+        road_xmls = list()
+        progress = tqdm(list(root.iter('road')))
+        progress.set_description("Parsing roads")
+        for road_xml in progress:
             attrs = road_xml.attrib
 
             # Begin construction
@@ -188,6 +191,9 @@ class Map:
         planview_xml = road_xml.find('planView')
         geom_count = len(list(planview_xml.iter('geometry')))
         for idx, geom_xml in enumerate(planview_xml.iter('geometry')):
+            hdg = float(geom_xml.attrib['hdg'])
+            length = float(geom_xml.attrib['length'])
+
             if geom_xml.find('line') is not None:
                 # We have a straight line
                 x = float(geom_xml.attrib['x'])
@@ -198,22 +204,45 @@ class Map:
 
                 # If this is the last geometry, we need to add an endpoint
                 if (idx == geom_count-1):
-                    hdg = float(geom_xml.attrib['hdg'])
-                    length = float(geom_xml.attrib['length'])
                     end_pt = (x + length*math.cos(hdg),
                               y + length*math.sin(hdg))
                     points.append(end_pt)
             elif geom_xml.find('arc') is not None:
+                arc_xml = geom_xml.find('arc')
                 # TODO: We need to implement arc interpolation... Yikes
                 x = float(geom_xml.attrib['x'])
                 y = float(geom_xml.attrib['y'])
+                curvature = float(arc_xml.attrib['curvature'])
+                r = 1/curvature
+                # Find center point of arc
+                # A positive curvature means a left/CCW arc
+                # The radius vector is normal to the heading
+                center_x = x - r*np.sin(hdg)  # -13.3
+                center_y = y + r*np.cos(hdg)  # -116
+
+                circle_pts = []
+
+                for s in np.linspace(0, length, 10):
+                    angle = s * curvature - np.pi / 2
+                    xs = r * (np.cos(hdg + angle) - np.sin(hdg)) + x
+                    ys = r * (np.sin(hdg + angle) + np.cos(hdg)) + y
+                    points.append((xs, ys))
 
                 start_pt = (x, y)
-                points.append(start_pt)
+                # points.append(start_pt)
 
         road.refline = LineString(points)
         # plt.plot([point[0] for point in road.refline.coords],
         #          [point[1] for point in road.refline.coords], linewidth=8.0)
+
+    def _rotate_point_(self, origin_x, origin_y, theta, x, y):
+        x_ = x-origin_x
+        y_ = y-origin_y
+
+        x_new = x_ * np.cos(theta) - y_ * np.sin(theta)
+        y_new = x_ * np.sin(theta) + y_ * np.cos(theta)
+
+        return (x_new + origin_x, y_new + origin_y)
 
     def _parse_lane_sections_(self, road_xml: ET.Element, road: Road):
         sections = []
@@ -293,10 +322,10 @@ class Map:
             shape_pts += right_bound_coords
             lane.shape = Polygon(shape_pts)
 
-            # plt.fill([point[0] for point in lane.shape.exterior.coords],
-            #          [point[1] for point in lane.shape.exterior.coords], "paleturquoise")
-            # plt.plot([point[0] for point in lane.shape.exterior.coords],
-            #          [point[1] for point in lane.shape.exterior.coords], 'k')
+            plt.fill([point[0] for point in lane.shape.exterior.coords],
+                     [point[1] for point in lane.shape.exterior.coords], "paleturquoise")
+            plt.plot([point[0] for point in lane.shape.exterior.coords],
+                     [point[1] for point in lane.shape.exterior.coords], 'k')
 
             i += 1
             right_bound = left_bound
@@ -328,11 +357,11 @@ class Map:
             shape_pts += right_bound_coords
             lane.shape = Polygon(shape_pts)
 
-            # plt.fill([point[0] for point in lane.shape.exterior.coords],
-            #          [point[1] for point in lane.shape.exterior.coords], "lightseagreen")
+            plt.fill([point[0] for point in lane.shape.exterior.coords],
+                     [point[1] for point in lane.shape.exterior.coords], "lightseagreen")
 
-            # plt.plot([point[0] for point in lane.shape.exterior.coords],
-            #          [point[1] for point in lane.shape.exterior.coords], 'k')
+            plt.plot([point[0] for point in lane.shape.exterior.coords],
+                     [point[1] for point in lane.shape.exterior.coords], 'k')
             i -= 1
             left_bound = right_bound
 

@@ -111,7 +111,7 @@ class MapManagementNode(Node):
 
     def clock_cb(self, msg: Clock):
         if self.map_string == "":
-            with open('/navigator/map_string.xml', 'r') as f:
+            with open('/navigator/lb_map.xml', 'r') as f:
                 self.map_string = f.read()
             map_msg = String()
             map_msg.data = self.map_string
