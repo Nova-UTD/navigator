@@ -32,7 +32,7 @@ namespace odr
         bool with_lateralProfile = true;
         bool with_laneHeight = true;
         bool with_road_objects = true;
-        bool center_map = true;
+        bool center_map = false;
         bool abs_z_for_for_local_road_obj_outline = false;
     };
 
@@ -56,11 +56,14 @@ namespace odr
         std::map<std::string, Junction> id_to_junction;
         bgi::rtree<value, bgi::rstar<16, 4>> generate_mesh_tree();
         std::unique_ptr<RoadNetworkMesh> road_mesh_;
-        std::unique_ptr<std::vector<ring>> road_polygons_;
-        RoadNetworkMesh get_road_network_mesh(double eps);
+
         std::vector<ring> get_lane_polygons(float res);
 
+        RoadNetworkMesh get_road_network_mesh(double eps);
+
     private:
+        std::unique_ptr<std::vector<ring>> lane_polygons_;
+        std::unique_ptr<std::vector<ring>> road_polygons_;
         bgi::rtree<value, bgi::rstar<16, 4>> rtree_;
     };
 

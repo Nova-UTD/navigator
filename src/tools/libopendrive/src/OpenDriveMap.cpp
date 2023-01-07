@@ -731,8 +731,8 @@ namespace odr
 
     std::vector<ring> OpenDriveMap::get_lane_polygons(float res = 1.0)
     {
-        if (this->road_polygons_ != nullptr)
-            return *this->road_polygons_;
+        if (this->lane_polygons_ != nullptr)
+            return *this->lane_polygons_;
 
         std::vector<ring> polys;
 
@@ -777,6 +777,9 @@ namespace odr
 
                     odr::ring lane_ring;
 
+                    point start_pt;
+                    bool start_pt_added = false;
+
                     for (const double &s : s_vals)
                     {
                         const double t_inner_brdr = lane.inner_border.get(s);
@@ -784,6 +787,11 @@ namespace odr
                         auto inner_border_pt = road.get_surface_pt(s, t_inner_brdr);
 
                         bg::append(lane_ring, point(inner_border_pt[0], inner_border_pt[1]));
+                        if (!start_pt_added)
+                        {
+                            start_pt = point(inner_border_pt[0], inner_border_pt[1]);
+                            start_pt_added = true;
+                        }
                     }
                     for (const double &s : s_vals)
                     {
@@ -792,6 +800,7 @@ namespace odr
 
                         bg::append(lane_ring, point(outer_border_pt[0], outer_border_pt[1]));
                     }
+                    bg::append(lane_ring, start_pt); // close the ring
                     polys.push_back(lane_ring);
                     idx++;
 
@@ -803,7 +812,7 @@ namespace odr
             }
         }
 
-        this->road_polygons_ = std::make_unique<std::vector<ring>>(polys);
+        this->lane_polygons_ = std::make_unique<std::vector<ring>>(polys);
         return polys;
     }
 

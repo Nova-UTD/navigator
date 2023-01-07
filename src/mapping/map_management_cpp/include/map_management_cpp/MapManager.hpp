@@ -72,7 +72,7 @@ namespace navigator
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
 
-            odr::OpenDriveMap map_ = odr::OpenDriveMap("lb_map.xml");
+            odr::OpenDriveMap map_ = odr::OpenDriveMap("map_string.xml");
             std::vector<odr::ring> lane_polys_;
         };
     }
