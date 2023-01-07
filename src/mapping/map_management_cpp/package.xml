@@ -12,7 +12,9 @@
 
   <!-- Message definitions -->
   <depend>carla_msgs</depend>
+  <depend>geometry_msgs</depend>
   <depend>libopendrive</depend>
+  <depend>nav_msgs</depend>
   <depend>rosgraph_msgs</depend>
 
 
