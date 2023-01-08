@@ -13,14 +13,16 @@ import numpy as np
 from rclpy.node import Node
 from builtin_interfaces.msg import Time
 
-from carla_msgs.msg import CarlaSpeedometer
+from carla_msgs.msg import CarlaSpeedometer, CarlaWorldInfo
 from diagnostic_msgs.msg import DiagnosticStatus
 from geometry_msgs.msg import Pose, Point, Quaternion, TransformStamped, Vector3
 from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
-from sensor_msgs.msg import Imu
+from sensor_msgs.msg import Imu, NavSatFix
 
+import pymap3d as pm
 from tf2_ros import TransformBroadcaster
+from xml.etree import ElementTree as ET
 
 
 class GnssProcessingNode(Node):
@@ -29,7 +31,10 @@ class GnssProcessingNode(Node):
         super().__init__('gnss_estimation_node')
 
         self.odom_sub = self.create_subscription(
-            Odometry, '/odometry/gnss_raw', self.odom_cb, 10
+            Odometry, '/odometry/gnss_raw', self.raw_odom_cb, 10
+        )
+        self.gnss_sub = self.create_subscription(
+            NavSatFix, '/carla/hero/gnss', self.gnss_cb, 10
         )
 
         self.clock_sub = self.create_subscription(
@@ -39,8 +44,16 @@ class GnssProcessingNode(Node):
             Imu, '/carla/hero/imu', self.imu_cb, 10
         )
 
+        self.world_info_sub = self.create_subscription(
+            CarlaWorldInfo, '/carla/world_info', self.world_info_cb, 10
+        )
+
         self.odom_pub = self.create_publisher(
             Odometry, '/odometry/gnss_processed', 10
+        )
+
+        self.raw_odom_pub = self.create_publisher(
+            Odometry, '/odometry/gnss_raw', 10
         )
 
         self.status_pub = self.create_publisher(
@@ -54,6 +67,8 @@ class GnssProcessingNode(Node):
         self.cached_imu = Imu()
         self.latest_timestamp = Time()
         self.clock = Clock()
+        self.lat0 = None
+        self.lon0 = None
 
         # Make a queue of previous poses for our weighted moving average
         # where '10' is the size of our history
@@ -62,6 +77,57 @@ class GnssProcessingNode(Node):
         self.previous_y_vals = np.zeros((self.history_size))
         self.previous_z_vals = np.zeros((self.history_size))
         self.wma_pose = Pose()
+
+    def _parse_header_(self, root: ET.Element) -> dict:
+        header = root.find('header')
+
+        # Find our geoReference tag, which has contents like this:
+        # "<![CDATA[+proj=tmerc +lat_0=0 +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +geoidgrids=egm96_15.gtx +vunits=m +no_defs ]]>"
+        geo_reference: str = header.find('geoReference').text
+        geo_reference_parts = geo_reference.split('+')
+
+        for part in geo_reference_parts:
+            if part.startswith('lon_0'):
+                lon0 = float(part[6:])
+            elif part.startswith('lat_0'):
+                lat0 = float(part[6:])
+
+        return (lat0, lon0)
+
+    def world_info_cb(self, msg: CarlaWorldInfo):
+        if self.lat0 is not None:
+            return
+        root = ET.fromstring(msg.opendrive)
+        self.lat0, self.lon0 = self._parse_header_(root)
+        self.get_logger().info("World info received.")
+
+    def gnss_cb(self, msg: NavSatFix):
+        if self.lat0 is None:
+            return
+        enu_xyz = pm.geodetic2enu(
+            msg.latitude,
+            msg.longitude,
+            msg.altitude,
+            self.lat0,
+            self.lon0,
+            0.0
+        )
+        odom_msg = Odometry()
+
+        # The odometry is for the current time-- right now
+        odom_msg.header.stamp = self.clock.clock
+
+        # The odometry is the car's location on the map,
+        # so the child frame is "base_link"
+        odom_msg.header.frame_id = 'map'
+        odom_msg.child_frame_id = 'base_link'
+        pos = Point()
+
+        pos.x = enu_xyz[0]
+        pos.y = enu_xyz[1]
+        pos.z = enu_xyz[2]
+        odom_msg.pose.pose.position = pos
+        self.raw_odom_pub.publish(odom_msg)
 
     def imu_cb(self, msg: Imu):
         self.cached_imu = msg
@@ -145,7 +211,7 @@ class GnssProcessingNode(Node):
 
         return yaw
 
-    def odom_cb(self, msg: Odometry):
+    def raw_odom_cb(self, msg: Odometry):
 
         current_pos: Point = msg.pose.pose.position
 

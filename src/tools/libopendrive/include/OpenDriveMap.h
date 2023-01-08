@@ -57,6 +57,7 @@ namespace odr
         bgi::rtree<value, bgi::rstar<16, 4>> generate_mesh_tree();
         std::unique_ptr<RoadNetworkMesh> road_mesh_;
 
+        std::vector<ring> get_drivable_lane_polygons(float res);
         std::vector<ring> get_lane_polygons(float res);
 
         RoadNetworkMesh get_road_network_mesh(double eps);

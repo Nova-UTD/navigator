@@ -25,23 +25,28 @@ using namespace navigator::perception;
 
 MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
-    this->lane_polys_ = map_.get_lane_polygons(1.0);
+    this->lane_polys_ = map_.get_drivable_lane_polygons(1.0);
     std::cout << "28" << std::endl;
     map_.generate_mesh_tree();
     std::cout << "30" << std::endl;
-    PointMsg center;
-    center.x = 50;
-    center.y = -190;
 
-    getOccupancyGrid(center, 140, 1.0);
-
-    world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::world_info_cb, this, std::placeholders::_1));
+    grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
+    clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
+    world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
     RCLCPP_INFO(this->get_logger(), "Waiting for map...");
+
+    grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::gridPubTimerCb, this));
+    tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
 OccupancyGrid navigator::perception::MapManagementNode::getOccupancyGrid(PointMsg center, int range, float res)
 {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    OccupancyGrid occupancy_grid;
+    std::vector<int8_t> grid_data;
+
     int x_min = static_cast<int>(center.x) - range;
     int x_max = static_cast<int>(center.x) + range;
     int y_min = static_cast<int>(center.y) - range;
@@ -63,20 +68,19 @@ OccupancyGrid navigator::perception::MapManagementNode::getOccupancyGrid(PointMs
         // calculate polygon bounding box
         // insert new value
         local_tree.insert(lane_shapes_in_range.at(i));
-        // std::printf("Inserting box (%f, %f)-(%f,%f)\n", b.min_corner().get<0>(), b.min_corner().get<1>(), b.max_corner().get<0>(), b.max_corner().get<1>());
     }
 
     std::printf("Local box has %i nodes\n", local_tree.size());
 
     std::ofstream f2("grid.csv");
-    for (int i = x_min; i <= x_max; i++)
+    for (int j = y_min; j <= y_max; j++)
     {
-        for (int j = y_min; j <= y_max; j++)
+        for (int i = x_min; i <= x_max; i++)
         {
+
             i = static_cast<float>(i);
             j = static_cast<float>(j);
             bool cell_is_occupied = false;
-            f2 << i << ',' << j << ',';
 
             odr::point p(i, j);
 
@@ -93,54 +97,72 @@ OccupancyGrid navigator::perception::MapManagementNode::getOccupancyGrid(PointMs
                     {
                         cell_is_occupied = true;
 
-                        // std::printf("Point (%f, %f) is CONTAINED within poly %i!\n", p.get<0>(), p.get<1>(), pair.second);
-                        // for (auto pt : ring)
-                        // {
-                        //     std::printf("(%f,%f)\n", pt.get<0>(), pt.get<1>());
-                        // }
-
                         break;
                     }
-                    // else
-                    // {
-                    //     if (j > -180.0)
-                    //     {
-                    //         std::printf("Point (%f, %f) isn't contained within poly %i!\n", p.get<0>(), p.get<1>(), pair.second);
-                    //         for (auto pt : ring)
-                    //         {
-                    //             std::printf("(%f,%f)\n", pt.get<0>(), pt.get<1>());
-                    //         }
-                    //     }
-                    // }
                 }
             }
 
             if (cell_is_occupied)
             {
-                f2 << "1,";
+                // f2 << "1,";
+                grid_data.push_back(100);
             }
 
             else
             {
-                f2 << "0,";
+                // f2 << "0,";
+                grid_data.push_back(0);
             }
-
-            //         polygon poly;
-            // bgt::read_wkt(
-            //     "POLYGON((2 1.3,2.4 1.7,2.8 1.8,3.4 1.2,3.7 1.6,3.4 2,4.1 3,5.3 2.6,5.4 1.2,4.9 0.8,2.9 0.7,2 1.3)"
-            //         "(4.0 2.0, 4.2 1.4, 4.8 1.9, 4.4 2.2, 4.0 2.0))", poly);
-
-            f2 << std::endl;
         }
+        f2 << std::endl;
     }
 
     f2.close();
+
+    auto clock = this->clock_->clock;
+    occupancy_grid.data = grid_data;
+    occupancy_grid.header.frame_id = "map";
+    occupancy_grid.header.stamp = clock;
+    occupancy_grid.info.width = range * 2 + 1;
+    occupancy_grid.info.height = range * 2 + 1;
+    occupancy_grid.info.map_load_time = clock;
+    occupancy_grid.info.resolution = GRID_RES;
+    occupancy_grid.info.origin.position.x = x_min;
+    occupancy_grid.info.origin.position.y = y_min;
+
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 
-    return OccupancyGrid();
+    return occupancy_grid;
 }
-void MapManagementNode::world_info_cb(CarlaWorldInfo::SharedPtr msg)
+void navigator::perception::MapManagementNode::clockCb(Clock::SharedPtr msg)
+{
+    this->clock_ = msg;
+}
+void navigator::perception::MapManagementNode::gridPubTimerCb()
+{
+    TransformStamped t;
+    try
+    {
+        t = tf_buffer_->lookupTransform(
+            "map", "base_link",
+            tf2::TimePointZero);
+    }
+    catch (const tf2::TransformException &ex)
+    {
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                             "Could not get base_link->map tf: %s. This will republish every 5 seconds.", ex.what());
+        return;
+    }
+
+    PointMsg center;
+    center.x = t.transform.translation.x;
+    center.y = t.transform.translation.y;
+
+    OccupancyGrid msg = getOccupancyGrid(center, GRID_RANGE, GRID_RES);
+    grid_pub_->publish(msg);
+}
+void MapManagementNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
 {
     RCLCPP_INFO(this->get_logger(), msg->map_name);
 }

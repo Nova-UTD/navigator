@@ -50,7 +50,7 @@ def generate_launch_description():
             'host': 'localhost',
             'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
             'synchronous_mode': 'True',
-            'town': 'Town12',
+            'town': 'Town02',
             'register_all_sensors': 'False',
             'ego_vehicle_role_name': 'hero',
             'timeout': '30'
@@ -63,7 +63,7 @@ def generate_launch_description():
     )
 
     map_manager = Node(
-        package='map_management',
+        package='map_management_cpp',
         executable='map_management_node'
     )
 

@@ -26,8 +26,6 @@
 #include "Geometries/Line.h"
 #include "RefLine.h"
 
-#include "rclcpp/rclcpp.hpp"
-
 // Boost
 #include <boost/foreach.hpp>
 #include <boost/geometry.hpp>
@@ -36,9 +34,16 @@
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/index/rtree.hpp>
 
+// ROS
+#include "rclcpp/rclcpp.hpp"
+#include "tf2/exceptions.h"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/buffer.h"
+
 // Message includes
 #include "carla_msgs/msg/carla_world_info.hpp"
 #include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
 
@@ -49,6 +54,7 @@ namespace bgi = boost::geometry::index;
 
 using carla_msgs::msg::CarlaWorldInfo;
 using PointMsg = geometry_msgs::msg::Point;
+using geometry_msgs::msg::TransformStamped;
 using rosgraph_msgs::msg::Clock;
 
 namespace navigator
@@ -66,12 +72,25 @@ namespace navigator
             OccupancyGrid getOccupancyGrid(PointMsg center, int range, float res);
 
         private:
-            void clock_cb(Clock::SharedPtr);
-            void world_info_cb(CarlaWorldInfo::SharedPtr msg);
+            // Parameters
+            // TODO: Convert to ros params
+            std::chrono::milliseconds GRID_PUBLISH_FREQUENCY = 200ms;
+            const int GRID_RANGE = 40;
+            const float GRID_RES = 1.0;
 
+            void clockCb(Clock::SharedPtr msg);
+            void gridPubTimerCb();
+            void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
+
+            rclcpp::Publisher<OccupancyGrid>::SharedPtr grid_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
+            rclcpp::TimerBase::SharedPtr grid_pub_timer_;
 
+            std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+            std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+
+            Clock::SharedPtr clock_;
             odr::OpenDriveMap map_ = odr::OpenDriveMap("map_string.xml");
             std::vector<odr::ring> lane_polys_;
         };
