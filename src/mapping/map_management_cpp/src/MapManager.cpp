@@ -40,7 +40,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
-OccupancyGrid navigator::perception::MapManagementNode::getOccupancyGrid(PointMsg center, int range, float res)
+OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(PointMsg center, int range, float res)
 {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -159,7 +159,7 @@ void navigator::perception::MapManagementNode::gridPubTimerCb()
     center.x = t.transform.translation.x;
     center.y = t.transform.translation.y;
 
-    OccupancyGrid msg = getOccupancyGrid(center, GRID_RANGE, GRID_RES);
+    OccupancyGrid msg = getDrivableAreaGrid(center, GRID_RANGE, GRID_RES);
     grid_pub_->publish(msg);
 }
 void MapManagementNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)

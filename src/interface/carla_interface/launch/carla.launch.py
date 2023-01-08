@@ -37,11 +37,6 @@ def generate_launch_description():
             'objects_definition_file': '/navigator/data/carla_objects_mcl.json'}.items(),
     )
 
-    carla_controller = Node(
-        package='carla_controller',
-        executable='controller'
-    )
-
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -58,22 +53,17 @@ def generate_launch_description():
             'town': 'Town02',
             'register_all_sensors': 'False',
             'ego_vehicle_role_name': 'hero',
-            'timeout': '10'
+            'timeout': '30'
         }.items(),
     )
 
-    gnss_processor = Node(
+    state_estimation = Node(
         package='state_estimation',
         executable='gnss_processing_node'
     )
 
-    monte_carlo_localizer = Node(
-        package='state_estimation',
-        executable='mcl_node'
-    )
-
     map_manager = Node(
-        package='map_management',
+        package='map_management_cpp',
         executable='map_management_node'
     )
 
@@ -87,12 +77,9 @@ def generate_launch_description():
 
     return LaunchDescription([
 
-        # CONTROL
-        carla_controller,
-
         # INTERFACE
-        # carla_bridge_official,
-        # carla_spawner,
+        carla_bridge_official,
+        carla_spawner,
         leaderboard_liaison,
 
         # LOCALIZATION
@@ -109,6 +96,5 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         map_manager,
-        gnss_processor,
-        monte_carlo_localizer
+        state_estimation,
     ])

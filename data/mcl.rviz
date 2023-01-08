@@ -4,10 +4,12 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /Global Options1
         - /TF1/Frames1
+        - /Map1
         - /Map1/Position1
       Splitter Ratio: 0.5
-    Tree Height: 409
+    Tree Height: 733
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -45,7 +47,7 @@ Visualization Manager:
     - Class: rviz_common/Group
       Displays:
         - Class: rviz_default_plugins/Image
-          Enabled: true
+          Enabled: false
           Max Value: 1
           Median window: 5
           Min Value: 0
@@ -57,7 +59,7 @@ Visualization Manager:
             History Policy: Keep Last
             Reliability Policy: Reliable
             Value: /carla/hero/depth_camera/image
-          Value: true
+          Value: false
         - Class: rviz_default_plugins/Image
           Enabled: true
           Max Value: 1
@@ -197,22 +199,74 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Class: rviz_default_plugins/TF
-      Enabled: false
+      Enabled: true
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        base_link:
+          Value: true
+        hero:
+          Value: true
+        hero/birds_eye:
+          Value: true
+        hero/depth_camera:
+          Value: true
+        hero/gnss:
+          Value: true
+        hero/imu:
+          Value: true
+        hero/lidar:
+          Value: true
+        hero/rgb_center:
+          Value: true
+        hero/rgb_left:
+          Value: true
+        hero/rgb_right:
+          Value: true
+        hero/semantic_camera:
+          Value: true
+        hero/semantic_lidar:
+          Value: true
+        map:
+          Value: true
+        model_link:
+          Value: true
       Marker Scale: 100
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: false
       Tree:
-        {}
+        map:
+          hero:
+            base_link:
+              model_link:
+                {}
+            hero/birds_eye:
+              {}
+            hero/depth_camera:
+              {}
+            hero/gnss:
+              {}
+            hero/imu:
+              {}
+            hero/lidar:
+              {}
+            hero/rgb_center:
+              {}
+            hero/rgb_left:
+              {}
+            hero/rgb_right:
+              {}
+            hero/semantic_camera:
+              {}
+            hero/semantic_lidar:
+              {}
       Update Interval: 0
-      Value: false
+      Value: true
     - Alpha: 0.699999988079071
       Class: rviz_default_plugins/Map
-      Color Scheme: map
+      Color Scheme: raw
       Draw Behind: true
       Enabled: true
       Name: Map
@@ -372,10 +426,24 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /route/path
       Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Image
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /carla/hero/birds_eye/image
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 222; 255; 251
-    Fixed Frame: hero
+    Fixed Frame: map
     Frame Rate: 30
   Name: root
   Tools:
@@ -415,25 +483,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 81.63724517822266
+      Distance: 101.62089538574219
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 15.403695106506348
-        Y: -19.2863826751709
-        Z: -18.217315673828125
+        X: 27.11850357055664
+        Y: -192.77467346191406
+        Z: 43.31753921508789
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7097971439361572
+      Pitch: 1.3697965145111084
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.1047351360321045
+      Yaw: 3.1323976516723633
     Saved: ~
 Window Geometry:
   Center RGB:
@@ -444,8 +512,10 @@ Window Geometry:
     collapsed: false
   Height: 956
   Hide Left Dock: false
-  Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd0000000400000000000001b300000222fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003b00000222000000c700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f000002f8fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003b000002f8000000a000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007800000013efc0100000005fb0000001400430065006e00740065007200200052004700420100000000000002530000007a00fffffffb0000000a004400650070007400680100000259000002fd0000005900fffffffb0000001000530065006d0061006e007400690063010000055c000002240000006d00fffffffb0000000800540069006d00650100000000000004420000000000000000fb0000000800540069006d00650100000000000004500000000000000000000005c70000022200000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Hide Right Dock: false
+  Image:
+    collapsed: false
+  QMainWindow State: 000000ff00000000fd0000000400000000000001b300000366fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003b00000366000000c700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c0000026100000001000001f200000366fc0200000006fb0000000a0049006d006100670065010000003b000001630000002800fffffffb0000001400430065006e007400650072002000520047004201000001a4000000f30000002800fffffffb0000001000530065006d0061006e007400690063010000029d000001040000002800fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003b000002f8000000a000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000780000000effc0100000003fb0000000a004400650070007400680000000000000007800000005900fffffffb0000000800540069006d00650100000000000004420000000000000000fb0000000800540069006d00650100000000000004500000000000000000000003cf0000036600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Semantic:

@@ -97,6 +97,8 @@ class GnssProcessingNode(Node):
     def world_info_cb(self, msg: CarlaWorldInfo):
         if self.lat0 is not None:
             return
+        if msg.opendrive == "":
+            return
         root = ET.fromstring(msg.opendrive)
         self.lat0, self.lon0 = self._parse_header_(root)
         self.get_logger().info("World info received.")
@@ -228,6 +230,9 @@ class GnssProcessingNode(Node):
 
         odom_msg.pose.covariance[0] = 2.0  # This is the variance of x
         odom_msg.pose.covariance[7] = 2.0  # This is the variance of y
+
+        # LOCK Z to 0
+        odom_msg.pose.pose.position.z = 0.7
 
         # Publish our odometry message, converted from GNSS
         self.odom_pub.publish(odom_msg)
