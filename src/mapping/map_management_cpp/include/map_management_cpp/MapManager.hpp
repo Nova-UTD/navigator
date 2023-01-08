@@ -91,7 +91,7 @@ namespace navigator
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 
             Clock::SharedPtr clock_;
-            odr::OpenDriveMap *map_ = new odr::OpenDriveMap("map_string.xml");
+            odr::OpenDriveMap *map_ = nullptr;
             std::vector<odr::ring> lane_polys_;
         };
     }

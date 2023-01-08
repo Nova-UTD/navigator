@@ -34,7 +34,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([get_package_share_directory(
             'carla_spawn_objects'), '/carla_spawn_objects.launch.py']),
         launch_arguments={
-            'objects_definition_file': '/navigator/data/carla_objects_mcl.json'}.items(),
+            'objects_definition_file': '/navigator/data/carla_objects.json'}.items(),
     )
 
     urdf_publisher = Node(

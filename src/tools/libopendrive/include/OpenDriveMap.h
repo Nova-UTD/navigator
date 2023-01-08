@@ -39,7 +39,7 @@ namespace odr
     class OpenDriveMap
     {
     public:
-        OpenDriveMap(const std::string &xodr_file, const OpenDriveMapConfig &config = OpenDriveMapConfig{}, bool from_string = true);
+        OpenDriveMap(const std::string &xodr_file, bool from_string = true, const OpenDriveMapConfig &config = OpenDriveMapConfig{});
 
         std::vector<Road> get_roads() const;
         std::vector<Junction> get_junctions() const;

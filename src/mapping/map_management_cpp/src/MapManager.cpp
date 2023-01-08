@@ -25,10 +25,6 @@ using namespace navigator::perception;
 
 MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
-    this->lane_polys_ = map_.get_drivable_lane_polygons(1.0);
-    std::cout << "28" << std::endl;
-    map_.generate_mesh_tree();
-    std::cout << "30" << std::endl;
 
     grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
@@ -42,6 +38,12 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 
 OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(PointMsg center, int range, float res)
 {
+    if (this->map_ == nullptr)
+    {
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                             "Map not yet loaded. Drivable area grid is unavailable.");
+        return OccupancyGrid();
+    }
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     OccupancyGrid occupancy_grid;
@@ -51,7 +53,7 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
     int x_max = static_cast<int>(center.x) + range;
     int y_min = static_cast<int>(center.y) - range;
     int y_max = static_cast<int>(center.y) + range;
-    bgi::rtree<odr::value, bgi::rstar<16, 4>> tree = this->map_.generate_mesh_tree();
+    bgi::rtree<odr::value, bgi::rstar<16, 4>> tree = this->map_->generate_mesh_tree();
 
     odr::box search_region(odr::point(x_min, y_min), odr::point(x_max, y_max));
     std::vector<odr::value> lane_shapes_in_range;
@@ -164,5 +166,16 @@ void navigator::perception::MapManagementNode::gridPubTimerCb()
 }
 void MapManagementNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
 {
-    RCLCPP_INFO(this->get_logger(), msg->map_name);
+    if (this->map_ != nullptr)
+        return; // Our map is already loaded. No need to continue.
+    if (msg->opendrive == "")
+    {
+        RCLCPP_INFO(this->get_logger(), "Received empty map string from world_info topic. Waiting for real data.");
+        return;
+    }
+
+    this->map_ = new odr::OpenDriveMap(msg->opendrive, true);
+    this->lane_polys_ = map_->get_drivable_lane_polygons(1.0);
+
+    RCLCPP_INFO(this->get_logger(), "Loaded %s", msg->map_name);
 }
