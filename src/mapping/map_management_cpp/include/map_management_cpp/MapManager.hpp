@@ -79,20 +79,24 @@ namespace navigator
             const float GRID_RES = 1.0;
 
             void clockCb(Clock::SharedPtr msg);
+            TransformStamped getVehicleTf();
             void gridPubTimerCb();
+            void updateRoute();
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
             rclcpp::Publisher<OccupancyGrid>::SharedPtr grid_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
+
             rclcpp::TimerBase::SharedPtr grid_pub_timer_;
+            rclcpp::TimerBase::SharedPtr route_update_timer_;
 
             std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 
             Clock::SharedPtr clock_;
             odr::OpenDriveMap *map_ = nullptr;
-            std::vector<odr::ring> lane_polys_;
+            std::vector<odr::LanePair> lane_polys_;
         };
     }
 }

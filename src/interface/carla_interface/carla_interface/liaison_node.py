@@ -41,18 +41,19 @@ class LeaderboardLiaisonNode(Node):
         self.route_path_pub = self.create_publisher(Path, '/route/path', 10)
         self.route_repub_timer = self.create_timer(1.0, self.publish_route)
 
-        self.client = carla.Client('localhost', 2005)
-        self.client.set_timeout(60)
-        self.world = self.client.get_world()
+        # self.client = carla.Client('localhost', 2005)
+        # self.client.set_timeout(60)
+        # self.world = self.client.get_world()
 
-        settings = self.world.get_settings()
-        settings.fixed_delta_seconds = 1.0 / 20
-        settings.synchronous_mode = True
-        settings.tile_stream_distance = 650
-        settings.actor_active_distance = 650
-        self.world.apply_settings(settings)
+        # settings = self.world.get_settings()
+        # settings.fixed_delta_seconds = 1.0 / 20
+        # settings.synchronous_mode = True
+        # settings.tile_stream_distance = 650
+        # settings.actor_active_distance = 650
 
-        self.get_logger().info("Settings applied!")
+        # self.world.apply_settings(settings)
+
+        # self.get_logger().info("Settings applied!")
 
         self.route = None
 

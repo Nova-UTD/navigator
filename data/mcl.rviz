@@ -199,71 +199,19 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Class: rviz_default_plugins/TF
-      Enabled: true
+      Enabled: false
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        base_link:
-          Value: true
-        hero:
-          Value: true
-        hero/birds_eye:
-          Value: true
-        hero/depth_camera:
-          Value: true
-        hero/gnss:
-          Value: true
-        hero/imu:
-          Value: true
-        hero/lidar:
-          Value: true
-        hero/rgb_center:
-          Value: true
-        hero/rgb_left:
-          Value: true
-        hero/rgb_right:
-          Value: true
-        hero/semantic_camera:
-          Value: true
-        hero/semantic_lidar:
-          Value: true
-        map:
-          Value: true
-        model_link:
-          Value: true
       Marker Scale: 100
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: false
       Tree:
-        map:
-          hero:
-            base_link:
-              model_link:
-                {}
-            hero/birds_eye:
-              {}
-            hero/depth_camera:
-              {}
-            hero/gnss:
-              {}
-            hero/imu:
-              {}
-            hero/lidar:
-              {}
-            hero/rgb_center:
-              {}
-            hero/rgb_left:
-              {}
-            hero/rgb_right:
-              {}
-            hero/semantic_camera:
-              {}
-            hero/semantic_lidar:
-              {}
+        {}
       Update Interval: 0
-      Value: true
+      Value: false
     - Alpha: 0.699999988079071
       Class: rviz_default_plugins/Map
       Color Scheme: raw
@@ -443,7 +391,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 222; 255; 251
-    Fixed Frame: map
+    Fixed Frame: hero
     Frame Rate: 30
   Name: root
   Tools:
@@ -483,25 +431,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 101.62089538574219
+      Distance: 90.53313446044922
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 27.11850357055664
-        Y: -192.77467346191406
-        Z: 43.31753921508789
+        X: -1.357645034790039
+        Y: 0.47407424449920654
+        Z: 1.4143829345703125
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.4597963094711304
+      Pitch: 1.4037528038024902
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.1574020385742188
+      Yaw: 3.111320734024048
     Saved: ~
 Window Geometry:
   Center RGB:

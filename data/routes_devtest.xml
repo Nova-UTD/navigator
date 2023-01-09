@@ -1,16 +1,8 @@
 <routes>
-   <route id="0" town="Town12">
+   <route id="0" town="Town02">
       <weathers>
-         <weather route_percentage="0"
-            cloudiness="5.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0"
-            wind_intensity="10.0" sun_azimuth_angle="-1.0" sun_altitude_angle="90.0"
-            fog_density="2.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0"
-            mie_scattering_scale="0.03"/>
-         <weather route_percentage="100"
-            cloudiness="5.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0"
-            wind_intensity="10.0" sun_azimuth_angle="-1.0" sun_altitude_angle="15.0"
-            fog_density="2.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0"
-            mie_scattering_scale="0.03"/>
+         <weather route_percentage="0" cloudiness="5.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="10.0" sun_azimuth_angle="-1.0" sun_altitude_angle="90.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0" mie_scattering_scale="0.03"/>
+         <weather route_percentage="100" cloudiness="5.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="10.0" sun_azimuth_angle="-1.0" sun_altitude_angle="15.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0" mie_scattering_scale="0.03"/>
       </weathers>
       <waypoints>
          <position x="983.5" y="5382.2" z="371"/>
@@ -50,7 +42,7 @@
          <position x="75.0" y="5587.0" z="367.2"/>
       </waypoints>
       <scenarios>
-         <scenario name="ParkingExit_1" type="ParkingExit">
+         <!-- <scenario name="ParkingExit_1" type="ParkingExit">
             <trigger_point x="983.5" y="5382.2" z="371" yaw="90"/>
             <direction value="right"/>
             <front_vehicle_distance value="9"/>
@@ -337,16 +329,8 @@
    </route>
    <route id="1" town="Town12">
       <weathers>
-         <weather route_percentage="0"
-            cloudiness="20.0" precipitation="30.0" precipitation_deposits="50.0" wetness="0.0"
-            wind_intensity="30.0" sun_azimuth_angle="-1.0" sun_altitude_angle="45.0"
-            fog_density="3.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0"
-            mie_scattering_scale="0.03"/>
-         <weather route_percentage="100"
-            cloudiness="60.0" precipitation="60.0" precipitation_deposits="60.0" wetness="0.0"
-            wind_intensity="60.0" sun_azimuth_angle="-1.0" sun_altitude_angle="45.0"
-            fog_density="3.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0"
-            mie_scattering_scale="0.03"/>
+         <weather route_percentage="0" cloudiness="20.0" precipitation="30.0" precipitation_deposits="50.0" wetness="0.0" wind_intensity="30.0" sun_azimuth_angle="-1.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0" mie_scattering_scale="0.03"/>
+         <weather route_percentage="100" cloudiness="60.0" precipitation="60.0" precipitation_deposits="60.0" wetness="0.0" wind_intensity="60.0" sun_azimuth_angle="-1.0" sun_altitude_angle="45.0" fog_density="3.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0" mie_scattering_scale="0.03"/>
       </weathers>
       <waypoints>
          <position x="-710.9" y="3650.8" z="365"/>
@@ -590,7 +574,7 @@
          </scenario>
          <scenario name="VehicleTurningRoute_3" type="VehicleTurningRoute">
             <trigger_point x="-1667.1" y="5294.5" z="377.0" yaw="89.8"/>
-         </scenario>
+         </scenario> -->
       </scenarios>
    </route>
 </routes>

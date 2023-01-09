@@ -26,6 +26,7 @@ namespace odr
     typedef bg::model::box<point> box;
     typedef bg::model::ring<point> ring;
     typedef std::pair<box, unsigned> value;
+    typedef std::pair<Lane, ring> LanePair;
 
     struct OpenDriveMapConfig
     {
@@ -58,12 +59,13 @@ namespace odr
         std::unique_ptr<RoadNetworkMesh> road_mesh_;
 
         std::vector<ring> get_drivable_lane_polygons(float res);
-        std::vector<ring> get_lane_polygons(float res);
+        std::vector<std::pair<Lane, ring>> get_lane_polygons(float res = 1.0, bool drivable_only = true);
 
         RoadNetworkMesh get_road_network_mesh(double eps);
 
     private:
-        std::unique_ptr<std::vector<ring>> lane_polygons_;
+        std::unique_ptr<std::vector<std::pair<Lane, ring>>> drivable_lane_polygons_;
+        std::unique_ptr<std::vector<std::pair<Lane, ring>>> lane_polygons_;
         std::unique_ptr<std::vector<ring>> road_polygons_;
         bgi::rtree<value, bgi::rstar<16, 4>> rtree_;
     };

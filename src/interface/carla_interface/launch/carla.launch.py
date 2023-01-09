@@ -37,6 +37,11 @@ def generate_launch_description():
             'objects_definition_file': '/navigator/data/carla_objects.json'}.items(),
     )
 
+    carla_controller = Node(
+        package='carla_controller',
+        executable='controller'
+    )
+
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -76,10 +81,12 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        # CONTROL
+        carla_controller,
 
         # INTERFACE
-        carla_bridge_official,
-        carla_spawner,
+        # carla_bridge_official,
+        # carla_spawner,
         leaderboard_liaison,
 
         # LOCALIZATION
