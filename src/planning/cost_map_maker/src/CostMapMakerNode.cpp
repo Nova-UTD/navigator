@@ -21,16 +21,16 @@
 
 using namespace navigator::cost_map_maker;
 
-using voltron_msgs::msg::Egma;
-using voltron_msgs::msg::EvidentialGrid;
+using nova_msgs::msg::Egma;
+using nova_msgs::msg::EvidentialGrid;
 using geometry_msgs::msg::Vector3;
 
 CostMapMakerNode::CostMapMakerNode() : Node("cost_map_maker_node")
 {
     std::string xodr_path = "data/maps/town07/Town07_Opt.xodr";
     
-    cost_map_publisher = this->create_publisher<voltron_msgs::msg::Egma>("outgoing_cost_map", 8);
-    egma_subscription = this->create_subscription<voltron_msgs::msg::Egma>("*INSERT SUBSCRIPTION*", 10, bind(&CostMapMakerNode::update_egma, this, std::placeholders::_1));
+    cost_map_publisher = this->create_publisher<nova_msgs::msg::Egma>("outgoing_cost_map", 8);
+    egma_subscription = this->create_subscription<nova_msgs::msg::Egma>("*INSERT SUBSCRIPTION*", 10, bind(&CostMapMakerNode::update_egma, this, std::placeholders::_1));
     waypoint_subscription = this->create_subscription<geometry_msgs::msg::Vector3>("*INSERT SUBSCRIPTION*", 10, bind(&CostMapMakerNode::update_waypoints, this, std::placeholders::_1));
     odomtery_pose_subscription = this->create_subscription<nav_msgs::msg::Odometry>("/carla/odom", rclcpp::QoS(10),std::bind(&CostMapMakerNode::odometry_pose_cb, this, std::placeholders::_1));
     control_timer = this->create_wall_timer(message_frequency, bind(&CostMapMakerNode::send_message, this));
@@ -45,9 +45,9 @@ void CostMapMakerNode::send_message() {
         return;
     }
 
-    auto cost_map = voltron_msgs::msg::Egma();
+    auto cost_map = nova_msgs::msg::Egma();
     for (size_t time_index = 0; time_index < egma->egma.size(); time_index++) {
-      auto cost_map_single_timestep = voltron_msgs::msg::EvidentialGrid();
+      auto cost_map_single_timestep = nova_msgs::msg::EvidentialGrid();
       auto current_evidential_grid = egma->egma[time_index];
       cost_map_single_timestep.header = current_evidential_grid.header;
       for (size_t coordinate_index = 0; coordinate_index < current_evidential_grid.grid.size(); coordinate_index++)
@@ -63,7 +63,7 @@ void CostMapMakerNode::send_message() {
     return;
 }
 
-void CostMapMakerNode::update_egma(voltron_msgs::msg::Egma::SharedPtr ptr) {
+void CostMapMakerNode::update_egma(nova_msgs::msg::Egma::SharedPtr ptr) {
     egma = ptr;
 }
 

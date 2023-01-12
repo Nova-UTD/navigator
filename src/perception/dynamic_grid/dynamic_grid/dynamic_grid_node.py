@@ -12,8 +12,8 @@ import ros2_numpy as rnp
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
 from nav_msgs.msg import OccupancyGrid, MapMetaData
-from voltron_msgs.msg import StaticGrid
-from voltron_msgs.msg import GridRow
+from nova_msgs.msg import StaticGrid
+from nova_msgs.msg import GridRow
 
 
 

@@ -32,8 +32,8 @@
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
-#include "voltron_msgs/msg/egma.hpp"
-#include "voltron_msgs/msg/evidential_grid.hpp"
+#include "nova_msgs/msg/egma.hpp"
+#include "nova_msgs/msg/evidential_grid.hpp"
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
@@ -57,16 +57,16 @@ private:
     // Send final cost map to subscribers
     void send_message();
     // Subscription to *INSERT PUBLISHER* for input Evidential Grid Map
-    void update_egma(voltron_msgs::msg::Egma::SharedPtr ptr);
+    void update_egma(nova_msgs::msg::Egma::SharedPtr ptr);
     // Subscription to *INSERT PUBLISHER* for input waypoints
     void update_waypoints(geometry_msgs::msg::Vector3::SharedPtr ptr);
     // Subscription to *INSERT PUBLISHER* for the current heading of the car
     void odometry_pose_cb(const nav_msgs::msg::Odometry::SharedPtr msg);
 
     // Cost Map Publisher
-    rclcpp::Publisher<voltron_msgs::msg::Egma>::SharedPtr cost_map_publisher;
+    rclcpp::Publisher<nova_msgs::msg::Egma>::SharedPtr cost_map_publisher;
     // Evidential Grid Map Subscriber
-    rclcpp::Subscription<voltron_msgs::msg::Egma>::SharedPtr egma_subscription;
+    rclcpp::Subscription<nova_msgs::msg::Egma>::SharedPtr egma_subscription;
     /* TODO Add information from global waypoints */
     rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr waypoint_subscription;
 
@@ -77,7 +77,7 @@ private:
 
 
     // EGMa from prediction
-    voltron_msgs::msg::Egma::SharedPtr egma;
+    nova_msgs::msg::Egma::SharedPtr egma;
 
     /* TODO Add information from global waypoints */
     navigator::opendrive::OpenDriveMapPtr carla_map;

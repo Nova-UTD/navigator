@@ -1,4 +1,4 @@
-# Package:   voltron_msgs
+# Package:   nova_msgs
 # Filename:  CMakeLists.txt
 # Author:    Joshua Williams
 # Email:     joshmackwilliams@protonmail.com
