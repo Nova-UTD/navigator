@@ -68,7 +68,7 @@ def generate_launch_description():
     )
 
     map_manager = Node(
-        package='map_management_cpp',
+        package='map_management',
         executable='map_management_node'
     )
 

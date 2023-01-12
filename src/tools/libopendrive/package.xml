@@ -7,7 +7,7 @@
   <maintainer email="joshmackwilliams@protonmail.com">Joshua Williams</maintainer>
   <license>MIT License</license>
 
-  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <buildtool_depend>nova_auto_package</buildtool_depend>
 
   <depend>libboost</depend>
 

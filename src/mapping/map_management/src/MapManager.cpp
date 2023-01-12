@@ -1,5 +1,5 @@
 /*
- * Package:   map_management_cpp
+ * Package:   map_management
  * Filename:  MapManager.cpp
  * Author:    Will Heitman
  * Email:     w at heit dot mn
@@ -9,7 +9,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-#include "map_management_cpp/MapManager.hpp"
+#include "map_management/MapManager.hpp"
 
 #include <algorithm>
 #include <chrono>
