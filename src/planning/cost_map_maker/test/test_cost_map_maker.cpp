@@ -13,10 +13,10 @@
 // #include "zone_lib/zone.hpp"
 // #include "motion_planner/MotionPlannerNode.hpp"
 // using namespace navigator::motion_planner;
-// using voltron_msgs::msg::Trajectory;
-// using voltron_msgs::msg::TrajectoryPoint;
-// using voltron_msgs::msg::Zone;
-// using voltron_msgs::msg::ZoneArray;
+// using nova_msgs::msg::Trajectory;
+// using nova_msgs::msg::TrajectoryPoint;
+// using nova_msgs::msg::Zone;
+// using nova_msgs::msg::ZoneArray;
 
 // /**
 //  * @brief Creates a simple trajectory

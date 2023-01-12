@@ -19,7 +19,7 @@ from std_msgs.msg import String, Header, ColorRGBA
 from geometry_msgs.msg import PoseStamped, Polygon, Point32, Point
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker, MarkerArray
-from voltron_msgs.msg import CostedPaths, CostedPath, Zone, ZoneArray, Trajectory
+from nova_msgs.msg import CostedPaths, CostedPath, Zone, ZoneArray, Trajectory
 import math
 
 class NovaVizNode(Node):

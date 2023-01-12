@@ -1,22 +1,28 @@
-# Package:   libopendrive
 # Filename:  CMakeLists.txt
-# Author:    Joshua Williams
-# Email:     joshmackwilliams@protonmail.com
-# Copyright: 2021, Nova UTD
+# Author:    Will Heitman
+# Email:     project.nova@utdallas.edu
+# Copyright: 2023, Nova UTD
 # License:   MIT License
 
-cmake_minimum_required(VERSION 3.10)
+# No package name is specified above since this is our standard
+# CMakeLists.txt file and will be the same across multiple
+# projects. To use it, just add nova_auto_package as a
+# buildtool_depend in package.xml and copy this file into the root of
+# your package.
+
+cmake_minimum_required(VERSION 3.5)
 get_filename_component(directory_name ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 project(${directory_name})
 
-find_package(ament_cmake_auto REQUIRED)
+find_package(nova_auto_package REQUIRED)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libOpenDRIVE)
+add_library(OpenDrive SHARED
+    src/pugixml.cpp
+)
 
-set(${PROJECT_NAME}_LIBRARIES OpenDrive)
+# Default to C++17 
+if(NOT CMAKE_CXX_STANDARD) 
+    set(CMAKE_CXX_STANDARD 17) 
+endif() 
 
-ament_export_include_directories("include/libOpenDRIVE")
-ament_export_include_directories("include/libOpenDRIVE/Thirdparty")
-install(DIRECTORY libOpenDRIVE/ DESTINATION include/libOpenDRIVE)
-
-ament_auto_package()
+nova_auto_package()

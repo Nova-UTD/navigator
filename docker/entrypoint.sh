@@ -18,6 +18,7 @@ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 source /opt/cyclone_ws/install/setup.bash
 
 echo "🧭 Sourcing Navigator..."
+source /navigator/install/setup.bash
 
 echo "🔌 Setting up CARLA API..."
 export CARLA_ROOT="/workspace/simulator"
@@ -25,12 +26,7 @@ export SCENARIO_RUNNER_ROOT="/workspace/scenario_runner"
 export LEADERBOARD_ROOT="/workspace/leaderboard"
 export ROS_BRIDGE_ROOT="/workspace/ros-bridge"
 export PYTHONPATH="${CARLA_ROOT}/PythonAPI/carla/":"${SCENARIO_RUNNER_ROOT}":"${LEADERBOARD_ROOT}":"${CARLA_ROOT}/PythonAPI/carla/dist/carla-0.9.13-py3.7-linux-x86_64.egg":${PYTHONPATH}
-source $ROS_BRIDGE_ROOT/install/setup.bash
-
-if [ -d "/build" ] || [ -d "/install" ]; then
-    source install/setup.bash
-    echo "🔍 Found existing build, sourcing existing build"
-fi
+source /workspace/install/setup.bash
 
 echo "❗ Finished environment setup"
 

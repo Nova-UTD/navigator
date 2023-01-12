@@ -22,7 +22,7 @@ using nav_msgs::msg::Odometry;
 using std_msgs::msg::ColorRGBA;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
-using voltron_msgs::msg::FinalPath;
+using nova_msgs::msg::FinalPath;
 using namespace std::chrono_literals;
 
 PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
@@ -62,7 +62,7 @@ PathPublisherNode::PathPublisherNode() : Node("path_publisher_node") {
 	this->path = this->route1;
 }
 
-voltron_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, navigator::opendrive::OpenDriveMapPtr map)
+nova_msgs::msg::FinalPath PathPublisherNode::generate_path(std::vector<std::string> &road_ids, std::vector<int> &lane_ids, navigator::opendrive::OpenDriveMapPtr map)
 {
 	std::vector<odr::Vec3D> route;
 	FinalPath costed_path;

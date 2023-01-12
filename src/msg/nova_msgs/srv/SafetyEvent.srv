@@ -1,0 +1,34 @@
+# Package:   nova_msgs
+# Filename:  SafetyEvent.srv
+# Author:    Joshua Williams
+# Email:     joshmackwilliams@protonmail.com
+# Copyright: 2021, Nova UTD
+# License:   MIT License
+
+# The service nodes use to notify the safety manager of an issue
+# See https://github.com/Nova-UTD/navigator/wiki/Safety-Manager-Design
+
+# A unique identifier for the type of this event
+uint64 event_uid
+
+# Sequence number, to ensure messages can't be processed out of order
+uint32 sequence_number
+
+# The current status - see below for values
+uint8 status
+# The node is working on assessing or resolving the event locally
+uint8 STATUS_WORKING = 0
+# The node cannot resolve the event locally
+uint8 STATUS_UNRESOLVED = 1
+# The event is resolved
+uint8 STATUS_RESOLVED = 2
+
+# A human-readable description, for debugging and visualization purposes only
+string description
+
+# JSON-formatted event-specific data
+string additional_data
+
+---
+
+# We send nothing back, but this is used as an acknowledgement

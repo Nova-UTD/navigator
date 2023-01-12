@@ -28,11 +28,19 @@ class LidarProcessingNode(Node):
         super().__init__('lidar_processing_node')
         self.lidar_sub = self.create_subscription(
             PointCloud2, '/carla/hero/lidar', self.lidar_cb, 10)
+
+        self.semantic_lidar_sub = self.create_subscription(
+            PointCloud2, '/carla/hero/semantic_lidar', self.semantic_lidar_cb, 10)
+
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 10
         )
         self.clean_lidar_pub = self.create_publisher(
             PointCloud2, '/lidar_filtered', 10
+        )
+
+        self.clean_semantic_lidar_pub = self.create_publisher(
+            PointCloud2, '/lidar_semantic_filtered', 10
         )
 
         self.lidar_min_pub = self.create_publisher(Float32, '/lidar/min_y', 10)
@@ -50,6 +58,17 @@ class LidarProcessingNode(Node):
             ('y', np.float32),
             ('z', np.float32),
             ('intensity', np.float32)
+        ])
+
+        self.left_sem_pcd_cached = np.zeros(0, dtype=[
+            ('x', np.float32),
+            ('y', np.float32),
+            ('z', np.float32)
+        ])
+        self.right_sem_pcd_cached = np.zeros(0, dtype=[
+            ('x', np.float32),
+            ('y', np.float32),
+            ('z', np.float32)
         ])
 
     def clock_cb(self, msg: Clock):
@@ -94,20 +113,62 @@ class LidarProcessingNode(Node):
         msg_array['z'] = merged_z
         msg_array['intensity'] = merged_i
 
-        
-        
-
         msg_array = self.transform_to_base_link(msg_array)
         msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0)
-        msg_array = self.remove_above_points(msg_array, 3.0)
+        msg_array = self.remove_points_above(msg_array, 2.0)
         msg_array = self.remove_ground_points(msg_array, 0.2)
-        
 
         merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
         merged_pcd_msg.header.frame_id = 'base_link'
         merged_pcd_msg.header.stamp = self.carla_clock.clock
 
         self.clean_lidar_pub.publish(merged_pcd_msg)
+
+    def semantic_lidar_cb(self, msg: PointCloud2):
+        pcd_array: np.array = rnp.numpify(msg)
+
+        # Only keep ground points for now
+        pcd_array = pcd_array[pcd_array['ObjTag'] == 7]
+
+        min_y = np.min(pcd_array['y'])
+        max_y = np.max(pcd_array['y'])
+
+        if (min_y < -1.0):
+            # This PCD is from the right side of the car
+            # (Recall that +y points to the left)
+            self.right_sem_pcd_cached = pcd_array
+        elif (max_y > 1.0):
+            self.left_sem_pcd_cached = pcd_array
+        else:
+            self.get_logger().warning('Incoming LiDAR PCD may be invalid.')
+
+        merged_x = np.append(
+            self.left_sem_pcd_cached['x'], self.right_sem_pcd_cached['x'])
+        merged_y = np.append(
+            self.left_sem_pcd_cached['y'], self.right_sem_pcd_cached['y'])
+        merged_z = np.append(
+            self.left_sem_pcd_cached['z'], self.right_sem_pcd_cached['z'])
+
+        total_length = self.left_sem_pcd_cached['x'].shape[0] + \
+            self.right_sem_pcd_cached['x'].shape[0]
+
+        msg_array = np.zeros(total_length, dtype=[
+            ('x', np.float32),
+            ('y', np.float32),
+            ('z', np.float32)
+        ])
+
+        msg_array['x'] = merged_x
+        msg_array['y'] = merged_y
+        msg_array['z'] = merged_z
+
+        msg_array = self.transform_to_base_link(msg_array)
+
+        merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
+        merged_pcd_msg.header.frame_id = 'base_link'
+        merged_pcd_msg.header.stamp = self.carla_clock.clock
+
+        self.clean_semantic_lidar_pub.publish(merged_pcd_msg)
 
     def transform_to_base_link(self, pcd: np.array) -> np.array:
         '''
@@ -153,23 +214,24 @@ class LidarProcessingNode(Node):
                                pcd['y'] < y_distance),
             ))]
 
-        pcd = pcd[pcd['z']>= -2.0]
+        pcd = pcd[pcd['z'] >= -2.0]
 
         return pcd
 
-    def remove_above_points(self, pcd: np.array, min_height: float) -> np.array:
+    def remove_points_above(self, pcd: np.array, height: float) -> np.array:
         '''
         Remove points above the height of the sensor specified around the sensor
 
         :param pcd: a numpy array of the incoming point cloud, in the format provided by ros2_numpy.
-        :param min_height: points with an z value whose absolute value is less than this number will be removed
+        :param min_height: points with an z value whose absolute value is greater than this number will be removed
 
         :returns: an array in ros2_numpy format with the nearby points removed
         '''
 
-        pcd = pcd[pcd['z'] <= min_height]
+        pcd = pcd[pcd['z'] <= height]
 
         return pcd
+
 
 def main(args=None):
     rclpy.init(args=args)

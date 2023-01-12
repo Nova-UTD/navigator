@@ -27,7 +27,7 @@ Todos:
 from sensor_msgs.msg import PointCloud2
 from scipy.spatial.transform import Rotation as R
 from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, TwistWithCovarianceStamped
-from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D
+from nova_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D
 from nav_msgs.msg import Odometry  # For GPS, ground truth
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import Image  # For cameras

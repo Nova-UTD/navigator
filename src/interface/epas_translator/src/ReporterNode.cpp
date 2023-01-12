@@ -13,7 +13,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
 
-#include "voltron_msgs/msg/can_frame.hpp"
+#include "nova_msgs/msg/can_frame.hpp"
 
 #include "epas_translator/ReporterNode.hpp"
 
@@ -55,7 +55,7 @@ ReporterNode::ReporterNode(float epas_min, float epas_max)
 
 ReporterNode::~ReporterNode() {}
 
-void ReporterNode::process_frame(const voltron_msgs::msg::CanFrame::SharedPtr incoming_frame) {
+void ReporterNode::process_frame(const nova_msgs::msg::CanFrame::SharedPtr incoming_frame) {
   if(incoming_frame->identifier != epas_can_message_2_identifier) return;
 
   float current_angle = (incoming_frame->data & angle_mask) >> angle_bit_shift;
@@ -71,7 +71,7 @@ void ReporterNode::process_frame(const voltron_msgs::msg::CanFrame::SharedPtr in
 void ReporterNode::initialize() {
   this->angle_publisher = this->create_publisher<std_msgs::msg::Float32>
     ("epas_translator_real_steering_angle", 8);
-  this->can_subscription = this->create_subscription<voltron_msgs::msg::CanFrame>
+  this->can_subscription = this->create_subscription<nova_msgs::msg::CanFrame>
     ("epas_translator_incoming_can_frames", 8,
      std::bind(& ReporterNode::process_frame, this, std::placeholders::_1));
 }

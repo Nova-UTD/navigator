@@ -9,7 +9,7 @@
     <link name="model_link">
         <visual>
             <geometry>
-                <mesh filename="file:///home/share/hailbopp.stl" scale="1.0 1.0 1.0" />
+                <mesh filename="file:///navigator/data/hailbopp.stl" scale="1.0 1.0 1.0" />
             </geometry>
             <material name="maroon" />
             <origin xyz="-2.6 0 0.28" rpy="0 0 1.570796" />
