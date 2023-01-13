@@ -6,6 +6,7 @@ Package: segmentation
 Node to semantically segment a 2D image using a model.
 '''
 
+
 import rclpy
 import ros2_numpy as rnp
 import numpy as np
@@ -23,6 +24,17 @@ from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Float32
 
 import matplotlib.pyplot as plt
+
+# OpenMMSegmentation
+import torch
+import torchvision
+import mmseg
+from mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
+from mmseg.core.evaluation import get_palette
+print(mmseg.__version__)
+
+print(torch.__version__, torch.cuda.is_available())
+# from mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
 
 
 class ImageSegmentationNode(Node):

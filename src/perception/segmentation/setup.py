@@ -23,7 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'lidar_processing_node = segmentation.lidar_processing_node:main',
+            'image_segmentation_node = segmentation.image_segmentation_node:main',
         ],
     },
 )

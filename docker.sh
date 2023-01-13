@@ -12,6 +12,7 @@ xhost +
 docker run \
     -it \
     --rm \
+    --gpus all \
     -v $PWD:/navigator \
     -v /home/share/carla:/workspace \
     --net=host \
