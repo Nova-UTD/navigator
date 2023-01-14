@@ -12,6 +12,7 @@ import rclpy
 import numpy as np
 from rclpy.node import Node
 # from scipy.spatial.transform import Rotation as R
+import sys
 import time
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
@@ -86,15 +87,18 @@ class ImageSegmentationNode(Node):
 
     def __init__(self):
         super().__init__('image_segmentation_node')
-        config_file = '/mmsegmentation/pspnet_r50-d8_512x1024_40k_cityscapes.py'
-        checkpoint_file = '/mmsegmentation/pspnet_r50-d8_512x1024_40k_cityscapes_20200605_003338-2966598c.pth'
+        config_file = '/mmsegmentation/configs/pspnet/pspnet_r18-d8_512x1024_80k_cityscapes.py'
+        checkpoint_file = '/navigator/data/perception/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth'
 
         self.model = init_segmentor(config_file, checkpoint_file, device='cuda:0')
 
-        self.front_rgb_sub = self.create_subscription(Image, "/carla/hero/rgb_center/image", self.rgb_front_cb, 10)
+        self.left_rgb_sub = self.create_subscription(Image, "/carla/hero/rgb_left/image", self.rgb_left_cb, 10)
+        self.left_result_pub = self.create_publisher(Image, '/semantic/left_mono', 10)
 
-        img = mmcv.imread('/navigator/demo.png')
-        
+        self.right_rgb_sub = self.create_subscription(Image, "/carla/hero/rgb_right/image", self.rgb_right_cb, 10)
+        self.right_result_pub = self.create_publisher(Image, '/semantic/right_mono', 10)
+
+
         self.idx = 0
         # model.show_result(img, result, out_file='result.jpg', opacity=1.0)
 
@@ -118,10 +122,66 @@ class ImageSegmentationNode(Node):
             data = data[...,0]
         return data
 
-    def rgb_front_cb(self, msg: Image):
-        img_array = self.image_to_numpy(msg)
-        self.get_logger().info(str(img_array))
-        result = inference_segmentor(self.model, img_array)
+    def numpy_to_image(self, arr, encoding):
+        if not encoding in name_to_dtypes:
+            raise TypeError('Unrecognized encoding {}'.format(encoding))
+
+        im = Image(encoding=encoding)
+
+        # extract width, height, and channels
+        dtype_class, exp_channels = name_to_dtypes[encoding]
+        dtype = np.dtype(dtype_class)
+        if len(arr.shape) == 2:
+            im.height, im.width, channels = arr.shape + (1,)
+        elif len(arr.shape) == 3:
+            im.height, im.width, channels = arr.shape
+        else:
+            raise TypeError("Array must be two or three dimensional")
+
+        # check type and channels
+        if exp_channels != channels:
+            raise TypeError("Array has {} channels, {} requires {}".format(
+                channels, encoding, exp_channels
+            ))
+        if dtype_class != arr.dtype.type:
+            raise TypeError("Array is {}, {} requires {}".format(
+                arr.dtype.type, encoding, dtype_class
+            ))
+
+        # make the array contiguous in memory, as mostly required by the format
+        contig = np.ascontiguousarray(arr)
+        im.data = contig.tostring()
+        im.step = contig.strides[0]
+        im.is_bigendian = (
+            arr.dtype.byteorder == '>' or
+            arr.dtype.byteorder == '=' and sys.byteorder == 'big'
+        )
+
+        return im
+
+    def rgb_left_cb(self, msg: Image):
+        img_array = mmcv.imread("/navigator/demo.png")
+
+        img_array = self.image_to_numpy(msg)[:,:,:3] # Cut out alpha
+        result = inference_segmentor(self.model, img_array)[0]
+        # result *= 40
+
+        result_msg = self.numpy_to_image(result.astype(np.uint8), 'mono8')
+        result_msg.header = msg.header
+
+        self.left_result_pub.publish(result_msg)
+
+    def rgb_right_cb(self, msg: Image):
+        img_array = mmcv.imread("/navigator/demo.png")
+
+        img_array = self.image_to_numpy(msg)[:,:,:3] # Cut out alpha
+        result = inference_segmentor(self.model, img_array)[0]
+        result *= 40
+
+        result_msg = self.numpy_to_image(result.astype(np.uint8), 'mono8')
+        result_msg.header = msg.header
+
+        self.right_result_pub.publish(result_msg)
 
 def main(args=None):
     rclpy.init(args=args)
