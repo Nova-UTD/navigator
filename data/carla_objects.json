@@ -14,50 +14,26 @@
             [
                 {
                     "type": "sensor.camera.rgb",
-                    "id": "rgb_center",
-                    "spawn_point": {"x": 0.85, "y": 0.0, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": 0.0},
-                    "image_size_x": 600,
-                    "image_size_y": 400,
-                    "fov": 120.0
-                },
-                {
-                    "type": "sensor.camera.rgb",
                     "id": "birds_eye",
                     "spawn_point": {"x": 0.85, "y": 0.0, "z": 25.0, "roll": 0.0, "pitch": 90.0, "yaw": 0.0},
-                    "image_size_x": 600,
-                    "image_size_y": 400,
-                    "fov": 120.0
-                },
-                {
-                    "type": "sensor.camera.semantic_segmentation",
-                    "id": "semantic_camera",
-                    "spawn_point": {"x": 0.85, "y": 0.0, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": 0.0},
-                    "image_size_x": 600,
-                    "image_size_y": 400,
-                    "fov": 120.0
-                },
-                {
-                    "type": "sensor.camera.depth",
-                    "id": "depth_camera",
-                    "spawn_point": {"x": 0.85, "y": 0.0, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": 0.0},
-                    "image_size_x": 600,
-                    "image_size_y": 400,
+                    "image_size_x": 1024,
+                    "image_size_y": 512,
                     "fov": 120.0
                 },
                 {
                     "type": "sensor.camera.rgb",
                     "id": "rgb_left",
-                    "spawn_point": {"x": 0.7, "y": 0.15, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": 51.5662},
-                    "image_size_x": 600,
-                    "image_size_y": 400,
+                    "spawn_point": {"x": 0.7, "y": 0.15, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": 60.0},
+                    "image_size_x": 1024,
+                    "image_size_y": 512,
                     "fov": 120.0
                 },
                 {
                     "type": "sensor.camera.rgb",
                     "id": "rgb_right",
-                    "spawn_point": {"x": 0.7, "y": -0.15, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": -51.5662},
-                    "image_size_x": 600,
-                    "image_size_y": 400,
+                    "spawn_point": {"x": 0.7, "y": -0.15, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": -60.0},
+                    "image_size_x": 1024,
+                    "image_size_y": 512,
                     "fov": 120.0
                 },
                 {
