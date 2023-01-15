@@ -14,7 +14,10 @@ cmake_minimum_required(VERSION 3.5)
 get_filename_component(directory_name ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 project(${directory_name})
 
+find_package(PCL REQUIRED)
 find_package(pcl_ros REQUIRED)
+include_directories(${OCTOMAP_INCLUDE_DIRS})
+# target_link_libraries(${OCTOMAP_LIBRARIES})
 
 find_package(nova_auto_package REQUIRED)
 nova_auto_package()

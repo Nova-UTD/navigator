@@ -11,18 +11,28 @@
 
 
 // Message definitions
+#include "rosgraph_msgs/msg/clock.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <memory>
 #include <string>
+#include <vector>
+
+// PCL
+#include "pcl_conversions/pcl_conversions.h"
+#include "pcl_ros/transforms.hpp"
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/passthrough.h>
 
 #include "rclcpp/rclcpp.hpp"
 
 using namespace std::chrono_literals;
 
-using rosgraph_msgs::msg::Clock
-using sensor_msgs::msg::PointCloud2
+using rosgraph_msgs::msg::Clock;
+using sensor_msgs::msg::PointCloud2;
 
 namespace navigator
 {

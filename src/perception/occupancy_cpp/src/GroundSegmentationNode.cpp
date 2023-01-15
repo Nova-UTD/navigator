@@ -20,261 +20,216 @@ GroundSegmentationNode::GroundSegmentationNode() : Node("ground_segmentation_nod
       [this](Clock::SharedPtr msg)
       { this->clock = *msg; });
 
-  pcd_sub = this->create_subscription<PointCloud2>(
-      "/lidar_filtered", 10,
+  raw_lidar_sub = this->create_subscription<PointCloud2>(
+      "/carla/hero/lidar", 10,
       std::bind(&GroundSegmentationNode::pointCloudCb, this, std::placeholders::_1));
 
-  initial_odom_sub = this->create_subscription<Odometry>(
-      INITIAL_GUESS_ODOM_TOPIC, 10,
-      std::bind(&GroundSegmentationNode::gnssOdomCb, this, std::placeholders::_1));
-
-  world_info_sub = this->create_subscription<CarlaWorldInfo>(
-      "/carla/world_info", 10,
-      std::bind(&GroundSegmentationNode::worldInfoCb, this, std::placeholders::_1));
-
-  voxel_marker_pub = this->create_publisher<PointCloud2>("/map/voxels/viz", 10);
-  particle_viz_pub = this->create_publisher<PointCloud2>("/map/particles/viz", 10);
-
-  this->map_marker_timer = this->create_wall_timer(this->MAP_UPDATE_PERIOD,
-                                                   bind(&GroundSegmentationNode::publishMapMarker, this));
-
-  this->tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+  filtered_lidar_pub = this->create_publisher<PointCloud2>("/lidar/filtered", 10);
 }
 
-void GroundSegmentationNode::gnssOdomCb(Odometry::SharedPtr msg)
+void GroundSegmentationNode::pointCloudCb(PointCloud2::SharedPtr raw_cloud)
 {
-  // Initialize our filter given the initial guess
-  if (this->filter == nullptr)
-  {
-    if (this->tree == nullptr)
-      return;
-    this->filter = std::make_shared<ParticleFilter>(100, *this->tree);
-
-    auto q_msg = msg->pose.pose.orientation;
-    Eigen::Quaternionf q(q_msg.w, q_msg.x, q_msg.y, q_msg.z);
-    auto heading = q.toRotationMatrix().eulerAngles(0, 1, 2)[2];
-
-    double stdev[3] = {3.0, 3.0, 0.3};
-
-    this->filter->init(
-        msg->pose.pose.position.x,
-        msg->pose.pose.position.y,
-        heading,
-        stdev);
-    RCLCPP_INFO(this->get_logger(), "Particle filter has been created.");
-  }
-
-  // Extract yaw from msg quaternion
-  auto q_msg = msg->pose.pose.orientation;
-  Eigen::Quaternionf q(q_msg.w, q_msg.x, q_msg.y, q_msg.z);
-  double yaw = q.toRotationMatrix().eulerAngles(0, 1, 2)[2];
-
-  navigator::perception::Pose gnss_pose(
-      msg->pose.pose.position.x,
-      msg->pose.pose.position.y,
-      yaw);
-
-  // filter->update() runs one iteration of the particle filter,
-  // handling all internal steps, then returns the result pose.
-  PoseWithCovarianceStamped filter_result = this->filter->update(this->latest_cloud, gnss_pose);
-  RCLCPP_INFO(this->get_logger(), "097");
-
-  map_bl_transform = TransformStamped();
-
-  map_bl_transform.header.stamp = this->clock.clock;
-  map_bl_transform.header.frame_id = "map";
-  map_bl_transform.child_frame_id = "hero";
-  map_bl_transform.transform.translation.x = filter_result.pose.pose.position.x;
-  map_bl_transform.transform.translation.y = filter_result.pose.pose.position.y;
-  map_bl_transform.transform.translation.z = filter_result.pose.pose.position.z; // This should be zero.
-  map_bl_transform.transform.rotation = filter_result.pose.pose.orientation;
-  this->tf_broadcaster->sendTransform(map_bl_transform);
-
-  PointCloud2 particle_cloud = this->filter->asPointCloud();
-  particle_viz_pub->publish(particle_cloud);
-}
-
-void GroundSegmentationNode::publishMapMarker()
-{
-  // If the tree is uninitialized, skip
-  if (this->tree == nullptr)
-    return;
-
-  pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
-
-  // Convert from ROS to PCL format
-
-  // Location of vehicle as a ROS vector
-  Vector3 center_ros = map_bl_transform.transform.translation;
-
-  // Set the bounds of our bounding box
-  octomap::point3d hi_res_bbx_min_pt(
-      center_ros.x - HIGH_RES_DISTANCE,
-      center_ros.y - HIGH_RES_DISTANCE,
-      center_ros.z - HIGH_RES_DISTANCE);
-  octomap::point3d hi_res_bbx_max_pt(
-      center_ros.x + HIGH_RES_DISTANCE,
-      center_ros.y + HIGH_RES_DISTANCE,
-      center_ros.z + HIGH_RES_DISTANCE);
-
-  // Iterate through each point in the tree
-  for (
-      octomap::OcTree::leaf_bbx_iterator it = tree->begin_leafs_bbx(hi_res_bbx_min_pt, hi_res_bbx_max_pt, MAX_VISUALIZATION_DEPTH),
-                                         end = tree->end_leafs_bbx();
-      it != end; ++it)
-  {
-
-    if (it->getOccupancy() < 0.8)
-      continue; // Skip unoccupied cells
-    // RCLCPP_INFO(this->get_logger(), "Occ: %f, val: %f", it->getOccupancy(), it->getValue());
-    // manipulate node, e.g.:44
-    octomap::point3d voxel_center = it.getCoordinate();
-    pcl::PointXYZI voxel_center_pcl;
-    voxel_center_pcl.x = voxel_center.x();
-    voxel_center_pcl.y = voxel_center.y();
-    voxel_center_pcl.z = voxel_center.z();
-
-    pcl_cloud.push_back(voxel_center_pcl);
-  }
-
-  PointCloud2 ros_cloud;
-
-  pcl::toROSMsg(pcl_cloud, ros_cloud);
-  ros_cloud.header.frame_id = "map";
-  ros_cloud.header.stamp = this->clock.clock;
-
-  voxel_marker_pub->publish(ros_cloud);
-}
-
-void GroundSegmentationNode::pointCloudCb(PointCloud2::SharedPtr ros_cloud)
-{
+  RCLCPP_INFO(this->get_logger(), "Points for the segmentation received.");
   auto now = this->get_clock()->now();
-  double start_seconds = now.seconds() + now.nanoseconds() * 1e-9;
+  float start_time = now.seconds() + now.nanoseconds() * 9.0 ; // Get current (start) time in seconds
 
-  if (this->tree == nullptr)
-    return; // Tree not yet initialized
+  /* Parameters that can be specified via class later. */
 
-  octomap::Pointcloud octo_cloud;
-  pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
+  // Specify the vertical offset distance of the LiDAR from the ground (specified by system - e.g. KITTI).
+  float lidarZ = 0.0;
+
+  // Maximum keep LiDAR square distance.
+  float maxKeep = 80.0;
+
+  float s = 0.55; // 0.6; // 0.09
+  float res = 0.4;
+
+  /* Build the grid. */
+
+  // Initialize the filtered point cloud to be published.
+  PointCloud2 result_cloud;
+
+  // Set the message time stamp.
+  result_cloud.header.stamp = raw_cloud->header.stamp;
+  // std::cout << "time stamp" << result_cloud.header.stamp << endl;
+
+  // Dereference the point cloud.
+  const PointCloud2 &cloud(*raw_cloud);
 
   // Convert from ROS to PCL format
-  pcl::fromROSMsg(*ros_cloud, pcl_cloud);
+  pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
+  pcl::fromROSMsg(*raw_cloud, pcl_cloud);
 
-  // Convert the TransformStamped message that we just received
-  // into an Eigen-style transform
-  Eigen::Matrix4f baselink_to_map_tf = tf2::transformToEigen(map_bl_transform.transform).matrix().cast<float>();
+  // Get number of points in point cloud.
+  int origPCSize = raw_cloud->width;
 
-  // Use the Eigen transform to transform the pcl cloud to the global "map" frame
-  pcl::transformPointCloud(pcl_cloud, pcl_cloud, baselink_to_map_tf);
+  // Get the maximum x, y distance.
+  float maxXYCoord = maxKeep;
 
-  Vector3 tf_translation = map_bl_transform.transform.translation;
-  octomap::point3d sensor_origin(
-      tf_translation.x, tf_translation.y, tf_translation.z);
+  // max( max(-1 * minPoint.x, maxPoint.x), max(-1 * minPoint.y, maxPoint.y));
 
-  tree->insertPointCloud(pclToOctreeCloud(pcl_cloud), sensor_origin);
-  this->latest_cloud = pcl_cloud; // Cache the latest LiDAR data for the particle filter
-  now = this->get_clock()->now();
-  double end_seconds = now.seconds() + now.nanoseconds() * 1e-9;
+  size_t gridSize = int(2 * ceil((maxXYCoord) / res) + 1);
 
-  double delta_t = end_seconds - start_seconds;
-  RCLCPP_INFO(this->get_logger(), "Took %f seconds", delta_t);
-}
+  std::vector<int> grid[gridSize][gridSize];
 
-/**
- * @brief Given a PCL-formatted cloud, return an Octomap-formatted version
- *
- * @param inputCloud The PCL-formatted cloud
- * @return octomap::Pointcloud
- */
-octomap::Pointcloud GroundSegmentationNode::pclToOctreeCloud(pcl::PointCloud<pcl::PointXYZI> inputCloud)
-{
-  octomap::Pointcloud result;
-  for (pcl::PointXYZI pt : inputCloud)
+  // Get center coordinates of the grid.
+  int centerX = int(ceil(maxXYCoord / res));
+  int centerY = int(ceil(maxXYCoord / res));
+
+  // Populate the grid with indices of points that fit into a particular cell.
+  for (pcl::PointXYZI point : pcl_cloud)
   {
-    result.push_back(pt.x, pt.y, pt.z);
-  }
-  RCLCPP_DEBUG(this->get_logger(), "Adding %d points", inputCloud.size());
-  return result;
-}
-
-/**
- * @brief Generate the map's filename, including the path
- *
- * @return std::string
- */
-std::string GroundSegmentationNode::getFilenameFromMapName()
-{
-  std::string file_name = this->map_name;
-  file_name.erase(
-      remove(file_name.begin(), file_name.end(), '/'),
-      file_name.end()); // remove '/' from string
-
-  std::size_t ind = file_name.find("CarlaMaps"); // Remove "CarlaMaps" from name
-  if (ind != std::string::npos)
-  {
-    file_name.erase(ind, std::string("CarlaMaps").length());
-    std::cout << file_name << "\n";
+    // Ensure within specified area, and not above a filtered height
+    if ((abs(point.x) <= maxXYCoord) && (abs(point.y) <= maxXYCoord) && (point.z <= 3.5))
+    {
+      grid[int(centerX + round(point.x / res))][int(centerY + round(point.y / res))].push_back(i);
+      // cout << "Z value: " << point.z << endl;
+    }
   }
 
-  std::transform(file_name.begin(), file_name.end(),
-                 file_name.begin(), ::tolower); // Convert to lowercase
+  // /* Perform MRF segmentation. */
 
-  file_name = MAP_SAVE_PATH + file_name + ".bt";
-  return file_name;
-}
+  // // Initialize the hG array.
+  // float hG[gridSize][gridSize];
 
-/**
- * @brief Save the octree to disk in the Octomap format.
- *
- */
-void GroundSegmentationNode::saveOctreeBinary()
-{
-  std::string file_name = getFilenameFromMapName();
-  RCLCPP_INFO(this->get_logger(), "Saving map to " + file_name);
+  // // Initialize the grid segmentation (ground cells have a value of 1).
+  // int gridSeg[gridSize][gridSize];
+  // fill(gridSeg[0], gridSeg[0] + gridSize * gridSize, 0);
 
-  tree->writeBinary(file_name);
-}
+  // // Initialize the center coordinate of the 2D grid to ground according to the height of the
+  // // LiDAR position on the vehicle.
+  // hG[centerX][centerY] = -1 * lidarZ;
+  // gridSeg[centerX][centerY] = 1;
 
-/**
- * @brief Either load or create a map from a given map name
- *
- * @param msg The world info message containing the map name
- */
-void GroundSegmentationNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
-{
-  if (this->tree != nullptr)
-    return; // Tree already initialized
+  // // Allocate space for two elements in the vector.
+  // vector<int> outerIndex;
+  // outerIndex.resize(2);
 
-  this->map_name = msg->map_name;
-  std::string file_name = getFilenameFromMapName();
-
-  // if (file_name == ".bt")
+  // // Move radially outwards and perform the MRF segmentation.
+  // for (int i = 1; i < int(ceil(maxXYCoord / res)) + 1; i++)
   // {
-  //   RCLCPP_WARN(this->get_logger(), "Map name is empty, waiting until map is loaded." + file_name);
+
+  //   // Generate the indices at the ith circle level from the center of the grid.
+  //   outerIndex[0] = -1 * i;
+  //   outerIndex[1] = i;
+
+  //   /* vector<int> outerIndex;
+  //   outerIndex.push_back(-1 * i);
+  //   outerIndex.push_back(i); */
+
+  //   for (int index : outerIndex)
+  //   {
+  //     for (int k = -1 * i; k < (i + 1); k++)
+  //     {
+
+  //       // Index is the outer index (perimeter of circle) and k is possible inner indices
+  //       // in between the edges.
+  //       Indices currentCircle;
+  //       currentCircle.insert(pair<int, int>(centerX + index, centerY + k));
+
+  //       // Add the mirror image of cells to the circle if not on the top or bottom row of the circle.
+  //       if (!((k == -1 * i) || (k == i)))
+  //       {
+  //         currentCircle.insert(pair<int, int>(centerX + k, centerY + index));
+  //       }
+
+  //       // Go through the one or two stored cells right now.
+  //       for (pair<int, int> const &indexPair : currentCircle)
+  //       {
+
+  //         int x = indexPair.first;
+  //         int y = indexPair.second;
+
+  //         // Compute the minimum and maximum z coordinates of each grid cell.
+
+  //         // Initialize H to a very small value.
+  //         float H = -numeric_limits<float>::infinity();
+  //         // Initialize h to a very large value.
+  //         float h = numeric_limits<float>::infinity();
+
+  //         if (!grid[x][y].empty())
+  //         {
+
+  //           const vector<int> pcIndices = grid[x][y];
+
+  //           for (int j = 0; j < pcIndices.size(); j++)
+  //           {
+  //             H = max(cloud.points[pcIndices[j]].z, H);
+  //             h = min(cloud.points[pcIndices[j]].z, h);
+  //           }
+  //         }
+
+  //         // Pay attention to what happens when there are no points in a grid cell? Will it work?
+
+  //         // Compute hHatG: find max hG of neighbors.
+  //         float hHatG = -numeric_limits<float>::infinity();
+
+  //         // Get the inner circle neighbors of the current cell.
+
+  //         // The inner circle is one level down from the current circle.
+  //         int innerCircleIndex = i - 1;
+
+  //         // Center the grid at (0, 0).
+  //         int xRelativeIndex = x - centerX;
+  //         int yRelativeIndex = y - centerY;
+
+  //         // Loop through possible neighbor indices.
+  //         for (int m = -1; m < 2; m++)
+  //         {
+  //           for (int n = -1; n < 2; n++)
+  //           {
+
+  //             int xRelativeNew = abs(xRelativeIndex + m);
+  //             int yRelativeNew = abs(yRelativeIndex + n);
+
+  //             // Ensure index is actually on the inner circle.
+  //             if (((xRelativeNew == innerCircleIndex) && (yRelativeNew <= innerCircleIndex)) || ((yRelativeNew == innerCircleIndex) && (xRelativeNew <= innerCircleIndex)))
+  //             {
+
+  //               // Compute the new hHatG.
+  //               float hGTemp = hG[x + m][y + n];
+  //               hHatG = max(hGTemp, hHatG);
+  //             }
+  //           }
+  //         }
+
+  //         // Update hG of current cell.
+  //         if ((H != -numeric_limits<float>::infinity()) && (h != numeric_limits<float>::infinity()) &&
+  //             ((H - h) < s) && ((H - hHatG) < s))
+  //         {
+  //           gridSeg[x][y] = 1;
+  //           hG[x][y] = H;
+  //         }
+  //         else
+  //         {
+  //           hG[x][y] = hHatG;
+
+  //           // Add the cell's LiDAR points to the segmented (not ground) point cloud.
+  //           if (!grid[x][y].empty())
+  //           {
+
+  //             const vector<int> pcIndices = grid[x][y];
+
+  //             for (int j = 0; j < grid[x][y].size(); j++)
+  //             {
+  //               result_cloud.points.push_back(cloud.points[pcIndices[j]]);
+  //             }
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
   // }
 
-  RCLCPP_INFO(this->get_logger(), "Reading map from " + file_name);
+  // auto now = this->get_clock()->now();
+  // float end_time = now.seconds() + now.nanoseconds() * 9.0 ; // Get current (start) time in seconds
+  // // cout << "Width of point cloud before: " << cloud.width << endl;
+  // // cout << "Width of point cloud now: " << result_cloud.points.size() << endl;
+  // RCLCPP_INFO(this->get_logger(), "Ground seg took %d", end_time - start_time);
 
-  this->tree = std::make_shared<octomap::OcTree>(OCTREE_RESOLUTION);
+  // /* Set the frame_id to "vehicle_ground_cartesian". */
 
-  bool successfully_read = this->tree->readBinary(file_name);
-
-  if (!successfully_read)
-  {
-    this->tree = std::make_shared<octomap::OcTree>(this->OCTREE_RESOLUTION);
-    RCLCPP_INFO(this->get_logger(), "Map file did not exist. A new one will be created.");
-  }
-  else
-  {
-    RCLCPP_INFO(this->get_logger(), "Reading complete.");
-  }
-}
-
-/**
- * @brief Destroy the Octree node, saving the map to disk first.
- *
- */
-GroundSegmentationNode::~GroundSegmentationNode()
-{
-  saveOctreeBinary();
+  // /* Publish to ROS node. */
+  // result_cloud.header.frame_id = cloud.header.frame_id;
+  filtered_lidar_pub->publish(result_cloud);
 }
