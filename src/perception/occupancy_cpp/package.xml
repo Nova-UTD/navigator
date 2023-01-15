@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>mapping</name>
+  <name>occupancy_cpp</name>
   <version>1.0.0</version>
-  <description>Map creation, provision, and storage tools.</description>
+  <description>Tools to perform MRF ground segmentation and filtering on raw LiDAR data</description>
   <maintainer email="project.nova@utdallas.edu">Nova</maintainer>
   <license>MIT License</license>
 
-  <buildtool_depend>occupancy_cpp</buildtool_depend>
+  <buildtool_depend>nova_auto_package</buildtool_depend>
 
   <depend>carla_msgs</depend>
   <depend>geometry_msgs</depend>
