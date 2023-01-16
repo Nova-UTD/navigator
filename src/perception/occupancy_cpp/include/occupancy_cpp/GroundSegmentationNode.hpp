@@ -1,5 +1,5 @@
 /*
- * Package:   mapping
+ * Package:   occupancy_cpp
  * Filename:  GroundSegmentationNode.hpp
  * Author:    Will Heitman, Daniel Vayman
  * Email:     w at heit dot mn
@@ -61,6 +61,8 @@ namespace navigator
       // rclcpp::TimerBase::SharedPtr map_marker_timer;
 
       Clock clock;
+
+      pcl::PointCloud<pcl::PointXYZI> removeGround(pcl::PointCloud<pcl::PointXYZI> raw_cloud);
       
     };
 

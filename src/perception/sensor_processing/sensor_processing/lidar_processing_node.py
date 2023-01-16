@@ -17,7 +17,6 @@ import rclpy
 import ros2_numpy as rnp
 import numpy as np
 from rclpy.node import Node
-from scipy.spatial.transform import Rotation as R
 import time
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
@@ -46,7 +45,7 @@ class LidarProcessingNode(Node):
             Clock, '/clock', self.clock_cb, 10
         )
         self.clean_lidar_pub = self.create_publisher(
-            PointCloud2, '/lidar_filtered', 10
+            PointCloud2, '/lidar/fused', 10
         )
 
         self.clean_semantic_lidar_pub = self.create_publisher(
@@ -128,71 +127,16 @@ class LidarProcessingNode(Node):
 
         msg_array = self.transform_to_base_link(msg_array)
         msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0)
-        msg_array = self.remove_points_above(msg_array, 2.0)
-        msg_array = self.remove_ground_points(msg_array, 0.2)
+        # msg_array = self.remove_points_above(msg_array, 2.0)
+        # msg_array = self.remove_ground_points(msg_array, 0.2)
 
-        self.publish_occupancy_grid(msg_array, range=40.0, res=0.5)
+        # self.publish_occupancy_grid(msg_array, range=40.0, res=0.5)
 
         merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
         merged_pcd_msg.header.frame_id = 'base_link'
         merged_pcd_msg.header.stamp = self.carla_clock.clock
 
         self.clean_lidar_pub.publish(merged_pcd_msg)
-
-    def publish_occupancy_grid(self, msg_array: np.array, range: float, res: float):
-        start = time.time()
-
-        grid = OccupancyGrid()
-        pts_plain = np.zeros((msg_array.shape[0], 3))
-
-        pts_plain[:, 0] = msg_array['x']
-        pts_plain[:, 1] = msg_array['y']
-        pts_plain[:, 2] = msg_array['z']
-
-        # 1. First transform PCD to base_link
-        try:
-            t = self.tf_buffer.lookup_transform(
-                'map',
-                'base_link',
-                rclpy.time.Time())
-        except TransformException as ex:
-            self.get_logger().warning(
-                f'Could not transform from "map" to "base_link": {ex}')
-            return
-
-        # 1a. Rotate all points
-        q = t.transform.rotation
-        r = R.from_quat([q.x, q.y, q.z, q.w])
-        pts_plain_tfed = r.apply(pts_plain)
-
-        # 1b. Translate to complete the tf
-        center = t.transform.translation
-        trans_array = [center.x, center.y, center.z]
-        pts_plain_tfed += trans_array
-
-        min_x = center.x - range
-        max_x = center.x + range
-        min_y = center.y - range
-        max_y = center.y + range
-        width = np.ceil(max_x-min_x)
-        height = np.ceil(max_y-min_y)
-
-        angles = np.arctan2(pts_plain[:, 1], pts_plain[:, 0])
-
-        # plt.hist(angles)
-        # plt.show()
-        # self.get_logger().info(f"Min: {angles.min()}, max: {angles.max()}")
-
-        data =
-        for i in np.linspace(min_x, max_x, res):
-            for j in np.linspace(min_y, max_y, res):
-
-                # for point in msg_array:
-                #     self.get_logger().info(str(point))
-
-        self.occupancy_grid_pub.publish(grid)
-
-        self.get_logger().info(f"Grid gen took {time.time() - start} sec")
 
     def semantic_lidar_cb(self, msg: PointCloud2):
         pcd_array: np.array = rnp.numpify(msg)
