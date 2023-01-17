@@ -68,11 +68,11 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
     int x_max = static_cast<int>(center.x) + range;
     int y_min = static_cast<int>(center.y) - range;
     int y_max = static_cast<int>(center.y) + range;
-    bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree = this->map_->generate_mesh_tree();
+    this->map_wide_tree_ = this->map_->generate_mesh_tree();
 
     odr::box search_region(odr::point(x_min, y_min), odr::point(x_max, y_max));
     std::vector<odr::value> lane_shapes_in_range;
-    map_wide_tree.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
+    map_wide_tree_.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
 
     std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
 
@@ -185,6 +185,19 @@ void navigator::perception::MapManagementNode::gridPubTimerCb()
 
     OccupancyGrid msg = getDrivableAreaGrid(center, GRID_RANGE, GRID_RES);
     grid_pub_->publish(msg);
+}
+
+void navigator::perception::MapManagementNode::getLanesFromRouteMsg(CarlaRoute::SharedPtr msg)
+{
+    if (this->lanes_in_route_.size() > 0)
+        return;
+
+    std::vector<odr::Lane> lanes_in_route;
+
+    for (auto pose : msg->poses) {
+        // RCLCPP_INFO()
+    }
+    RCLCPP_INFO(this->get_logger(), "Received %i poses along route.");
 }
 
 /**

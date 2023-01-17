@@ -1,16 +1,11 @@
 /*
- * Package:   MotionPlanner
- * Filename:  MotionPlanner.hpp
- * Author:    Jim Moore
- * Email:     jim3moore@gmail.com
- * Copyright: 2022, Nova UTD
+ * Package:   map_management
+ * Filename:  MapManager.hpp
+ * Author:    Will Heitman
+ * Email:     w at heit dot mn
+ * Copyright: 2023, Nova UTD
  * License:   MIT License
  */
-
-/*
-    Currently, this node gets an Evidential Grid Map input from perception and creates a cost map accordingly to ensure safety and good driving practices.
-    It does so by giving collisions an extremely high costs and making spaces closer to the next waypoint less costly. *TO BE CONTINUED*
-*/
 
 #pragma once
 
@@ -41,6 +36,7 @@
 #include "tf2_ros/buffer.h"
 
 // Message includes
+#include "carla_msgs/msg/carla_route.hpp"
 #include "carla_msgs/msg/carla_world_info.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
@@ -52,6 +48,7 @@ using namespace nav_msgs::msg;
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
 
+using carla_msgs::msg::CarlaRoute;
 using carla_msgs::msg::CarlaWorldInfo;
 using PointMsg = geometry_msgs::msg::Point;
 using geometry_msgs::msg::TransformStamped;
@@ -81,6 +78,7 @@ namespace navigator
             void clockCb(Clock::SharedPtr msg);
             TransformStamped getVehicleTf();
             void gridPubTimerCb();
+            void getLanesFromRouteMsg(CarlaRoute::SharedPtr msg);
             void updateRoute();
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
@@ -97,6 +95,8 @@ namespace navigator
             Clock::SharedPtr clock_;
             odr::OpenDriveMap *map_ = nullptr;
             std::vector<odr::LanePair> lane_polys_;
+            std::vector<odr::Lane> lanes_in_route_;
+            bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
         };
     }
 }
