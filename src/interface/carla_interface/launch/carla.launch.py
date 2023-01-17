@@ -80,6 +80,11 @@ def generate_launch_description():
         arguments=['-d' + '/navigator/data/mcl.rviz']
     )
 
+    ground_seg = Node(
+        package='occupancy_cpp',
+        executable='ground_segmentation_exe'
+    )
+
     return LaunchDescription([
         # CONTROL
         # carla_controller,
@@ -100,6 +105,7 @@ def generate_launch_description():
 
         # PERCEPTION
         lidar_processor,
+        ground_seg,
 
         # STATE ESTIMATION
         map_manager,
