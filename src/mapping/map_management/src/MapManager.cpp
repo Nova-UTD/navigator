@@ -23,7 +23,9 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
     // Publishers and subscribers
     grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
+
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
+    carla_route_sub_ = this->create_subscription<CarlaRoute>("/carla/hero/global_plan", 10, bind(&MapManagementNode::getLanesFromRouteMsg, this, std::placeholders::_1));
     world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
 
     grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::gridPubTimerCb, this));
