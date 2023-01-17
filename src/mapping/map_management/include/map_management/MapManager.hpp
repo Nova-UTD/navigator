@@ -84,6 +84,7 @@ namespace navigator
 
             rclcpp::Publisher<OccupancyGrid>::SharedPtr grid_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
+            rclcpp::Subscription<CarlaRoute>::SharedPtr carla_route_sub_;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
 
             rclcpp::TimerBase::SharedPtr grid_pub_timer_;

@@ -56,6 +56,7 @@ class LeaderboardLiaisonNode(Node):
         # self.get_logger().info("Settings applied!")
 
         self.route = None
+        self.clock = Clock()
 
     def clock_cb(self, msg: Clock):
         self.clock = msg
@@ -73,6 +74,7 @@ class LeaderboardLiaisonNode(Node):
 
         for pose in self.route.poses:
             pose: Pose
+            pose.position.z = 0.0 # Ignore height. TODO: Support z != 0.
             pose_stamped = PoseStamped()
             pose_stamped.pose = pose
             pose_stamped.header.frame_id = 'map'
