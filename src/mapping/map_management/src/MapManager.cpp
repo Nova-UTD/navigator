@@ -194,8 +194,43 @@ void navigator::perception::MapManagementNode::getLanesFromRouteMsg(CarlaRoute::
 
     std::vector<odr::Lane> lanes_in_route;
 
-    for (auto pose : msg->poses) {
-        // RCLCPP_INFO()
+    
+
+    for (auto pose : msg->poses)
+    {
+        // Find the lane polygon(s) that the point falls within
+        odr::point p(pose.position.x, pose.position.y);
+        std::vector<odr::value> query_results;
+        std::vector<odr::Lane> lanes_containing_point;
+        this->map_wide_tree_.query(bgi::contains(p), std::back_inserter(query_results));
+
+
+
+        for (auto result : query_results)
+        {
+            /*
+            lane_polys_ is a vector of LanePairs, where a LanePair
+            has a Lane object (which contains details like the lane ID, parent road, etc),
+            and a ring (a Boost geometry that describes the outline of the lane).
+            
+            A "result" contains a given lane ring's bounding box (first) and
+            the index of the ring (result.second). This is the same index within
+            lane_polys_. Adding ".first" gets the Lane object.
+
+            Got that?
+            */
+            odr::ring ring = this->lane_polys_.at(result.second).second;
+            if (bg::within(p, ring))
+                lanes_containing_point.push_back(this->lane_polys_.at(result.second).first);
+        }
+
+        // Does this point fall within more than one lane?
+        // If so, we've found a junction. Skip to next pose.
+        if (lanes_containing_point.size() > 1)
+            continue;
+
+        // Append the matching lane to the full route
+        lanes_in_route.push_back(lanes_containing_point.front());
     }
     RCLCPP_INFO(this->get_logger(), "Received %i poses along route.");
 }
