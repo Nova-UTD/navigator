@@ -25,7 +25,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
 
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
-    carla_route_sub_ = this->create_subscription<CarlaRoute>("/carla/hero/global_plan", 10, bind(&MapManagementNode::getLanesFromRouteMsg, this, std::placeholders::_1));
+    rough_path_sub_ = this->create_subscription<Path>("/route/rough_path", 10, bind(&MapManagementNode::getLanesFromRoughPath, this, std::placeholders::_1));
     world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
 
     grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::gridPubTimerCb, this));
@@ -66,11 +66,17 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
     OccupancyGrid occupancy_grid;
     std::vector<int8_t> grid_data;
 
-    int x_min = static_cast<int>(center.x) - range;
-    int x_max = static_cast<int>(center.x) + range;
-    int y_min = static_cast<int>(center.y) - range;
-    int y_max = static_cast<int>(center.y) + range;
-    this->map_wide_tree_ = this->map_->generate_mesh_tree();
+    int grid_radius_in_cells = std::ceil(range/res);
+
+    float x_min = center.x - grid_radius_in_cells;
+    float x_max = center.x + grid_radius_in_cells;
+    float y_min = center.y - grid_radius_in_cells;
+    float y_max = center.y + grid_radius_in_cells;
+
+    std::printf("[%f, %f], [%f, %f]", x_min, x_max, y_min, y_max);
+
+    if (this->map_wide_tree_.size() == 0)
+        this->map_wide_tree_ = this->map_->generate_mesh_tree();
 
     odr::box search_region(odr::point(x_min, y_min), odr::point(x_max, y_max));
     std::vector<odr::value> lane_shapes_in_range;
@@ -85,9 +91,9 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
     for (unsigned i = 0; i < lane_shapes_in_range.size(); ++i)
         local_tree.insert(lane_shapes_in_range.at(i));
 
-    for (int j = y_min; j <= y_max; j++)
+    for (float j = y_min; j <= y_max; j += res)
     {
-        for (int i = x_min; i <= x_max; i++)
+        for (float i = x_min; i <= x_max; i += res)
         {
 
             i = static_cast<float>(i);
@@ -135,7 +141,7 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
 
     // Output function runtime
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+    // std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 
     return occupancy_grid;
 }
@@ -189,24 +195,30 @@ void navigator::perception::MapManagementNode::gridPubTimerCb()
     grid_pub_->publish(msg);
 }
 
-void navigator::perception::MapManagementNode::getLanesFromRouteMsg(CarlaRoute::SharedPtr msg)
+void navigator::perception::MapManagementNode::getLanesFromRoughPath(Path::SharedPtr msg)
 {
     if (this->lanes_in_route_.size() > 0)
+    {
+        RCLCPP_WARN(this->get_logger(), "Lanes already calculated from rough path.");
         return;
+    }
 
     std::vector<odr::Lane> lanes_in_route;
 
-    
+    RCLCPP_INFO(this->get_logger(), "Processing rough path with %i poses", msg->poses.size());
 
     for (auto pose : msg->poses)
     {
+        auto position = pose.pose.position;
         // Find the lane polygon(s) that the point falls within
-        odr::point p(pose.position.x, pose.position.y);
+        odr::point p(position.x, position.y);
         std::vector<odr::value> query_results;
         std::vector<odr::Lane> lanes_containing_point;
+
+        RCLCPP_INFO(this->get_logger(), "Querying...");
         this->map_wide_tree_.query(bgi::contains(p), std::back_inserter(query_results));
 
-
+        RCLCPP_INFO(this->get_logger(), "Query returned %i results", query_results.size());
 
         for (auto result : query_results)
         {
@@ -214,13 +226,15 @@ void navigator::perception::MapManagementNode::getLanesFromRouteMsg(CarlaRoute::
             lane_polys_ is a vector of LanePairs, where a LanePair
             has a Lane object (which contains details like the lane ID, parent road, etc),
             and a ring (a Boost geometry that describes the outline of the lane).
-            
+
             A "result" contains a given lane ring's bounding box (first) and
             the index of the ring (result.second). This is the same index within
             lane_polys_. Adding ".first" gets the Lane object.
 
             Got that?
             */
+            RCLCPP_INFO(this->get_logger(), "Result loop");
+            
             odr::ring ring = this->lane_polys_.at(result.second).second;
             if (bg::within(p, ring))
                 lanes_containing_point.push_back(this->lane_polys_.at(result.second).first);
@@ -229,12 +243,20 @@ void navigator::perception::MapManagementNode::getLanesFromRouteMsg(CarlaRoute::
         // Does this point fall within more than one lane?
         // If so, we've found a junction. Skip to next pose.
         if (lanes_containing_point.size() > 1)
+        {
+            RCLCPP_INFO(this->get_logger(), "Point (%d, %d) falls within a junction. Skipping.", position.x, position.y);
+            continue;
+        }
+        if (lanes_containing_point.size() < 1)
             continue;
 
         // Append the matching lane to the full route
         lanes_in_route.push_back(lanes_containing_point.front());
     }
-    RCLCPP_INFO(this->get_logger(), "Received %i poses along route.");
+
+    this->lanes_in_route_ = lanes_in_route;
+    
+    RCLCPP_INFO(this->get_logger(), "Received %i lanes along route.", lanes_in_route.size());
 }
 
 /**
