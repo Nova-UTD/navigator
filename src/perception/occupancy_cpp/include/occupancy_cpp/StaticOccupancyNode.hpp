@@ -38,7 +38,7 @@ using namespace std::chrono_literals;
 using nav_msgs::msg::OccupancyGrid;
 using rosgraph_msgs::msg::Clock;
 using sensor_msgs::msg::PointCloud2;
-using nova_msgs::msg::Masses;
+// using nova_msgs::msg::Masses;
 
 namespace navigator
 {
@@ -55,7 +55,7 @@ namespace navigator
 
       // Publishers
       rclcpp::Publisher<OccupancyGrid>::SharedPtr occupancy_grid_pub;
-      rclcpp::Publisher<Masses>::SharedPtr masses_pub;
+      // rclcpp::Publisher<Masses>::SharedPtr masses_pub;
 
       // Subscribers
       rclcpp::Subscription<Clock>::SharedPtr clock_sub;
@@ -111,7 +111,7 @@ namespace navigator
 
       //rclcpp::TimerBase::SharedPtr timer;
       OccupancyGrid occupancy_msg;
-      Masses masses_msg;
+      // Masses masses_msg;
 
       // Array with the DST data.
       double meas_grids[event_num][grid_size][grid_size];
@@ -131,7 +131,7 @@ namespace navigator
       double prob_O_plot[grid_size][grid_size];
       bool angles[360];
       bool first;
-      
+
       //void timer_cb(const ros::TimerEvent &);
 
       void transform_listener();

@@ -26,7 +26,7 @@ StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node")
       std::bind(&StaticOccupancyNode::pointCloudCb, this, std::placeholders::_1));
 
   occupancy_grid_pub = this->create_publisher<OccupancyGrid>("/grid/occupancy/current", 10);
-  masses_pub = this->create_publisher<nova_msgs::msg::Masses>("masses", 10);
+  // masses_pub = this->create_publisher<nova_msgs::msg::Masses>("masses", 10);
 }
 
 StaticOccupancyNode::~StaticOccupancyNode()
@@ -368,8 +368,8 @@ void StaticOccupancyNode::add_ego_vehicle_to_the_DST()
 void StaticOccupancyNode::plotting()
 {
   occupancy_msg.data.clear();
-  masses_msg.occ.clear();
-  masses_msg.free.clear();
+  // masses_msg.occ.clear();
+  // masses_msg.free.clear();
   occupancy_msg.header.frame_id = "base_link"; // TODO: Make sure the frame is the correct one.
   occupancy_msg.info.resolution = res;
   occupancy_msg.info.width = grid_size;
@@ -377,20 +377,20 @@ void StaticOccupancyNode::plotting()
   occupancy_msg.info.origin.position.z = 0.2;
   occupancy_msg.info.origin.position.x = -64.0 * (1. / 3.);
   occupancy_msg.info.origin.position.y = -64.0 * (1. / 3.);
-  masses_msg.width = grid_size;
-  masses_msg.height = grid_size;
+  // masses_msg.width = grid_size;
+  // masses_msg.height = grid_size;
 
   for (unsigned int i = 0; i < grid_size; i++)
   {
     for (unsigned int j = 0; j < grid_size; j++)
     {
         occupancy_msg.data.push_back(prob_O_plot[j][i]);
-        masses_msg.occ.push_back(up_occ[j][i]);
-        masses_msg.free.push_back(up_free[j][i]);
+        // masses_msg.occ.push_back(up_occ[j][i]);
+        // masses_msg.free.push_back(up_free[j][i]);
     }
   }
   occupancy_grid_pub->publish(occupancy_msg);
-  masses_pub->publish(masses_msg);
+  // masses_pub->publish(masses_msg);
 }
 
 void StaticOccupancyNode::mass_update()
