@@ -130,9 +130,12 @@ pcl::PointCloud<pcl::PointXYZI> StaticOccupancyNode::createOccupancyGrid(pcl::Po
   add_points_to_the_DST(grid);
 
   // 2. Identify free space in the DST grid.
+  add_free_spaces_to_the_DST();
 
   // 3. Add an ego vehicle mask to the grid.
+  add_ego_vehicle_to_the_DST();
 
+  return grid;
 }
 
 /**
@@ -220,6 +223,218 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI>&
   }
 }
 
+/**
+ * Adds unoccupied spaces to DST using ray tracing
+ */
+void StaticOccupancyNode::add_free_spaces_to_the_DST()
+{
+  double i = 0.0
+  float ang = 0.0f;
+
+  //fills free spaces, not efficient?
+  for (unsigned int i = 0; i<3600;i++)
+  {
+    ang = (i * 0.1f);
+
+    if (angles[(int)(ang)] == false)
+    {
+        int x, y;
+        if (ang > 0.0f && ang <= 45.0f)
+        {
+          x = 64;
+          y = (int)(tan(ang * PI / 180.0f) * x);
+        }
+        else if (ang > 45.0f && ang < 90.0f)
+        {
+          y = 64;
+          x = (int)(y / tan(ang * PI / 180.0f));
+        }
+        else if (ang > 90.0f && ang <= 135.0f)
+        {
+          y = 64;
+          x = (int)(y / tan((ang - 180.0f) * PI / 180.0f));
+        }
+        else if (ang > 135.0f && ang < 180.0f)
+        {
+          x = -64;
+          y = (int)(tan((ang - 180.0) * PI / 180.0f) * x);
+        }
+        else if (ang > 180.0f && ang <= 225.0f)
+        {
+          x = -64;
+          y = (int)(tan((ang - 180.0f) * PI / 180.0f) * x);
+        }
+        else if (ang > 225.0f && ang < 270.0f)
+        {
+          y = -64;
+          x = (int)(y / tan((ang - 180.0f) * PI / 180.0f));
+        }
+        else if (ang > 270.0f && ang <= 315.0f)
+        {
+          y = -64;
+          x = (int)(y / tan((ang - 360.0f) * PI / 180.0f));
+        }
+        else if (ang > 315.0f && ang < 360.0f)
+        {
+          x = 64;
+          y = (int)(tan((ang - 360.0f) * PI / 180.0f) * x);
+        }
+        else if (ang == 0.0f || ang == 360.0f)
+        {
+          ray_tracing_horizontal(64);
+          continue;
+        }
+        else if (ang == 90.0f)
+        {
+          ray_tracing_vertical(64);
+          continue;
+        }
+        else if (ang == 180.0f)
+        {
+          ray_tracing_horizontal_n(-64);
+          continue;
+        }
+        else if (ang == 270.0f)
+        {
+          ray_tracing_vertical_n(-64);
+          continue;
+        }
+
+        if (x >= -64 && y >= -64 && x <= 64 && y <= 64)
+        {
+
+          double slope = (double)(y) / (x);
+          if (slope > 0 && slope <= 1 && x > 0)
+          {
+            ray_tracing_approximation_y_increment(0, 0, x, y, 1, 1, true);
+          }
+          else if (slope > 1 && x > 0)
+          {
+            ray_tracing_approximation_x_increment(0, 0, x, y, 1, 1, true);
+          }
+          else if (slope < 0 && slope >= -1 && x > 0)
+          {
+            ray_tracing_approximation_y_increment(0, 0, x, (-1) * y, 1, -1, true);
+          }
+          else if (slope < -1 && x > 0)
+          {
+            ray_tracing_approximation_x_increment(0, 0, x, (-1) * y, 1, -1, true);
+          }
+          else if (slope > 1 && x < 0)
+          {
+            ray_tracing_approximation_x_increment(0, 0, (-1) * x, (-1) * y, -1, -1, true);
+          }
+          else if (slope > 0 && slope <= 1 && x < 0)
+          {
+            ray_tracing_approximation_y_increment(0, 0, (-1) * x, (-1) * y, -1, -1, true);
+          }
+          else if (slope < 0 && slope >= -1 && x < 0)
+          {
+            ray_tracing_approximation_y_increment(0, 0, (-1) * x, y, -1, 1, true);
+          }
+          else if (slope < -1 && x < 0)
+          {
+            ray_tracing_approximation_x_increment(0, 0, (-1) * x, y, -1, 1, true);
+          }
+        }
+    }
+    angles[(int)(ang)] = false;
+  }
+}
+
+/**
+ * Adds vehicle shape to occupied/unoccupied zones
+ * TODO: Change for hale bopp
+ */
+void StaticOccupancyNode::add_ego_vehicle_to_the_DST()
+{
+  // Vehicle shape.
+  for (unsigned int j = 60; j < 68; j++)
+  {
+    for (unsigned int i = 62; i < 67; i++)
+    {
+        meas_occ[j][i] = 1.0;
+        meas_free[j][i] = 0.0;
+    }
+  }
+}
+
+//-------------HELPERS----------------------------//
+void StaticOccupancyNode::plotting()
+{
+  occupancy_msg.data.clear();
+  masses_msg.occ.clear();
+  masses_msg.free.clear();
+  occupancy_msg.header.frame_id = "/body"; // TODO: Make sure the frame is the correct one.
+  occupancy_msg.info.resolution = res;
+  occupancy_msg.info.width = grid_size;
+  occupancy_msg.info.height = grid_size;
+  occupancy_msg.info.origin.position.z = 0.2;
+  occupancy_msg.info.origin.position.x = -64.0 * (1. / 3.);
+  occupancy_msg.info.origin.position.y = -64.0 * (1. / 3.);
+  masses_msg.width = grid_size;
+  masses_msg.height = grid_size;
+
+  for (unsigned int i = 0; i < grid_size; i++)
+  {
+    for (unsigned int j = 0; j < grid_size; j++)
+    {
+        occupancy_msg.data.push_back(prob_O_plot[j][i]);
+        masses_msg.occ.push_back(up_occ[j][i]);
+        masses_msg.free.push_back(up_free[j][i]);
+    }
+  }
+  occ_pub.publish(occupancy_msg);
+  masses_pub.publish(masses_msg);
+}
+
+void OccupancyGridGeneration::mass_update()
+{
+  for (unsigned int i = 0; i < grid_size; i++)
+  {
+    for (unsigned int j = 0; j < grid_size; j++)
+    {
+        up_occ_pred[i][j] = std::min(alpha * prev_occ[i][j], 1.0 - prev_free[i][j]);
+        up_free_pred[i][j] = std::min(alpha * prev_free[i][j], 1.0 - prev_occ[i][j]);
+    }
+  }
+  // Combine measurement nad prediction to form posterior occupied and free masses.
+  update_of();
+}
+
+void OccupancyGridGeneration::update_of()
+{
+  for (unsigned int i = 0; i < grid_size; i++)
+  {
+    for (unsigned int j = 0; j < grid_size; j++)
+    {
+        double unknown_pred = 1.0 - up_free_pred[i][j] - up_occ_pred[i][j];
+        double meas_cell_unknown = 1.0 - meas_free[i][j] - meas_occ[i][j];
+        double k_value = up_free_pred[i][j] * meas_occ[i][j] + up_occ_pred[i][j] * meas_free[i][j];
+        up_occ[i][j] = (up_occ_pred[i][j] * meas_cell_unknown + unknown_pred * meas_occ[i][j] + up_occ_pred[i][j] * meas_occ[i][j]) / (1.0 - k_value);
+        up_free[i][j] = (up_free_pred[i][j] * meas_cell_unknown + unknown_pred * meas_free[i][j] + up_free_pred[i][j] * meas_free[i][j]) / (1.0 - k_value);
+    }
+  }
+}
+
+void OccupancyGridGeneration::get_mass()
+{
+  for (unsigned int i = 0; i < grid_size; i++)
+  {
+    for (unsigned int j = 0; j < grid_size; j++)
+    {
+        prob_O[i][j] = (0.5 * up_occ[i][j] + 0.5 * (1.0 - up_free[i][j]));
+        prob_O_plot[i][j] = 100 * (0.5 * up_occ[i][j] + 0.5 * (1.0 - up_free[i][j])); // meas_occ[i][j] * 100;
+    }
+  }
+}
+
+int OccupancyGridGeneration::find_nearest(int n, double v, double v0, double vn, double res)
+{
+  int idx = std::floor(n * (v - v0 + res / 2.) / (vn - v0 + res));
+  return idx;
+}
+//------------------------------------------------//
 
 //-------------RAY TRACING HELPERS----------------//
 
