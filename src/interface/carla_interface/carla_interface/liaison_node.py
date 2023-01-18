@@ -12,7 +12,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 
-from carla_msgs.msg import CarlaRoute
+from carla_msgs.msg import CarlaRoute, CarlaWorldInfo
 from geometry_msgs.msg import Pose, PoseStamped
 from nav_msgs.msg import Path
 from rosgraph_msgs.msg import Clock
@@ -38,9 +38,15 @@ class LeaderboardLiaisonNode(Node):
         self.wp_marker_pub = self.create_publisher(
             MarkerArray, '/viz/wayppoints', 10)
 
-        self.route_path_pub = self.create_publisher(Path, '/route/path', 10)
+        self.world_info_sub = self.create_subscription(CarlaWorldInfo, '/carla/world_info', self.world_info_cb, 10)
+        self.world_info_pub = self.create_publisher(CarlaWorldInfo, '/carla/world_info', 10)
+
+        self.route_path_pub = self.create_publisher(Path, '/route/rough_path', 10)
         self.route_repub_timer = self.create_timer(1.0, self.publish_route)
 
+        self.world_info_cached = None
+        self.world_info_repub_timer = self.create_timer(5.0, self.repub_world_info)
+        
         # self.client = carla.Client('localhost', 2005)
         # self.client.set_timeout(60)
         # self.world = self.client.get_world()
@@ -56,6 +62,18 @@ class LeaderboardLiaisonNode(Node):
         # self.get_logger().info("Settings applied!")
 
         self.route = None
+        self.clock = Clock()
+
+    def world_info_cb(self, msg: CarlaWorldInfo):
+        if msg.opendrive == "":
+            return
+        self.world_info_cached = msg
+
+    def repub_world_info(self):
+        if self.world_info_cached is None:
+            return
+        self.world_info_pub.publish(self.world_info_cached)
+
 
     def clock_cb(self, msg: Clock):
         self.clock = msg
@@ -73,6 +91,7 @@ class LeaderboardLiaisonNode(Node):
 
         for pose in self.route.poses:
             pose: Pose
+            pose.position.z = 0.0 # Ignore height. TODO: Support z != 0.
             pose_stamped = PoseStamped()
             pose_stamped.pose = pose
             pose_stamped.header.frame_id = 'map'

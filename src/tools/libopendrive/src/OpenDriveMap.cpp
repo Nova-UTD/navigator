@@ -309,9 +309,9 @@ namespace odr
                     }
                 }
 
-                /* check for lateralProfile shape - not implemented yet */
-                for (auto road_shape_node : road_node.child("lateralProfile").children("shape"))
-                    printf("Lateral Profile Shape not supported\n");
+                // /* check for lateralProfile shape - not implemented yet */
+                // for (auto road_shape_node : road_node.child("lateralProfile").children("shape"))
+                //     printf("Lateral Profile Shape not supported\n");
             }
 
             /* parse road lane sections and lanes */
@@ -693,9 +693,9 @@ namespace odr
             box b = bg::return_envelope<box>(polys[i].second);
             // insert new value
             rtree.insert(std::make_pair(b, i));
-            std::printf("Inserting box (%f, %f)-(%f,%f)\n", b.min_corner().get<0>(), b.min_corner().get<1>(), b.max_corner().get<0>(), b.max_corner().get<1>());
+            // std::printf("Inserting box (%f, %f)-(%f,%f)\n", b.min_corner().get<0>(), b.min_corner().get<1>(), b.max_corner().get<0>(), b.max_corner().get<1>());
         }
-        std::printf("End of generate_mesh_tree(), tree has %i shapes\n", rtree.size());
+        // std::printf("End of generate_mesh_tree(), tree has %i shapes\n", rtree.size());
         return rtree;
     }
 
