@@ -41,6 +41,7 @@
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
 
 using namespace std::chrono_literals;
@@ -73,18 +74,18 @@ namespace navigator
             // TODO: Convert to ros params
             std::chrono::milliseconds GRID_PUBLISH_FREQUENCY = 200ms;
             const int GRID_RANGE = 40;
-            const float GRID_RES = 1.0;
+            const float GRID_RES = 0.4;
 
             void clockCb(Clock::SharedPtr msg);
             TransformStamped getVehicleTf();
             void gridPubTimerCb();
-            void getLanesFromRouteMsg(CarlaRoute::SharedPtr msg);
+            void getLanesFromRoughPath(Path::SharedPtr msg);
             void updateRoute();
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
             rclcpp::Publisher<OccupancyGrid>::SharedPtr grid_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
-            rclcpp::Subscription<CarlaRoute>::SharedPtr carla_route_sub_;
+            rclcpp::Subscription<Path>::SharedPtr rough_path_sub_;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
 
             rclcpp::TimerBase::SharedPtr grid_pub_timer_;
