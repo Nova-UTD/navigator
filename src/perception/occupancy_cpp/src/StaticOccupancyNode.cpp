@@ -12,7 +12,7 @@
 using namespace navigator::perception;
 using namespace std::chrono_literals;
 
-StaticOccupancyNode::StaticOccupancyNode() : Node("ground_segmentation_node")
+StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node")
 {
   // Subscribe to and use CARLA's clock
   clock_sub = this->create_subscription<Clock>(
@@ -21,11 +21,17 @@ StaticOccupancyNode::StaticOccupancyNode() : Node("ground_segmentation_node")
       { this->clock = *msg; });
 
   pcd_sub = this->create_subscription<PointCloud2>(
-      "/lidar/fused", 10,
+      "/lidar/fused", 
+      10,
       std::bind(&StaticOccupancyNode::pointCloudCb, this, std::placeholders::_1));
 
   occupancy_grid_pub = this->create_publisher<OccupancyGrid>("/grid/occupancy/current", 10);
-  masses_pub = this->create_publisher<nova_msgs::Masses>("masses", 10);
+  masses_pub = this->create_publisher<nova_msgs::msg::Masses>("masses", 10);
+}
+
+StaticOccupancyNode::~StaticOccupancyNode()
+{
+  // nothing here
 }
 
 /**
@@ -227,7 +233,7 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI>&
  */
 void StaticOccupancyNode::add_free_spaces_to_the_DST()
 {
-  double i = 0.0
+  double i = 0.0;
   float ang = 0.0f;
 
   //fills free spaces, not efficient?
@@ -383,11 +389,11 @@ void StaticOccupancyNode::plotting()
         masses_msg.free.push_back(up_free[j][i]);
     }
   }
-  occ_pub.publish(occupancy_msg);
-  masses_pub.publish(masses_msg);
+  occupancy_grid_pub->publish(occupancy_msg);
+  masses_pub->publish(masses_msg);
 }
 
-void OccupancyGridGeneration::mass_update()
+void StaticOccupancyNode::mass_update()
 {
   for (unsigned int i = 0; i < grid_size; i++)
   {
@@ -401,7 +407,7 @@ void OccupancyGridGeneration::mass_update()
   update_of();
 }
 
-void OccupancyGridGeneration::update_of()
+void StaticOccupancyNode::update_of()
 {
   for (unsigned int i = 0; i < grid_size; i++)
   {
@@ -416,7 +422,7 @@ void OccupancyGridGeneration::update_of()
   }
 }
 
-void OccupancyGridGeneration::get_mass()
+void StaticOccupancyNode::get_mass()
 {
   for (unsigned int i = 0; i < grid_size; i++)
   {
@@ -428,7 +434,7 @@ void OccupancyGridGeneration::get_mass()
   }
 }
 
-int OccupancyGridGeneration::find_nearest(int n, double v, double v0, double vn, double res)
+int StaticOccupancyNode::find_nearest(int n, double v, double v0, double vn, double res)
 {
   int idx = std::floor(n * (v - v0 + res / 2.) / (vn - v0 + res));
   return idx;
