@@ -25,6 +25,9 @@ StaticOccupancyNode::StaticOccupancyNode() : Node("ground_segmentation_node")
       std::bind(&StaticOccupancyNode::pointCloudCb, this, std::placeholders::_1));
 
   occupancy_grid_pub = this->create_publisher<OccupancyGrid>("/grid/occupancy/current", 10);
+
+  int SIZE_X = 80;
+  int SIZE_Y = 120;
 }
 
 /**
@@ -34,7 +37,7 @@ StaticOccupancyNode::StaticOccupancyNode() : Node("ground_segmentation_node")
  */
 void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
 {
-/*
+    /*
     PC processing.
     */
 
@@ -119,10 +122,228 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
 pcl::PointCloud<pcl::PointXYZI> StaticOccupancyNode::createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> cloud)
 {
   // The grid is created in three stages.
+
+  // Initialize DST grid
+  pcl::PointCloud<pcl::PointXYZI> grid;
+
   // 1. Add occupied cells to the DST grid
+  add_points_to_the_DST(grid);
 
   // 2. Identify free space in the DST grid.
 
   // 3. Add an ego vehicle mask to the grid.
 
 }
+
+/**
+ * @brief Fills and adds points to the DST grid
+ * It projects the pcl points onto the 2D occupancy grid.
+ * 
+ * @param grid
+ */
+void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI>& cloud)
+{
+  for (size_t i = 0; i < cloud.points.size(); i++)
+  {
+    int x = (int)(cloud.points[i].x/res);
+    int y = (int)(cloud.points[i].y/res);
+    double z = cloud.points[i].z;
+
+    // Ignores points above a certain height?
+    if (z*(-1) > 0.5)
+    {
+      continue;
+    }
+
+    if (x >= -1*SIZE_X && y >= -1*SIZE_Y && x < SIZE_X && y < SIZE_Y)
+    {
+      int angle;
+
+      double pi = 3.14159265;
+
+      // Angles vector contians which angles from 0 deg to 360 deg have been represented.
+      // It is used to identify free spaces for angles not covered by PC or out of range points.
+      if (cloud.points[i].y > 0 && cloud.points[i].x < 0){
+          angle = 180 - (int)(atan(std::abs(cloud.points[i].y)/std::abs(cloud.points[i].x))*180.0/pi);
+        }
+        else if (cloud.points[i].y < 0 && cloud.points[i].x < 0){
+          angle = 180 + (int)(atan(std::abs(cloud.points[i].y)/std::abs(cloud.points[i].x))*180.0/pi);
+        }
+        else if (cloud.points[i].y < 0 && cloud.points[i].x > 0){
+          angle = 360 - (int)(atan(std::abs(cloud.points[i].y)/std::abs(cloud.points[i].x))*180.0/pi);
+        }
+        else{
+          angle = (int)(atan(std::abs(cloud.points[i].y)/std::abs(cloud.points[i].x))*180.0/pi);
+        }
+
+        angles[angle] = true;
+        double slope = (double)(y)/(x);
+
+        // ray tracing from origin to point, identifies free space using Bresenhaum's line algo
+        if (slope > 0 && slope <= 1 && x>0)
+        {
+          ray_tracing_approximation_y_increment(0,0,x,y,1,1,false);
+        }
+        else if (slope > 1 && x>0)
+        {
+          ray_tracing_approximation_x_increment(0,0,x,y,1,1,false);
+        }
+        else if (slope < 0 && slope >= -1 && x>0)
+        {
+          ray_tracing_approximation_y_increment(0,0,x,(-1)*y,1,-1,false);
+        }
+        else if (slope < -1 && x>0)
+        {
+          ray_tracing_approximation_x_increment(0,0,x,(-1)*y,1,-1,false);
+        }
+        else if (slope > 1 && x<0)
+        {
+          ray_tracing_approximation_x_increment(0,0,(-1)*x,(-1)*y,-1,-1,false);
+        }
+        else if (slope > 0 && slope <= 1 && x<0)
+        {
+          ray_tracing_approximation_y_increment(0,0,(-1)*x,(-1)*y,-1,-1,false);
+        }
+        else if (slope < 0 && slope >= -1 && x<0)
+        {
+          ray_tracing_approximation_y_increment(0,0,(-1)*x,y,-1,1,false);
+        }
+        else if (slope < -1 && x<0)
+        {
+          ray_tracing_approximation_x_increment(0,0,(-1)*x,y,-1,1,false);
+        }
+    }
+  }
+}
+
+
+//-------------RAY TRACING HELPERS----------------//
+
+  void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive)
+  {
+    int slope = 2 * (y2 - y1);
+    int slope_error = slope - (x2 - x1);
+    int x_sample, y_sample;
+    for (int x = x1, y = y1; x < x2; x++){
+      if (meas_occ[flip_x*x+64][flip_y*y+64] == meas_mass) {
+        break;
+      }
+
+      meas_free[flip_x*x+64][flip_y*y+64] = meas_mass;
+
+      slope_error += slope;
+      if (slope_error >= 0) {
+        y += 1;
+        slope_error -= 2 * (x2 - x1);
+      }
+    }
+
+    if (inclusive==false) {
+      meas_occ[flip_x*x2+64][flip_y*y2+64] = meas_mass;
+      meas_free[flip_x*x2+64][flip_y*y2+64] = 0.0;
+    }
+  }
+
+  void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive)
+  {
+    int slope = 2 * (x2 - x1);
+    int slope_error = slope - (y2 - y1);
+    int x_sample, y_sample;
+    for (int x = x1, y = y1; y < y2; y++){
+
+      if (meas_occ[flip_x*x+64][flip_y*y+64] == meas_mass) {
+        break;
+      }
+
+      meas_free[flip_x*x+64][flip_y*y+64] = meas_mass;
+
+      slope_error += slope;
+      if (slope_error >= 0) {
+        x += 1;
+        slope_error -= 2 * (y2 - y1);
+      }
+    }
+
+    if (inclusive==false) {
+      meas_occ[flip_x*x2+64][flip_y*y2+64] = meas_mass;
+      meas_free[flip_x*x2+64][flip_y*y2+64] = 0.0;
+    }
+  }
+
+  void StaticOccupancyNode::ray_tracing_horizontal(int x2)
+  {
+    int x1 = 0;
+    int y1 = 0;
+    x2 = x2 - 1;
+
+    for (int x = x1; x <= x2; x++){
+
+      if (meas_occ[x+64][64] == meas_mass) {
+        break;
+      }
+
+      meas_free[x+64][64] = meas_mass;
+    }
+
+    meas_free[x2+64][64] = 0.0;
+  }
+
+  void StaticOccupancyNode::ray_tracing_horizontal_n(int x1)
+  {
+    int x2 = 0;
+    int y2 = 0;
+    x1 = x1+1;
+
+    for (int x = x1; x <= x2; x++){
+
+      if (meas_occ[x+64][64] == meas_mass) {
+        break;
+      }
+
+      meas_free[x+64][64] = meas_mass;
+    }
+
+    meas_free[x2+64][64] = 0.0;
+  }
+
+  void StaticOccupancyNode::ray_tracing_vertical(int y2)
+  {
+    int x1 = 0;
+    int y1 = 0;
+    y2 = y2-1;
+
+    for (int y = y1; y <= y2; y++){
+
+      if (meas_occ[64][y+64] == meas_mass) {
+        break;
+      }
+      meas_free[64][y+64] = meas_mass;
+    }
+  }
+
+  void StaticOccupancyNode::ray_tracing_vertical_n(int y1)
+  {
+    int x1 = 0;
+    int y2 = 0;
+    y1 = y1+1;
+
+    for (int y = y1; y <= y2; y++){
+
+      if (meas_occ[64][y+64] == meas_mass) {
+        break;
+      }
+      meas_free[64][y+64] = meas_mass;
+    }
+
+  meas_free[64][y2+64] = 0.0;
+  }
+
+  void StaticOccupancyNode::clear()
+  {
+    for (unsigned int i =0; i<grid_size;i++){
+      for (unsigned int j = 0; j<grid_size;j++){
+        meas_occ[i][j]= 0.0;
+        meas_free[i][j] = 0.0;
+      }
+    }
+  }
