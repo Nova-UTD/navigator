@@ -25,9 +25,7 @@ StaticOccupancyNode::StaticOccupancyNode() : Node("ground_segmentation_node")
       std::bind(&StaticOccupancyNode::pointCloudCb, this, std::placeholders::_1));
 
   occupancy_grid_pub = this->create_publisher<OccupancyGrid>("/grid/occupancy/current", 10);
-
-  int SIZE_X = 80;
-  int SIZE_Y = 120;
+  masses_pub = this->create_publisher<nova_msgs::Masses>("masses", 10);
 }
 
 /**
@@ -53,7 +51,7 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
     pcl::fromROSMsg(*msg, cloud);
 
     // 1. Convert new measurement into a DST grid.
-    createOccupancyGrid(cloud);
+    cloud = createOccupancyGrid(cloud);
 
     x_new_low = change_x - 64 * res;
     x_new_high = change_x + 64 * res;
@@ -101,6 +99,7 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
         }
       }
     }
+
     mass_update();
     get_mass();
     plotting();
@@ -158,7 +157,7 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI>&
       continue;
     }
 
-    if (x >= -1*SIZE_X && y >= -1*SIZE_Y && x < SIZE_X && y < SIZE_Y)
+    if (x >= -1*SIZE && y >= -1*SIZE && x < SIZE && y < SIZE)
     {
       int angle;
 
@@ -365,7 +364,7 @@ void StaticOccupancyNode::plotting()
   occupancy_msg.data.clear();
   masses_msg.occ.clear();
   masses_msg.free.clear();
-  occupancy_msg.header.frame_id = "/body"; // TODO: Make sure the frame is the correct one.
+  occupancy_msg.header.frame_id = "base_link"; // TODO: Make sure the frame is the correct one.
   occupancy_msg.info.resolution = res;
   occupancy_msg.info.width = grid_size;
   occupancy_msg.info.height = grid_size;
