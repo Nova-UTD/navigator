@@ -39,6 +39,7 @@
 #include "carla_msgs/msg/carla_route.hpp"
 #include "carla_msgs/msg/carla_world_info.hpp"
 #include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
@@ -52,6 +53,7 @@ namespace bgi = boost::geometry::index;
 using carla_msgs::msg::CarlaRoute;
 using carla_msgs::msg::CarlaWorldInfo;
 using PointMsg = geometry_msgs::msg::Point;
+using geometry_msgs::msg::PoseStamped;
 using geometry_msgs::msg::TransformStamped;
 using rosgraph_msgs::msg::Clock;
 
@@ -84,6 +86,7 @@ namespace navigator
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
             rclcpp::Publisher<OccupancyGrid>::SharedPtr grid_pub_;
+            rclcpp::Publisher<Path>::SharedPtr route_path_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
             rclcpp::Subscription<Path>::SharedPtr rough_path_sub_;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
@@ -98,6 +101,7 @@ namespace navigator
             odr::OpenDriveMap *map_ = nullptr;
             std::vector<odr::LanePair> lane_polys_;
             std::vector<odr::Lane> lanes_in_route_;
+            Path smoothed_path_msg_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
         };
     }

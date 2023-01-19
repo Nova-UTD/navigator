@@ -16,5 +16,6 @@ python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
 --agent=/navigator/src/interface/carla_interface/carla_interface/carla_agent.py \
 --debug=1 \
 --record=/navigator/log/carla \
+--timeout=3000
 # --agent-config=${TEAM_CONFIG} \
 # --resume=${RESUME}
