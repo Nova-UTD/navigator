@@ -109,8 +109,6 @@ namespace navigator
       constexpr static double prev_vehicle_pos_x = 0;
       constexpr static double prev_vehicle_pos_y = 0;
 
-      //rclcpp::TimerBase::SharedPtr timer;
-      OccupancyGrid occupancy_msg;
       // Masses masses_msg;
 
       // Array with the DST data.
@@ -140,8 +138,8 @@ namespace navigator
       int find_nearest(int n, double v, double v0, double vn, double res);
       void mass_update();
       void update_of();
-      std::vector<std::vector<double>> ygetGridCellProbabilities();
-      void plotting();
+      std::vector<std::vector<double>> getGridCellProbabilities();
+      void publishOccupancyGrid();
       void clear();
       void fill(std::vector<int> flip);
       void ray_tracing_horizontal(int y);
