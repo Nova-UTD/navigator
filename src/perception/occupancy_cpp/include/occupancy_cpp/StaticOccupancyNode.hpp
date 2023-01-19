@@ -148,7 +148,7 @@ namespace navigator
       void ray_tracing_vertical_n(int x);
       void add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> &cloud);
       void add_free_spaces_to_the_DST();
-      void add_ego_vehicle_to_the_DST();
+      void addEgoMask();
     };
   }
 }
