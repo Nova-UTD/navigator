@@ -284,11 +284,15 @@ void navigator::perception::MapManagementNode::getLanesFromRoughPath(Path::Share
     std::vector<odr::LaneKey> complete_route;
 
     int progress_counter = 0;
+    const int ITER_LIMIT = 10;
 
     for (auto it = lanes_in_route.begin(); it < lanes_in_route.end() - 1; it++)
     {
         printf("%i/%i\n", progress_counter, lanes_in_route.size());
         progress_counter++;
+
+        if (progress_counter > ITER_LIMIT)
+            break;
 
         if (it->key.to_string() == (it + 1)->key.to_string())
         {
@@ -312,10 +316,10 @@ void navigator::perception::MapManagementNode::getLanesFromRoughPath(Path::Share
         }
         for (auto key : route)
         {
-            if (complete_route.size() > 0 && key.to_string() == complete_route.back().to_string()) {
+            if (complete_route.size() > 0 && key.to_string() == complete_route.back().to_string())
+            {
                 continue;
             }
-                
 
             complete_route.push_back(key);
         }
@@ -328,10 +332,72 @@ void navigator::perception::MapManagementNode::getLanesFromRoughPath(Path::Share
             }
         }
     }
-                for (auto key : complete_route)
-            {
-                printf("%s\n", key.to_string().c_str());
+
+    // For each LaneKey in Route, linear sample and append to vector
+    bg::model::linestring<odr::point> route_linestring;
+
+    odr::point latest_point;
+
+    for (auto key : complete_route)
+    {
+        // printf("%s\n", key.to_string().c_str());
+        odr::Road road = this->map_->id_to_road.at(key.road_id);
+        // printf("Road was %s\n", road.id.c_str());
+        odr::LaneSection lsec = road.get_lanesection(key.lanesection_s0);
+        // printf("Lsec was %f\n", lsec.s0);
+        // for (auto lane : lsec.get_lanes())
+        // {
+        //     printf("%i ", lane.id);
+        // }
+        printf("\n");
+        odr::Lane lane = lsec.id_to_lane.at(key.lane_id);
+        // printf("Lane was %i\n", lane.id);
+
+        odr::Line3D line = road.get_lane_border_line(lane, 1.0, true);
+
+        // Test to see if the direction of this lane needs to be reversed
+        if (route_linestring.size() > 0)
+        {
+
+            odr::point first_pt_in_lane = odr::point(line.front()[0], line.front()[1]);
+            double dist = bg::distance(latest_point, first_pt_in_lane);
+            printf("Distance was %f\n", dist);
+
+            if (dist > 30) {
+                std::reverse(line.begin(), line.end());
+                odr::point first_pt_in_lane = odr::point(line.front()[0], line.front()[1]);
+                double dist = bg::distance(latest_point, first_pt_in_lane);
+                printf("Distance is now %f\n", dist);
             }
+                
+            
+        } else {
+            latest_point = odr::point(line.front()[0], line.front()[1]);
+        }
+
+        for (odr::Vec3D pt : line)
+        {
+            odr::point boost_point(pt[0], pt[1]);
+            bg::append(route_linestring, boost_point);
+            printf("Adding point (%f, %f)\n", pt[0], pt[1]);
+            latest_point = boost_point;
+        }
+    }
+
+    // Publish route as Path msg
+    smoothed_path_msg_.header.stamp = this->clock_->clock;
+    smoothed_path_msg_.header.frame_id = "map";
+
+    smoothed_path_msg_.poses.clear();
+    for (odr::point pt : route_linestring)
+    {
+        PoseStamped pose_msg;
+        pose_msg.pose.position.x = pt.get<0>();
+        pose_msg.pose.position.y = pt.get<1>();
+        smoothed_path_msg_.poses.push_back(pose_msg);
+    }
+
+    route_path_pub_->publish(smoothed_path_msg_);
 
     RCLCPP_INFO(this->get_logger(), "Publishing path with %i poses. Started with %i poses.\n", smoothed_path_msg_.poses.size(), msg->poses.size());
 }
