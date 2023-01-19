@@ -31,8 +31,6 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-#define PI 3.14159
-
 using namespace std::chrono_literals;
 
 using nav_msgs::msg::OccupancyGrid;
