@@ -175,35 +175,31 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
       std::printf("Point was above max height, skipping.\n");
       continue;
     }
-
-    if (x < -1 * SIZE && y < -1 * SIZE && x >= SIZE && y >= SIZE)
+    else if (x < -1 * SIZE && y < -1 * SIZE && x >= SIZE && y >= SIZE)
     {
       std::printf("Point was outside grid boundaries, skipping.\n");
       continue;
     }
 
-    
     int angle;
-
-    double pi = 3.14159265;
 
     // Angles vector contians which angles from 0 deg to 360 deg have been represented.
     // It is used to identify free spaces for angles not covered by PC or out of range points.
     if (cloud.points[i].y > 0 && cloud.points[i].x < 0)
     {
-      angle = 180 - (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / pi);
+      angle = 180 - (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / M_PI);
     }
     else if (cloud.points[i].y < 0 && cloud.points[i].x < 0)
     {
-      angle = 180 + (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / pi);
+      angle = 180 + (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / M_PI);
     }
     else if (cloud.points[i].y < 0 && cloud.points[i].x > 0)
     {
-      angle = 360 - (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / pi);
+      angle = 360 - (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / M_PI);
     }
     else
     {
-      angle = (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / pi);
+      angle = (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / M_PI);
     }
 
     angles[angle] = true;
@@ -242,6 +238,9 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
     {
       ray_tracing_approximation_x_increment(0, 0, (-1) * x, y, -1, 1, false);
     }
+    else {
+      printf("Slope %f and x %f did not match a case.\n", slope, x);
+    }
   }
 }
 
@@ -264,42 +263,42 @@ void StaticOccupancyNode::add_free_spaces_to_the_DST()
       if (ang > 0.0f && ang <= 45.0f)
       {
         x = 64;
-        y = (int)(tan(ang * PI / 180.0f) * x);
+        y = (int)(tan(ang * M_PI / 180.0f) * x);
       }
       else if (ang > 45.0f && ang < 90.0f)
       {
         y = 64;
-        x = (int)(y / tan(ang * PI / 180.0f));
+        x = (int)(y / tan(ang * M_PI / 180.0f));
       }
       else if (ang > 90.0f && ang <= 135.0f)
       {
         y = 64;
-        x = (int)(y / tan((ang - 180.0f) * PI / 180.0f));
+        x = (int)(y / tan((ang - 180.0f) * M_PI / 180.0f));
       }
       else if (ang > 135.0f && ang < 180.0f)
       {
         x = -64;
-        y = (int)(tan((ang - 180.0) * PI / 180.0f) * x);
+        y = (int)(tan((ang - 180.0) * M_PI / 180.0f) * x);
       }
       else if (ang > 180.0f && ang <= 225.0f)
       {
         x = -64;
-        y = (int)(tan((ang - 180.0f) * PI / 180.0f) * x);
+        y = (int)(tan((ang - 180.0f) * M_PI / 180.0f) * x);
       }
       else if (ang > 225.0f && ang < 270.0f)
       {
         y = -64;
-        x = (int)(y / tan((ang - 180.0f) * PI / 180.0f));
+        x = (int)(y / tan((ang - 180.0f) * M_PI / 180.0f));
       }
       else if (ang > 270.0f && ang <= 315.0f)
       {
         y = -64;
-        x = (int)(y / tan((ang - 360.0f) * PI / 180.0f));
+        x = (int)(y / tan((ang - 360.0f) * M_PI / 180.0f));
       }
       else if (ang > 315.0f && ang < 360.0f)
       {
         x = 64;
-        y = (int)(tan((ang - 360.0f) * PI / 180.0f) * x);
+        y = (int)(tan((ang - 360.0f) * M_PI / 180.0f) * x);
       }
       else if (ang == 0.0f || ang == 360.0f)
       {
