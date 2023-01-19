@@ -23,6 +23,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
     // Publishers and subscribers
     grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
+    route_path_pub_ = this->create_publisher<Path>("/route/smooth_path", 10);
 
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
     rough_path_sub_ = this->create_subscription<Path>("/route/rough_path", 10, bind(&MapManagementNode::getLanesFromRoughPath, this, std::placeholders::_1));
@@ -66,14 +67,14 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
     OccupancyGrid occupancy_grid;
     std::vector<int8_t> grid_data;
 
-    int grid_radius_in_cells = std::ceil(range/res);
+    int grid_radius_in_cells = std::ceil(range / res);
 
     float x_min = center.x - range;
     float x_max = center.x + range;
     float y_min = center.y - range;
     float y_max = center.y + range;
 
-    std::printf("[%f, %f], [%f, %f], %f", x_min, x_max, y_min, y_max, res);
+    // std::printf("[%f, %f], [%f, %f], %f\n", x_min, x_max, y_min, y_max, res);
 
     if (this->map_wide_tree_.size() == 0)
         this->map_wide_tree_ = this->map_->generate_mesh_tree();
@@ -82,7 +83,7 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
     std::vector<odr::value> lane_shapes_in_range;
     map_wide_tree_.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
 
-    std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
+    // std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
 
     int idx = 0;
 
@@ -130,7 +131,7 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
 
             area += 1;
         }
-        height+=1;
+        height += 1;
     }
 
     // Set the OccupancyGrid's metadata
@@ -138,7 +139,7 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
     occupancy_grid.data = grid_data;
     occupancy_grid.header.frame_id = "map";
     occupancy_grid.header.stamp = clock;
-    occupancy_grid.info.width = area/height;
+    occupancy_grid.info.width = area / height;
     occupancy_grid.info.height = height;
     occupancy_grid.info.map_load_time = clock;
     occupancy_grid.info.resolution = GRID_RES;
@@ -203,9 +204,12 @@ void navigator::perception::MapManagementNode::gridPubTimerCb()
 
 void navigator::perception::MapManagementNode::getLanesFromRoughPath(Path::SharedPtr msg)
 {
+    if (this->map_ == nullptr)
+        return;
     if (this->lanes_in_route_.size() > 0)
     {
-        RCLCPP_WARN(this->get_logger(), "Lanes already calculated from rough path.");
+        // RCLCPP_WARN(this->get_logger(), "Lanes already calculated from rough path.");
+        route_path_pub_->publish(smoothed_path_msg_);
         return;
     }
 
@@ -221,10 +225,9 @@ void navigator::perception::MapManagementNode::getLanesFromRoughPath(Path::Share
         std::vector<odr::value> query_results;
         std::vector<odr::Lane> lanes_containing_point;
 
-        RCLCPP_INFO(this->get_logger(), "Querying...");
         this->map_wide_tree_.query(bgi::contains(p), std::back_inserter(query_results));
 
-        RCLCPP_INFO(this->get_logger(), "Query returned %i results", query_results.size());
+        // RCLCPP_INFO(this->get_logger(), "Query returned %i results", query_results.size());
 
         for (auto result : query_results)
         {
@@ -239,30 +242,98 @@ void navigator::perception::MapManagementNode::getLanesFromRoughPath(Path::Share
 
             Got that?
             */
-            RCLCPP_INFO(this->get_logger(), "Result loop");
-            
+
             odr::ring ring = this->lane_polys_.at(result.second).second;
             if (bg::within(p, ring))
-                lanes_containing_point.push_back(this->lane_polys_.at(result.second).first);
+            {
+                odr::Lane containing_lane = this->lane_polys_.at(result.second).first;
+
+                auto parent_road = this->map_->id_to_road.at(containing_lane.key.road_id);
+                if (parent_road.junction != "-1")
+                    continue; // Junction found! Skip this lane.
+
+                lanes_containing_point.push_back(containing_lane);
+            }
         }
 
         // Does this point fall within more than one lane?
         // If so, we've found a junction. Skip to next pose.
-        if (lanes_containing_point.size() > 1)
+        // if (lanes_containing_point.size() > 1)
+        // {
+        //     RCLCPP_INFO(this->get_logger(), "Point (%f, %f) falls within a junction. Skipping.", position.x, position.y);
+        //     continue;
+        // }
+        if (lanes_containing_point.size() < 1)
         {
-            RCLCPP_INFO(this->get_logger(), "Point (%d, %d) falls within a junction. Skipping.", position.x, position.y);
+            RCLCPP_INFO(this->get_logger(), "Point (%f, %f) does not fall within a lane. Skipping.", position.x, position.y);
             continue;
         }
-        if (lanes_containing_point.size() < 1)
-            continue;
 
         // Append the matching lane to the full route
         lanes_in_route.push_back(lanes_containing_point.front());
     }
 
     this->lanes_in_route_ = lanes_in_route;
-    
-    RCLCPP_INFO(this->get_logger(), "Received %i lanes along route.", lanes_in_route.size());
+
+    smoothed_path_msg_.poses.clear();
+    smoothed_path_msg_.header.frame_id = "map";
+    smoothed_path_msg_.header.stamp = this->clock_->clock;
+
+    auto routing_graph = this->map_->get_routing_graph();
+
+    std::vector<odr::LaneKey> complete_route;
+
+    int progress_counter = 0;
+
+    for (auto it = lanes_in_route.begin(); it < lanes_in_route.end() - 1; it++)
+    {
+        printf("%i/%i\n", progress_counter, lanes_in_route.size());
+        progress_counter++;
+
+        if (it->key.to_string() == (it + 1)->key.to_string())
+        {
+            // printf("Keys were the same. Skipping.\n");
+            continue;
+        }
+        std::vector<odr::LaneKey> route = routing_graph.shortest_path((it + 1)->key, it->key);
+
+        // Reverse the order of the route
+        std::reverse(route.begin(), route.end());
+
+        if (route.size() < 2)
+        {
+            // RCLCPP_WARN(this->get_logger(), "Route not found. Trying other direction.");
+            route = routing_graph.shortest_path(it->key, (it + 1)->key);
+            if (route.size() < 2)
+            {
+                RCLCPP_WARN(this->get_logger(), "Route not found.");
+                continue;
+            }
+        }
+        for (auto key : route)
+        {
+            if (complete_route.size() > 0 && key.to_string() == complete_route.back().to_string()) {
+                continue;
+            }
+                
+
+            complete_route.push_back(key);
+        }
+
+        if (progress_counter % 10 == 0)
+        {
+            for (auto key : complete_route)
+            {
+                printf("%s\n", key.to_string().c_str());
+            }
+        }
+    }
+                for (auto key : complete_route)
+            {
+                printf("%s\n", key.to_string().c_str());
+            }
+
+    RCLCPP_INFO(this->get_logger(), "Publishing path with %i poses. Started with %i poses.\n", smoothed_path_msg_.poses.size(), msg->poses.size());
 }
 
 /**
