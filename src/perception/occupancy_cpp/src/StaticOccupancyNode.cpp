@@ -111,7 +111,7 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
 
     mass_update();
     // get_mass();
-    plotting();
+    publishOccupancyGrid();
     clear();
 
     initialization_phase = false;
@@ -352,7 +352,7 @@ void StaticOccupancyNode::add_free_spaces_to_the_DST()
 
 /**
  * Adds vehicle shape to occupied/unoccupied zones
- * TODO: Change for hale bopp
+ * TODO: Change for Hail-Bopp
  */
 void StaticOccupancyNode::add_ego_vehicle_to_the_DST()
 {
@@ -368,19 +368,19 @@ void StaticOccupancyNode::add_ego_vehicle_to_the_DST()
 }
 
 //-------------HELPERS----------------------------//
-void StaticOccupancyNode::plotting()
+void StaticOccupancyNode::publishOccupancyGrid()
 {
-  occupancy_msg.data.clear();
-  // masses_msg.occ.clear();
-  // masses_msg.free.clear();
-  occupancy_msg.header.stamp = this->clock.clock;
-  occupancy_msg.header.frame_id = "base_link"; // TODO: Make sure the frame is the correct one.
-  occupancy_msg.info.resolution = res;
-  occupancy_msg.info.width = grid_size;
-  occupancy_msg.info.height = grid_size;
-  occupancy_msg.info.origin.position.z = 0.2;
-  occupancy_msg.info.origin.position.x = -64.0 * (1. / 3.);
-  occupancy_msg.info.origin.position.y = -64.0 * (1. / 3.);
+
+  OccupancyGrid msg;
+
+  msg.header.stamp = this->clock.clock;
+  msg.header.frame_id = "base_link"; // TODO: Make sure the frame is the correct one.
+  msg.info.resolution = res;
+  msg.info.width = grid_size;
+  msg.info.height = grid_size;
+  msg.info.origin.position.z = 0.2;
+  msg.info.origin.position.x = -64.0 * (1. / 3.);
+  msg.info.origin.position.y = -64.0 * (1. / 3.);
   // masses_msg.width = grid_size;
   // masses_msg.height = grid_size;
 
@@ -390,10 +390,10 @@ void StaticOccupancyNode::plotting()
   {
     for (unsigned int j = 0; j < grid_size; j++)
     {
-        occupancy_msg.data.push_back(probabilites.at(i).at(j));
+        msg.data.push_back(probabilites.at(i).at(j));
     }
   }
-  occupancy_grid_pub->publish(occupancy_msg);
+  occupancy_grid_pub->publish(msg);
   // masses_pub->publish(masses_msg);
 }
 
