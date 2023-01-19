@@ -85,13 +85,18 @@ def generate_launch_description():
         executable='ground_segmentation_exe'
     )
 
+    image_segmentation = Node(
+        package='segmentation',
+        executable='image_segmentation_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         carla_controller,
 
         # INTERFACE
-        # carla_bridge_official,
-        # carla_spawner,
+        carla_bridge_official,
+        carla_spawner,
         leaderboard_liaison,
 
         # LOCALIZATION
@@ -104,10 +109,11 @@ def generate_launch_description():
         rviz,
 
         # PERCEPTION
+        image_segmentation,
         lidar_processor,
         ground_seg,
 
         # STATE ESTIMATION
-        # map_manager,
+        map_manager,
         state_estimation,
     ])
