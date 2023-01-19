@@ -127,8 +127,6 @@ namespace navigator
       double up_occ_pred[grid_size][grid_size];
       double up_free[grid_size][grid_size];
       double up_occ[grid_size][grid_size];
-      double prob_O[grid_size][grid_size];
-      double prob_O_plot[grid_size][grid_size];
       bool angles[360];
       bool first;
 
@@ -142,7 +140,7 @@ namespace navigator
       int find_nearest(int n, double v, double v0, double vn, double res);
       void mass_update();
       void update_of();
-      std::vector<std::vector<double>> getGridCellProbabilities();
+      std::vector<std::vector<double>> ygetGridCellProbabilities();
       void plotting();
       void clear();
       void fill(std::vector<int> flip);
