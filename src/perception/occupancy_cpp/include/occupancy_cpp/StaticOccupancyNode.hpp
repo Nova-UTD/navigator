@@ -142,7 +142,7 @@ namespace navigator
       int find_nearest(int n, double v, double v0, double vn, double res);
       void mass_update();
       void update_of();
-      void get_mass();
+      std::vector<std::vector<double>> getGridCellProbabilities();
       void plotting();
       void clear();
       void fill(std::vector<int> flip);

@@ -59,6 +59,9 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
     // 1. Convert new measurement into a DST grid.
     cloud = createOccupancyGrid(cloud);
 
+    change_x = 0.0; // TODO: Remove or fix the "change" variables.
+    change_y = 0.0;
+
     x_new_low = change_x - 64 * res;
     x_new_high = change_x + 64 * res;
     y_new_low = change_y - 64 * res;
@@ -107,7 +110,7 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
     }
 
     mass_update();
-    get_mass();
+    // get_mass();
     plotting();
     clear();
 
@@ -370,6 +373,7 @@ void StaticOccupancyNode::plotting()
   occupancy_msg.data.clear();
   // masses_msg.occ.clear();
   // masses_msg.free.clear();
+  occupancy_msg.header.stamp = this->clock.clock;
   occupancy_msg.header.frame_id = "base_link"; // TODO: Make sure the frame is the correct one.
   occupancy_msg.info.resolution = res;
   occupancy_msg.info.width = grid_size;
@@ -380,13 +384,13 @@ void StaticOccupancyNode::plotting()
   // masses_msg.width = grid_size;
   // masses_msg.height = grid_size;
 
+  auto probabilites = getGridCellProbabilities();
+
   for (unsigned int i = 0; i < grid_size; i++)
   {
     for (unsigned int j = 0; j < grid_size; j++)
     {
-        occupancy_msg.data.push_back(prob_O_plot[j][i]);
-        // masses_msg.occ.push_back(up_occ[j][i]);
-        // masses_msg.free.push_back(up_free[j][i]);
+        occupancy_msg.data.push_back(probabilites.at(i).at(j));
     }
   }
   occupancy_grid_pub->publish(occupancy_msg);
@@ -422,16 +426,25 @@ void StaticOccupancyNode::update_of()
   }
 }
 
-void StaticOccupancyNode::get_mass()
+/**
+ * @brief 
+ * 
+ */
+std::vector<std::vector<double>> StaticOccupancyNode::getGridCellProbabilities()
 {
+  std::vector<std::vector<double>> cell_probabilities;
   for (unsigned int i = 0; i < grid_size; i++)
   {
+    std::vector<double> row;
     for (unsigned int j = 0; j < grid_size; j++)
-    {
-        prob_O[i][j] = (0.5 * up_occ[i][j] + 0.5 * (1.0 - up_free[i][j]));
-        prob_O_plot[i][j] = 100 * (0.5 * up_occ[i][j] + 0.5 * (1.0 - up_free[i][j])); // meas_occ[i][j] * 100;
+    {   
+        double probability = (0.5 * up_occ[i][j] + 0.5 * (1.0 - up_free[i][j]));
+        row.push_back(probability);
     }
+    cell_probabilities.push_back(row);
   }
+
+  return cell_probabilities;
 }
 
 int StaticOccupancyNode::find_nearest(int n, double v, double v0, double vn, double res)

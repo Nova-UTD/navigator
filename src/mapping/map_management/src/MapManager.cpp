@@ -68,12 +68,12 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
 
     int grid_radius_in_cells = std::ceil(range/res);
 
-    float x_min = center.x - grid_radius_in_cells;
-    float x_max = center.x + grid_radius_in_cells;
-    float y_min = center.y - grid_radius_in_cells;
-    float y_max = center.y + grid_radius_in_cells;
+    float x_min = center.x - range;
+    float x_max = center.x + range;
+    float y_min = center.y - range;
+    float y_max = center.y + range;
 
-    std::printf("[%f, %f], [%f, %f]", x_min, x_max, y_min, y_max);
+    std::printf("[%f, %f], [%f, %f], %f", x_min, x_max, y_min, y_max, res);
 
     if (this->map_wide_tree_.size() == 0)
         this->map_wide_tree_ = this->map_->generate_mesh_tree();
@@ -90,6 +90,9 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
 
     for (unsigned i = 0; i < lane_shapes_in_range.size(); ++i)
         local_tree.insert(lane_shapes_in_range.at(i));
+
+    int area = 0;
+    int height = 0;
 
     for (float j = y_min; j <= y_max; j += res)
     {
@@ -124,7 +127,10 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
                 grid_data.push_back(100);
             else
                 grid_data.push_back(0);
+
+            area += 1;
         }
+        height+=1;
     }
 
     // Set the OccupancyGrid's metadata
@@ -132,8 +138,8 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
     occupancy_grid.data = grid_data;
     occupancy_grid.header.frame_id = "map";
     occupancy_grid.header.stamp = clock;
-    occupancy_grid.info.width = range * 2 + 1;
-    occupancy_grid.info.height = range * 2 + 1;
+    occupancy_grid.info.width = area/height;
+    occupancy_grid.info.height = height;
     occupancy_grid.info.map_load_time = clock;
     occupancy_grid.info.resolution = GRID_RES;
     occupancy_grid.info.origin.position.x = x_min;

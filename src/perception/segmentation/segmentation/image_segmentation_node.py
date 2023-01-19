@@ -164,7 +164,7 @@ class ImageSegmentationNode(Node):
 
         img_array = self.image_to_numpy(msg)[:,:,:3] # Cut out alpha
         result = inference_segmentor(self.model, img_array)[0]
-        # result *= 40
+        result *= 40
 
         result_msg = self.numpy_to_image(result.astype(np.uint8), 'mono8')
         result_msg.header = msg.header
