@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'controller = carla_controller.controller:main'
+            'controller = carla_controller.controller:main',
+            'route_controller = carla_controller.simple_route_controller:main'
         ],
     },
 )

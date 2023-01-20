@@ -41,3 +41,11 @@ We also have some important code to support testing, visualization, and simulati
 
 #### Example
 Our **sensing** system takes in a red blob from our front camera and does some white balancing to make the image more clear. The **perception** system identifies this red blob as a stop sign and generates a bounding box with the coordinates of the stop sign relative to the car. The **planning** system determines that we must set our speed to zero at the stop sign. The **controls** system notes that our car is still moving, and calculates that we must decelerate a certain amount. Finally, our **actuation** system converts this desired deceleration into a brake pedal command, which is sent out to the pedal's motor.
+
+## Topics
+- `/lidar/fused`: Raw LiDAR fused together to create a 360-degree picture. Otherwise unfiltered.
+- `/lidar/filtered`: Filtered LiDAR, with ground points removed.
+- `/grid/drivable`
+- `/grid/route_distance`
+- `/grid/occupancy/current`: Only the current occupancy grid.
+- `/grid/occupancy/combined`: Both the current and all future prediction occupancy grids, summed together. 
