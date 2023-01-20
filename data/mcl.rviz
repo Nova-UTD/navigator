@@ -166,9 +166,9 @@ Visualization Manager:
           Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
-          Max Intensity: 0.9899387359619141
+          Max Intensity: 0.9899380803108215
           Min Color: 0; 0; 0
-          Min Intensity: 0.7274837493896484
+          Min Intensity: 0.7262483239173889
           Name: Filtered LiDAR
           Position Transformer: XYZ
           Selectable: true
@@ -406,7 +406,7 @@ Visualization Manager:
       Head Length: 5
       Length: 10
       Line Style: Billboards
-      Line Width: 0.0010000000474974513
+      Line Width: 4
       Name: Path
       Offset:
         X: 0
@@ -476,11 +476,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 0.6432737112045288
+      Scale: 2.3929734230041504
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
-      X: 189.88455200195312
-      Y: -52.365379333496094
+      X: 106.26571655273438
+      Y: -53.685054779052734
     Saved: ~
 Window Geometry:
   Bird's Eye:
