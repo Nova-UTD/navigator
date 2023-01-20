@@ -57,7 +57,11 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
   pcl::fromROSMsg(*msg, cloud);
 
   // 1. Convert new measurement into a DST grid.
-  cloud = createOccupancyGrid(cloud);
+  createOccupancyGrid(cloud);
+  printf("Up_Occ: %d, Up_Free: %d\n", up_occ[50][50], up_free[50][50]);
+  printf("Meas_Occ: %d\n", meas_occ[50][50]);
+  printf("Prev_Occ: %d, Prev_Free: %d\n", prev_occ[50][50], prev_free[50][50]);
+  
 
   change_x = 0.0; // TODO: Remove or fix the "change" variables.
   change_y = 0.0;
@@ -135,23 +139,22 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
  * @param cloud
  * @return pcl::PointCloud<pcl::PointXYZI>
  */
-pcl::PointCloud<pcl::PointXYZI> StaticOccupancyNode::createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> cloud)
+void StaticOccupancyNode::createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &cloud)
 {
   // The grid is created in three stages.
 
   // Initialize DST grid
-  pcl::PointCloud<pcl::PointXYZI> grid;
+  // pcl::PointCloud<pcl::PointXYZI> grid;
 
   // 1. Add occupied cells to the DST grid
   add_points_to_the_DST(cloud);
-
   // 2. Identify free space in the DST grid.
   add_free_spaces_to_the_DST();
 
   // 3. Add an ego vehicle mask to the grid.
   addEgoMask();
 
-  return grid;
+  //return grid;
 }
 
 /**
@@ -162,11 +165,12 @@ pcl::PointCloud<pcl::PointXYZI> StaticOccupancyNode::createOccupancyGrid(pcl::Po
  */
 void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> &cloud)
 {
-  std::printf("Adding %i points to the DST.\n", cloud.points.size());
-  for (size_t i = 0; i < cloud.points.size(); i++)
+  std::printf("Adding %i points to the DST.\n", cloud.size());
+  for (size_t i = 0; i < cloud.size(); i++)
   {
-    int x = (int)(cloud.points[i].x / res);
-    int y = (int)(cloud.points[i].y / res);
+
+    int x = (int)(cloud[i].x / res);
+    int y = (int)(cloud[i].y / res);
     double z = cloud.points[i].z;
 
     // Ignores points above a certain height?
@@ -239,7 +243,8 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
       ray_tracing_approximation_x_increment(0, 0, (-1) * x, y, -1, 1, false);
     }
     else {
-      printf("Slope %f and x %f did not match a case.\n", slope, x);
+      printf("Did not match a case.\n");
+      //printf("X: %f, Y: %f, SLOPE %f\n", x, y, slope);
     }
   }
 }

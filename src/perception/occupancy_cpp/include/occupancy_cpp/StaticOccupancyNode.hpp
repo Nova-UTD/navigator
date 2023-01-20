@@ -66,7 +66,7 @@ namespace navigator
 
       Clock clock;
 
-      pcl::PointCloud<pcl::PointXYZI> createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> cloud);
+      void createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &cloud);
 
       bool initialization_phase = true;
       double vehicle_x;
