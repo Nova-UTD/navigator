@@ -26,11 +26,11 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     route_path_pub_ = this->create_publisher<Path>("/route/smooth_path", 10);
 
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
-    rough_path_sub_ = this->create_subscription<Path>("/route/rough_path", 10, bind(&MapManagementNode::getLanesFromRoughPath, this, std::placeholders::_1));
+    rough_path_sub_ = this->create_subscription<Path>("/route/rough_path", 10, bind(&MapManagementNode::refineRoughPath, this, std::placeholders::_1));
     world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
 
-    grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::gridPubTimerCb, this));
-    route_update_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::updateRoute, this));
+    drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
+    route_distance_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::routeDistanceGridPubTimerCb, this));
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -190,7 +190,7 @@ TransformStamped navigator::perception::MapManagementNode::getVehicleTf()
  * @brief Gets the drivable area OccupancyGrid and publishes it.
  *
  */
-void navigator::perception::MapManagementNode::gridPubTimerCb()
+void navigator::perception::MapManagementNode::drivableAreaGridPubTimerCb()
 {
     TransformStamped t = getVehicleTf();
 
@@ -202,11 +202,24 @@ void navigator::perception::MapManagementNode::gridPubTimerCb()
     grid_pub_->publish(msg);
 }
 
-void navigator::perception::MapManagementNode::getLanesFromRoughPath(Path::SharedPtr msg)
+/**
+ * @brief Refine a rough path from CARLA into a smooth, sub-meter accurate path
+ * 
+ * 1. For each pose in the rough path, use an RTree to find the matching lane in the map
+ * 2. Given the sequence of lanes, fill in gaps and validate using libOpenDRIVE's routing graph
+ *  a. This is very, very slow, but it should guarantee a valid lane sequence.
+ *  b. This accounts for junctions, where a point may belong to >1 lane.
+ * 3. For each lane in the sequence, sample the centerline and add this point to a boost linestring
+ *  a. This creates a continuous Cartesian curve
+ * 4. Pusblish this refined curve as a Path message.
+ * 
+ * @param msg 
+ */
+void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr msg)
 {
     if (this->map_ == nullptr)
         return;
-    if (this->lanes_in_route_.size() > 0)
+    if (this->smoothed_path_msg_.poses.size() > 0)
     {
         // RCLCPP_WARN(this->get_logger(), "Lanes already calculated from rough path.");
         route_path_pub_->publish(smoothed_path_msg_);
@@ -406,13 +419,16 @@ void navigator::perception::MapManagementNode::getLanesFromRoughPath(Path::Share
  * @brief Generate and publish the "distance from route" cost map layer
  *
  */
-void navigator::perception::MapManagementNode::updateRoute()
+void navigator::perception::MapManagementNode::routeDistanceGridPubTimerCb()
 {
     TransformStamped t = getVehicleTf();
 
-    // TODO: Get the lane that the car is currently in
+    if (this->smoothed_path_msg_.poses.size() < 1) {
+        RCLCPP_WARN(get_logger(), "Refined route not yet calculated. Skipping.");
+        return;
+    }
 
-    // TODO: Print the lane's ID and road ID
+    // Trim the route to all points ahead of the car.
 }
 
 /**
