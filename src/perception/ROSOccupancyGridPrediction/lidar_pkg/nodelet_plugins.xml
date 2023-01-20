@@ -1,0 +1,44 @@
+<library path="libnodelet_plugins">
+  <class name="lidar_pkg/AggregatePoints" type="lidar_pkg::AggregatePoints" base_class_type="nodelet::Nodelet">
+    <description>
+      Write things here.
+    </description>
+  </class>
+
+  <class name="lidar_pkg/MrfGroundSeg" type="lidar_pkg::MrfGroundSeg" base_class_type="nodelet::Nodelet">
+    <description>
+      Write things here.
+    </description>
+  </class>
+
+  <class name="lidar_pkg/OccupancyGridGeneration" type="lidar_pkg::OccupancyGridGeneration" base_class_type="nodelet::Nodelet">
+    <description>
+      Write things here.
+    </description>
+  </class>
+
+  <class name="lidar_pkg/OccupancyGridGenerationOcclusion" type="lidar_pkg::OccupancyGridGenerationOcclusion" base_class_type="nodelet::Nodelet">
+    <description>
+      Write things here.
+    </description>
+  </class>
+
+  <class name="lidar_pkg/InferenceTF" type="lidar_pkg::InferenceTF" base_class_type="nodelet::Nodelet">
+    <description>
+      Write things here.
+    </description>
+  </class>
+
+  <class name="lidar_pkg/InferenceTorch" type="lidar_pkg::InferenceTorch" base_class_type="nodelet::Nodelet">
+    <description>
+      Write things here.
+    </description>
+  </class>
+
+  <class name="lidar_pkg/Visualize" type="lidar_pkg::Visualize" base_class_type="nodelet::Nodelet">
+    <description>
+      Write things here.
+    </description>
+  </class>
+
+</library>

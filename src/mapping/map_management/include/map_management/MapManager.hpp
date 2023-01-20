@@ -1,16 +1,11 @@
 /*
- * Package:   MotionPlanner
- * Filename:  MotionPlanner.hpp
- * Author:    Jim Moore
- * Email:     jim3moore@gmail.com
- * Copyright: 2022, Nova UTD
+ * Package:   map_management
+ * Filename:  MapManager.hpp
+ * Author:    Will Heitman
+ * Email:     w at heit dot mn
+ * Copyright: 2023, Nova UTD
  * License:   MIT License
  */
-
-/*
-    Currently, this node gets an Evidential Grid Map input from perception and creates a cost map accordingly to ensure safety and good driving practices.
-    It does so by giving collisions an extremely high costs and making spaces closer to the next waypoint less costly. *TO BE CONTINUED*
-*/
 
 #pragma once
 
@@ -41,10 +36,13 @@
 #include "tf2_ros/buffer.h"
 
 // Message includes
+#include "carla_msgs/msg/carla_route.hpp"
 #include "carla_msgs/msg/carla_world_info.hpp"
 #include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
 
 using namespace std::chrono_literals;
@@ -52,8 +50,10 @@ using namespace nav_msgs::msg;
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
 
+using carla_msgs::msg::CarlaRoute;
 using carla_msgs::msg::CarlaWorldInfo;
 using PointMsg = geometry_msgs::msg::Point;
+using geometry_msgs::msg::PoseStamped;
 using geometry_msgs::msg::TransformStamped;
 using rosgraph_msgs::msg::Clock;
 
@@ -76,20 +76,23 @@ namespace navigator
             // TODO: Convert to ros params
             std::chrono::milliseconds GRID_PUBLISH_FREQUENCY = 200ms;
             const int GRID_RANGE = 40;
-            const float GRID_RES = 1.0;
+            const float GRID_RES = 0.4;
 
             void clockCb(Clock::SharedPtr msg);
             TransformStamped getVehicleTf();
-            void gridPubTimerCb();
-            void updateRoute();
+            void drivableAreaGridPubTimerCb();
+            void refineRoughPath(Path::SharedPtr msg);
+            void routeDistanceGridPubTimerCb();
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
             rclcpp::Publisher<OccupancyGrid>::SharedPtr grid_pub_;
+            rclcpp::Publisher<Path>::SharedPtr route_path_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
+            rclcpp::Subscription<Path>::SharedPtr rough_path_sub_;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
 
-            rclcpp::TimerBase::SharedPtr grid_pub_timer_;
-            rclcpp::TimerBase::SharedPtr route_update_timer_;
+            rclcpp::TimerBase::SharedPtr drivable_area_grid_pub_timer_;
+            rclcpp::TimerBase::SharedPtr route_distance_grid_pub_timer_;
 
             std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -97,6 +100,9 @@ namespace navigator
             Clock::SharedPtr clock_;
             odr::OpenDriveMap *map_ = nullptr;
             std::vector<odr::LanePair> lane_polys_;
+            std::vector<odr::Lane> lanes_in_route_;
+            Path smoothed_path_msg_;
+            bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
         };
     }
 }

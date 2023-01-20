@@ -1,129 +1,53 @@
 ---
 layout: default
 title: Planning
-nav_order: 4
 ---
 
-# Planning overview
-{: .no_toc }
+The car should follow three instructions, in order of priority:
+1. Don't run into anything.
+2. Drive forward along a route until the goal is reached.
+3. Obey traffic laws.
 
-*Maintained by Egan Johnson*
-## Table of contents
-{: .no_toc .text-delta }
+The car should be *rewarded* for obeying these three instructions, and the Planning system's objective should be to maximize this reward.
 
-1. TOC
-{:toc}
+To help the car make appropriate decisions, we can feed it "costmaps" that represent the reward that the car will receive if it drives through a given spot on the map. Each costmap might represent a specific quality (the drivable surfaces near the car, for example), and we can simply take the *weighted sum* of each costmap to generate a hollistic overview for the car.
 
----
+Keep in mind that "cost" and "reward" are really the same concept. The car's goal is to select a path that moves through regions of the greatest reward, a.k.a. of the least cost.
 
-"Planning" refers to the part of the system that synthesizes perception and 
-scenario information into an actionable decision that can be handed to controls.
-Our current control stack is designed for Demo 2 tasks, at its applicability to 
-other tasks is limited. 
+The more costmaps we sum together and the more carefully we select the weights for the sum, the better our car will be at making decisions.
 
-## The Strategy
-The current strategy generates a determined path (i.e. spatial trajectory), 
-which it assigns velocities to based on the situation. There are currently three
-modifying factors on assigned velocity: the speed limit, the curvature of the 
-path (to avoid taking sharp turns at high speeds), and most importantly zones. 
+# Costmaps
+Here are the costmaps that we should calculate at minimum, along with their justification:
 
-A "zone" is a closed polygon that limits the speed that the vehicle can have 
-when passing through the enclosed space. They are generated from a variety of 
-sources, and are used to control the vehicles behavior: if any node wishes to
-stop the vehicle from entering an intersection, for example, they would enclose
-the intersection with a zone of speed 0.
+## Drivable area
+This describes a surface that the car is allowed to drive over, mainly lanes, parking spaces, and intersections. 
 
-## Zone Features
-  * Zones are defined by the points describing an enclosed polygon and a 
-    non-exceed speed
-  * Any single zone is homogenous, meaning the non-exceed speed is constant 
-    within the zone
-  * Zones may overlap. In this case, the lowest non-exceed speed must be obeyed
-  * Zones may have a speed of 0
-  * Zones don't evolve through time: instead, a new zone must replace the old
-    zone
+We can expand this drivable area if the car's current options are exhausted. For example, the default drivable area may only include lanes that match the car's current driving direction, but this region can be expanded to include lanes with oncoming traffic if the current region is blocked.
 
-## Calculating the Trajectory: Assigning speed to the path
-  The path is turned into a trajectory by assigning speed. The trajectory should
-  be safe, comfortable, and possible, and should obey the zones. The process for
-  assigning velocities works as follows:
-   1. For each point, set its speed to the speed limit of the lane
-   2. For each point, calculate the local curvature of the path. Using the path
-      curvature, limit the speed for that point so that the lateral acceleration
-      of the vehicle is never more than a configured maximum
-   3. For each zone, determine if it intersects with the trajectory. If it does:
-      1. The trajectory is a discrete path, so the first point affected may be 
-        further from the edge of the zone than we would like. To observe the 
-        speed limitation starting from the very edge of the zone, insert a new 
-        point to the trajectory where it intersects the zone (both entering and
-        exiting)
-      2. Set the speed of this new point to the lowest speed among its adjacent
-        points the zone
-      3. For all points within the zone, set the speed to no greater than the 
-        zone speed
-   4. Do a backwards pass of the trajectory, and lower the speed of each point
-      so that the speed of the next point (next in time, previous point in the 
-      pass) can be achieved with comfortable deceleration. The only time this 
-      may not be physically obtainable is immediately in front of the vehicle 
-      when it is moving too fast: in this case, lower the speed anyway and let 
-      the controller sort it out
-   5. Do a forwards pass of the trajectory, and lower the speed of each point so
-      it can be reached from the previous point using a comfortable acceleration
+Justification: The car should only be allowed to drive on "drivable" surfaces: no sidewalks, lawns, etc.
 
-  Although the path itself may extend from the origin to the destination, only 
-  the points within a certain horizon of the vehicle need to be considered for
-  the trajectory.
+Suggested format: 0.4m cell size, 40m range.
 
-  Notice that aside from step 1, the speed is never increased. The vehicle should
-  be cautious, meaning that if there is a reason to go slow and a reason to go
-  regular speed, the reason to go slow wins as a rule of thumb. Since this is 
-  true, as long as acceleration/deceleration smoothing is done last, the other
-  steps can be done in any order.
+![Example where drivable region expansion may be useful](https://leaderboard.carla.org/assets/images/TR14a.png)
+<small>Above: Example where drivable region expansion may be useful. Credit: CARLA Leaderboard.</small>
 
-```cpp
-void MotionPlannerNode::send_message() {
-    if (ideal_path == nullptr || odometry == nullptr) {
-        // RCLCPP_WARN(this->get_logger(), "motion planner has no input path, skipping...");
-        return;
-    }
-    Trajectory tmp = build_trajectory(ideal_path, horizon);
-    if(zones != nullptr){
-      limit_to_zones(tmp, *zones);
-    }
-    limit_to_curvature(tmp, max_lat_accel);
-    smooth(tmp, max_accel, max_decel);
-    trajectory_publisher->publish(tmp);
-    return;
-}
-```
-## Zone sources
-  Zones primarily come from two sources: the obstacle detection system and 
-  the `BehaviorPlanner` node. 
+## Predicted occupancy
+Occupancy grids are a common concept in robotics used to describe obstacles. The world is divided into cells. If a given cell contains an obstacle, then it is marked as occupied.
 
-  The obstacle detection system will create a zone around each obstacle. It will
-  actually typically create two zones: one zone with a speed of 0 signifying not
-  to move through the space at all, and one larger zone with a lower speed 
-  indicating where the vehicle may pass but should be cautious.
+Using machine learning, we can generate occupancy grids not just for the present ($t=0$), but also for the future (such as $t=3s$).
 
-  One limitation of the zone architecture is that obstacle zones need to be 
-  larger than the actual obstacles. This is because speeds are assigned as 
-  intersections with the trajectory, which has zero width. The car does not have
-  zero width, and so can physically go through zones that the path did not 
-  intersect.
+For a simple costmap that compresses all temporal considerations into the present, we can simply add the predicted occupancies across all frames, creating a single costmap for both the current and future occupancies.
 
-  At this time, the primary function of the BehaviorPlanner node is traffic
-  control. Using a state machine, it will create zones around intersections, 
-  and then remove them when it is safe to proceed. 
+Justification: The car should not run into anything.
 
-  ## Strengths and Weaknesses
-  
-  Strengths:
-   * Zones are an easily understood description of what the car is doing
-   * Zones can accomplish any sort of stop-go behavior we need, including 
-     following another vehicle
-  
-  Weaknesses:
-   * Zones cannot describe dynamic scenarios
-   * Zones cannot describe uncertain or branching scenarios
-   * Only as strong as the zone-creating entities
-   * Can be awkward for the controller, like when it is halfway out of a zone with 0 speed
+Suggested format: 0.4m, 20m range *minimum*, 40m ideal.
+
+## Distance to route & goal
+This is a combined costmap that describes both how far the car is from the route and from the goal.
+
+Justification: The car should drive along the route until the goal is reached.
+
+# Costmap specifications
+1. All costmaps should be in the `map` frame, aligned with the x/y axes of the map. This eliminates the need to perform costly transforms.
+2. All costmaps should have resolutions (cell sizes) that are multiples of the same base resolution. Example: 0.4, 0.8, and 1.6 meters. This allows them to be cleanly scaled.
+3. The costmaps do not necessarily need to share an origin nor size, though their sum will only be accurate in the region where they align.
