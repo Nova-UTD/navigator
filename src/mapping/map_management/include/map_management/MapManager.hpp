@@ -80,9 +80,9 @@ namespace navigator
 
             void clockCb(Clock::SharedPtr msg);
             TransformStamped getVehicleTf();
-            void gridPubTimerCb();
-            void getLanesFromRoughPath(Path::SharedPtr msg);
-            void updateRoute();
+            void drivableAreaGridPubTimerCb();
+            void refineRoughPath(Path::SharedPtr msg);
+            void routeDistanceGridPubTimerCb();
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
             rclcpp::Publisher<OccupancyGrid>::SharedPtr grid_pub_;
@@ -91,8 +91,8 @@ namespace navigator
             rclcpp::Subscription<Path>::SharedPtr rough_path_sub_;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
 
-            rclcpp::TimerBase::SharedPtr grid_pub_timer_;
-            rclcpp::TimerBase::SharedPtr route_update_timer_;
+            rclcpp::TimerBase::SharedPtr drivable_area_grid_pub_timer_;
+            rclcpp::TimerBase::SharedPtr route_distance_grid_pub_timer_;
 
             std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
