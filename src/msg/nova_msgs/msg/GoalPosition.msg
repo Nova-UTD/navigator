@@ -1,0 +1,2 @@
+geometry_msgs/Point goal_point
+std_msgs/Header header

@@ -14,7 +14,7 @@
 
 #include "rclcpp/rclcpp.hpp" // ROS node
 
-#include "voltron_msgs/msg/can_frame.hpp" // CAN frame messages
+#include "nova_msgs/msg/can_frame.hpp" // CAN frame messages
 #include "can_interface/CanBus.hpp" // CAN interface
 
 #include "can_interface/CanInterfaceNode.hpp" // Header for this class
@@ -35,12 +35,12 @@ CanInterfaceNode::CanInterfaceNode(const std::string & interface_name)
     (receive_frequency, bind(& CanInterfaceNode::check_incoming_messages, this));
 
   // Set up the publisher. Buffer up to 64 since the CAN bus could get fairly busy
-  this->incoming_message_publisher = this->create_publisher<voltron_msgs::msg::CanFrame>
+  this->incoming_message_publisher = this->create_publisher<nova_msgs::msg::CanFrame>
     ("can_interface_incoming_can_frames", 64);
 
   // Subscribe to outgoing CAN messages
   this->outgoing_message_subscription =
-    this->create_subscription<voltron_msgs::msg::CanFrame>
+    this->create_subscription<nova_msgs::msg::CanFrame>
     ("can_interface_outgoing_can_frames", 64,
      bind(& CanInterfaceNode::send_frame, this, _1));
 }
@@ -49,7 +49,7 @@ CanInterfaceNode::~CanInterfaceNode() {
 
 }
 
-void CanInterfaceNode::send_frame(const voltron_msgs::msg::CanFrame::SharedPtr msg) {
+void CanInterfaceNode::send_frame(const nova_msgs::msg::CanFrame::SharedPtr msg) {
   this->can_bus->write_frame(navigator::can_interface::CanFrame(msg->identifier, msg->data));
 }
 
@@ -61,7 +61,7 @@ void CanInterfaceNode::check_incoming_messages() {
 
 void CanInterfaceNode::receive_frame() {
   std::unique_ptr<navigator::can_interface::CanFrame> frame = this->can_bus->read_frame();
-  voltron_msgs::msg::CanFrame message;
+  nova_msgs::msg::CanFrame message;
   message.identifier = frame->get_identifier();
   message.data = frame->get_data();
   this->incoming_message_publisher->publish(message);

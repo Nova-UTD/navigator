@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<robot name="carla-bopp">
+    <material name="maroon">
+        <color rgba="0.5 0.0 0.0 1" />
+    </material>
+    <material name="blue">
+        <color rgba="0.1 0.1 0.5 1" />
+    </material>
+    <link name="model_link">
+        <visual>
+            <geometry>
+                <mesh filename="file:///navigator/data/hailbopp.stl" scale="1.0 1.0 1.0" />
+            </geometry>
+            <material name="maroon" />
+            <origin xyz="-2.6 0 0.28" rpy="0 0 1.570796" />
+        </visual>
+    </link>
+
+    <joint name="model_joint" type="fixed">
+        <parent link="base_link" />
+        <child link="model_link" />
+        <origin xyz="-1.7 -2.3 -0.7" rpy="0 0 -1.570796" />
+    </joint>
+
+    <link name="base_link">
+        <collision>
+            <geometry>
+                <box size="4.37 2.0 1.85" />
+            </geometry>
+            <origin xyz="-1.7 0 0.645" rpy="0 0 0" />
+        </collision>
+    </link>
+    <link name="hero"/>
+    <joint name="hero_to_base_link" type="fixed">
+        <parent link="hero" />
+        <child link="base_link" />
+        <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+    </joint>
+</robot>

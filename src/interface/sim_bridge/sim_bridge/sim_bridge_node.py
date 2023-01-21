@@ -13,8 +13,8 @@ Targetted sensors:
 - Front and rear Lidar
 ✓ Front  RGB camera
 ✓ Front depth camera
-- CARLA ground truths for
-    - Detected objects
+✓ CARLA ground truths for
+    ✓ Detected objects
     ✓ Car's odometry (position, orientation, speed)
     ✓ CARLA virtual bird's-eye camera (/carla/birds_eye_rgb)
 
@@ -27,7 +27,7 @@ Todos:
 from sensor_msgs.msg import PointCloud2
 from scipy.spatial.transform import Rotation as R
 from geometry_msgs.msg import Point, Quaternion, Vector3, PoseWithCovariance, TwistWithCovarianceStamped
-from voltron_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D
+from nova_msgs.msg import PeddlePosition, SteeringPosition, Obstacle3DArray, Obstacle3D, BoundingBox3D
 from nav_msgs.msg import Odometry  # For GPS, ground truth
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import Image  # For cameras
@@ -41,28 +41,24 @@ from tf2_ros.buffer import Buffer
 import tf2_msgs
 from tf2_ros import TransformException, TransformStamped
 import pymap3d
-# from cv_bridge import CvBridge
+from cv_bridge import CvBridge
 import numpy as np
 import ros2_numpy as rnp
 from rclpy.node import Node
 import rclpy
 import sys
-
-sys.path.append('/home/share/carla-simulator/PythonAPI/carla/dist/carla-0.9.13-py3.7-linux-x86_64.egg')
-
+sys.path.append('/home/share/carla/PythonAPI/carla/dist/carla-0.9.12-py3.7-linux-x86_64.egg')
 import carla
 import random
+import sim_bridge.scenarios as sc
+
+# #SCENARIO TO RUN
+# SCENARIO = sc.car_in_junction
 
 # GLOBAL CONSTANTS
 # TODO: Move to ROS param file, read on init. WSH.
 CLIENT_PORT = 2000
-CLIENT_WORLD = 'Town07'
-EGO_AUTOPILOT_ENABLED = False
-EGO_SPAWN_X = -180
-EGO_SPAWN_Y = -163
-EGO_SPAWN_Z = 20.0
-EGO_SPAWN_YAW = 90
-EGO_MODEL = 'vehicle.audi.etron'
+
 GNSS_PERIOD = 1/(2.0)  # 2 Hz
 GROUND_TRUTH_OBJ_PERIOD = 1/(2.0)  # 2 Hz (purposely bad)
 GROUND_TRUTH_ODOM_PERIOD = 1/(10.0)  # 10 Hz
@@ -70,8 +66,8 @@ LIDAR_PERIOD = 1/(10.0)  # 10 Hz
 SEMANTIC_LIDAR_PERIOD = 1/(2.0)  # 10 Hz
 SPEEDOMETER_PERIOD = 1/(10.0)  # 10 Hz
 STEERING_ANGLE_PERIOD = 1/(10.0)  # 10 Hz
-OBSTACLE_QTY_VEHICLE = 25  # Spawn n cars
-OBSTACLE_QTY_PED = 25  # Spawn n peds
+OBSTACLE_QTY_VEHICLE = 2  # Spawn n cars
+OBSTACLE_QTY_PED = 0  # Spawn n peds
 
 # Map-specific constants
 MAP_ORIGIN_LAT = 0.0  # degrees
@@ -119,10 +115,10 @@ class SimBridgeNode(Node):
         carla_image_data_array = np.ndarray(
             shape=(carla_image.height, carla_image.width, 4),
             dtype=np.uint8, buffer=carla_image.raw_data)
-        # img_msg = self.cv_bridge.cv2_to_imgmsg(
-        #     carla_image_data_array, encoding=encoding)
-        # img_msg.header.stamp = self.get_clock().now().to_msg()
-        # img_msg.header.frame_id = '/base_link'
+        img_msg = self.cv_bridge.cv2_to_imgmsg(
+            carla_image_data_array, encoding=encoding)
+        img_msg.header.stamp = self.get_clock().now().to_msg()
+        img_msg.header.frame_id = '/base_link'
 
         return img_msg
 
@@ -138,11 +134,11 @@ class SimBridgeNode(Node):
         scales = np.array([65536.0, 256.0, 1.0, 0]) / (256**3 - 1) * 1000
         depth_image = np.dot(bgra_image, scales).astype(np.float32)
 
-        # img_msg = self.cv_bridge.cv2_to_imgmsg(depth_image, encoding=encoding)
+        img_msg = self.cv_bridge.cv2_to_imgmsg(depth_image, encoding=encoding)
         # the camera data is in respect to the camera's own frame
         # img_msg.header = self.get_msg_header(timestamp=carla_camera_data.timestamp)
-        # img_msg.header.stamp = self.get_clock().now().to_msg()
-        # img_msg.header.frame_id = '/base_link'
+        img_msg.header.stamp = self.get_clock().now().to_msg()
+        img_msg.header.frame_id = '/base_link'
 
         return img_msg
 
@@ -269,7 +265,7 @@ class SimBridgeNode(Node):
         if (speed > 10.2):
             cmd.throttle = 0.0  # Cap our speed at 23 mph. WSH.
             # self.get_logger().warn("Your speed of {} has maxed out".format(speed))
-        self.ego.apply_control(cmd)
+        # self.ego.apply_control(cmd)
 
     def sem_lidar_cb(self, data: carla.SemanticLidarMeasurement):
 
@@ -338,58 +334,56 @@ class SimBridgeNode(Node):
     def reverse_command_cb(self, msg: Bool):
         self.reverse_cmd = msg.data
 
+    def add_obstacle(self, actor, obstacles, is_car):
+        if actor.id == self.ego.id:
+            return #motivational quote: we should not be an obstacle to ourselves
+
+        ego_position = Point()
+        ego_tf: carla.Transform = self.ego.get_transform()
+        ego_position.x = ego_tf.location.x
+        ego_position.y = ego_tf.location.y * -1
+        ego_position.z = 0.0  # Force to zero
+
+        obst = Obstacle3D()
+        obst.id = actor.id
+        obst.label = obst.CAR if is_car else obst.PEDESTRIAN
+        obst.confidence = random.uniform(0.5, 1.0)
+
+        bbox = actor.bounding_box
+
+        # Set velocity
+        actor_vel = actor.get_velocity()
+        obst.velocity.x = actor_vel.x
+        obst.velocity.y = actor_vel.y * -1  # Fix coordinate system
+        obst.velocity.z = actor_vel.z
+
+        actor_tf: carla.Transform = actor.get_transform()
+
+        # add world space corner points
+        corner_points = bbox.get_world_vertices(actor_tf)
+        carla_to_our_ordering = [(0,0),(4,1),(6,2),(2,3)] #carla orders vertices in the box differently than we do. 
+        for c, us in carla_to_our_ordering:
+            tf_pt = corner_points[c]
+            corner = Point()
+            #change all coordinates to be relative to car ('base_link') instead of world ('map')
+            corner.x = tf_pt.x - ego_position.x
+            corner.y = -tf_pt.y - ego_position.y # change coordinate system
+            corner.z = tf_pt.z - ego_position.z
+            obst.bounding_box.corners[us] = corner
+        
+        obstacles.append(obst)
+
     def publish_true_boxes(self):
 
         vehicles = self.world.get_actors().filter('vehicle.*')
+        pedestrians = self.world.get_actors().filter('walker.*')
         # self.get_logger().info("Publishing {} boxes.".format(len(vehicles)))
 
         obstacles = []
         for vehicle in vehicles:
-            if vehicle.id == self.ego.id:
-                continue #motivational quote: we should not be an obstacle to ourselves
-            obst = Obstacle3D()
-            obst.id = vehicle.id
-            obst.label = obst.CAR  # TODO: Generalize, e.g. "bike", "car"
-            obst.confidence = random.uniform(0.5, 1.0)
-
-            bbox = vehicle.bounding_box
-
-            # Set velocity
-            actor_vel = vehicle.get_velocity()
-            obst.velocity.x = actor_vel.x
-            obst.velocity.y = actor_vel.y*-1  # Fix coordinate system
-            obst.velocity.z = actor_vel.z
-
-            # Set bounding box
-            # changed due to CARLA's nonsensical location logic
-            pos = Point()
-            pos.x = vehicle.get_location().x #bbox.location.x
-            pos.y = vehicle.get_location().y #bbox.location.y*-1
-            pos.z = vehicle.get_location().z #bbox.location.z
-
-            actor_tf: carla.Transform = vehicle.get_transform()
-
-            actor_quat = R.from_euler(
-                'yzx',
-                [actor_tf.rotation.pitch*-1*math.pi/180.0,
-                 actor_tf.rotation.yaw*-1*math.pi/180.0-math.pi,
-                 actor_tf.rotation.roll*-1*math.pi/180.0]
-            ).as_quat()
-            orientation_msg = Quaternion()
-            orientation_msg.x = actor_quat[0]
-            orientation_msg.y = actor_quat[1]
-            orientation_msg.z = actor_quat[2]
-            orientation_msg.w = actor_quat[3]
-
-            obst.bounding_box.center.position = pos
-            obst.bounding_box.center.orientation = orientation_msg
-            obst.bounding_box.size = Vector3(
-                x=bbox.extent.x,
-                y=bbox.extent.y,
-                z=bbox.extent.z
-            )
-
-            obstacles.append(obst)
+            self.add_obstacle(vehicle, obstacles, True)
+        for ped in pedestrians:
+            self.add_obstacle(ped, obstacles, False)
         obstacles_msg = Obstacle3DArray()
         obstacles_msg.obstacles = obstacles
         obstacles_msg.header.stamp = self.get_clock().now().to_msg()
@@ -463,22 +457,22 @@ class SimBridgeNode(Node):
 
         # Publish tf if enabled
         if PULBISH_MAP_BL_TRANSFORM:
-            t = TransformStamped()
-            t.header = odom.header
-            t.child_frame_id = odom.child_frame_id
+            self.last_tf = TransformStamped()
+            self.last_tf.header = odom.header
+            self.last_tf.child_frame_id = odom.child_frame_id
             translation = Vector3(
                 x=odom.pose.pose.position.x,
                 y=odom.pose.pose.position.y,
                 z=odom.pose.pose.position.z
             )
-            t.transform.translation = translation
-            t.transform.rotation = Quaternion(
+            self.last_tf.transform.translation = translation
+            self.last_tf.transform.rotation = Quaternion(
                 x=ego_quat[0],
                 y=ego_quat[1],
                 z=ego_quat[2],
                 w=ego_quat[3]
             )
-            self.tf_broadcaster.sendTransform(t)
+            self.tf_broadcaster.sendTransform(self.last_tf)
 
     def __init__(self):
         super().__init__('sim_bridge_node')
@@ -486,7 +480,7 @@ class SimBridgeNode(Node):
         # Define sensors
         self.front_lidar: carla.ServerSideSensor
         self.front_lidar_cloud = np.array([])
-        # self.cv_bridge = CvBridge()
+        self.cv_bridge = CvBridge()
 
         # Define vehicle command state
         self.steering_cmd = 0.0
@@ -498,61 +492,61 @@ class SimBridgeNode(Node):
         self.birds_eye_cam_pub = self.create_publisher(
             Image,
             '/carla/birds_eye_rgb',
-            10
+            1
         )
 
         self.front_depth_pub = self.create_publisher(
             Image,
             '/camera_front/depth',
-            10
+            1
         )
 
         self.front_lidar_pub = self.create_publisher(
             PointCloud2,
             '/lidar_front/points_raw',
-            10
+            1
         )
 
         self.front_rgb_pub = self.create_publisher(
             Image,
             '/camera_front/rgb',
-            10
+            1
         )
 
         self.rear_lidar_pub = self.create_publisher(
             PointCloud2,
             '/lidar_rear/points_raw',
-            10
+            1
         )
 
         self.gnss_pub = self.create_publisher(
             Odometry,
             '/gnss/odom',
-            10
+            1
         )
 
         self.ground_truth_odom_pub = self.create_publisher(
             Odometry,
             '/carla/odom',
-            10
+            1
         )
 
         self.ground_truth_obst_pub = self.create_publisher(
             Obstacle3DArray,
             '/objects',
-            10
+            1
         )
 
         self.primary_imu_pub = self.create_publisher(
             Imu,
             '/imu_primary/data',
-            10
+            1
         )
 
         self.speedometer_pub = self.create_publisher(
             TwistWithCovarianceStamped,
             '/can/speedometer_twist',
-            10
+            1
         )
 
         self.steering_angle_pub = self.create_publisher(
@@ -564,7 +558,7 @@ class SimBridgeNode(Node):
         self.sem_lidar_pub = self.create_publisher(
             PointCloud2,
             '/lidar/semantic',
-            10
+            1
         )
 
         self.sem_road_lidar_pub = self.create_publisher(
@@ -625,83 +619,17 @@ class SimBridgeNode(Node):
 
         self.connect_to_carla()
 
-    def add_vehicles(self, vehicle_count: int):
-        self.get_logger().info("Spawning {} vehicles".format(vehicle_count))
-
-        for vehicle in range(vehicle_count):
-            # Choose a vehicle blueprint at random.
-            vehicle_bp = random.choice(self.blueprint_library.filter('vehicle.*.*'))
-            
-            # currently manually spawning to test junction code
-            #random_spawn = carla.Transform(carla.Location(x=-77.5, y=-158, z=20), carla.Rotation(yaw=90))
-            random_spawn = random.choice(self.world.get_map().get_spawn_points())
-            
-            # spawn vehicle
-            self.get_logger().info("Spawning vehicle ({}) @ {}".format(vehicle_bp.id, random_spawn))
-            vehicle = self.world.try_spawn_actor(vehicle_bp, random_spawn)
-            
-            # autopilot off for now (junction code testing)
-            if vehicle is not None:
-                vehicle.set_autopilot(enabled=True)
-
-    def add_pedestrians(self, count: int):
-        self.get_logger().info("Spawning {} pedestrians".format(count))
-
-        for ped in range(count):
-            # Choose a vehicle blueprint at random.
-            ped_bp = random.choice(self.blueprint_library.filter('walker.*.*'))
-            spawn = self.world.get_random_location_from_navigation()
-            self.get_logger().info("Spawning ped ({}) @ {}".format(ped_bp.id, spawn))
-            random_spawn = random.choice(
-                self.world.get_map().get_spawn_points())
-            random_spawn.location = spawn
-            ped = self.world.try_spawn_actor(ped_bp, random_spawn)
-            # if ped is not None:
-            #     ped.set_autopilot(enabled=True)
-
     def connect_to_carla(self):
         # Connect to client, load world
         self.get_logger().info("Connecting to CARLA on port {}".format(CLIENT_PORT))
-        client = carla.Client('localhost', CLIENT_PORT)
-        client.set_timeout(20.0)
-        self.world = client.load_world(CLIENT_WORLD)
+        self.client = carla.Client('localhost', CLIENT_PORT)
+        self.client.set_timeout(20.0)
+        
+        scenario_manager = sc.ScenarioManager(self)
+        scenario_manager.normal(carla_autopilot=True, num_cars = 50, num_ped = 30)
 
-        # Forcefully destroy existing actors
-        # if len(self.world.get_actors()) > 0:
-        #     self.get_logger().info("Removing {} old actors".format(len(self.world.get_actors())))
-        #     for actor in self.world.get_actors():
-        #         actor.destroy()
-
-        # Spawn ego vehicle
-        # Get car blueprint
-        self.blueprint_library = self.world.get_blueprint_library()
-
-        # collision_sensor_bp = blueprint_library.find('sensor.other.collision')
-        # Get random spawn point
-        # random_spawn = self.world.get_map().get_spawn_points()[0]
-        spawn_loc = carla.Location()
-        spawn_loc.x = EGO_SPAWN_X  # 0.0
-        spawn_loc.y = EGO_SPAWN_Y  # 24.5
-        spawn_loc.z = EGO_SPAWN_Z  # 2.0  # Start up in the air
-        spawn_rot = carla.Rotation()
-        spawn_rot.pitch = 0
-        spawn_rot.roll = 0
-        spawn_rot.yaw = EGO_SPAWN_YAW
-        spawn = carla.Transform()
-        spawn.location = spawn_loc
-        spawn.rotation = spawn_rot
-        self.get_logger().info("Spawning ego vehicle ({}) @ {}".format(EGO_MODEL, spawn))
-        vehicle_bp = self.blueprint_library.find(EGO_MODEL)
-        self.ego: carla.Vehicle = self.world.spawn_actor(vehicle_bp, spawn)
-        # TODO: Destroy ego actor when node exits or crashes. Currently keeps actor alive in CARLA,
-        # which eventually leads to memory overflow. WSH.
-        self.ego.set_autopilot(enabled=EGO_AUTOPILOT_ENABLED)
-
-        self.add_ego_sensors()
-
-        self.add_vehicles(OBSTACLE_QTY_VEHICLE)
-
-        self.add_pedestrians(OBSTACLE_QTY_PED)
+        self.get_logger().info("Started scenario!")
+        
 
     def add_ego_sensors(self):
 
@@ -721,20 +649,6 @@ class SimBridgeNode(Node):
         self.front_lidar = self.world.spawn_actor(
             lidar_bp, relative_transform, attach_to=self.ego)
         self.front_lidar.listen(self.front_lidar_cb)
-
-        # Semantic lidar
-        sem_lidar_bp = self.blueprint_library.find(
-            'sensor.lidar.ray_cast_semantic')
-        sem_lidar_bp.set_attribute('channels', '16')  # VLP-16
-        # "30" is CARLA's default FPS.
-        sem_lidar_bp.set_attribute('rotation_frequency', '30')
-        # sem_lidar_bp.set_attribute('sensor_tick', str(LIDAR_PERIOD))
-        # sem_lidar_bp.set_attribute('rotation_frequency', '40')
-        # sem_lidar_bp.set_attribute('points_per_second', '11,200') # 3.4 -0.902 0.7876
-        relative_transform = front_lidar_tf
-        self.sem_lidar = self.world.spawn_actor(
-            sem_lidar_bp, relative_transform, attach_to=self.ego)
-        self.sem_lidar.listen(self.sem_lidar_cb)
 
         # Attach GNSS sensor
         gnss_bp = self.blueprint_library.find('sensor.other.gnss')
@@ -795,6 +709,10 @@ class SimBridgeNode(Node):
         self.primary_imu = self.world.spawn_actor(
             primary_imu_bp, relative_transform, attach_to=self.ego)
         self.primary_imu.listen(self.primary_imu_cb)
+
+    def get_random_spawn(self) -> carla.Transform:
+        spawn_points = self.world.get_map().get_spawn_points()
+        return random.choice(spawn_points)
 
 
 def main(args=None):

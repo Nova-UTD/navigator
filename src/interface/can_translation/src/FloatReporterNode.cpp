@@ -13,7 +13,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
 
-#include "voltron_msgs/msg/can_frame.hpp"
+#include "nova_msgs/msg/can_frame.hpp"
 #include "can_translation/FloatReporterNode.hpp"
 
 using namespace navigator::can_translation;
@@ -45,7 +45,7 @@ FloatReporterNode::FloatReporterNode(float_reporter_params params)
 FloatReporterNode::~FloatReporterNode() {}
 
 // Called every time a can frame arrives on the bus
-void FloatReporterNode::process_frame(const voltron_msgs::msg::CanFrame::SharedPtr incoming_frame) {
+void FloatReporterNode::process_frame(const nova_msgs::msg::CanFrame::SharedPtr incoming_frame) {
   if(incoming_frame->identifier != this->params.message_id) return; // Skip frames not meant for us
 
   // Isolate the field we're interested in
@@ -71,7 +71,7 @@ void FloatReporterNode::process_frame(const voltron_msgs::msg::CanFrame::SharedP
 void FloatReporterNode::init() {
   this->result_publisher = this->create_publisher<std_msgs::msg::Float32>
     ("can_translation_result_topic", 8);
-  this->can_subscription = this->create_subscription<voltron_msgs::msg::CanFrame>
+  this->can_subscription = this->create_subscription<nova_msgs::msg::CanFrame>
     ("can_translation_incoming_can_frames", 8,
      std::bind(& FloatReporterNode::process_frame, this, std::placeholders::_1));
 }

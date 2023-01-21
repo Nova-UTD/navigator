@@ -13,7 +13,7 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "voltron_msgs/msg/can_frame.hpp"
+#include "nova_msgs/msg/can_frame.hpp"
 #include "std_msgs/msg/float32.hpp"
 
 #include "linear_actuator/controller_params.hpp"
@@ -38,7 +38,7 @@ private:
   float target_position;
   controller_params params;
   
-  rclcpp::Publisher<voltron_msgs::msg::CanFrame>::SharedPtr can_publisher;
+  rclcpp::Publisher<nova_msgs::msg::CanFrame>::SharedPtr can_publisher;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr position_subscription;
   rclcpp::TimerBase::SharedPtr control_timer;
 };

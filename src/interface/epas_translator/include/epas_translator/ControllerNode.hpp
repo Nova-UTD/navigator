@@ -13,7 +13,7 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "voltron_msgs/msg/can_frame.hpp" // CAN messages
+#include "nova_msgs/msg/can_frame.hpp" // CAN messages
 #include "std_msgs/msg/float32.hpp" // UInt8 messages
 
 typedef uint32_t can_id_t;
@@ -46,7 +46,7 @@ private:
   void update_power(const std_msgs::msg::Float32::SharedPtr message);
 
   uint8_t power = 255/2;
-  rclcpp::Publisher<voltron_msgs::msg::CanFrame>::SharedPtr can_publisher;
+  rclcpp::Publisher<nova_msgs::msg::CanFrame>::SharedPtr can_publisher;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr power_subscription;
   rclcpp::TimerBase::SharedPtr control_timer;
 };

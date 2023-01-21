@@ -17,7 +17,7 @@
 
 #include "voltron_test_utils/TestPublisher.hpp"
 #include "voltron_test_utils/TestSubscriber.hpp"
-#include "voltron_msgs/msg/can_frame.hpp"
+#include "nova_msgs/msg/can_frame.hpp"
 #include "can_interface/CanBus.hpp"
 #include "can_interface/CanFrame.hpp"
 
@@ -33,9 +33,9 @@ protected:
     interface_node = std::make_shared<CanInterfaceNode>("vcan0");
     can_bus = std::make_unique<CanBus>("vcan0");
     can_publisher = std::make_unique<TestPublisher<
-      voltron_msgs::msg::CanFrame>>("can_interface_outgoing_can_frames");
+      nova_msgs::msg::CanFrame>>("can_interface_outgoing_can_frames");
     can_subscriber = std::make_unique<TestSubscriber<
-      voltron_msgs::msg::CanFrame>>("can_interface_incoming_can_frames");
+      nova_msgs::msg::CanFrame>>("can_interface_incoming_can_frames");
   }
 
   void TearDown() override {
@@ -44,8 +44,8 @@ protected:
 
   std::shared_ptr<CanInterfaceNode> interface_node;
   std::unique_ptr<CanBus> can_bus;
-  std::unique_ptr<TestPublisher<voltron_msgs::msg::CanFrame>> can_publisher;
-  std::unique_ptr<TestSubscriber<voltron_msgs::msg::CanFrame>> can_subscriber;
+  std::unique_ptr<TestPublisher<nova_msgs::msg::CanFrame>> can_publisher;
+  std::unique_ptr<TestSubscriber<nova_msgs::msg::CanFrame>> can_subscriber;
 };
 
 TEST_F(TestCanInterfaceNode, test_initializes) {
@@ -58,13 +58,13 @@ TEST_F(TestCanInterfaceNode, test_incoming_frame) {
   usleep(20000); // 20ms, enough that we should receive frames on next spin
   rclcpp::spin_some(this->interface_node);
   ASSERT_TRUE(this->can_subscriber->has_message_ready());
-  voltron_msgs::msg::CanFrame received_message = *(this->can_subscriber->get_message());
+  nova_msgs::msg::CanFrame received_message = *(this->can_subscriber->get_message());
   ASSERT_EQ(received_message.identifier, 0x123u);
   ASSERT_EQ(received_message.data, 0x12345678u);
 }
 
 TEST_F(TestCanInterfaceNode, test_outgoing_frame) {
-  voltron_msgs::msg::CanFrame frame_message;
+  nova_msgs::msg::CanFrame frame_message;
   frame_message.identifier = 0x123;
   frame_message.data = 0x12345678;
   this->can_publisher->send_message(frame_message);
