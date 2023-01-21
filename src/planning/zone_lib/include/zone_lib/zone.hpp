@@ -8,7 +8,7 @@
  */
 #pragma once
 
-#include "voltron_msgs/msg/zone.hpp"
+#include "nova_msgs/msg/zone.hpp"
 
 //libopendrive
 #include "Mesh.h"
@@ -32,7 +32,7 @@ namespace navigator
 {
     namespace zones_lib
     {
-        using ZoneMsg = voltron_msgs::msg::Zone;
+        using ZoneMsg = nova_msgs::msg::Zone;
         using PointMsg = geometry_msgs::msg::Point32;
 
         boost_polygon to_boost_polygon(const ZoneMsg& zone);

@@ -1,6 +1,0 @@
-/**:
-  ros__parameters:
-    pcd_path: "/home/main/voltron/navigator/data/maps/gomentum/cells/"
-    min_x: -207.39497
-    min_y: -164.52779
-    cell_size: 25.0

@@ -188,10 +188,7 @@ public:
             "lio_loop/loop_closure_detection", qos,
             std::bind(&mapOptimization::loopInfoHandler, this, std::placeholders::_1));
         saveMapService = create_service<std_srvs::srv::Trigger>("save_map", std::bind(&mapOptimization::saveMap, this, std::placeholders::_1, std::placeholders::_2));
-    //     this->create_service<autoware_auto_msgs::srv::HADMapService>(
-    // "HAD_Map_Service", std::bind(
-    //   &Lanelet2MapProviderNode::handle_request, this,
-    //   std::placeholders::_1, std::placeholders::_2));
+
 
         pubHistoryKeyFrames = create_publisher<sensor_msgs::msg::PointCloud2>("lio_sam/mapping/icp_loop_closure_history_cloud", 1);
         pubIcpKeyFrames = create_publisher<sensor_msgs::msg::PointCloud2>("lio_sam/mapping/icp_loop_closure_history_cloud", 1);

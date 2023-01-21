@@ -3,7 +3,7 @@
 #include <algorithm>
 
 using PointMsg = geometry_msgs::msg::Point32;
-using ZoneMsg = voltron_msgs::msg::Zone;
+using ZoneMsg = nova_msgs::msg::Zone;
 
 
 ZoneMsg navigator::zones_lib::to_zone_msg(const boost_polygon& polygon) {

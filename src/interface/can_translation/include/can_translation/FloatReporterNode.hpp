@@ -13,7 +13,7 @@
 #include "std_msgs/msg/float32.hpp"
 
 #include "can_translation/float_reporter_params.hpp"
-#include "voltron_msgs/msg/can_frame.hpp"
+#include "nova_msgs/msg/can_frame.hpp"
 
 namespace navigator {
 namespace can_translation {
@@ -25,11 +25,11 @@ public:
   virtual ~FloatReporterNode();
 
 private:
-  void process_frame(const voltron_msgs::msg::CanFrame::SharedPtr msg);
+  void process_frame(const nova_msgs::msg::CanFrame::SharedPtr msg);
   void init();
 
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr result_publisher;
-  rclcpp::Subscription<voltron_msgs::msg::CanFrame>::SharedPtr can_subscription;
+  rclcpp::Subscription<nova_msgs::msg::CanFrame>::SharedPtr can_subscription;
 
   float_reporter_params params;
 };

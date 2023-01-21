@@ -11,7 +11,7 @@
 #include <functional>
 #include <string>
 #include "rclcpp/rclcpp.hpp"
-#include "voltron_msgs/msg/can_frame.hpp"
+#include "nova_msgs/msg/can_frame.hpp"
 #include "std_msgs/msg/float32.hpp"
 
 #include "linear_actuator/ControllerNode.hpp"
@@ -36,7 +36,7 @@ ControllerNode::ControllerNode(controller_params params) : Node("linear_actuator
 ControllerNode::~ControllerNode() {}
 
 void ControllerNode::init() {
-  this->can_publisher = this->create_publisher<voltron_msgs::msg::CanFrame>
+  this->can_publisher = this->create_publisher<nova_msgs::msg::CanFrame>
     ("outgoing_can_frames", 8);
   this->position_subscription = this->create_subscription<std_msgs::msg::Float32>
     ("target_position", 8, bind(& ControllerNode::update_target_position, this, std::placeholders::_1));
@@ -50,7 +50,7 @@ void ControllerNode::send_control_message() {
       (float) this->params.engaged_position,
       this->target_position);
 
-  auto message = voltron_msgs::msg::CanFrame();
+  auto message = nova_msgs::msg::CanFrame();
   message.identifier = this->params.command_id;
   message.data = 0x00000000C0000A0F;
   message.data = message.data | target_position << 16;

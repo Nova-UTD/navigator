@@ -1,6 +1,0 @@
-/**:
-  ros__parameters:
-    pcd_path: "/home/main/navigator-1/data/maps/grandloop/cells/"
-    min_x: -233.49335
-    min_y: -754.68726
-    cell_size: 25.0

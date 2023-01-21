@@ -19,7 +19,7 @@
 #include "rclcpp/rclcpp.hpp" // To control the node
 #include "std_msgs/msg/float32.hpp"
 
-#include "voltron_msgs/msg/can_frame.hpp" // CAN messages
+#include "nova_msgs/msg/can_frame.hpp" // CAN messages
 #include "voltron_test_utils/TestSubscriber.hpp"// Test subscriber
 #include "voltron_test_utils/TestPublisher.hpp" // Test publisher
 
@@ -36,7 +36,7 @@ protected:
     rclcpp::init(0, nullptr);
     my_controller = std::make_shared<ControllerNode>();
     can_subscription = std::make_unique<TestSubscriber<
-      voltron_msgs::msg::CanFrame>>("epas_translator_outgoing_can_frames");
+      nova_msgs::msg::CanFrame>>("epas_translator_outgoing_can_frames");
     power_publisher = std::make_unique<TestPublisher<
       std_msgs::msg::Float32>>("epas_translator_steering_power");
   }
@@ -46,7 +46,7 @@ protected:
   }
 
   std::shared_ptr<ControllerNode> my_controller;
-  std::unique_ptr<TestSubscriber<voltron_msgs::msg::CanFrame>> can_subscription;
+  std::unique_ptr<TestSubscriber<nova_msgs::msg::CanFrame>> can_subscription;
   std::unique_ptr<TestPublisher<std_msgs::msg::Float32>> power_publisher;
 };
 
