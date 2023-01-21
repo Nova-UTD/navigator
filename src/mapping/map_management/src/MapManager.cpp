@@ -150,16 +150,15 @@ void MapManagementNode::publishGrids(int range, float res)
                 drivable_grid_data.push_back(0);
 
             // Get closest route point
-            if (local_route_tree_.size() > 0)
+            if (local_route_linestring_.size() > 0)
             {
-                std::vector<odr::value> closest_point_vector;
-                local_route_tree_.query(bgi::nearest(p, 1), std::back_inserter(closest_point_vector));
-                odr::box closest_route_point = closest_point_vector.front().first;
-                int dist = static_cast<int>(bg::distance(closest_route_point, p));
+                int dist = static_cast<int>(bg::distance(local_route_linestring_, p));
 
                 // Distances > 10 are set to 100
                 if (dist > 10)
                     dist = 100;
+                else
+                    dist *= 10;
 
                 route_dist_grid_data.push_back(dist);
             }
@@ -478,6 +477,10 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
  */
 void navigator::perception::MapManagementNode::updateRoute()
 {
+
+    if (route_tree_.size() < 1)
+        return;
+
     TransformStamped vehicle_tf = getVehicleTf();
 
     // Get all points in front of car
@@ -491,18 +494,21 @@ void navigator::perception::MapManagementNode::updateRoute()
     odr::point bounding_box_max = odr::point(vehicle_pos.x + range_plus, vehicle_pos.y + range_plus);
     odr::box search_region(bounding_box_min, bounding_box_max);
 
-    // Find all lanes within the search region
-    std::vector<odr::value> lane_shapes_in_range;
-    route_tree_.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
+    // Find all route points within the search region
+    std::vector<odr::value> nearest_route_pt_vector;
+    odr::point current_pos = odr::point(vehicle_pos.x, vehicle_pos.y);
+    route_tree_.query(bgi::nearest(current_pos, 1), std::back_inserter(nearest_route_pt_vector));
 
-    std::printf("There are %i waypoints in range. Route tree has %i nodes\n", lane_shapes_in_range.size(), route_tree_.size());
+    local_route_linestring_.clear();
 
-    int idx = 0;
+    int nearest_route_pt_idx = nearest_route_pt_vector[0].second;
 
-    local_route_tree_.clear();
+    int length = 10; // Number of route points to include after the nearest one
 
-    for (unsigned i = 0; i < lane_shapes_in_range.size(); ++i)
-        local_route_tree_.insert(lane_shapes_in_range.at(i));
+    for (int i = 0; i < length; i++)
+    {
+        bg::append(local_route_linestring_, route_linestring_[nearest_route_pt_idx - i]);
+    }
 }
 
 /**
