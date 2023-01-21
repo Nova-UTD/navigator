@@ -98,8 +98,8 @@ namespace navigator
       // Measurement mass.
       constexpr static double meas_mass = 0.95;
 
-      // Occupancy measurement.
-      constexpr static double alpha = 0.9;
+      // Occupancy measurement. (ALPHA)
+      constexpr static double decay_factor = 0.9;
 
       // Place holders vehicle positions.
       constexpr static double vehicle_pos_x = 0;
@@ -113,16 +113,16 @@ namespace navigator
       double meas_grids[event_num][grid_size][grid_size];
 
       // "Freeness" measurement.
-      double meas_free[grid_size][grid_size] = {{0}};
+      double measured_free[grid_size][grid_size] = {{0}};
 
       // Occupancy measurement.
-      double meas_occ[grid_size][grid_size] = {{0}};
-      double prev_free[grid_size][grid_size] = {{0}};
-      double prev_occ[grid_size][grid_size] = {{0}};
-      double up_free_pred[grid_size][grid_size];
-      double up_occ_pred[grid_size][grid_size];
-      double up_free[grid_size][grid_size];
-      double up_occ[grid_size][grid_size];
+      double measured_occ[grid_size][grid_size] = {{0}};
+      double previous_free[grid_size][grid_size] = {{0}};
+      double previous_occ[grid_size][grid_size] = {{0}};
+      double updated_freeP[grid_size][grid_size];
+      double updated_occP[grid_size][grid_size];
+      double updated_free[grid_size][grid_size];
+      double updated_occ[grid_size][grid_size];
       bool angles[360];
       bool first;
 
