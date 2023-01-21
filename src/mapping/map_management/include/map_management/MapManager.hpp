@@ -105,9 +105,9 @@ namespace navigator
             std::vector<odr::Lane> lanes_in_route_;
             Path smoothed_path_msg_;
             bg::model::linestring<odr::point> route_linestring_;
+            bg::model::linestring<odr::point> local_route_linestring_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> route_tree_;
-            bgi::rtree<odr::value, bgi::rstar<16, 4>> local_route_tree_;
-        };
+                };
     }
 }
