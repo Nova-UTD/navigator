@@ -8,7 +8,9 @@ CARLA Leaderboard. This includes publishing to /carla/hero/status,
 but more functionality will be added in the future.
 '''
 
+import os
 import rclpy
+import random
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 
@@ -38,18 +40,38 @@ class LeaderboardLiaisonNode(Node):
         self.wp_marker_pub = self.create_publisher(
             MarkerArray, '/viz/wayppoints', 10)
 
-        self.world_info_sub = self.create_subscription(CarlaWorldInfo, '/carla/world_info', self.world_info_cb, 10)
-        self.world_info_pub = self.create_publisher(CarlaWorldInfo, '/carla/world_info', 10)
+        self.world_info_sub = self.create_subscription(
+            CarlaWorldInfo, '/carla/world_info', self.world_info_cb, 10)
+        self.world_info_pub = self.create_publisher(
+            CarlaWorldInfo, '/carla/world_info', 10)
 
-        self.route_path_pub = self.create_publisher(Path, '/route/rough_path', 10)
+        self.route_path_pub = self.create_publisher(
+            Path, '/route/rough_path', 10)
         self.route_repub_timer = self.create_timer(1.0, self.publish_route)
 
         self.world_info_cached = None
-        self.world_info_repub_timer = self.create_timer(5.0, self.repub_world_info)
-        
-        # self.client = carla.Client('localhost', 2005)
-        # self.client.set_timeout(60)
-        # self.world = self.client.get_world()
+        self.world_info_repub_timer = self.create_timer(
+            5.0, self.repub_world_info)
+
+        self.client = carla.Client(
+            'localhost', 2000 + int(os.environ['ROS_DOMAIN_ID']))
+        self.client.set_timeout(60)
+        self.world = self.client.get_world()
+        blueprint_library = self.world.get_blueprint_library()
+
+        # Spawn some cars
+        car_count = 0
+        car_spawns = self.world.get_map().get_spawn_points()
+        for spawn in car_spawns:
+            if car_count > 30:
+                continue
+            vehicle_bp = random.choice(blueprint_library.filter('vehicle.*.*'))
+            actor = self.world.try_spawn_actor(vehicle_bp, spawn)
+            if actor is not None:
+                actor.set_autopilot(True)
+                car_count += 1
+
+        self.get_logger().info(f"Spawned {car_count} cars!")
 
         # settings = self.world.get_settings()
         # settings.fixed_delta_seconds = 1.0 / 20
@@ -74,7 +96,6 @@ class LeaderboardLiaisonNode(Node):
             return
         self.world_info_pub.publish(self.world_info_cached)
 
-
     def clock_cb(self, msg: Clock):
         self.clock = msg
 
@@ -91,7 +112,7 @@ class LeaderboardLiaisonNode(Node):
 
         for pose in self.route.poses:
             pose: Pose
-            pose.position.z = 0.0 # Ignore height. TODO: Support z != 0.
+            pose.position.z = 0.0  # Ignore height. TODO: Support z != 0.
             pose_stamped = PoseStamped()
             pose_stamped.pose = pose
             pose_stamped.header.frame_id = 'map'
