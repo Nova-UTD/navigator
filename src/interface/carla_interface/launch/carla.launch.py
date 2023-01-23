@@ -90,6 +90,11 @@ def generate_launch_description():
         executable='image_segmentation_node'
     )
 
+    semantic_projection = Node(
+        package='segmentation',
+        executable='image_projection_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         carla_controller,
@@ -110,6 +115,7 @@ def generate_launch_description():
 
         # PERCEPTION
         image_segmentation,
+        semantic_projection,
         lidar_processor,
         ground_seg,
 
