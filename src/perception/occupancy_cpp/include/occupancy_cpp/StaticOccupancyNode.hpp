@@ -66,23 +66,23 @@ namespace navigator
 
       Clock clock;
 
-      pcl::PointCloud<pcl::PointXYZI> createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> cloud);
+      void createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &cloud);
 
       bool initialization_phase = true;
-      double vehicle_x;
-      double vehicle_y;
-      double prev_vehicle_x;
-      double prev_vehicle_y;
-      double change_x;
-      double change_y;
-      double x_new_low;
-      double x_new_high;
-      double y_new_low;
-      double y_new_high;
-      double x_old_low;
-      double x_old_high;
-      double y_old_low;
-      double y_old_high;
+      float vehicle_x;
+      float vehicle_y;
+      float prev_vehicle_x;
+      float prev_vehicle_y;
+      float change_x;
+      float change_y;
+      float x_new_low;
+      float x_new_high;
+      float y_new_low;
+      float y_new_high;
+      float x_old_low;
+      float x_old_high;
+      float y_old_low;
+      float y_old_high;
 
       // There are only two events: 0 = Occupied and 1 = Free.
       const static int event_num = 2;
@@ -93,36 +93,36 @@ namespace navigator
       const int SIZE = 64;
 
       // Resolution.
-      constexpr static double res = 1. / 3.;
+      constexpr static float res = 1. / 3.;
 
       // Measurement mass.
-      constexpr static double meas_mass = 0.95;
+      constexpr static float meas_mass = 0.95;
 
-      // Occupancy measurement.
-      constexpr static double alpha = 0.9;
+      // Occupancy measurement. (ALPHA)
+      constexpr static float decay_factor = 0.9;
 
       // Place holders vehicle positions.
-      constexpr static double vehicle_pos_x = 0;
-      constexpr static double vehicle_pos_y = 0;
-      constexpr static double prev_vehicle_pos_x = 0;
-      constexpr static double prev_vehicle_pos_y = 0;
+      constexpr static float vehicle_pos_x = 0;
+      constexpr static float vehicle_pos_y = 0;
+      constexpr static float prev_vehicle_pos_x = 0;
+      constexpr static float prev_vehicle_pos_y = 0;
 
       // Masses masses_msg;
 
       // Array with the DST data.
-      double meas_grids[event_num][grid_size][grid_size];
+      float meas_grids[event_num][grid_size][grid_size];
 
       // "Freeness" measurement.
-      double meas_free[grid_size][grid_size] = {{0}};
+      float measured_free[grid_size][grid_size] = {{0}};
 
       // Occupancy measurement.
-      double meas_occ[grid_size][grid_size] = {{0}};
-      double prev_free[grid_size][grid_size] = {{0}};
-      double prev_occ[grid_size][grid_size] = {{0}};
-      double up_free_pred[grid_size][grid_size];
-      double up_occ_pred[grid_size][grid_size];
-      double up_free[grid_size][grid_size];
-      double up_occ[grid_size][grid_size];
+      float measured_occ[grid_size][grid_size] = {{0}};
+      float previous_free[grid_size][grid_size] = {{0}};
+      float previous_occ[grid_size][grid_size] = {{0}};
+      float updated_freeP[grid_size][grid_size] = {{0}};
+      float updated_occP[grid_size][grid_size]= {{0}};
+      float updated_free[grid_size][grid_size]= {{0}};
+      float updated_occ[grid_size][grid_size]= {{0}};
       bool angles[360];
       bool first;
 
@@ -136,7 +136,7 @@ namespace navigator
       int find_nearest(int n, double v, double v0, double vn, double res);
       void mass_update();
       void update_of();
-      std::vector<std::vector<double>> getGridCellProbabilities();
+      std::vector<std::vector<float>> getGridCellProbabilities();
       void publishOccupancyGrid();
       void clear();
       void fill(std::vector<int> flip);

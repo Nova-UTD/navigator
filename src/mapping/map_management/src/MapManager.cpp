@@ -22,7 +22,8 @@ using namespace navigator::perception;
 MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
     // Publishers and subscribers
-    grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
+    drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
+    route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
     route_path_pub_ = this->create_publisher<Path>("/route/smooth_path", 10);
 
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
@@ -30,7 +31,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
 
     drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
-    route_distance_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::routeDistanceGridPubTimerCb, this));
+    route_distance_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::updateRoute, this));
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -52,38 +53,49 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
  * @param res Side length of grid cells (meters)
  * @return OccupancyGrid
  */
-OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(PointMsg center, int range, float res)
+void MapManagementNode::publishGrids(int range, float res)
 {
     if (this->map_ == nullptr)
     {
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
                              "Map not yet loaded. Drivable area grid is unavailable.");
-        return OccupancyGrid();
+        return;
     }
 
     // Used to calculate function runtime
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-    OccupancyGrid occupancy_grid;
-    std::vector<int8_t> grid_data;
+    OccupancyGrid drivable_area_grid;
+    OccupancyGrid route_dist_grid;
+    MapMetaData grid_info;
+    std::vector<int8_t> drivable_grid_data;
+    std::vector<int8_t> route_dist_grid_data;
 
     int grid_radius_in_cells = std::ceil(range / res);
 
-    float x_min = center.x - range;
-    float x_max = center.x + range;
-    float y_min = center.y - range;
-    float y_max = center.y + range;
+    float x_min = range * -1;
+    float x_max = range;
+    float y_min = range * -1;
+    float y_max = range;
 
     // std::printf("[%f, %f], [%f, %f], %f\n", x_min, x_max, y_min, y_max, res);
 
     if (this->map_wide_tree_.size() == 0)
         this->map_wide_tree_ = this->map_->generate_mesh_tree();
 
-    odr::box search_region(odr::point(x_min, y_min), odr::point(x_max, y_max));
+    // Get the search region
+    TransformStamped vehicle_tf = getVehicleTf();
+    auto vehicle_pos = vehicle_tf.transform.translation;
+    double range_plus = range * 1.4; // This is a little leeway to account for map->base_link rotation
+    odr::point bounding_box_min = odr::point(vehicle_pos.x - range_plus, vehicle_pos.y - range_plus);
+    odr::point bounding_box_max = odr::point(vehicle_pos.x + range_plus, vehicle_pos.y + range_plus);
+    odr::box search_region(bounding_box_min, bounding_box_max);
+
+    // Find all lanes within the search region
     std::vector<odr::value> lane_shapes_in_range;
     map_wide_tree_.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
 
-    // std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
+    std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
 
     int idx = 0;
 
@@ -104,7 +116,15 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
             j = static_cast<float>(j);
             bool cell_is_occupied = false;
 
-            odr::point p(i, j);
+            // Transform this query into the map frame
+            // First rotate, then translate. 2D rotation eq:
+            // x' = xcos(h) - ysin(h)
+            // y' = ycos(h) + xsin(h)
+            float h = 2 * asin(vehicle_tf.transform.rotation.z); // TODO: Do not assume flat ground!
+            float i_in_map = i * cos(h) - j * sin(h) + vehicle_pos.x;
+            float j_in_map = j * cos(h) + i * sin(h) + vehicle_pos.y;
+
+            odr::point p(i_in_map, j_in_map);
 
             std::vector<odr::value> local_tree_query_results;
             local_tree.query(bgi::contains(p), std::back_inserter(local_tree_query_results));
@@ -125,32 +145,59 @@ OccupancyGrid navigator::perception::MapManagementNode::getDrivableAreaGrid(Poin
             }
 
             if (cell_is_occupied)
-                grid_data.push_back(100);
+                drivable_grid_data.push_back(100);
             else
-                grid_data.push_back(0);
+                drivable_grid_data.push_back(0);
+
+            // Get closest route point
+            if (local_route_linestring_.size() > 0)
+            {
+                int dist = static_cast<int>(bg::distance(local_route_linestring_, p));
+
+                // Distances > 10 are set to 100
+                if (dist > 10)
+                    dist = 100;
+                else
+                    dist *= 10;
+
+                route_dist_grid_data.push_back(dist);
+            }
+            else
+            {
+                route_dist_grid_data.push_back(-1);
+            }
 
             area += 1;
         }
         height += 1;
     }
 
-    // Set the OccupancyGrid's metadata
     auto clock = this->clock_->clock;
-    occupancy_grid.data = grid_data;
-    occupancy_grid.header.frame_id = "map";
-    occupancy_grid.header.stamp = clock;
-    occupancy_grid.info.width = area / height;
-    occupancy_grid.info.height = height;
-    occupancy_grid.info.map_load_time = clock;
-    occupancy_grid.info.resolution = GRID_RES;
-    occupancy_grid.info.origin.position.x = x_min;
-    occupancy_grid.info.origin.position.y = y_min;
+    drivable_area_grid.data = drivable_grid_data;
+    drivable_area_grid.header.frame_id = "base_link";
+    drivable_area_grid.header.stamp = clock;
+
+    route_dist_grid.data = route_dist_grid_data;
+    route_dist_grid.header.frame_id = "base_link";
+    route_dist_grid.header.stamp = clock;
+
+    grid_info.width = area / height;
+    grid_info.height = height;
+    grid_info.map_load_time = clock;
+    grid_info.resolution = res;
+    grid_info.origin.position.x = x_min;
+    grid_info.origin.position.y = y_min;
+
+    // Set the grids' metadata
+    drivable_area_grid.info = grid_info;
+    route_dist_grid.info = grid_info;
 
     // Output function runtime
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    // std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 
-    return occupancy_grid;
+    drivable_grid_pub_->publish(drivable_area_grid);
+    route_dist_grid_pub_->publish(route_dist_grid); // Route distance grid
 }
 
 /**
@@ -192,19 +239,12 @@ TransformStamped navigator::perception::MapManagementNode::getVehicleTf()
  */
 void navigator::perception::MapManagementNode::drivableAreaGridPubTimerCb()
 {
-    TransformStamped t = getVehicleTf();
-
-    PointMsg center;
-    center.x = t.transform.translation.x;
-    center.y = t.transform.translation.y;
-
-    OccupancyGrid msg = getDrivableAreaGrid(center, GRID_RANGE, GRID_RES);
-    grid_pub_->publish(msg);
+    publishGrids(GRID_RANGE, GRID_RES);
 }
 
 /**
  * @brief Refine a rough path from CARLA into a smooth, sub-meter accurate path
- * 
+ *
  * 1. For each pose in the rough path, use an RTree to find the matching lane in the map
  * 2. Given the sequence of lanes, fill in gaps and validate using libOpenDRIVE's routing graph
  *  a. This is very, very slow, but it should guarantee a valid lane sequence.
@@ -212,8 +252,8 @@ void navigator::perception::MapManagementNode::drivableAreaGridPubTimerCb()
  * 3. For each lane in the sequence, sample the centerline and add this point to a boost linestring
  *  a. This creates a continuous Cartesian curve
  * 4. Pusblish this refined curve as a Path message.
- * 
- * @param msg 
+ *
+ * @param msg
  */
 void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr msg)
 {
@@ -376,15 +416,16 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
             double dist = bg::distance(latest_point, first_pt_in_lane);
             printf("Distance was %f\n", dist);
 
-            if (dist > 30) {
+            if (dist > 30)
+            {
                 std::reverse(line.begin(), line.end());
                 odr::point first_pt_in_lane = odr::point(line.front()[0], line.front()[1]);
                 double dist = bg::distance(latest_point, first_pt_in_lane);
                 printf("Distance is now %f\n", dist);
             }
-                
-            
-        } else {
+        }
+        else
+        {
             latest_point = odr::point(line.front()[0], line.front()[1]);
         }
 
@@ -411,6 +452,21 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
     }
 
     route_path_pub_->publish(smoothed_path_msg_);
+    this->route_linestring_ = route_linestring;
+
+    bgi::rtree<odr::value, bgi::rstar<16, 4>> rtree;
+
+    // Build the route rtree
+    for (unsigned i = 0; i < route_linestring.size(); ++i)
+    {
+        // calculate polygon bounding box
+        odr::box b = bg::return_envelope<odr::box>(route_linestring[i]);
+        // insert new value
+        rtree.insert(std::make_pair(b, i));
+        // std::printf("Inserting box (%f, %f)-(%f,%f)\n", b.min_corner().get<0>(), b.min_corner().get<1>(), b.max_corner().get<0>(), b.max_corner().get<1>());
+    }
+
+    this->route_tree_ = rtree;
 
     RCLCPP_INFO(this->get_logger(), "Publishing path with %i poses. Started with %i poses.\n", smoothed_path_msg_.poses.size(), msg->poses.size());
 }
@@ -419,13 +475,39 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
  * @brief Generate and publish the "distance from route" cost map layer
  *
  */
-void navigator::perception::MapManagementNode::routeDistanceGridPubTimerCb()
+void navigator::perception::MapManagementNode::updateRoute()
 {
-    TransformStamped t = getVehicleTf();
 
-    if (this->smoothed_path_msg_.poses.size() < 1) {
-        RCLCPP_WARN(get_logger(), "Refined route not yet calculated. Skipping.");
+    if (route_tree_.size() < 1)
         return;
+
+    TransformStamped vehicle_tf = getVehicleTf();
+
+    // Get all points in front of car
+    auto vehicle_pos = vehicle_tf.transform.translation;
+    // Transform this query into the map frame
+    // First rotate, then translate. 2D rotation eq:
+    // x' = xcos(h) - ysin(h)
+    // y' = ycos(h) + xsin(h)
+    double range_plus = GRID_RANGE * 1.4; // This is a little leeway to account for map->base_link rotation
+    odr::point bounding_box_min = odr::point(vehicle_pos.x - range_plus, vehicle_pos.y - range_plus);
+    odr::point bounding_box_max = odr::point(vehicle_pos.x + range_plus, vehicle_pos.y + range_plus);
+    odr::box search_region(bounding_box_min, bounding_box_max);
+
+    // Find all route points within the search region
+    std::vector<odr::value> nearest_route_pt_vector;
+    odr::point current_pos = odr::point(vehicle_pos.x, vehicle_pos.y);
+    route_tree_.query(bgi::nearest(current_pos, 1), std::back_inserter(nearest_route_pt_vector));
+
+    local_route_linestring_.clear();
+
+    int nearest_route_pt_idx = nearest_route_pt_vector[0].second;
+
+    int length = 10; // Number of route points to include after the nearest one
+
+    for (int i = 0; i < length; i++)
+    {
+        bg::append(local_route_linestring_, route_linestring_[nearest_route_pt_idx - i]);
     }
 
     route_path_pub_->publish(this->smoothed_path_msg_);
@@ -451,5 +533,5 @@ void MapManagementNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
     // Get lane polygons as pairs (Lane object, ring polygon)
     this->lane_polys_ = map_->get_lane_polygons(1.0);
 
-    RCLCPP_INFO(this->get_logger(), "Loaded %s", msg->map_name);
+    RCLCPP_INFO(this->get_logger(), "Loaded %s", msg->map_name.c_str());
 }
