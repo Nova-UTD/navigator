@@ -53,7 +53,7 @@ def generate_launch_description():
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
         launch_arguments={
             'host': 'localhost',
-            'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
+            'port': "2000",
             'synchronous_mode': 'True',
             'town': 'Town02',
             'register_all_sensors': 'False',
@@ -95,8 +95,8 @@ def generate_launch_description():
         carla_controller,
 
         # INTERFACE
-        # carla_bridge_official,
-        # carla_spawner,
+        carla_bridge_official,
+        carla_spawner,
         leaderboard_liaison,
 
         # LOCALIZATION
@@ -106,7 +106,7 @@ def generate_launch_description():
 
         # MISC
         urdf_publisher,
-        rviz,
+        # rviz,
 
         # PERCEPTION
         image_segmentation,
@@ -114,6 +114,6 @@ def generate_launch_description():
         ground_seg,
 
         # STATE ESTIMATION
-        # map_manager,
+        map_manager,
         state_estimation,
     ])

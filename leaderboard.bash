@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "Sourcing Navigator"
+source /navigator/install/setup.bash
+
 echo "Starting the CARLA evaluation script."
 echo "This may take some time. Sit tight!"
 

@@ -262,7 +262,7 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
     if (this->smoothed_path_msg_.poses.size() > 0)
     {
         // RCLCPP_WARN(this->get_logger(), "Lanes already calculated from rough path.");
-        route_path_pub_->publish(smoothed_path_msg_);
+        // route_path_pub_->publish(smoothed_path_msg_);
         return;
     }
 
@@ -509,6 +509,8 @@ void navigator::perception::MapManagementNode::updateRoute()
     {
         bg::append(local_route_linestring_, route_linestring_[nearest_route_pt_idx - i]);
     }
+
+    route_path_pub_->publish(this->smoothed_path_msg_);
 }
 
 /**
