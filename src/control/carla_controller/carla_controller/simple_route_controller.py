@@ -7,10 +7,17 @@ Very simple controller for the CARLA leaderboard.
 '''
 
 from carla_msgs.msg import CarlaEgoVehicleControl
+from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Path
 from rosgraph_msgs.msg import Clock
 import rclpy
 from rclpy.node import Node
+from tf2_ros import TransformException
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
+
+import numpy as np
+import shapely
 
 
 class SimpleRouteControllerNode(Node):
@@ -34,10 +41,50 @@ class SimpleRouteControllerNode(Node):
             Path, '/route/smooth_path', self.path_cb, 10)
         self.path_msg = Path()
 
+        # Transform listener
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+
+        self.path_linestring = None
+
         # self.control_timer = self.create_timer(0.05, self.generate_commands)
 
     def path_cb(self, msg: Path):
+        self.get_logger().info("Received smooth path")
         self.path_msg = msg
+
+        if self.path_linestring is None:
+            # Construct a shapely LineString
+            pts = []
+            for pose in msg.poses:
+                pts.append(np.array([pose.pose.position.x, pose.pose.position.y]))
+                
+            self.route_pts_arr = np.array(pts)
+
+            print(str(self.route_pts_arr))
+
+        # Get map->base_link transform
+        t = TransformStamped()
+        try:
+            t = self.tf_buffer.lookup_transform(
+                'base_link',
+                'map',
+                rclpy.time.Time())
+        except TransformException as ex:
+            self.get_logger().info(
+                f'Could not transform from map to base_link: {ex}')
+            return
+        
+        # Transform linestring to base_link
+        self.route_pts_arr[:,0] += t.transform.translation.x
+        self.route_pts_arr[:,1] += t.transform.translation.y
+
+        linestring = shapely.LineString(self.route_pts_arr)
+        current_pos = shapely.Point(0.0, 0.0) # Our vehicle is at the origin of base_link, by definition
+
+        distance = shapely.distance(linestring, current_pos)
+        self.get_logger().info(str(distance))
+        
 
     def generate_commands(self):
 

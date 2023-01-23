@@ -222,7 +222,7 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
     if (this->smoothed_path_msg_.poses.size() > 0)
     {
         // RCLCPP_WARN(this->get_logger(), "Lanes already calculated from rough path.");
-        route_path_pub_->publish(smoothed_path_msg_);
+        // route_path_pub_->publish(smoothed_path_msg_);
         return;
     }
 
@@ -428,7 +428,7 @@ void navigator::perception::MapManagementNode::routeDistanceGridPubTimerCb()
         return;
     }
 
-    // Trim the route to all points ahead of the car.
+    route_path_pub_->publish(this->smoothed_path_msg_);
 }
 
 /**
