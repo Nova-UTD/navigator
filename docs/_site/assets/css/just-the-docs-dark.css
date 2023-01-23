@@ -2396,3 +2396,33 @@ a.skip-to-main { left: -999px; position: absolute; top: auto; width: 1px; height
 a.skip-to-main:focus, a.skip-to-main:active { color: #2c84fa; background-color: #27262b; left: auto; top: auto; width: 30%; height: auto; overflow: auto; margin: 10px 35%; padding: 5px; border-radius: 15px; border: 4px solid #264caf; text-align: center; font-size: 1.2em; z-index: 999; }
 
 div.opaque { background-color: #27262b; }
+
+p.warning, blockquote.warning { background: rgba(221, 46, 46, 0.2); border-left: 4px solid #f77e7e; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 3px 10px rgba(0, 0, 0, 0.08); padding: .8rem; }
+p.warning::before, blockquote.warning::before { color: #f77e7e; content: "Warning"; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+p.warning > .warning-title, blockquote.warning > .warning-title { color: #f77e7e; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+
+p.warning-title, blockquote.warning-title { background: rgba(221, 46, 46, 0.2); border-left: 4px solid #f77e7e; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 3px 10px rgba(0, 0, 0, 0.08); padding: .8rem; }
+p.warning-title > p:first-child, blockquote.warning-title > p:first-child { margin-top: 0; margin-bottom: 0; color: #f77e7e; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+
+blockquote.warning { margin-left: 0; margin-right: 0; }
+blockquote.warning > p:first-child { margin-top: 0; }
+blockquote.warning > p:last-child { margin-bottom: 0; }
+
+blockquote.warning-title { margin-left: 0; margin-right: 0; }
+blockquote.warning-title > p:nth-child(2) { margin-top: 0; }
+blockquote.warning-title > p:last-child { margin-bottom: 0; }
+
+p.example, blockquote.example { background: rgba(2, 110, 87, 0.2); border-left: 4px solid #41d693; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 3px 10px rgba(0, 0, 0, 0.08); padding: .8rem; }
+p.example::before, blockquote.example::before { color: #41d693; content: "Example"; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+p.example > .example-title, blockquote.example > .example-title { color: #41d693; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+
+p.example-title, blockquote.example-title { background: rgba(2, 110, 87, 0.2); border-left: 4px solid #41d693; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 3px 10px rgba(0, 0, 0, 0.08); padding: .8rem; }
+p.example-title > p:first-child, blockquote.example-title > p:first-child { margin-top: 0; margin-bottom: 0; color: #41d693; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+
+blockquote.example { margin-left: 0; margin-right: 0; }
+blockquote.example > p:first-child { margin-top: 0; }
+blockquote.example > p:last-child { margin-bottom: 0; }
+
+blockquote.example-title { margin-left: 0; margin-right: 0; }
+blockquote.example-title > p:nth-child(2) { margin-top: 0; }
+blockquote.example-title > p:last-child { margin-bottom: 0; }
