@@ -58,9 +58,7 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
 
   // 1. Convert new measurement into a DST grid.
   createOccupancyGrid(cloud);
-  printf("Up_Occ: %d, Up_Free: %d\n", updated_occ[50][50], updated_free[50][50]);
-  printf("Meas_Occ: %d\n", measured_occ[50][50]);
-  printf("Prev_Occ: %d, Prev_Free: %d\n", previous_occ[50][50], previous_free[50][50]);
+  
   
 
   change_x = 0.0; // TODO: Remove or fix the "change" variables.
@@ -125,8 +123,12 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
       }
     }
   }
+  
 
   mass_update();
+  // printf("Measured Occupancy: %f\n", measured_occ[20][20]);
+  // printf("Updated Occ: %f, Up_Free: %f\n", updated_occ[20][20], updated_free[120][120]);
+  // printf("Prev_Occ: %f, Prev_Free: %f\n\n", previous_occ[20][20], previous_free[120][120]);
   // get_mass();
   publishOccupancyGrid();
   clear();
@@ -151,8 +153,11 @@ void StaticOccupancyNode::createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &c
   // Initialize DST grid
   // pcl::PointCloud<pcl::PointXYZI> grid;
 
+  
+
   // 1. Add occupied cells to the DST grid
   add_points_to_the_DST(cloud);
+  
   // 2. Identify free space in the DST grid.
   add_free_spaces_to_the_DST();
 
@@ -170,13 +175,16 @@ void StaticOccupancyNode::createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &c
  */
 void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> &cloud)
 {
-  std::printf("Adding %i points to the DST.\n", cloud.size());
+  std::printf("Adding %i points to the DST.\n\n", cloud.size());
   for (size_t i = 0; i < cloud.size(); i++)
   {
 
     int x = (int)(cloud[i].x / res);
     int y = (int)(cloud[i].y / res);
-    double z = cloud.points[i].z;
+
+    float z = cloud[i].z;
+
+    
 
     // Ignores points above a certain height?
     if (z * (-1) > 0.5)
@@ -194,25 +202,29 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
 
     // Angles vector contians which angles from 0 deg to 360 deg have been represented.
     // It is used to identify free spaces for angles not covered by PC or out of range points.
-    if (cloud.points[i].y > 0 && cloud.points[i].x < 0)
+    if (cloud[i].y > 0 && cloud[i].x < 0)
     {
-      angle = 180 - (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / M_PI);
+      angle = 180 - (int)(atan(std::abs(cloud[i].y) / std::abs(cloud[i].x)) * 180.0 / M_PI);
     }
-    else if (cloud.points[i].y < 0 && cloud.points[i].x < 0)
+    else if (cloud[i].y < 0 && cloud[i].x < 0)
     {
-      angle = 180 + (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / M_PI);
+      angle = 180 + (int)(atan(std::abs(cloud[i].y) / std::abs(cloud[i].x)) * 180.0 / M_PI);
     }
-    else if (cloud.points[i].y < 0 && cloud.points[i].x > 0)
+    else if (cloud[i].y < 0 && cloud[i].x > 0)
     {
-      angle = 360 - (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / M_PI);
+      angle = 360 - (int)(atan(std::abs(cloud[i].y) / std::abs(cloud[i].x)) * 180.0 / M_PI);
     }
     else
     {
-      angle = (int)(atan(std::abs(cloud.points[i].y) / std::abs(cloud.points[i].x)) * 180.0 / M_PI);
+      angle = (int)(atan(std::abs(cloud[i].y) / std::abs(cloud[i].x)) * 180.0 / M_PI);
     }
 
     angles[angle] = true;
-    double slope = (double)(y) / (x);
+    float slope = (double)(y) / (x);
+
+    // printf("X: %i, Y: %i, Z: %f\n", x, y, z);
+    // printf("Slope: %f\n", slope);
+    // printf("Angle: %i\n\n", angle);
 
     // ray tracing from origin to point, identifies free space using Bresenhaum's line algo
     if (slope > 0 && slope <= 1 && x > 0)
@@ -248,7 +260,7 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
       ray_tracing_approximation_x_increment(0, 0, (-1) * x, y, -1, 1, false);
     }
     else {
-      printf("Did not match a case.\n");
+      //printf("Did not match a case.\n");
       //printf("X: %f, Y: %f, SLOPE %f\n", x, y, slope);
     }
   }
@@ -333,7 +345,7 @@ void StaticOccupancyNode::add_free_spaces_to_the_DST()
 
       if (x >= -64 && y >= -64 && x <= 64 && y <= 64)
       {
-        double slope = (double)(y) / (x);
+        float slope = (double)(y) / (x);
 
         if (slope > 0 && slope <= 1 && x > 0)
         {
@@ -413,7 +425,8 @@ void StaticOccupancyNode::publishOccupancyGrid()
   {
     for (unsigned int j = 0; j < grid_size; j++)
     {
-      msg.data.push_back(probabilites.at(i).at(j));
+      msg.data.push_back(100 * probabilites.at(i).at(j));
+      printf("Probability: %f\n", 100 * probabilites.at(i).at(j));
     }
   }
   occupancy_grid_pub->publish(msg);
@@ -426,8 +439,9 @@ void StaticOccupancyNode::mass_update()
   {
     for (unsigned int j = 0; j < grid_size; j++)
     {
-      updated_occP[i][j] = std::min(decay_factor * previous_occ[i][j], 1.0 - previous_free[i][j]);
-      updated_freeP[i][j] = std::min(decay_factor * previous_free[i][j], 1.0 - previous_occ[i][j]);
+      updated_occP[i][j] = std::min(decay_factor * previous_occ[i][j], 1.0f - previous_free[i][j]);
+      updated_freeP[i][j] = std::min(decay_factor * previous_free[i][j], 1.0f - previous_occ[i][j]);
+
     }
   }
   // Combine measurement nad prediction to form posterior occupied and free masses.
@@ -440,11 +454,13 @@ void StaticOccupancyNode::update_of()
   {
     for (unsigned int j = 0; j < grid_size; j++)
     {
-      double unknown_pred = 1.0 - updated_freeP[i][j] - updated_occP[i][j];
-      double measured_cell_unknown = 1.0 - measured_free[i][j] - measured_occ[i][j];
-      double k_value = updated_freeP[i][j] * measured_occ[i][j] + updated_occP[i][j] * measured_free[i][j];
-      updated_occ[i][j] = (updated_occP[i][j] * measured_cell_unknown + unknown_pred * measured_occ[i][j] + updated_occP[i][j] * measured_occ[i][j]) / (1.0 - k_value);
-      updated_free[i][j] = (updated_freeP[i][j] * measured_cell_unknown + unknown_pred * measured_free[i][j] + updated_freeP[i][j] * measured_free[i][j]) / (1.0 - k_value);
+      float unknown_pred = 1.0 - updated_freeP[i][j] - updated_occP[i][j];
+      float measured_cell_unknown = 1.0 - measured_free[i][j] - measured_occ[i][j];
+      float k_value = updated_freeP[i][j] * measured_occ[i][j] + updated_occP[i][j] * measured_free[i][j];
+
+      updated_occ[i][j] = (updated_occP[i][j] * measured_cell_unknown + unknown_pred * measured_occ[i][j] + updated_occP[i][j] * measured_occ[i][j]) / (1.0f - k_value);
+      updated_free[i][j] = (updated_freeP[i][j] * measured_cell_unknown + unknown_pred * measured_free[i][j] + updated_freeP[i][j] * measured_free[i][j]) / (1.0f - k_value);
+      
     }
   }
 }
@@ -453,15 +469,15 @@ void StaticOccupancyNode::update_of()
  * @brief Gets the average of the updated occupancy and updated free values and adds to a cell_probabilities
  *
  */
-std::vector<std::vector<double>> StaticOccupancyNode::getGridCellProbabilities()
+std::vector<std::vector<float>> StaticOccupancyNode::getGridCellProbabilities()
 {
-  std::vector<std::vector<double>> cell_probabilities;
+  std::vector<std::vector<float>> cell_probabilities;
   for (unsigned int i = 0; i < grid_size; i++)
   {
-    std::vector<double> row;
+    std::vector<float> row;
     for (unsigned int j = 0; j < grid_size; j++)
     {
-      double probability = (0.5 * updated_occ[i][j] + 0.5 * (1.0 - updated_free[i][j]));
+      float probability = (0.5 * updated_occ[i][j] + 0.5 * (1.0 - updated_free[i][j]));
       row.push_back(probability);
     }
     cell_probabilities.push_back(row);
@@ -502,9 +518,17 @@ void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x1, int y1, 
 
   if (inclusive == false)
   {
-    measured_occ[flip_x * x2 + 64][flip_y * y2 + 64] = meas_mass;
-    measured_free[flip_x * x2 + 64][flip_y * y2 + 64] = 0.0;
+    int x_coordinate = flip_x * x2 + 64;
+    int y_coordinate = flip_y * y2 + 64;
+    measured_occ[x_coordinate][y_coordinate] = meas_mass;
+    measured_free[x_coordinate][y_coordinate] = 0.0;
+
+    // printf("X coordinate: %i, Y coordinate: %i, Meas Mass: %f\n", x_coordinate, y_coordinate, meas_mass);
+    // printf("Measured_occ value: %f\n", measured_occ[x_coordinate][y_coordinate]);
+    // printf("Measured_free value: %f\n\n", measured_free[x_coordinate][y_coordinate]);
   }
+
+  
 }
 
 void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive)

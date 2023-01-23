@@ -498,67 +498,81 @@
   },"71": {
     "doc": "System overview",
     "title": "Table of contents",
-    "content": ". | Design | Subsystems . | Example | . | . ",
+    "content": ". | Design . | About nodes and topics | . | Subsystems | Cost maps | Topics | . ",
     "url": "/navigator/system-overview.html#table-of-contents",
     
     "relUrl": "/system-overview.html#table-of-contents"
   },"72": {
     "doc": "System overview",
     "title": "Design",
-    "content": "Navigator is designed to be: . | Simple, with components that are easy to use an extend . | When a more powerful but complex algorithm is used, a simpler alternative should also be present | . | Modular, with nodes that can be swapped, added, and updated with the help of ROS2 . | Since nodes are all built using standard C++ and Python libraries, code is future-proofed. | . | Open source, with all of our code licensed under the highly permissable MIT license . | Our dependencies are also open-source | . | . ",
+    "content": "Navigator is designed to be: . | Simple, with components that are easy to use an extend . | When a more powerful but complex algorithm is used, a simpler alternative should also be present | . | Modular, with nodes that can be swapped, added, and updated with the help of ROS2 . | Since nodes are all built using standard C++ and Python libraries, code is future-proofed. | . | Open source, with all of our code licensed under the highly permissable MIT license . | Our dependencies are also open-source | . | . About nodes and topics . Navigator is built upon ROS2, a communications framework where individual executables called “nodes” exchange messages throguh “topics.” A node can either subscribe to a topic or publish to it. In this fashion, individual nodes form a dense network where everything from camera streams to steering commands are passed from one node to the next. Nodes can be grouped into packages. Packages are then grouped in workspaces. Navigator itself is a ROS workspace. It contains many packages, and each package contains at least one node. Using ROS2, one node can gather raw LiDAR data from a sensor, where it publishes the pointcloud as a PointCloud2 message to a topic called /lidar/raw. Another node can then subscribe to /lidar/raw, filter the data, and publish the result to /lidar/filtered. To learn more about ROS, watch this lecture by Katherine Scott, a developer advocate at Open Robotics. &lt;!– ## Subsystems . Navigator is split into five main subsystems: . | Sensing, where raw sensor data from cameras, GNSS, and more is filtered before being passed along | Perception, which uses the filtered sensor data to build a rich understanding of the car’s surroundings | Planning, which uses this rich understanding, plus the desired destination, to decide how the car should act on a high level | Controls, where the desired action is compared to the car’s current state and low-level action is calculated | Interface, where the low-level action is sent to the steering wheel and pedals. –&gt; | . ",
     "url": "/navigator/system-overview.html#design",
     
     "relUrl": "/system-overview.html#design"
   },"73": {
     "doc": "System overview",
     "title": "Subsystems",
-    "content": ". Navigator is split into five main subsystems: . | Sensing, where raw sensor data from cameras, GNSS, and more is filtered before being passed along | Perception, which uses the filtered sensor data to build a rich understanding of the car’s surroundings | Planning, which uses this rich understanding, plus the desired destination, to decide how the car should act on a high level | Controls, where the desired action is compared to the car’s current state and low-level action is calculated | Interface, where the low-level action is sent to the steering wheel and pedals. | . We also have some important code to support testing, visualization, and simulation. Simulation plays a big role in our development, and you can find an overview of it here. Example . Our sensing system takes in a red blob from our front camera and does some white balancing to make the image more clear. The perception system identifies this red blob as a stop sign and generates a bounding box with the coordinates of the stop sign relative to the car. The planning system determines that we must set our speed to zero at the stop sign. The controls system notes that our car is still moving, and calculates that we must decelerate a certain amount. Finally, our actuation system converts this desired deceleration into a brake pedal command, which is sent out to the pedal’s motor. ",
+    "content": "We can divide Navigator’s nodes into four groups. The sensing subsystem takes raw sensor data and publishes them as Image messages, PointCloud2 messages, Imu messages, and so on. This subsystem also include sensor filters, which subscribe to raw data and publish their filtered results. The perception subsystem draws inferences from the sensor data, including the location of pedestrians, our position on the map, and the predicted motion of surrounding vehicles. Nodes in this subsystem often publish their results as cost maps. The planning subsystem takes our perception results and decides what our vehicle should do. This subsystem handles both high-level decisions (Should we pass a car that’s stopped in the road?) and low-level ones (How far should we press the throttle pedal to reach our desired speed?). The interface subsystem is the link between our software and hardware. It includes nodes that communicate with our steering hardware, our microcontroller, and more. Both the sensing and interface subsystems are vehicle-specific, which means that they need to be configured to suite each individual vehicle. At Nova, we have separate configurations for simulated driving and real-world use. ",
     "url": "/navigator/system-overview.html#subsystems",
     
     "relUrl": "/system-overview.html#subsystems"
   },"74": {
+    "doc": "System overview",
+    "title": "Cost maps",
+    "content": "During execution, Navigator calculates several cost maps, which are grid-based maps of our surrounding area that describe where our car should or should not drive. Each cell in the grid is assigned a cost. The higher the cost, the less likely our car will generate a path that moves through the cell. This results in paths that weave their way through only low-cost cells. If no low-cost cells are available, the car stops and waits. We calculate and use multiple cost maps, each one representing a unique factor to consider. For example: . | Our occupancy grid generator describes the location of objects (cars, people, curbs). | Our prediction network (PredNet) node describes the future location of obstacles. | Our red light detector marks intersections as high-cost regions if the light is red. | Our map manager assigns costs based on how far a cell is from the route and from the goal. | . We add as many of these layers together to form a single, holisitic costmap that our motion planner uses as its input. Above: Cost map dimensions . Cost maps should be in the base_link (vehicle) reference frame. They should extend 40 meters in front and to the side of the car and 20 meters behind, forming a total area of 80 x 60 meters. Cells should have a side length of either 0.2, 0.4, 0.8, or 1.6 meters. In the above example, each image is 200 x 150 pixels, representing a cost map layer with a resolution of 0.4 meters/cell. Clockwise from top left: Current occupancy, junction cost (due to a stop sign), route distance, and drivable area. ",
+    "url": "/navigator/system-overview.html#cost-maps",
+    
+    "relUrl": "/system-overview.html#cost-maps"
+  },"75": {
+    "doc": "System overview",
+    "title": "Topics",
+    "content": ". | /lidar/fused: Raw LiDAR fused together to create a 360-degree picture. Otherwise unfiltered. | /lidar/filtered: Filtered LiDAR, with ground points removed. | /grid/drivable | /grid/route_distance | /grid/occupancy/current: Only the current occupancy grid. | /grid/occupancy/combined: Both the current and all future prediction occupancy grids, summed together. | . ",
+    "url": "/navigator/system-overview.html#topics",
+    
+    "relUrl": "/system-overview.html#topics"
+  },"76": {
     "doc": "Troubleshooting",
     "title": "Troubleshooting",
     "content": "Maintained by Nova members . ",
     "url": "/navigator/contributing/troubleshooting.html",
     
     "relUrl": "/contributing/troubleshooting.html"
-  },"75": {
+  },"77": {
     "doc": "Troubleshooting",
     "title": "Table of contents",
     "content": ". | “New publisher discovered on this topic, offering incompatible QoS” . | Solution | . | “RuntimeError: trying to create rpc server for traffic manager…” | When running the leaderboard evaluator: “No module named ‘agent’” . | Solution: Ensure that there isn’t a typo in the --agent flag to leaderboard_evaluator.py. As of writing, this is in leaderboard.bash. | . | “The RMW implementation has been specified as…” . | Solution | . | . “New publisher discovered on this topic, offering incompatible QoS” . [WARN] [1669075701.737584987] [leaderboard_node]: New publisher discovered on this topic, offering incompatible QoS. No messages will be received from it. Last incompatible policy: DURABILITY_QOS_POLICY . A warning similar to the above example will appear when a publisher and subscriber attempt to exchange messages with incompatible quality of service QoS policies. Solution . Edit the QoS policy of either the relevant publisher or subscriber so that the two can “speak” to each other. For more information on QoS in ROS2, including compatibility between policies, see here. “RuntimeError: trying to create rpc server for traffic manager…” ... File \"/workspace/leaderboard/leaderboard/leaderboard_evaluator.py\", line 83, in __init__ self.traffic_manager = self.client.get_trafficmanager(args.traffic_manager_port) RuntimeError: trying to create rpc server for traffic manager; but the system failed to create because of bind error. This is caused when a CARLA client attempts to connect to CARLA on a port that is already being used. This is either because: . | Another user is currently using the simulator . | In which case you should change your port by using the --traffic_manager_port or similar, depending on which script you’re running | . | An earlier CARLA client has died before it freed its port, and so there is some orphaned Python process on the system that is using up the RPC port. One brute force method is to run sudo pkill -9 python, but this is a very ugly solution. | . When running the leaderboard evaluator: “No module named ‘agent’” . As of 12 Nov ‘22 . # ./leaderboard.bash Starting the CARLA evaluation script. This may take some time. Sit tight! Traceback (most recent call last): ... ModuleNotFoundError: No module named 'agent' . Solution: Ensure that there isn’t a typo in the --agent flag to leaderboard_evaluator.py. As of writing, this is in leaderboard.bash. “The RMW implementation has been specified as…” . As of 11 Nov ‘22 . CMake Error at /opt/ros/foxy/share/rmw_implementation/cmake/rmw_implementation-extras.cmake:54 (message): The RMW implementation has been specified as 'rmw_cyclonedds_cpp' via environment variable 'RMW_IMPLEMENTATION', but it is not available at this time. Currently available middlewares: 'rmw_fastrtps_cpp' . Solution . Navigator uses a slightly modified ROS Middleware (RMW) implementation called CycloneDDS. In order for ROS and its nodes to use it, our custom version must be built and sourced, just like any other ROS workspace. Docker includes the CycloneDDS workspace under /opt/cyclone_ws, and this workspace should be sourced automatically as part of the Docker entrypoint.sh. If you receive the above error, CycloneDDS was either not properly built or sourced. You can verify that the CycloneDDS is loaded properly using the command # ros2 doctor --report, which should show: ... processor : x86_64 RMW MIDDLEWARE middleware name : rmw_cyclonedds_cpp ... ",
     "url": "/navigator/contributing/troubleshooting.html#table-of-contents",
     
     "relUrl": "/contributing/troubleshooting.html#table-of-contents"
-  },"76": {
+  },"78": {
     "doc": "Writing documentation",
     "title": "System overview",
     "content": " ",
     "url": "/navigator/writing-documentation.html#system-overview",
     
     "relUrl": "/writing-documentation.html#system-overview"
-  },"77": {
+  },"79": {
     "doc": "Writing documentation",
     "title": "Table of contents",
     "content": ". | Testing locally | Editing online | . This documentation site is built off of Navigator’s dev branch. All files within the /doc directory are remapped to nova-utd.github.io. Adding to the site is easy. Here are two good options: . ",
     "url": "/navigator/writing-documentation.html#table-of-contents",
     
     "relUrl": "/writing-documentation.html#table-of-contents"
-  },"78": {
+  },"80": {
     "doc": "Writing documentation",
     "title": "Testing locally",
     "content": "To test locally, cd into /docs and run . docker run --rm --volume=\"$PWD:/srv/jekyll:Z\" -p 8083:8083 jekyll/jekyll jekyll serve --port 8083 . Use a browser to view localhost:8083. Refresh the page to show the latest updates. See the official Docker README for more info. ",
     "url": "/navigator/writing-documentation.html#testing-locally",
     
     "relUrl": "/writing-documentation.html#testing-locally"
-  },"79": {
+  },"81": {
     "doc": "Writing documentation",
     "title": "Editing online",
     "content": "On GitHub, move to the /docs directory on the dev branch (here), then press the period key on your keyboard. This will open GitHub’s web editor. See here for more info. ",
     "url": "/navigator/writing-documentation.html#editing-online",
     
     "relUrl": "/writing-documentation.html#editing-online"
-  },"80": {
+  },"82": {
     "doc": "Writing documentation",
     "title": "Writing documentation",
     "content": " ",
