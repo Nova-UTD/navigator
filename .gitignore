@@ -4,6 +4,7 @@ build
 install
 log
 .vscode
+.jekyll-cache
 *.weights
 *.csv
 .gitignore
