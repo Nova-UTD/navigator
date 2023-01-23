@@ -41,6 +41,7 @@
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "nav_msgs/msg/map_meta_data.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
@@ -69,23 +70,24 @@ namespace navigator
             MapManagementNode();
 
             // Functions
-            OccupancyGrid getDrivableAreaGrid(PointMsg center, int range, float res);
+            void publishGrids(int range, float res);
 
         private:
             // Parameters
             // TODO: Convert to ros params
             std::chrono::milliseconds GRID_PUBLISH_FREQUENCY = 200ms;
-            const int GRID_RANGE = 40;
+            const int GRID_RANGE = 30;
             const float GRID_RES = 0.4;
 
             void clockCb(Clock::SharedPtr msg);
             TransformStamped getVehicleTf();
             void drivableAreaGridPubTimerCb();
             void refineRoughPath(Path::SharedPtr msg);
-            void routeDistanceGridPubTimerCb();
+            void updateRoute();
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
-            rclcpp::Publisher<OccupancyGrid>::SharedPtr grid_pub_;
+            rclcpp::Publisher<OccupancyGrid>::SharedPtr drivable_grid_pub_;
+            rclcpp::Publisher<OccupancyGrid>::SharedPtr route_dist_grid_pub_;
             rclcpp::Publisher<Path>::SharedPtr route_path_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
             rclcpp::Subscription<Path>::SharedPtr rough_path_sub_;
@@ -102,7 +104,10 @@ namespace navigator
             std::vector<odr::LanePair> lane_polys_;
             std::vector<odr::Lane> lanes_in_route_;
             Path smoothed_path_msg_;
+            bg::model::linestring<odr::point> route_linestring_;
+            bg::model::linestring<odr::point> local_route_linestring_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
-        };
+            bgi::rtree<odr::value, bgi::rstar<16, 4>> route_tree_;
+                };
     }
 }
