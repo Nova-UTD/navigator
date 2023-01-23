@@ -59,11 +59,14 @@ class LeaderboardLiaisonNode(Node):
         self.world = self.client.get_world()
         blueprint_library = self.world.get_blueprint_library()
 
+        WALKER_COUNT = 30
+        CAR_COUNT = 30
+
         # Spawn some cars
         car_count = 0
         car_spawns = self.world.get_map().get_spawn_points()
         for spawn in car_spawns:
-            if car_count > 30:
+            if car_count > CAR_COUNT:
                 continue
             vehicle_bp = random.choice(blueprint_library.filter('vehicle.*.*'))
             actor = self.world.try_spawn_actor(vehicle_bp, spawn)
@@ -72,6 +75,30 @@ class LeaderboardLiaisonNode(Node):
                 car_count += 1
 
         self.get_logger().info(f"Spawned {car_count} cars!")
+
+        # Spawn some walkers (pedestrians)
+        walker_ai_bp = blueprint_library.filter('controller.ai.walker')[0]
+        walker_count = 0
+        while walker_count < WALKER_COUNT:
+            if walker_count > 30:
+                continue
+            walker_bp = random.choice(blueprint_library.filter('walker.*.*'))
+            spawn_point = carla.Transform()
+            spawn_point.location = self.world.get_random_location_from_navigation()
+            actor = self.world.try_spawn_actor(
+                walker_bp, spawn_point)
+            if actor is not None:
+                ai_controller = self.world.try_spawn_actor(
+                    walker_ai_bp, spawn_point, attach_to=actor)
+                if ai_controller is not None:
+                    ai_controller.go_to_location(
+                        self.world.get_random_location_from_navigation())
+                walker_count += 1
+
+        self.get_logger().info(f"Spawned {walker_count} walkers!")
+
+        self.traffic_light_timer = self.create_timer(
+            1.0, self.set_all_lights_to_green)
 
         # settings = self.world.get_settings()
         # settings.fixed_delta_seconds = 1.0 / 20
@@ -85,6 +112,13 @@ class LeaderboardLiaisonNode(Node):
 
         self.route = None
         self.clock = Clock()
+
+    def set_all_lights_to_green(self):
+        actors = self.world.get_actors()
+        print(actors)
+        for actor in actors:
+            if actor.type_id == 'traffic.traffic_light':
+                actor.set_state(carla.TrafficLightState.Green)
 
     def world_info_cb(self, msg: CarlaWorldInfo):
         if msg.opendrive == "":
