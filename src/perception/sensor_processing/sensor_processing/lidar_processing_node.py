@@ -17,9 +17,18 @@ import rclpy
 import ros2_numpy as rnp
 import numpy as np
 from rclpy.node import Node
+import time
+from tf2_ros import TransformException
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
+
+# Message definitions
+from nav_msgs.msg import OccupancyGrid
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Float32
+
+import matplotlib.pyplot as plt
 
 
 class LidarProcessingNode(Node):
@@ -36,15 +45,18 @@ class LidarProcessingNode(Node):
             Clock, '/clock', self.clock_cb, 10
         )
         self.clean_lidar_pub = self.create_publisher(
-            PointCloud2, '/lidar_filtered', 10
+            PointCloud2, '/lidar/fused', 10
         )
 
         self.clean_semantic_lidar_pub = self.create_publisher(
             PointCloud2, '/lidar_semantic_filtered', 10
         )
 
-        self.lidar_min_pub = self.create_publisher(Float32, '/lidar/min_y', 10)
-        self.lidar_max_pub = self.create_publisher(Float32, '/lidar/max_y', 10)
+        self.occupancy_grid_pub = self.create_publisher(
+            OccupancyGrid, '/cost/occupancy', 10)
+
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
         self.carla_clock = Clock()
         self.left_pcd_cached = np.zeros(0, dtype=[
@@ -115,8 +127,10 @@ class LidarProcessingNode(Node):
 
         msg_array = self.transform_to_base_link(msg_array)
         msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0)
-        msg_array = self.remove_points_above(msg_array, 2.0)
-        msg_array = self.remove_ground_points(msg_array, 0.2)
+        # msg_array = self.remove_points_above(msg_array, 2.0)
+        # msg_array = self.remove_ground_points(msg_array, 0.2)
+
+        # self.publish_occupancy_grid(msg_array, range=40.0, res=0.5)
 
         merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
         merged_pcd_msg.header.frame_id = 'base_link'

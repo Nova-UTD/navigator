@@ -67,7 +67,7 @@ namespace odr
         std::unique_ptr<std::vector<std::pair<Lane, ring>>> drivable_lane_polygons_;
         std::unique_ptr<std::vector<std::pair<Lane, ring>>> lane_polygons_;
         std::unique_ptr<std::vector<ring>> road_polygons_;
-        bgi::rtree<value, bgi::rstar<16, 4>> rtree_;
+        std::unique_ptr<bgi::rtree<value, bgi::rstar<16, 4>>> rtree_;
     };
 
 } // namespace odr
