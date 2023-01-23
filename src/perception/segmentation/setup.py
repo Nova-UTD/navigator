@@ -24,6 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'image_segmentation_node = segmentation.image_segmentation_node:main',
+            'image_projection_node = segmentation.image_projection_node:main',
         ],
     },
 )

@@ -5,14 +5,15 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /TF1
         - /TF1/Frames1
-        - /LiDAR1/Filtered LiDAR1
-        - /Path1
+        - /LiDAR1
+        - /LiDAR1/Semantic LiDAR1
+        - /Cameras1/RGB Left1
         - /Grids1
         - /Grids1/Drivable Area1
-        - /Path2
       Splitter Ratio: 0.5
-    Tree Height: 760
+    Tree Height: 362
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -162,17 +163,17 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: Intensity
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
-          Max Intensity: 0.9899388551712036
+          Max Intensity: 0.9759141206741333
           Min Color: 0; 0; 0
-          Min Intensity: 0.7274837493896484
+          Min Intensity: 0.712297797203064
           Name: Filtered LiDAR
           Position Transformer: XYZ
           Selectable: true
           Size (Pixels): 3
-          Size (m): 0.30000001192092896
+          Size (m): 0.10000000149011612
           Style: Flat Squares
           Topic:
             Depth: 5
@@ -182,7 +183,7 @@ Visualization Manager:
             Value: /lidar/filtered
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -216,6 +217,39 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
+        - Alpha: 1
+          Autocompute Intensity Bounds: false
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: c
+          Class: rviz_default_plugins/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: Intensity
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Max Intensity: 13
+          Min Color: 0; 0; 0
+          Min Intensity: 0
+          Name: Semantic LiDAR
+          Position Transformer: XYZ
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.30000001192092896
+          Style: Flat Squares
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /lidar/semantic
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
       Enabled: true
       Name: LiDAR
     - Alpha: 1
@@ -323,7 +357,7 @@ Visualization Manager:
             Value: /carla/hero/rgb_right/image
           Value: true
         - Class: rviz_default_plugins/Image
-          Enabled: true
+          Enabled: false
           Max Value: 1
           Median window: 5
           Min Value: 0
@@ -335,9 +369,9 @@ Visualization Manager:
             History Policy: Keep Last
             Reliability Policy: Reliable
             Value: /semantic/left_mono
-          Value: true
+          Value: false
         - Class: rviz_default_plugins/Image
-          Enabled: true
+          Enabled: false
           Max Value: 1
           Median window: 5
           Min Value: 0
@@ -349,7 +383,7 @@ Visualization Manager:
             History Policy: Keep Last
             Reliability Policy: Reliable
             Value: /semantic/right_mono
-          Value: true
+          Value: false
       Enabled: true
       Name: Cameras
     - Class: rviz_common/Group
@@ -398,7 +432,7 @@ Visualization Manager:
           Class: rviz_default_plugins/Map
           Color Scheme: map
           Draw Behind: false
-          Enabled: true
+          Enabled: false
           Name: Route Distance
           Topic:
             Depth: 5
@@ -413,7 +447,7 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /grid/route_distance_updates
           Use Timestamp: false
-          Value: true
+          Value: false
       Enabled: true
       Name: Grids
     - Alpha: 1
@@ -443,6 +477,41 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /route/smooth_path
       Value: true
+    - Class: rviz_default_plugins/Camera
+      Enabled: true
+      Image Rendering: background and overlay
+      Name: Camera
+      Overlay Alpha: 0.5
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /carla/hero/rgb_right/image
+      Value: true
+      Visibility:
+        Cameras:
+          Bird's Eye: true
+          RGB Left: true
+          RGB Right: true
+          Semantic Left: true
+          Semantic Right: true
+          Value: true
+        Grid: true
+        Grids:
+          "": true
+          Value: true
+        LiDAR:
+          "": true
+          Value: true
+        Marker: true
+        Particles: true
+        Path: true
+        RobotModel: true
+        Smoothed GNSS: true
+        TF: true
+        Value: true
+      Zoom Factor: 1
   Enabled: true
   Global Options:
     Background Color: 222; 255; 251
@@ -485,31 +554,38 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -1.5700016021728516
-      Class: rviz_default_plugins/TopDownOrtho
+      Class: rviz_default_plugins/XYOrbit
+      Distance: 35.91720199584961
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
+      Focal Point:
+        X: 0.7284157276153564
+        Y: 0.9822334051132202
+        Z: -5.0683756853686646e-06
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 7.022927761077881
+      Pitch: 0.5747964382171631
       Target Frame: <Fixed Frame>
-      Value: TopDownOrtho (rviz_default_plugins)
-      X: 8.127501487731934
-      Y: -11.529855728149414
+      Value: XYOrbit (rviz_default_plugins)
+      Yaw: 2.7991135120391846
     Saved: ~
 Window Geometry:
   Bird's Eye:
+    collapsed: false
+  Camera:
     collapsed: false
   Displays:
     collapsed: false
   Height: 1541
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001dc000003e6fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000ab00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c0061007900730100000069000003e60000017800fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000057c0000082dfc0200000005fb0000001400430065006e0074006500720020005200470042000000019b000006fb0000000000000000fb0000001000530065006d0061006e00740069006300000001d9000001b00000000000000000fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000201000001880000012300fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000009d300000181fc0100000008fb0000001a00530065006d0061006e0074006900630020004c0065006600740100000000000001ff000000e700fffffffb0000001c00530065006d0061006e007400690063002000520069006700680074010000020b000001fe000000f800fffffffc00000415000001ab000000bb00fffffffa000000010200000002fb0000001c00530065006d0061006e0074006900630020005200690067006800740000000000ffffffff0000000000000000fb0000001200520047004200200052006900670068007401000008a2000001f50000004500fffffffb000000100052004700420020004c00650066007401000005cc000001f9000000aa00fffffffb00000014004200690072006400270073002000450079006501000007d100000202000000b800fffffffb0000000a004400650070007400680000000000000007800000000000000000fb0000000800540069006d00650100000000000004420000000000000000fb0000000800540069006d00650100000000000004500000000000000000000007eb000003e600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001560000022ffc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afc0000003b0000022f000000c700fffffffa000000010100000002fb0000000c00430061006d0065007200610000000000ffffffff0000006400fffffffb000000100044006900730070006c0061007900730100000000000001560000015600fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000022c0000022ffc0200000006fb0000000c00430061006d006500720061010000003b0000022f0000000000000000fb0000001400430065006e0074006500720020005200470042000000019b000006fb0000000000000000fb0000001000530065006d0061006e00740069006300000001d9000001b00000000000000000fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003b0000022f000000a000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b2000000000000000000000002000003c0000000d9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000078000000131fc0100000008fb0000001a00530065006d0061006e0074006900630020004c0065006600740000000000000001870000008800fffffffb0000001c00530065006d0061006e0074006900630020005200690067006800740000000000000001f30000009000fffffffc00000000000002300000007200fffffffa000000010200000002fb0000001c00530065006d0061006e0074006900630020005200690067006800740000000000ffffffff0000000000000000fb0000001200520047004200200052006900670068007401000008a2000001f50000002800fffffffb000000100052004700420020004c00650066007401000002360000029d0000006900fffffffb00000014004200690072006400270073002000450079006501000004d9000002a70000007000fffffffb0000000a004400650070007400680000000000000007800000000000000000fb0000000800540069006d00650100000000000004420000000000000000fb0000000800540069006d00650100000000000004500000000000000000000006240000022f00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   RGB Left:
     collapsed: false
   RGB Right:
@@ -524,6 +600,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: false
-  Width: 2515
-  X: 148
-  Y: 54
+  Width: 1920
+  X: 0
+  Y: 27

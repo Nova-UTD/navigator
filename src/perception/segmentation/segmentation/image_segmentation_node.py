@@ -83,6 +83,7 @@ name_to_dtypes = {
     "64FC4":   (np.float64, 4)
 }
 
+
 class ImageSegmentationNode(Node):
 
     def __init__(self):
@@ -90,14 +91,18 @@ class ImageSegmentationNode(Node):
         config_file = '/mmsegmentation/configs/pspnet/pspnet_r18-d8_512x1024_80k_cityscapes.py'
         checkpoint_file = '/navigator/data/perception/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth'
 
-        self.model = init_segmentor(config_file, checkpoint_file, device='cuda:0')
+        self.model = init_segmentor(
+            config_file, checkpoint_file, device='cuda:0')
 
-        self.left_rgb_sub = self.create_subscription(Image, "/carla/hero/rgb_left/image", self.rgb_left_cb, 10)
-        self.left_result_pub = self.create_publisher(Image, '/semantic/left_mono', 10)
+        self.left_rgb_sub = self.create_subscription(
+            Image, "/carla/hero/rgb_left/image", self.rgb_left_cb, 10)
+        self.left_result_pub = self.create_publisher(
+            Image, '/semantic/left_mono', 10)
 
-        self.right_rgb_sub = self.create_subscription(Image, "/carla/hero/rgb_right/image", self.rgb_right_cb, 10)
-        self.right_result_pub = self.create_publisher(Image, '/semantic/right_mono', 10)
-
+        self.right_rgb_sub = self.create_subscription(
+            Image, "/carla/hero/rgb_right/image", self.rgb_right_cb, 10)
+        self.right_result_pub = self.create_publisher(
+            Image, '/semantic/right_mono', 10)
 
         self.idx = 0
         # model.show_result(img, result, out_file='result.jpg', opacity=1.0)
@@ -119,7 +124,7 @@ class ImageSegmentationNode(Node):
         )
 
         if channels == 1:
-            data = data[...,0]
+            data = data[..., 0]
         return data
 
     def numpy_to_image(self, arr, encoding):
@@ -162,9 +167,8 @@ class ImageSegmentationNode(Node):
     def rgb_left_cb(self, msg: Image):
         img_array = mmcv.imread("/navigator/demo.png")
 
-        img_array = self.image_to_numpy(msg)[:,:,:3] # Cut out alpha
+        img_array = self.image_to_numpy(msg)[:, :, :3]  # Cut out alpha
         result = inference_segmentor(self.model, img_array)[0]
-        result *= 40
 
         result_msg = self.numpy_to_image(result.astype(np.uint8), 'mono8')
         result_msg.header = msg.header
@@ -174,14 +178,14 @@ class ImageSegmentationNode(Node):
     def rgb_right_cb(self, msg: Image):
         img_array = mmcv.imread("/navigator/demo.png")
 
-        img_array = self.image_to_numpy(msg)[:,:,:3] # Cut out alpha
+        img_array = self.image_to_numpy(msg)[:, :, :3]  # Cut out alpha
         result = inference_segmentor(self.model, img_array)[0]
-        result *= 40
 
         result_msg = self.numpy_to_image(result.astype(np.uint8), 'mono8')
         result_msg.header = msg.header
 
         self.right_result_pub.publish(result_msg)
+
 
 def main(args=None):
     rclpy.init(args=args)
