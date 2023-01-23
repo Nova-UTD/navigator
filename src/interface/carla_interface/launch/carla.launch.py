@@ -114,6 +114,6 @@ def generate_launch_description():
         ground_seg,
 
         # STATE ESTIMATION
-        # map_manager,
+        map_manager,
         state_estimation,
     ])

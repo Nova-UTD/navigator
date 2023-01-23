@@ -24,7 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'image_segmentation_node = segmentation.image_segmentation_node:main',
-            'lidar_to_2d_node = segmentation.lidar_to_2d_node:main',
+            'image_projection_node = segmentation.image_projection_node:main',
         ],
     },
 )
