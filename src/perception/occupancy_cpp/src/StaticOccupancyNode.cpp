@@ -21,7 +21,7 @@ StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node")
       { this->clock = *msg; });
 
   pcd_sub = this->create_subscription<PointCloud2>(
-      "/lidar/fused",
+      "/lidar/filtered",
       10,
       std::bind(&StaticOccupancyNode::pointCloudCb, this, std::placeholders::_1));
 
@@ -45,12 +45,12 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
   PC processing.
   */
 
-  double centerpoint_x = 64;
-  double centerpoint_y = 64;
-  double xstart = -1;
-  double ystart = -1;
-  double xend = -1;
-  double yend = -1;
+  float centerpoint_x = 64;
+  float centerpoint_y = 64;
+  float xstart = -1;
+  float ystart = -1;
+  float xend = -1;
+  float yend = -1;
 
   // Converts the PCL ros message using pcl_conversions.
   pcl::PointCloud<pcl::PointXYZI> cloud;
@@ -58,8 +58,6 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
 
   // 1. Convert new measurement into a DST grid.
   createOccupancyGrid(cloud);
-  
-  
 
   change_x = 0.0; // TODO: Remove or fix the "change" variables.
   change_y = 0.0;
@@ -69,60 +67,58 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
   y_new_low = change_y - 64 * res;
   y_new_high = change_y + 64 * res;
 
-  if (initialization_phase == false)
-  {
-    if ((x_new_low >= x_old_low) && (x_old_high >= x_new_low))
-    {
-      xstart = x_new_low;
-      xend = x_old_high;
-    }
+  // if (/*initialization_phase == */false)
+  // {
+    
+  //   if ((x_new_low >= x_old_low) && (x_old_high >= x_new_low))
+  //   {
+  //     xstart = x_new_low;
+  //     xend = x_old_high;    }
 
-    if ((y_new_low >= y_old_low) && (y_old_high >= y_new_low))
-    {
-      ystart = y_new_low;
-      yend = y_old_high;
-    }
+  //   if ((y_new_low >= y_old_low) && (y_old_high >= y_new_low))
+  //   {
+  //     ystart = y_new_low;
+  //     yend = y_old_high;    }
 
-    if ((x_new_low < x_old_low) && (x_new_high >= x_old_low))
-    {
-      xstart = x_old_low;
-      xend = x_new_high;
-    }
+  //   if ((x_new_low < x_old_low) && (x_new_high >= x_old_low))
+  //   {
+  //     xstart = x_old_low;
+  //     xend = x_new_high;    }
 
-    if ((y_new_low < y_old_low) && (y_new_high >= y_old_low))
-    {
-      ystart = y_old_low;
-      yend = y_new_high;
-    }
+  //   if ((y_new_low < y_old_low) && (y_new_high >= y_old_low))
+  //   {
+  //     ystart = y_old_low;
+  //     yend = y_new_high;    }
 
-    if ((xstart != -1) && (ystart != -1))
-    {
+  //   if ((xstart != -1) && (ystart != -1))
+  //   {
       
-      /**
-       * NL = New Low, OH = Old High
-       */
+  //     /**
+  //      * NL = New Low, OH = Old High
+  //      */
+  //     //x
+  //     int index_xNL = find_nearest(grid_size, xstart, x_new_low, x_new_high, res);
+  //     int index_xNH = find_nearest(grid_size, xend, x_new_low, x_new_high, res);
+  //     int index_xOL = find_nearest(grid_size, xstart, x_old_low, x_old_high, res);
+  //     int index_xOH = find_nearest(grid_size, xend, x_old_low, x_old_high, res);
+  //     //y
+  //     int index_yNL = find_nearest(grid_size, ystart, y_new_low, y_new_high, res);
+  //     int index_yNH = find_nearest(grid_size, yend, y_new_low, y_new_high, res);
+  //     int index_yOL = find_nearest(grid_size, ystart, y_old_low, y_old_high, res);
+  //     int index_yOH = find_nearest(grid_size, yend, y_old_low, y_old_high, res);
 
-      //x
-      int index_xNL = find_nearest(grid_size, xstart, x_new_low, x_new_high, res);
-      int index_xNH = find_nearest(grid_size, xend, x_new_low, x_new_high, res);
-      int index_xOL = find_nearest(grid_size, xstart, x_old_low, x_old_high, res);
-      int index_xOH = find_nearest(grid_size, xend, x_old_low, x_old_high, res);
-      //y
-      int index_yNL = find_nearest(grid_size, ystart, y_new_low, y_new_high, res);
-      int index_yNH = find_nearest(grid_size, yend, y_new_low, y_new_high, res);
-      int index_yOL = find_nearest(grid_size, ystart, y_old_low, y_old_high, res);
-      int index_yOH = find_nearest(grid_size, yend, y_old_low, y_old_high, res);
+  //     //printf("index_xNL: %i, index_xNH: %i, index_xOL: %i, index_xOH: %i\n\n", index_xNL, index_xNH, index_xOL, index_xOH);
 
-      for (unsigned int i = 0; i < index_xOH - index_xOL + 1; i++)
-      {
-        for (unsigned int j = 0; j < index_yOH - index_yOL + 1; j++)
-        {
-          previous_free[index_xNL + i][index_yNL + j] = updated_free[index_xOL + i][index_yOL + j];
-          previous_occ[index_xNL + i][index_yNL + j] = updated_occ[index_xOL + i][index_yOL + j];
-        }
-      }
-    }
-  }
+  //     for (unsigned int i = 0; i < index_xOH - index_xOL + 1; i++)
+  //     {
+  //       for (unsigned int j = 0; j < index_yOH - index_yOL + 1; j++)
+  //       {
+  //         previous_free[index_xNL + i][index_yNL + j] = updated_free[index_xOL + i][index_yOL + j];
+  //         previous_occ[index_xNL + i][index_yNL + j] = updated_occ[index_xOL + i][index_yOL + j];
+  //       }
+  //     }
+  //   }
+  // }
   
 
   mass_update();
@@ -220,7 +216,9 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
     }
 
     angles[angle] = true;
-    float slope = (double)(y) / (x);
+    
+
+    float slope = (float)(y) / (x);
 
     // printf("X: %i, Y: %i, Z: %f\n", x, y, z);
     // printf("Slope: %f\n", slope);
@@ -271,7 +269,7 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
  */
 void StaticOccupancyNode::add_free_spaces_to_the_DST()
 {
-  double i = 0.0;
+  float i = 0.0;
   float angle = 0.0f;
 
   // fills free spaces, not efficient?
@@ -281,6 +279,8 @@ void StaticOccupancyNode::add_free_spaces_to_the_DST()
 
     if (angles[(int)(angle)] == false)
     {
+      
+      //printf("ANGLE: %i\n\n", (int)angle);
       int x, y;
       if (angle > 0.0f && angle <= 45.0f)
       {
@@ -345,7 +345,7 @@ void StaticOccupancyNode::add_free_spaces_to_the_DST()
 
       if (x >= -64 && y >= -64 && x <= 64 && y <= 64)
       {
-        float slope = (double)(y) / (x);
+        float slope = (float)(y) / (x);
 
         if (slope > 0 && slope <= 1 && x > 0)
         {
@@ -426,7 +426,7 @@ void StaticOccupancyNode::publishOccupancyGrid()
     for (unsigned int j = 0; j < grid_size; j++)
     {
       msg.data.push_back(100 * probabilites.at(i).at(j));
-      printf("Probability: %f\n", 100 * probabilites.at(i).at(j));
+      //printf("Probability: %f\n", 100 * probabilites.at(i).at(j));
     }
   }
   occupancy_grid_pub->publish(msg);
@@ -486,9 +486,10 @@ std::vector<std::vector<float>> StaticOccupancyNode::getGridCellProbabilities()
   return cell_probabilities;
 }
 
-int StaticOccupancyNode::find_nearest(int n, double v, double v0, double vn, double res)
+int StaticOccupancyNode::find_nearest(int n, float v, float v0, float vn, float res)
 {
   int index = std::floor(n * (v - v0 + res / 2.) / (vn - v0 + res));
+  //printf("INDEX: %i\n\n", index);
   return index;
 }
 //------------------------------------------------//
