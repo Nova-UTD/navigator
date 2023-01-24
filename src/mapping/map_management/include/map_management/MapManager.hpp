@@ -87,6 +87,7 @@ namespace navigator
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
             rclcpp::Publisher<OccupancyGrid>::SharedPtr drivable_grid_pub_;
+            rclcpp::Publisher<OccupancyGrid>::SharedPtr flat_surface_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr route_dist_grid_pub_;
             rclcpp::Publisher<Path>::SharedPtr route_path_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;

@@ -5,7 +5,7 @@ Package: state_estimation
 
 Python implementation of Monte Carlo Localization
 
-MCL (a.k.a. a particle filter) has five steps:
+MCL (a.k.a. particle filter-based localization) has five steps:
 1. Generate possible poses (particles) in a Gaussian distribution around an initial guess.
 2. Predict the next state of the particles with a motion_update, which includes noise
 3. For each updated particle, assign a probability score using the latest observations
@@ -92,7 +92,7 @@ class MCL:
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
 
-    def update_weights(self, particles, weights, cloud: np.array, grid: np.array, gnss_pose):
+    def update_weights(self, particles, weights, cloud: np.array, grid: np.array, gnss_pose, cloud_location=(100,50)):
         """Update weights by checking each particle's alignment in the occupancy grid.
 
         Args:
@@ -222,7 +222,7 @@ class MCL:
         self.predict(self.particles, delta, std=np.array([0.0, 0.0, 0.0]))
 
         self.update_weights(self.particles, self.weights,
-                            cloud, grid, gnss_pose)
+                            cloud, grid, gnss_pose, cloud_location=(100,50))
 
         plt.plot(range(len(self.weights)), self.weights)
         plt.show()
