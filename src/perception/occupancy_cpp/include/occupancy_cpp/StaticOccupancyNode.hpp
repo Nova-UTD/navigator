@@ -133,7 +133,7 @@ namespace navigator
       void create_DST_grid(pcl::PointCloud<pcl::PointXYZI> &cloud);
       void ray_tracing_approximation_x_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive);
       void ray_tracing_approximation_y_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive);
-      int find_nearest(int n, double v, double v0, double vn, double res);
+      int find_nearest(int n, float v, float v0, float vn, float res);
       void mass_update();
       void update_of();
       std::vector<std::vector<float>> getGridCellProbabilities();
