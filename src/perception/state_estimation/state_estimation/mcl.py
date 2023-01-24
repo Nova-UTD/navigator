@@ -18,7 +18,7 @@ The particles (poses) gradually converge.
 A particle is an np.array: [x, y, heading, weight]
 
 ACKNOWLEDGEMENT:
-This code is adapted from Roger Labbe's work: 
+This code is adapted from Roger Labbe's work:
 https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/12-Particle-Filters.ipynb
 
 For a detailed explanation of how the filter works, visit the above link.
@@ -92,21 +92,21 @@ class MCL:
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
 
-    def update_weights(self, particles, weights, cloud: np.array, cells: np.array, gnss_pose):
+    def update_weights(self, particles, weights, cloud: np.array, grid: np.array, gnss_pose):
         """Update weights by checking each particle's alignment in the occupancy grid.
 
         Args:
             particles (_type_): _description_
             weights (_type_): _description_
             cloud (np.array): [[x,y], [x,y], ...]
-            cells (np.array): n rows (x) from map_origin to origin+height_meters, m columns (y)
+            grid (np.array): n rows (x) from map_origin to origin+height_meters, m columns (y)
             from map_origin to origin+width_meters.
         """
 
         # The cloud is given in the vehicle frame.
         # We need it in the map frame
         alignments = []
-        # for idx, cell in np.ndenumerate(cells[::10, ::10]):
+        # for idx, cell in np.ndenumerate(grid[::10, ::10]):
         #     if cell == 100:
         #         plt.scatter(idx[1]*10, idx[0]*10, c='k')
 
@@ -121,15 +121,17 @@ class MCL:
 
             # Then translate
             transformed_cloud[:] += particle[0:2]
+            # plt.scatter(transformed_cloud[:, 0], transformed_cloud[:, 1])
+            # plt.show()
 
             # Translate relative to map origin
             transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
 
-            # Scale to cells
+            # Scale to grid
             transformed_cloud /= self.grid_resolution
 
             # # Round each point in the cloud down to an int
-            # # Now each point represents an index in cells. Convenient!
+            # # Now each point represents an index in grid. Convenient!
             grid_indices = transformed_cloud.astype(int)
 
             start = time.time()
@@ -137,14 +139,18 @@ class MCL:
             hits = 0
 
             for index in grid_indices[::100]:
-                if index[0] >= cells.shape[0] or index[1] >= cells.shape[1]:
+                if index[0] < 0 or index[1] < 0:
+                    print("FIX THIS")
                     continue
-                if cells[index[1], index[0]] == 100:
+                if index[0] >= grid.shape[0] or index[1] >= grid.shape[1]:
+                    continue
+                if grid[index[1], index[0]] == 100:
                     hits += 1
 
             alignments.append(hits)
 
         alignments = np.array(alignments)
+        plt.hist(alignments)
 
         particles[:, 2] = gnss_pose[2]
 
@@ -196,13 +202,12 @@ class MCL:
         particles[:, 2] %= 2 * np.pi
         return particles
 
-    def __init__(self, grid: np.array, grid_resolution: float, initial_pose=np.array([0.0, 0.0, 0.0]), map_origin=np.array([0.0, 0.0]), N=100):
+    def __init__(self, grid_resolution: float, initial_pose=np.array([0.0, 0.0, 0.0]), map_origin=np.array([0.0, 0.0]), N=100):
         self.particles = self.create_gaussian_particles(
             mean=initial_pose, std=(2, 2, np.pi/8), N=N)
 
         self.weights = np.ones(N) / N
 
-        self.grid = grid
         self.map_origin = map_origin
         self.grid_resolution = grid_resolution
 
@@ -212,12 +217,15 @@ class MCL:
 
         self.weights = np.ones(N) / N
 
-    def step(self, delta: np.array, cloud: np.array, gnss_pose: np.array) -> tuple:
+    def step(self, delta: np.array, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
 
         self.predict(self.particles, delta, std=np.array([0.0, 0.0, 0.0]))
 
         self.update_weights(self.particles, self.weights,
-                            cloud, self.grid, gnss_pose)
+                            cloud, grid, gnss_pose)
+
+        plt.plot(range(len(self.weights)), self.weights)
+        plt.show()
 
         # Determine if a resample is necessary
         # N/2 is a good threshold

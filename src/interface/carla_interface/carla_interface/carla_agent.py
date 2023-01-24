@@ -29,33 +29,19 @@ class NavigatorAgent(ROS2Agent):
         base_link_pos = [0.7, 0.0, 0.28]
 
         sensors = [
-            {'type': 'sensor.camera.rgb', 'id': 'rgb_center',
-             'x': base_link_pos[0]+0.15,
-             'y': base_link_pos[1]+0.0,
-             'z': base_link_pos[2]+1.6,
-             'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
-             'width': 600, 'height': 400, 'fov': 120},
-
             {'type': 'sensor.camera.rgb', 'id': 'rgb_left',
              'x': base_link_pos[0]+0.0,
              'y': base_link_pos[1]-0.15,
              'z': base_link_pos[2]+1.6,
              'roll': 0.0, 'pitch': 0.0, 'yaw': -0.9,
-             'width': 600, 'height': 400, 'fov': 120},
+             'width': 1024, 'height': 512, 'fov': 120},
 
             {'type': 'sensor.camera.rgb', 'id': 'rgb_right',
              'x': base_link_pos[0]+0.0,
              'y': base_link_pos[1]+0.15,
              'z': base_link_pos[2]+1.6,
              'roll': 0.0, 'pitch': 0.0, 'yaw': 0.9,
-             'width': 600, 'height': 400, 'fov': 120},
-
-            {'type': 'sensor.camera.rgb', 'id': 'rgb_zoom',
-             'x': base_link_pos[0]+0.15,
-             'y': base_link_pos[1]+0.0,
-             'z': base_link_pos[2]+1.6,
-             'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
-             'width': 600, 'height': 400, 'fov': 40},
+             'width': 1024, 'height': 512, 'fov': 120},
 
             {'type': 'sensor.lidar.ray_cast', 'id': 'lidar',
              'x': base_link_pos[0]+0.0,
@@ -67,7 +53,7 @@ class NavigatorAgent(ROS2Agent):
             {'type': 'sensor.other.gnss', 'id': 'gnss',
              'x': base_link_pos[0]+0.0,
              'y': base_link_pos[1]+0.0,
-             'z': base_link_pos[2]+0.0,},
+             'z': base_link_pos[2]+0.0, },
             {'type': 'sensor.other.imu', 'id': 'imu',
              'x': base_link_pos[0]+0.0,
              'y': base_link_pos[1]+0.0,

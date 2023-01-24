@@ -53,6 +53,14 @@ class LeaderboardLiaisonNode(Node):
         self.world_info_repub_timer = self.create_timer(
             5.0, self.repub_world_info)
 
+        self.route = None
+        self.clock = Clock()
+
+        connect_to_carla = True  # TODO: Make this a param
+
+        if connect_to_carla is False:
+            return
+
         self.client = carla.Client(
             'localhost', 2000 + int(os.environ['ROS_DOMAIN_ID']))
         self.client.set_timeout(60)
@@ -97,8 +105,8 @@ class LeaderboardLiaisonNode(Node):
 
         self.get_logger().info(f"Spawned {walker_count} walkers!")
 
-        self.traffic_light_timer = self.create_timer(
-            1.0, self.set_all_lights_to_green)
+        # self.traffic_light_timer = self.create_timer(
+        #     1.0, self.set_all_lights_to_green)
 
         # settings = self.world.get_settings()
         # settings.fixed_delta_seconds = 1.0 / 20
@@ -109,9 +117,6 @@ class LeaderboardLiaisonNode(Node):
         # self.world.apply_settings(settings)
 
         # self.get_logger().info("Settings applied!")
-
-        self.route = None
-        self.clock = Clock()
 
     def set_all_lights_to_green(self):
         actors = self.world.get_actors()
