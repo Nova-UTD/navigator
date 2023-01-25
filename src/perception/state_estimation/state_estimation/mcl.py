@@ -92,7 +92,7 @@ class MCL:
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
 
-    def update_weights(self, particles, weights, cloud: np.array, grid: np.array, gnss_pose, cloud_location=(100,50)):
+    def update_weights(self, particles, weights, cloud: np.array, grid: np.array, gnss_pose, cloud_location=(100, 50)):
         """Update weights by checking each particle's alignment in the occupancy grid.
 
         Args:
@@ -103,32 +103,34 @@ class MCL:
             from map_origin to origin+width_meters.
         """
 
-        # The cloud is given in the vehicle frame.
-        # We need it in the map frame
         alignments = []
-        # for idx, cell in np.ndenumerate(grid[::10, ::10]):
-        #     if cell == 100:
-        #         plt.scatter(idx[1]*10, idx[0]*10, c='k')
 
         for particle in particles:
 
-            # First rotate
-            theta = particle[2]
+            # We need the points in the particle frame.
+            # They're in the base_link frame
+
+            # First rotate:
+            # Theta is difference in heading from base_link->particle
+            theta = (particle[2] - self.mu[2]) % math.tau
             r = np.array([[np.cos(theta), -1*np.sin(theta)],
                           [np.sin(theta), np.cos(theta)]])
-
+            # Apply the rotation matrix
             transformed_cloud = np.dot(cloud, r.T)
 
             # Then translate
-            transformed_cloud[:] += particle[0:2]
-            # plt.scatter(transformed_cloud[:, 0], transformed_cloud[:, 1])
-            # plt.show()
+            dx = particle[0] - self.mu[0]
+            dy = particle[1] - self.mu[1]
+            transformed_cloud[:] += [dx, dy]
 
-            # Translate relative to map origin
-            transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
+            # Cloud should now be in the particle's frame
 
             # Scale to grid
+            # This converts the point's x/y unit from "meters" to "cells"
             transformed_cloud /= self.grid_resolution
+
+            # Translate so that (0,0) is at the grid's origin, not the particle's
+            transformed_cloud += cloud_location
 
             # # Round each point in the cloud down to an int
             # # Now each point represents an index in grid. Convenient!
@@ -139,9 +141,6 @@ class MCL:
             hits = 0
 
             for index in grid_indices[::100]:
-                if index[0] < 0 or index[1] < 0:
-                    print("FIX THIS")
-                    continue
                 if index[0] >= grid.shape[0] or index[1] >= grid.shape[1]:
                     continue
                 if grid[index[1], index[0]] == 100:
@@ -150,7 +149,9 @@ class MCL:
             alignments.append(hits)
 
         alignments = np.array(alignments)
-        plt.hist(alignments)
+        plt.scatter(grid_indices[:,0], grid_indices[:,1])
+        plt.show()
+        # print(max(alignments))
 
         particles[:, 2] = gnss_pose[2]
 
@@ -207,6 +208,7 @@ class MCL:
             mean=initial_pose, std=(2, 2, np.pi/8), N=N)
 
         self.weights = np.ones(N) / N
+        self.mu = initial_pose
 
         self.map_origin = map_origin
         self.grid_resolution = grid_resolution
@@ -222,10 +224,7 @@ class MCL:
         self.predict(self.particles, delta, std=np.array([0.0, 0.0, 0.0]))
 
         self.update_weights(self.particles, self.weights,
-                            cloud, grid, gnss_pose, cloud_location=(100,50))
-
-        plt.plot(range(len(self.weights)), self.weights)
-        plt.show()
+                            cloud, grid, gnss_pose, cloud_location=(100, 50))
 
         # Determine if a resample is necessary
         # N/2 is a good threshold
@@ -240,6 +239,8 @@ class MCL:
 
         if gnss_difference > 5:
             self.reset(gnss_pose, N=100)
+
+        self.mu = mu
 
         return mu, var
 
