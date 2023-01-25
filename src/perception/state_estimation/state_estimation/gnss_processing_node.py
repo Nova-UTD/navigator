@@ -255,7 +255,7 @@ class GnssProcessingNode(Node):
         t.transform.rotation = self.wma_pose.orientation
 
         # Uncomment to enable direct map->base_link tf
-        self.tf_broadcaster.sendTransform(t)
+        # self.tf_broadcaster.sendTransform(t)
 
 
 def main(args=None):

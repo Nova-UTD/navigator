@@ -5,6 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /Grid1
         - /TF1/Frames1
         - /LiDAR1/Semantic LiDAR1
         - /Cameras1
@@ -31,8 +32,8 @@ Panels:
 Visualization Manager:
   Class: ""
   Displays:
-    - Alpha: 0.5
-      Cell Size: 1
+    - Alpha: 0.30000001192092896
+      Cell Size: 0.4000000059604645
       Class: rviz_default_plugins/Grid
       Color: 85; 170; 255
       Enabled: true
@@ -42,11 +43,11 @@ Visualization Manager:
       Name: Grid
       Normal Cell Count: 0
       Offset:
-        X: 0
+        X: 10
         Y: 0
         Z: 0
       Plane: XY
-      Plane Cell Count: 10
+      Plane Cell Count: 150
       Reference Frame: <Fixed Frame>
       Value: true
     - Angle Tolerance: 0.10000000149011612
@@ -512,15 +513,23 @@ Visualization Manager:
       Value: true
       Visibility:
         Cameras:
-          "": true
+          Bird's Eye: true
+          RGB Left: true
+          RGB Right: true
+          Semantic Left: true
+          Semantic Right: true
           Value: true
         Grid: true
         Grids:
-          "": true
+          Current Occupancy: true
           Drivable Area: true
+          Flat Surfaces: true
+          Route Distance: true
           Value: true
         LiDAR:
-          "": true
+          Filtered LiDAR: true
+          Road Points: true
+          Semantic LiDAR: true
           Value: true
         Marker: true
         Particles: true
@@ -573,25 +582,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 31.662349700927734
+      Distance: 48.31227111816406
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -9.241325378417969
-        Y: 2.882913589477539
-        Z: -2.299457264598459e-05
+        X: -5.026587963104248
+        Y: -4.177644729614258
+        Z: -1.5304791304515675e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9347965121269226
+      Pitch: 1.0747966766357422
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 3.009112596511841
+      Yaw: 2.8991153240203857
     Saved: ~
 Window Geometry:
   Bird's Eye:
