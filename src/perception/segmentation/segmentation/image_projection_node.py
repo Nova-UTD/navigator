@@ -91,22 +91,22 @@ class ImageProjectioNode(Node):
         self.get_logger().info("Ready to project!")
 
         lidar_sub = self.create_subscription(
-            PointCloud2, "/lidar/fused", self.lidarCb, 10)
+            PointCloud2, "/lidar/fused", self.lidarCb, 1)
 
         self.semantic_lidar_pub = self.create_publisher(
             PointCloud2, "/lidar/semantic", 10)
 
         left_camera_info_sub = self.create_subscription(
-            CameraInfo, '/carla/hero/rgb_left/camera_info', self.leftCameraInfoCb, 10)
+            CameraInfo, '/carla/hero/rgb_left/camera_info', self.leftCameraInfoCb, 1)
 
         left_camera_image_sub = self.create_subscription(
-            Image, '/semantic/left_mono', self.leftCameraImageCb, 10)
+            Image, '/semantic/left_mono', self.leftCameraImageCb, 1)
 
         right_camera_image_sub = self.create_subscription(
-            Image, '/semantic/right_mono', self.rightCameraImageCb, 10)
+            Image, '/semantic/right_mono', self.rightCameraImageCb, 1)
 
         right_camera_info_sub = self.create_subscription(
-            CameraInfo, '/carla/hero/rgb_right/camera_info', self.rightCameraInfoCb, 10)
+            CameraInfo, '/carla/hero/rgb_right/camera_info', self.rightCameraInfoCb, 1)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)

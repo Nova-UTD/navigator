@@ -23,6 +23,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
+    flat_surface_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/flat_surface", 10);
     route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
     route_path_pub_ = this->create_publisher<Path>("/route/smooth_path", 10);
 
@@ -49,11 +50,13 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
  * 4. Set OccupancyGrid metadata and return.
  *
  * @param center Center of the grid
- * @param range Radius in meters
+ * @param top_dist Distance from car to top edge
+ * @param bottom_dist Distance from car to bottom edge
+ * @param side_dist Distance from car to left and right edges
  * @param res Side length of grid cells (meters)
  * @return OccupancyGrid
  */
-void MapManagementNode::publishGrids(int range, float res)
+void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dist, float res)
 {
     if (this->map_ == nullptr)
     {
@@ -66,17 +69,17 @@ void MapManagementNode::publishGrids(int range, float res)
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     OccupancyGrid drivable_area_grid;
+    OccupancyGrid flat_surface_grid;
     OccupancyGrid route_dist_grid;
     MapMetaData grid_info;
     std::vector<int8_t> drivable_grid_data;
+    std::vector<int8_t> flat_surface_grid_data;
     std::vector<int8_t> route_dist_grid_data;
 
-    int grid_radius_in_cells = std::ceil(range / res);
-
-    float x_min = range * -1;
-    float x_max = range;
-    float y_min = range * -1;
-    float y_max = range;
+    float y_min = side_dist * -1;
+    float y_max = side_dist;
+    float x_min = bottom_dist * -1;
+    float x_max = top_dist;
 
     // std::printf("[%f, %f], [%f, %f], %f\n", x_min, x_max, y_min, y_max, res);
 
@@ -86,7 +89,7 @@ void MapManagementNode::publishGrids(int range, float res)
     // Get the search region
     TransformStamped vehicle_tf = getVehicleTf();
     auto vehicle_pos = vehicle_tf.transform.translation;
-    double range_plus = range * 1.4; // This is a little leeway to account for map->base_link rotation
+    double range_plus = top_dist * 1.4; // This is a little leeway to account for map->base_link rotation
     odr::point bounding_box_min = odr::point(vehicle_pos.x - range_plus, vehicle_pos.y - range_plus);
     odr::point bounding_box_max = odr::point(vehicle_pos.x + range_plus, vehicle_pos.y + range_plus);
     odr::box search_region(bounding_box_min, bounding_box_max);
@@ -114,7 +117,8 @@ void MapManagementNode::publishGrids(int range, float res)
 
             i = static_cast<float>(i);
             j = static_cast<float>(j);
-            bool cell_is_occupied = false;
+            bool cell_is_drivable = false;
+            bool cell_is_flat_surface = false;
 
             // Transform this query into the map frame
             // First rotate, then translate. 2D rotation eq:
@@ -134,20 +138,27 @@ void MapManagementNode::publishGrids(int range, float res)
                 for (auto pair : local_tree_query_results)
                 {
                     odr::ring ring = this->lane_polys_.at(pair.second).second;
+                    odr::Lane lane = this->lane_polys_.at(pair.second).first;
                     bool point_is_within_shape = bg::within(p, ring);
                     if (point_is_within_shape)
                     {
-                        cell_is_occupied = true;
-
-                        break;
+                        if (lane.type == "driving")
+                        {
+                            cell_is_drivable = true;
+                            cell_is_flat_surface = true;
+                            break;
+                        } else if (lane.type == "shoulder" || lane.type == "sidewalk" || lane.type == "parking" || lane.type == "curb")
+                        {
+                            cell_is_flat_surface = true;
+                            break;
+                        }
                     }
+                    
                 }
             }
 
-            if (cell_is_occupied)
-                drivable_grid_data.push_back(100);
-            else
-                drivable_grid_data.push_back(0);
+           drivable_grid_data.push_back(cell_is_drivable ? 100 : 0);
+           flat_surface_grid_data.push_back(cell_is_flat_surface ? 100 : 0);
 
             // Get closest route point
             if (local_route_linestring_.size() > 0)
@@ -177,6 +188,10 @@ void MapManagementNode::publishGrids(int range, float res)
     drivable_area_grid.header.frame_id = "base_link";
     drivable_area_grid.header.stamp = clock;
 
+    flat_surface_grid.data = flat_surface_grid_data;
+    flat_surface_grid.header.frame_id = "base_link";
+    flat_surface_grid.header.stamp = clock;
+
     route_dist_grid.data = route_dist_grid_data;
     route_dist_grid.header.frame_id = "base_link";
     route_dist_grid.header.stamp = clock;
@@ -190,6 +205,7 @@ void MapManagementNode::publishGrids(int range, float res)
 
     // Set the grids' metadata
     drivable_area_grid.info = grid_info;
+    flat_surface_grid.info = grid_info;
     route_dist_grid.info = grid_info;
 
     // Output function runtime
@@ -197,6 +213,7 @@ void MapManagementNode::publishGrids(int range, float res)
     std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 
     drivable_grid_pub_->publish(drivable_area_grid);
+    flat_surface_grid_pub_->publish(flat_surface_grid);
     route_dist_grid_pub_->publish(route_dist_grid); // Route distance grid
 }
 
@@ -239,7 +256,7 @@ TransformStamped navigator::perception::MapManagementNode::getVehicleTf()
  */
 void navigator::perception::MapManagementNode::drivableAreaGridPubTimerCb()
 {
-    publishGrids(GRID_RANGE, GRID_RES);
+    publishGrids(40, 20, 30, 0.4);
 }
 
 /**
@@ -531,7 +548,7 @@ void MapManagementNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
     // Ask libopendrive to parse the map string
     this->map_ = new odr::OpenDriveMap(msg->opendrive, true);
     // Get lane polygons as pairs (Lane object, ring polygon)
-    this->lane_polys_ = map_->get_lane_polygons(1.0);
+    this->lane_polys_ = map_->get_lane_polygons(1.0, false);
 
     RCLCPP_INFO(this->get_logger(), "Loaded %s", msg->map_name.c_str());
 }

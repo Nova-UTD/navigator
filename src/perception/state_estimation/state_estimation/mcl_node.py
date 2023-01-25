@@ -48,7 +48,7 @@ class MCLNode(Node):
             Clock, '/clock', self.clock_cb, 10)
 
         self.cloud_sub = self.create_subscription(
-            PointCloud2, '/lidar_semantic_filtered', self.cloud_cb, 10)
+            PointCloud2, '/lidar/semantic', self.cloud_cb, 10)
 
         self.gnss_sub = self.create_subscription(
             Odometry, '/odometry/gnss_processed', self.gnss_cb, 10)
@@ -110,15 +110,23 @@ class MCLNode(Node):
 
         # The filter accepts clouds as a (N,2) array. Format accordingly.
         cloud_formatted = rnp.numpify(msg)
+
+        # Limit to "road" points
+        cloud_formatted = cloud_formatted[cloud_formatted['c'] == 0]
         cloud = np.vstack((cloud_formatted['x'], cloud_formatted['y'])).T
+
+        # Filter to road points only
 
         # step() is the critical function that feeds data into the filter
         # and returns a pose and covariance.
+
+        print(cloud)
+
         result_pose, pose_variance = self.filter.step(
-            delta, cloud, self.gnss_pose)
+            delta, cloud, self.gnss_pose, self.grid)
         self.publish_particle_cloud()
 
-        self.get_logger().info(f"Diff: {str(self.gnss_pose-result_pose)}")
+        # self.get_logger().info(f"Diff: {str(self.gnss_pose-result_pose)}")
 
         # Turn our filter result into a transform
         t = TransformStamped()
@@ -132,6 +140,7 @@ class MCLNode(Node):
 
         # Broadcast our transform
         self.tf_broadcaster.sendTransform(t)
+        # self.get_logger().info("BROADCASTING")
 
         # Cache our gnss_pose to calculate the delta later
         self.old_gnss_pose = self.gnss_pose
@@ -146,17 +155,18 @@ class MCLNode(Node):
         ])
 
     def map_cb(self, msg: OccupancyGrid):
-        if self.grid is not None:
-            return  # Exit if the map is already initialized
-        if self.gnss_pose is None:
-            return  # Wait for initial guess from GNSS
-
         self.grid = np.asarray(msg.data,
                                dtype=np.int8).reshape(msg.info.height, msg.info.width)
 
+        if self.gnss_pose is None:
+            return  # Wait for initial guess from GNSS
+
+        if self.filter is not None:
+            return
+
         origin = msg.info.origin.position
         res = msg.info.resolution
-        self.filter = MCL(self.grid, res, initial_pose=self.gnss_pose,
+        self.filter = MCL(res, initial_pose=self.gnss_pose,
                           map_origin=np.array([origin.x, origin.y]))
 
         self.get_logger().info("MCL filter created")
