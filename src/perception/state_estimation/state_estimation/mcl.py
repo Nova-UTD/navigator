@@ -149,8 +149,10 @@ class MCL:
             alignments.append(hits)
 
         alignments = np.array(alignments)
-        plt.scatter(grid_indices[:,0], grid_indices[:,1])
-        plt.show()
+        # plt.scatter(grid_indices[:,0], grid_indices[:,1])
+        if (time.time() % 5 < 1):
+            plt.hist(alignments)
+            plt.show()
         # print(max(alignments))
 
         particles[:, 2] = gnss_pose[2]

@@ -110,6 +110,8 @@ class MCLNode(Node):
 
         # The filter accepts clouds as a (N,2) array. Format accordingly.
         cloud_formatted = rnp.numpify(msg)
+
+        # Limit to "road" points
         cloud_formatted = cloud_formatted[cloud_formatted['c'] == 0]
         cloud = np.vstack((cloud_formatted['x'], cloud_formatted['y'])).T
 
@@ -118,7 +120,8 @@ class MCLNode(Node):
         # step() is the critical function that feeds data into the filter
         # and returns a pose and covariance.
 
-        # print(cloud)
+        print(cloud)
+
         result_pose, pose_variance = self.filter.step(
             delta, cloud, self.gnss_pose, self.grid)
         self.publish_particle_cloud()
