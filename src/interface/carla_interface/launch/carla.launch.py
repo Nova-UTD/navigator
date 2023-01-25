@@ -53,7 +53,7 @@ def generate_launch_description():
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
         launch_arguments={
             'host': 'localhost',
-            'port': "2000",
+            'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
             'synchronous_mode': 'True',
             'town': 'Town02',
             'register_all_sensors': 'False',
@@ -62,9 +62,14 @@ def generate_launch_description():
         }.items(),
     )
 
-    state_estimation = Node(
+    gnss_processor = Node(
         package='state_estimation',
         executable='gnss_processing_node'
+    )
+
+    mcl = Node(
+        package='state_estimation',
+        executable='mcl_node'
     )
 
     map_manager = Node(
@@ -105,13 +110,13 @@ def generate_launch_description():
         leaderboard_liaison,
 
         # LOCALIZATION
-        # mcl
+        # mcl,
 
         # MAPPING
 
         # MISC
         urdf_publisher,
-        # rviz,
+        rviz,
 
         # PERCEPTION
         image_segmentation,
@@ -121,5 +126,5 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         map_manager,
-        state_estimation,
+        gnss_processor,
     ])
