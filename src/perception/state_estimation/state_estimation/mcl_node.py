@@ -118,9 +118,9 @@ class MCLNode(Node):
         # step() is the critical function that feeds data into the filter
         # and returns a pose and covariance.
 
-        print(cloud)
+        # print(cloud)
         result_pose, pose_variance = self.filter.step(
-            delta, cloud, self.gnss_pose)
+            delta, cloud, self.gnss_pose, self.grid)
         self.publish_particle_cloud()
 
         # self.get_logger().info(f"Diff: {str(self.gnss_pose-result_pose)}")
@@ -152,15 +152,18 @@ class MCLNode(Node):
         ])
 
     def map_cb(self, msg: OccupancyGrid):
-        if self.gnss_pose is None:
-            return  # Wait for initial guess from GNSS
-
         self.grid = np.asarray(msg.data,
                                dtype=np.int8).reshape(msg.info.height, msg.info.width)
 
+        if self.gnss_pose is None:
+            return  # Wait for initial guess from GNSS
+
+        if self.filter is not None:
+            return
+
         origin = msg.info.origin.position
         res = msg.info.resolution
-        self.filter = MCL(self.grid, res, initial_pose=self.gnss_pose,
+        self.filter = MCL(res, initial_pose=self.gnss_pose,
                           map_origin=np.array([origin.x, origin.y]))
 
         self.get_logger().info("MCL filter created")
