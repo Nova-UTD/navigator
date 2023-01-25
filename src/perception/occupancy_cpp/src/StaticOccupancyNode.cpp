@@ -419,14 +419,15 @@ void StaticOccupancyNode::publishOccupancyGrid()
   // masses_msg.width = grid_size;
   // masses_msg.height = grid_size;
 
-  auto probabilites = getGridCellProbabilities();
+  auto probabilities = getGridCellProbabilities();
 
-  for (unsigned int i = 0; i < grid_size; i++)
+  for (int i = 0; i < grid_size; i++)
   {
-    for (unsigned int j = 0; j < grid_size; j++)
+    for (int j = grid_size - 1; j >= 0; j--)
     {
-      msg.data.push_back(100 * probabilites.at(i).at(j));
-      //printf("Probability: %f\n", 100 * probabilites.at(i).at(j));
+      printf("i: %i j: %i\n", i, j);
+      msg.data.push_back(100 * probabilities.at(i).at(j));
+      
     }
   }
   occupancy_grid_pub->publish(msg);
