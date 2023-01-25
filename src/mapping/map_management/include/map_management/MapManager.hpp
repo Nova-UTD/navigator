@@ -70,7 +70,7 @@ namespace navigator
             MapManagementNode();
 
             // Functions
-            void publishGrids(int range, float res);
+            void publishGrids(int top, int bottom, int side, float res);
 
         private:
             // Parameters

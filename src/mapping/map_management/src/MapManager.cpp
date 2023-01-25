@@ -50,11 +50,13 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
  * 4. Set OccupancyGrid metadata and return.
  *
  * @param center Center of the grid
- * @param range Radius in meters
+ * @param top_dist Distance from car to top edge
+ * @param bottom_dist Distance from car to bottom edge
+ * @param side_dist Distance from car to left and right edges
  * @param res Side length of grid cells (meters)
  * @return OccupancyGrid
  */
-void MapManagementNode::publishGrids(int range, float res)
+void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dist, float res)
 {
     if (this->map_ == nullptr)
     {
@@ -74,12 +76,10 @@ void MapManagementNode::publishGrids(int range, float res)
     std::vector<int8_t> flat_surface_grid_data;
     std::vector<int8_t> route_dist_grid_data;
 
-    int grid_radius_in_cells = std::ceil(range / res);
-
-    float x_min = range * -1;
-    float x_max = range;
-    float y_min = range * -1;
-    float y_max = range;
+    float y_min = side_dist * -1;
+    float y_max = side_dist;
+    float x_min = bottom_dist * -1;
+    float x_max = top_dist;
 
     // std::printf("[%f, %f], [%f, %f], %f\n", x_min, x_max, y_min, y_max, res);
 
@@ -89,7 +89,7 @@ void MapManagementNode::publishGrids(int range, float res)
     // Get the search region
     TransformStamped vehicle_tf = getVehicleTf();
     auto vehicle_pos = vehicle_tf.transform.translation;
-    double range_plus = range * 1.4; // This is a little leeway to account for map->base_link rotation
+    double range_plus = top_dist * 1.4; // This is a little leeway to account for map->base_link rotation
     odr::point bounding_box_min = odr::point(vehicle_pos.x - range_plus, vehicle_pos.y - range_plus);
     odr::point bounding_box_max = odr::point(vehicle_pos.x + range_plus, vehicle_pos.y + range_plus);
     odr::box search_region(bounding_box_min, bounding_box_max);
@@ -256,7 +256,7 @@ TransformStamped navigator::perception::MapManagementNode::getVehicleTf()
  */
 void navigator::perception::MapManagementNode::drivableAreaGridPubTimerCb()
 {
-    publishGrids(GRID_RANGE, GRID_RES);
+    publishGrids(40, 20, 30, 0.4);
 }
 
 /**
