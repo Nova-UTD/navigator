@@ -103,60 +103,75 @@ class MCL:
             from map_origin to origin+width_meters.
         """
 
-        # The cloud is given in the vehicle frame.
-        # We need it in the map frame
+        if self.alignment_history is None:
+            self.alignment_history = np.array([])
+
         alignments = []
         # for idx, cell in np.ndenumerate(grid[::10, ::10]):
         #     if cell == 100:
         #         plt.scatter(idx[1]*10, idx[0]*10, c='k')
 
-        # for particle in particles:
+        for idx, particle in enumerate(particles):
 
-        #     # First rotate
-        #     theta = particle[2]
-        #     r = np.array([[np.cos(theta), -1*np.sin(theta)],
-        #                   [np.sin(theta), np.cos(theta)]])
+            # Our LiDAR data is in the vehicle ("base_link") frame.
+            # In order for us to test alignment, we need this in the particle's frame
 
-        #     transformed_cloud = np.dot(cloud, r.T)
+            # Rotate from base_link to particle frame
+            if self.mu is None:
+                translation = np.zeros((3))  # Empty
+            else:
+                translation = particle - self.mu
+            d_theta = translation[2] % math.tau
 
-        #     # Then translate
-        #     transformed_cloud[:] += particle[0:2]
-        #     # plt.scatter(transformed_cloud[:, 0], transformed_cloud[:, 1])
-        #     # plt.show()
+            r = np.array([[np.cos(d_theta), -1*np.sin(d_theta)],
+                          [np.sin(d_theta), np.cos(d_theta)]])
+            transformed_cloud = np.dot(cloud, r.T)  # Apply rotation matrix
 
-        #     # Translate relative to map origin
-        #     transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
+            # Then translate
+            transformed_cloud[:] += translation[0:2]
 
-        #     # Scale to grid
-        #     transformed_cloud /= self.grid_resolution
+            # Translate relative to map origin
+            transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
 
-        #     # # Round each point in the cloud down to an int
-        #     # # Now each point represents an index in grid. Convenient!
-        #     grid_indices = transformed_cloud.astype(int)
+            # Scale to grid
+            transformed_cloud /= self.grid_resolution
 
-        #     start = time.time()
+            # # Round each point in the cloud down to an int
+            # # Now each point represents an index in grid. Convenient!
+            grid_indices = transformed_cloud.astype(int)
 
-        #     hits = 0
+            hits = 0
 
-        #     for index in grid_indices[::100]:
-        #         if index[0] < 0 or index[1] < 0:
-        #             print("FIX THIS")
-        #             continue
-        #         if index[0] >= grid.shape[0] or index[1] >= grid.shape[1]:
-        #             continue
-        #         if grid[index[1], index[0]] == 100:
-        #             hits += 1
+            for index in grid_indices[::100]:
+                if index[0] >= grid.shape[0] or index[1] >= grid.shape[1]:
+                    continue
+                if grid[index[1], index[0]] == 100:
+                    hits += 1
 
-        #     alignments.append(hits)
+            alignments.append(hits)
 
-        # alignments = np.array(alignments)
-        # plt.hist(alignments)
+            # # Plot for debugging
+            # if (idx == 0):
+            #     plt.imshow(grid)
+            #     plt.scatter(cloud[:, 0], cloud[:, 1], c='red')
+            #     plt.scatter(transformed_cloud[:, 0],
+            #                 transformed_cloud[:, 1], c='green')
+            #     plt.show()
 
-        # particles[:, 2] = gnss_pose[2]
+        alignments = np.array(alignments)
+        self.alignment_history = np.append(
+            self.alignment_history, np.max(alignments))
+        # print(self.alignment_history)
 
-        # weights *= alignments
-        dists = np.linalg.norm(particles[:, 0:2] - gnss_pose[0:2], axis=1)
-        weights[dists > 4.0] *= 0.1  # Penalize particles too far from the GNSS
+        # if len(self.alignment_history) % 50 == 0:
+        #     plt.plot(self.alignment_history)
+        #     plt.show()
+
+        particles[:, 2] = gnss_pose[2]
+
+        weights *= alignments
+        # dists = np.linalg.norm(particles[:, 0:2] - gnss_pose[0:2], axis=1)
+        # weights[dists > 4.0] *= 0.1  # Penalize particles too far from the GNSS
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
@@ -207,6 +222,8 @@ class MCL:
             mean=initial_pose, std=(2, 2, np.pi/8), N=N)
 
         self.weights = np.ones(N) / N
+        self.alignment_history = None
+        self.mu = None
 
         self.map_origin = map_origin
         self.grid_resolution = grid_resolution
@@ -240,6 +257,8 @@ class MCL:
 
         if gnss_difference > 5:
             self.reset(gnss_pose, N=100)
+
+        self.mu = mu
 
         return mu, var
 
