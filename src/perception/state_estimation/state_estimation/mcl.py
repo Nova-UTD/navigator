@@ -110,51 +110,51 @@ class MCL:
         #     if cell == 100:
         #         plt.scatter(idx[1]*10, idx[0]*10, c='k')
 
-        for particle in particles:
+        # for particle in particles:
 
-            # First rotate
-            theta = particle[2]
-            r = np.array([[np.cos(theta), -1*np.sin(theta)],
-                          [np.sin(theta), np.cos(theta)]])
+        #     # First rotate
+        #     theta = particle[2]
+        #     r = np.array([[np.cos(theta), -1*np.sin(theta)],
+        #                   [np.sin(theta), np.cos(theta)]])
 
-            transformed_cloud = np.dot(cloud, r.T)
+        #     transformed_cloud = np.dot(cloud, r.T)
 
-            # Then translate
-            transformed_cloud[:] += particle[0:2]
-            # plt.scatter(transformed_cloud[:, 0], transformed_cloud[:, 1])
-            # plt.show()
+        #     # Then translate
+        #     transformed_cloud[:] += particle[0:2]
+        #     # plt.scatter(transformed_cloud[:, 0], transformed_cloud[:, 1])
+        #     # plt.show()
 
-            # Translate relative to map origin
-            transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
+        #     # Translate relative to map origin
+        #     transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
 
-            # Scale to grid
-            transformed_cloud /= self.grid_resolution
+        #     # Scale to grid
+        #     transformed_cloud /= self.grid_resolution
 
-            # # Round each point in the cloud down to an int
-            # # Now each point represents an index in grid. Convenient!
-            grid_indices = transformed_cloud.astype(int)
+        #     # # Round each point in the cloud down to an int
+        #     # # Now each point represents an index in grid. Convenient!
+        #     grid_indices = transformed_cloud.astype(int)
 
-            start = time.time()
+        #     start = time.time()
 
-            hits = 0
+        #     hits = 0
 
-            for index in grid_indices[::100]:
-                if index[0] < 0 or index[1] < 0:
-                    print("FIX THIS")
-                    continue
-                if index[0] >= grid.shape[0] or index[1] >= grid.shape[1]:
-                    continue
-                if grid[index[1], index[0]] == 100:
-                    hits += 1
+        #     for index in grid_indices[::100]:
+        #         if index[0] < 0 or index[1] < 0:
+        #             print("FIX THIS")
+        #             continue
+        #         if index[0] >= grid.shape[0] or index[1] >= grid.shape[1]:
+        #             continue
+        #         if grid[index[1], index[0]] == 100:
+        #             hits += 1
 
-            alignments.append(hits)
+        #     alignments.append(hits)
 
-        alignments = np.array(alignments)
-        plt.hist(alignments)
+        # alignments = np.array(alignments)
+        # plt.hist(alignments)
 
-        particles[:, 2] = gnss_pose[2]
+        # particles[:, 2] = gnss_pose[2]
 
-        weights *= alignments
+        # weights *= alignments
         dists = np.linalg.norm(particles[:, 0:2] - gnss_pose[0:2], axis=1)
         weights[dists > 4.0] *= 0.1  # Penalize particles too far from the GNSS
 
@@ -224,8 +224,8 @@ class MCL:
         self.update_weights(self.particles, self.weights,
                             cloud, grid, gnss_pose)
 
-        plt.plot(range(len(self.weights)), self.weights)
-        plt.show()
+        # plt.plot(range(len(self.weights)), self.weights)
+        # plt.show()
 
         # Determine if a resample is necessary
         # N/2 is a good threshold
