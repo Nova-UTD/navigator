@@ -23,6 +23,10 @@ import math
 import numpy as np
 import rclpy
 import ros2_numpy as rnp
+import time
+
+# Message definitions
+from carla_msgs.msg import CarlaSpeedometer
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.node import Node
@@ -38,11 +42,14 @@ class MCLNode(Node):
     def __init__(self):
         super().__init__('mcl_node')
 
+        self.cached_result_pose = None
         self.clock = Clock()
         self.filter = None
         self.gnss_pose = None
+        self.last_update_time = time.time()
         self.old_gnss_pose = None
         self.grid: np.array = None
+        self.speed: float = 0.0  # m/s
 
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 10)
@@ -56,6 +63,9 @@ class MCLNode(Node):
         self.map_sub = self.create_subscription(
             OccupancyGrid, '/grid/drivable', self.map_cb, 10)
 
+        self.speed_sub = self.create_subscription(
+            CarlaSpeedometer, '/carla/hero/speedometer', self.speed_cb, 1)
+
         self.particle_cloud_pub = self.create_publisher(
             PointCloud2, '/mcl/particles', 10)
 
@@ -64,15 +74,25 @@ class MCLNode(Node):
     def clock_cb(self, msg: Clock):
         self.clock = msg
 
-    def get_motion_delta(self, old_pose, current_pose):
+    def speed_cb(self, msg: CarlaSpeedometer):
+        self.speed = msg.speed
+
+    def get_motion_delta(self, old_pose, current_pose, cached_result_pose: np.array, speed: float, dt):
+
         if old_pose is None:
             return np.zeros(3)
 
-        delta = current_pose-old_pose
-        # delta[2] *= -1  # Why? I don't know
-
+        # Start by calculating heading change
+        delta = np.zeros((3))
+        delta[2] = current_pose[2] - old_pose[2]
         # Wrap heading to [0, 2*pi]
         delta[2] %= 2*np.pi
+
+        # Now calculate displacement via speedometer and dt
+        displacement = speed * dt  # result in meters
+        delta[0] = displacement * np.cos(delta[2])
+        delta[1] = displacement * np.sin(delta[2])
+
         return delta
 
     def publish_particle_cloud(self):
@@ -105,8 +125,15 @@ class MCLNode(Node):
         if self.filter is None:
             return
 
+        if self.cached_result_pose is None:
+            self.cached_result_pose = np.zeros((3))
+
         # Change in pose since last filter update
-        delta = self.get_motion_delta(self.old_gnss_pose, self.gnss_pose)
+        dt = time.time() - self.last_update_time
+
+        delta = self.get_motion_delta(
+            self.old_gnss_pose, self.gnss_pose, self.cached_result_pose, self.speed, dt)
+        self.last_update_time = time.time()
 
         # The filter accepts clouds as a (N,2) array. Format accordingly.
         cloud_formatted = rnp.numpify(msg)
@@ -120,7 +147,7 @@ class MCLNode(Node):
 
         print(cloud)
         result_pose, pose_variance = self.filter.step(
-            delta, cloud, self.gnss_pose)
+            delta, cloud, self.gnss_pose, self.grid)
         self.publish_particle_cloud()
 
         # self.get_logger().info(f"Diff: {str(self.gnss_pose-result_pose)}")
@@ -141,6 +168,7 @@ class MCLNode(Node):
 
         # Cache our gnss_pose to calculate the delta later
         self.old_gnss_pose = self.gnss_pose
+        self.cached_result_pose = result_pose
 
     def gnss_cb(self, msg: Odometry):
         pose_msg = msg.pose.pose
@@ -160,7 +188,7 @@ class MCLNode(Node):
 
         origin = msg.info.origin.position
         res = msg.info.resolution
-        self.filter = MCL(self.grid, res, initial_pose=self.gnss_pose,
+        self.filter = MCL(res, initial_pose=self.gnss_pose,
                           map_origin=np.array([origin.x, origin.y]))
 
         self.get_logger().info("MCL filter created")
