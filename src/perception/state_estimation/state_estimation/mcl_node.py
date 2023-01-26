@@ -42,7 +42,7 @@ class MCLNode(Node):
     def __init__(self):
         super().__init__('mcl_node')
 
-        self.cached_result_pose = None
+        self.previous_result = None
         self.clock = Clock()
         self.filter = None
         self.gnss_pose = None
@@ -77,14 +77,11 @@ class MCLNode(Node):
     def speed_cb(self, msg: CarlaSpeedometer):
         self.speed = msg.speed
 
-    def get_motion_delta(self, old_pose, current_pose, cached_result_pose: np.array, speed: float, dt):
-
-        if old_pose is None:
-            return np.zeros(3)
+    def getMotionDelta(self, current_gnss_pose, old_gnss_pose, speed: float, dt):
 
         # Start by calculating heading change
         delta = np.zeros((3))
-        delta[2] = current_pose[2] - old_pose[2]
+        delta[2] = current_gnss_pose[2] - old_gnss_pose[2]
         # Wrap heading to [0, 2*pi]
         delta[2] %= 2*np.pi
 
@@ -125,14 +122,16 @@ class MCLNode(Node):
         if self.filter is None:
             return
 
-        if self.cached_result_pose is None:
-            self.cached_result_pose = np.zeros((3))
+        if self.previous_result is None:
+            self.previous_result = np.zeros((3))
 
         # Change in pose since last filter update
         dt = time.time() - self.last_update_time
-
-        delta = self.get_motion_delta(
-            self.old_gnss_pose, self.gnss_pose, self.cached_result_pose, self.speed, dt)
+        if self.gnss_pose is None or self.old_gnss_pose is None:
+            delta = [0., 0., 0.]
+        else:
+            delta = self.getMotionDelta(
+                self.gnss_pose, self.old_gnss_pose, self.speed, dt)
         self.last_update_time = time.time()
 
         # The filter accepts clouds as a (N,2) array. Format accordingly.
@@ -145,7 +144,6 @@ class MCLNode(Node):
         # step() is the critical function that feeds data into the filter
         # and returns a pose and covariance.
 
-        print(cloud)
         result_pose, pose_variance = self.filter.step(
             delta, cloud, self.gnss_pose, self.grid)
         self.publish_particle_cloud()
@@ -167,12 +165,12 @@ class MCLNode(Node):
         # self.get_logger().info("BROADCASTING")
 
         # Cache our gnss_pose to calculate the delta later
-        self.old_gnss_pose = self.gnss_pose
-        self.cached_result_pose = result_pose
+        self.previous_result = result_pose
 
     def gnss_cb(self, msg: Odometry):
         pose_msg = msg.pose.pose
         yaw = 2*math.asin(pose_msg.orientation.z)
+        self.old_gnss_pose = self.gnss_pose
         self.gnss_pose = np.array([
             pose_msg.position.x,
             pose_msg.position.y,
@@ -185,6 +183,9 @@ class MCLNode(Node):
 
         self.grid = np.asarray(msg.data,
                                dtype=np.int8).reshape(msg.info.height, msg.info.width)
+
+        if self.filter is not None:
+            return
 
         origin = msg.info.origin.position
         res = msg.info.resolution
