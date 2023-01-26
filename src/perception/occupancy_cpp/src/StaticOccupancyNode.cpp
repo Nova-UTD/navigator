@@ -421,11 +421,10 @@ void StaticOccupancyNode::publishOccupancyGrid()
 
   auto probabilities = getGridCellProbabilities();
 
-  for (int i = 0; i < grid_size; i++)
+  for (int i = grid_size - 1; i >= 0; i--)
   {
-    for (int j = grid_size - 1; j >= 0; j--)
+    for (int j = 0; j < grid_size; j++)
     {
-      printf("i: %i j: %i\n", i, j);
       msg.data.push_back(100 * probabilities.at(i).at(j));
       
     }
@@ -442,7 +441,6 @@ void StaticOccupancyNode::mass_update()
     {
       updated_occP[i][j] = std::min(decay_factor * previous_occ[i][j], 1.0f - previous_free[i][j]);
       updated_freeP[i][j] = std::min(decay_factor * previous_free[i][j], 1.0f - previous_occ[i][j]);
-
     }
   }
   // Combine measurement nad prediction to form posterior occupied and free masses.
