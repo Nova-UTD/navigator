@@ -195,6 +195,102 @@ class MCL:
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
 
+    def get_best_particle(self, particles, cloud: np.array, grid: np.array):
+
+        alignments = []
+
+        # max_idx = np.argmax(weights)
+        # min_idx = np.argmin(weights)
+
+        for idx, particle in enumerate(particles):
+
+            # Our LiDAR data is in the vehicle ("base_link") frame.
+            # In order for us to test alignment, we need this in the particle's frame
+
+            # Rotate from base_link to particle frame
+            if self.mu is None:
+                translation = np.zeros((3))  # Empty
+            else:
+                translation = particle - self.mu
+            d_theta = translation[2]
+
+            r = np.array([[np.cos(d_theta), -1*np.sin(d_theta)],
+                          [np.sin(d_theta), np.cos(d_theta)]])
+            transformed_cloud = np.dot(cloud, r.T)  # Apply rotation matrix
+
+            # Then translate
+            transformed_cloud[:] += translation[0:2]
+
+            # We're now in the particle frame
+
+            # Scale to grid
+            transformed_cloud /= self.grid_resolution
+            transformed_cloud += [50., 75.]  # TODO: Make this a param
+
+            # # Round each point in the cloud down to an int
+            # # Now each point represents an index in grid. Convenient!
+            grid_indices = transformed_cloud.astype(int)
+
+            hits = 0
+
+            for index in grid_indices:
+                if index[0] >= grid.shape[0] or index[1] >= grid.shape[1]:
+                    continue
+                if grid[index[1], index[0]] == 100:
+                    hits += 1
+                else:
+                    hits -= 1
+
+            # if idx == max_idx:
+            #     print(f"Best hits: {(hits/len(grid_indices))*100}%")
+            #     plt.imshow(grid, origin='lower')
+            #     plt.scatter(
+            #         grid_indices[:, 0], grid_indices[:, 1])
+            #     plt.title(f"Best hits: {(hits/len(grid_indices))*100}%")
+            #     plt.show()
+
+            # elif idx == min_idx:
+            #     print(f"Worst hits: {(hits/len(grid_indices))*100}")
+            #     plt.imshow(grid, origin='lower')
+            #     plt.scatter(
+            #         grid_indices[:, 0], grid_indices[:, 1])
+            #     plt.title(f"Worst hits: {(hits/len(grid_indices))*100}")
+            #     plt.show()
+
+            alignments.append(hits)
+
+        # Plot for debugging
+        # Plot particle with best alignment
+        if self.mu is not None and time.time() % 5 < 1:
+            # plt.imshow(grid, origin='lower')
+            u = np.cos(particles[:, 2])
+            v = np.sin(particles[:, 2])
+            particles_on_grid = particles - self.mu
+            particles_on_grid[:, 0:2] += [50., 75.]
+            plt.xlim((20, 80))
+            plt.ylim((60, 100))
+            plt.scatter(particles_on_grid[:, 0],
+                        particles_on_grid[:, 1], c=self.weights)
+            plt.show()
+
+        alignments = np.array(alignments)
+        self.alignment_history = np.append(
+            self.alignment_history, np.mean(alignments))
+        # print(self.alignment_history)
+
+        # if len(self.alignment_history) % 50 == 0:
+        #     plt.plot(range(len(self.alignment_history)), self.alignment_history)
+        #     plt.show()
+
+        # weights *= alignments
+        # dists = np.linalg.norm(particles[:, 0:2] - gnss_pose[0:2], axis=1)
+        # weights[dists > 4.0] *= 0.1  # Penalize particles too far from the GNSS
+
+        # weights += 1.e-300      # avoid round-off to zero
+        # weights /= sum(weights)  # normalize
+
+        return particle[np.argmax(alignments)]
+
     def estimate(self, particles: np.array, weights) -> tuple:
         """Return mean and variance of particles
 
@@ -267,13 +363,18 @@ class MCL:
 
     def step(self, u, dt, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
 
-        self.predict(self.particles, u, std=[0.1, 0.1], dt=dt)
+        # self.predict(self.particles, u, std=[0.1, 0.1], dt=dt)
 
-        self.add_noise(self.particles, std=(
-            2, 2, np.pi/8), N=len(self.particles))
+        self.particles = self.create_gaussian_particles(
+            mean=gnss_pose, std=(2, 2, np.pi/8), N=len(self.particles))
 
-        self.update_weights(self.particles, self.weights,
-                            cloud, grid, gnss_pose)
+        # self.add_noise(self.particles, std=(
+        #     2, 2, np.pi/8), N=len(self.particles))
+
+        mu = self.get_best_particle(self.particles, cloud, grid)
+
+        # self.update_weights(self.particles, self.weights,
+        #                     cloud, grid, gnss_pose)
 
         # plt.plot(range(len(self.weights)), self.weights)
         # plt.show()
@@ -282,20 +383,22 @@ class MCL:
 
         # Determine if a resample is necessary
         # N/2 is a good threshold
-        N = len(self.particles)
-        if self.neff(self.weights) < 2*N/3:
-            indexes = self.systematic_resample(self.weights)
-            self.resample_from_index(self.particles, self.weights, indexes)
-            assert np.allclose(self.weights, 1/N)
-        mu, var = self.estimate(self.particles, self.weights)
+        # N = len(self.particles)
+        # if self.neff(self.weights) < 2*N/3:
+        #     indexes = self.systematic_resample(self.weights)
+        #     self.resample_from_index(self.particles, self.weights, indexes)
+        #     assert np.allclose(self.weights, 1/N)
+        # mu, var = self.estimate(self.particles, self.weights)
 
         gnss_difference = np.linalg.norm(mu - gnss_pose)
 
-        if gnss_difference > 5:
-            print("KIDNAPPED! Reseting.")
-            self.reset(gnss_pose, N=30)
+        # if gnss_difference > 5:
+        #     print("KIDNAPPED! Reseting.")
+        #     self.reset(gnss_pose, N=30)
 
         self.mu = mu
+
+        var = 0.0
 
         return mu, var
 
