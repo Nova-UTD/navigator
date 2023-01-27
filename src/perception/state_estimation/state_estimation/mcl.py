@@ -253,9 +253,24 @@ class MCL:
 
         self.weights = np.ones(N) / N
 
+    def add_noise(self, particles, std, N):
+        threshold = 1/N
+
+        low_particles = particles[self.weights < threshold]
+        low_N = len(low_particles)
+
+        print(f"Adding noise to {low_N} particles")
+        particles[self.weights < threshold][:, 0] += (randn(low_N) * std[0])
+        particles[self.weights < threshold][:, 1] += (randn(low_N) * std[1])
+        particles[self.weights < threshold][:, 2] += (randn(low_N) * std[2])
+        particles[self.weights < threshold][:, 2] %= 2 * np.pi
+
     def step(self, u, dt, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
 
         self.predict(self.particles, u, std=[0.1, 0.1], dt=dt)
+
+        self.add_noise(self.particles, std=(
+            2, 2, np.pi/8), N=len(self.particles))
 
         self.update_weights(self.particles, self.weights,
                             cloud, grid, gnss_pose)
@@ -263,10 +278,12 @@ class MCL:
         # plt.plot(range(len(self.weights)), self.weights)
         # plt.show()
 
+        # Add some noise to particles with the lowest weight
+
         # Determine if a resample is necessary
         # N/2 is a good threshold
         N = len(self.particles)
-        if self.neff(self.weights) < N/3:
+        if self.neff(self.weights) < 2*N/3:
             indexes = self.systematic_resample(self.weights)
             self.resample_from_index(self.particles, self.weights, indexes)
             assert np.allclose(self.weights, 1/N)
@@ -275,6 +292,7 @@ class MCL:
         gnss_difference = np.linalg.norm(mu - gnss_pose)
 
         if gnss_difference > 5:
+            print("KIDNAPPED! Reseting.")
             self.reset(gnss_pose, N=30)
 
         self.mu = mu
