@@ -421,11 +421,11 @@ void StaticOccupancyNode::publishOccupancyGrid()
 
   auto probabilities = getGridCellProbabilities();
 
-  for (int i = grid_size - 1; i >= 0; i--)
+  for (int i = 0; i < grid_size; i++)
   {
     for (int j = 0; j < grid_size; j++)
     {
-      msg.data.push_back(100 * probabilities.at(i).at(j));
+      msg.data.push_back(100 * probabilities.at(j).at(i));
       
     }
   }
