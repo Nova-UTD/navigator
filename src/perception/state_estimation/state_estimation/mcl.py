@@ -56,23 +56,19 @@ class MCL:
 
         return particles
 
-    def predict(self, particles: np.array, delta: np.array, std: np.array) -> None:
-        """Move each particle based on a noisy motion prediction
-
-        Args:
-            particles (np.array): array of particles
-            delta (np.array): [dx, dy, dtheta]
-            std (np.array): standard deviation of delta
-        """
+    def predict(self, particles, u, std, dt=1.):
+        """ move according to control input u (heading rate, speed)
+        with noise Q (std heading change, std velocity)`"""
 
         N = len(particles)
-        # print(particles)
-        # print(delta)
-        particles[:] += delta  # + (randn(N) * std)
-        particles += (randn(N, 3) * std)
-
-        # Wrap heading to [0, 2*pi]
+        # update heading
+        particles[:, 2] += u[0] * dt + (randn(N) * std[0])
         particles[:, 2] %= 2 * np.pi
+
+        # move in the (noisy) commanded direction
+        dist = (u[1] * dt) + (randn(N) * std[1])
+        particles[:, 0] += np.cos(particles[:, 2]) * dist
+        particles[:, 1] += np.sin(particles[:, 2]) * dist
 
     def update_orig(self, particles: np.array, weights: np.array, z: np.array, R: np.array, landmarks: np.array) -> None:
         """Update the weights of each particle based on our current observation
@@ -107,11 +103,9 @@ class MCL:
             self.alignment_history = np.array([])
 
         alignments = []
-        # for idx, cell in np.ndenumerate(grid[::10, ::10]):
-        #     if cell == 100:
-        #         plt.scatter(idx[1]*10, idx[0]*10, c='k')
 
         max_idx = np.argmax(weights)
+        min_idx = np.argmin(weights)
 
         for idx, particle in enumerate(particles):
 
@@ -123,7 +117,7 @@ class MCL:
                 translation = np.zeros((3))  # Empty
             else:
                 translation = particle - self.mu
-            d_theta = translation[2] % math.tau
+            d_theta = translation[2]
 
             r = np.array([[np.cos(d_theta), -1*np.sin(d_theta)],
                           [np.sin(d_theta), np.cos(d_theta)]])
@@ -134,12 +128,9 @@ class MCL:
 
             # We're now in the particle frame
 
-            # Translate relative to map origin
-            # transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
-
             # Scale to grid
             transformed_cloud /= self.grid_resolution
-            transformed_cloud += [50., 75.]
+            transformed_cloud += [50., 75.]  # TODO: Make this a param
 
             # # Round each point in the cloud down to an int
             # # Now each point represents an index in grid. Convenient!
@@ -152,34 +143,47 @@ class MCL:
                     continue
                 if grid[index[1], index[0]] == 100:
                     hits += 1
+                else:
+                    hits -= 1
 
-            if idx == max_idx:
-                print(f"Hits: {hits}/{len(grid_indices)}")
-                plt.imshow(grid, origin='lower')
-                plt.scatter(
-                    grid_indices[:, 0], grid_indices[:, 1])
-                plt.show()
+            # if idx == max_idx:
+            #     print(f"Best hits: {(hits/len(grid_indices))*100}%")
+            #     plt.imshow(grid, origin='lower')
+            #     plt.scatter(
+            #         grid_indices[:, 0], grid_indices[:, 1])
+            #     plt.title(f"Best hits: {(hits/len(grid_indices))*100}%")
+            #     plt.show()
+
+            # elif idx == min_idx:
+            #     print(f"Worst hits: {(hits/len(grid_indices))*100}")
+            #     plt.imshow(grid, origin='lower')
+            #     plt.scatter(
+            #         grid_indices[:, 0], grid_indices[:, 1])
+            #     plt.title(f"Worst hits: {(hits/len(grid_indices))*100}")
+            #     plt.show()
 
             alignments.append(hits)
 
         # Plot for debugging
         # Plot particle with best alignment
-        # if self.mu is not None and time.time() % 5 < 1:
-        #     plt.imshow(grid, origin='lower')
-        #     u = np.cos(particles[:, 2])
-        #     v = np.sin(particles[:, 2])
-        #     particles_on_grid = particles - self.mu
-        #     particles_on_grid[:, 0:2] += [50., 75.]
-        #     plt.quiver(particles_on_grid[:, 0], particles_on_grid[:, 1], u, v)
-        #     plt.show()
+        if self.mu is not None and time.time() % 5 < 1:
+            # plt.imshow(grid, origin='lower')
+            u = np.cos(particles[:, 2])
+            v = np.sin(particles[:, 2])
+            particles_on_grid = particles - self.mu
+            particles_on_grid[:, 0:2] += [50., 75.]
+            # plt.xlim((20, 80))
+            # plt.ylim((60, 100))
+            # plt.scatter(particles_on_grid[:, 0], particles_on_grid[:, 1],c=self.weights)
+            # plt.show()
 
         alignments = np.array(alignments)
         self.alignment_history = np.append(
-            self.alignment_history, np.max(alignments))
+            self.alignment_history, np.mean(alignments))
         # print(self.alignment_history)
 
         # if len(self.alignment_history) % 50 == 0:
-        #     plt.plot(self.alignment_history)
+        #     plt.plot(range(len(self.alignment_history)), self.alignment_history)
         #     plt.show()
 
         particles[:, 2] = gnss_pose[2]
@@ -232,7 +236,7 @@ class MCL:
         particles[:, 2] %= 2 * np.pi
         return particles
 
-    def __init__(self, grid_resolution: float, initial_pose=np.array([0.0, 0.0, 0.0]), map_origin=np.array([0.0, 0.0]), N=100):
+    def __init__(self, grid_resolution: float, initial_pose=np.array([0.0, 0.0, 0.0]), map_origin=np.array([0.0, 0.0]), N=30):
         self.particles = self.create_gaussian_particles(
             mean=initial_pose, std=(2, 2, np.pi/8), N=N)
 
@@ -243,15 +247,15 @@ class MCL:
         self.map_origin = map_origin
         self.grid_resolution = grid_resolution
 
-    def reset(self, initial_pose=np.array([0.0, 0.0, 0.0]), N=100):
+    def reset(self, initial_pose=np.array([0.0, 0.0, 0.0]), N=30):
         self.particles = self.create_gaussian_particles(
             mean=initial_pose, std=(2, 2, np.pi/8), N=N)
 
         self.weights = np.ones(N) / N
 
-    def step(self, delta: np.array, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
+    def step(self, u, dt, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
 
-        self.predict(self.particles, delta, std=np.array([0.0, 0.0, 0.0]))
+        self.predict(self.particles, u, std=[0.1, 0.1], dt=dt)
 
         self.update_weights(self.particles, self.weights,
                             cloud, grid, gnss_pose)
@@ -262,7 +266,7 @@ class MCL:
         # Determine if a resample is necessary
         # N/2 is a good threshold
         N = len(self.particles)
-        if self.neff(self.weights) < N/2:
+        if self.neff(self.weights) < N/3:
             indexes = self.systematic_resample(self.weights)
             self.resample_from_index(self.particles, self.weights, indexes)
             assert np.allclose(self.weights, 1/N)
@@ -271,7 +275,7 @@ class MCL:
         gnss_difference = np.linalg.norm(mu - gnss_pose)
 
         if gnss_difference > 5:
-            self.reset(gnss_pose, N=100)
+            self.reset(gnss_pose, N=30)
 
         self.mu = mu
 
