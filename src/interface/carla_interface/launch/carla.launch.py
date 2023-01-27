@@ -53,7 +53,7 @@ def generate_launch_description():
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
         launch_arguments={
             'host': 'localhost',
-            'port': "2000",
+            'port': "2016",
             'synchronous_mode': 'True',
             'town': 'Town02',
             'register_all_sensors': 'False',
@@ -105,13 +105,13 @@ def generate_launch_description():
         leaderboard_liaison,
 
         # LOCALIZATION
-        # mcl
+        mcl,
 
         # MAPPING
 
         # MISC
         urdf_publisher,
-        # rviz,
+        rviz,
 
         # PERCEPTION
         image_segmentation,
