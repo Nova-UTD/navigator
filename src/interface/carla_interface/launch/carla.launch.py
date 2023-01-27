@@ -62,9 +62,14 @@ def generate_launch_description():
         }.items(),
     )
 
-    state_estimation = Node(
+    gnss_processor = Node(
         package='state_estimation',
         executable='gnss_processing_node'
+    )
+
+    mcl = Node(
+        package='state_estimation',
+        executable='mcl_node'
     )
 
     map_manager = Node(
@@ -112,6 +117,7 @@ def generate_launch_description():
         # MISC
         urdf_publisher,
         rviz,
+        rviz,
 
         # PERCEPTION
         image_segmentation,
@@ -121,5 +127,5 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         map_manager,
-        state_estimation,
+        gnss_processor,
     ])
