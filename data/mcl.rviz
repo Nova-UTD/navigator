@@ -219,7 +219,7 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
-        - Alpha: 1
+        - Alpha: 0.30000001192092896
           Autocompute Intensity Bounds: false
           Autocompute Value Bounds:
             Max Value: 10
@@ -241,7 +241,7 @@ Visualization Manager:
           Position Transformer: XYZ
           Selectable: true
           Size (Pixels): 3
-          Size (m): 0.6000000238418579
+          Size (m): 0.30000001192092896
           Style: Flat Squares
           Topic:
             Depth: 5
@@ -513,18 +513,11 @@ Visualization Manager:
       Value: true
       Visibility:
         Cameras:
-          Bird's Eye: true
-          RGB Left: true
-          RGB Right: true
-          Semantic Left: true
-          Semantic Right: true
+          "": true
           Value: true
         Grid: true
         Grids:
-          Current Occupancy: true
-          Drivable Area: true
-          Flat Surfaces: true
-          Route Distance: true
+          "": true
           Value: true
         LiDAR:
           Filtered LiDAR: true
@@ -597,10 +590,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.0747966766357422
+      Pitch: 0.6147964596748352
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 2.8991153240203857
+      Yaw: 3.0841147899627686
     Saved: ~
 Window Geometry:
   Bird's Eye:

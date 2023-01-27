@@ -23,6 +23,10 @@ import math
 import numpy as np
 import rclpy
 import ros2_numpy as rnp
+import time
+
+# Message definitions
+from carla_msgs.msg import CarlaSpeedometer
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.node import Node
@@ -38,11 +42,14 @@ class MCLNode(Node):
     def __init__(self):
         super().__init__('mcl_node')
 
+        self.previous_result = None
         self.clock = Clock()
         self.filter = None
         self.gnss_pose = None
+        self.last_update_time = time.time()
         self.old_gnss_pose = None
         self.grid: np.array = None
+        self.speed: float = 0.0  # m/s
 
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 10)
@@ -56,6 +63,9 @@ class MCLNode(Node):
         self.map_sub = self.create_subscription(
             OccupancyGrid, '/grid/drivable', self.map_cb, 10)
 
+        self.speed_sub = self.create_subscription(
+            CarlaSpeedometer, '/carla/hero/speedometer', self.speed_cb, 1)
+
         self.particle_cloud_pub = self.create_publisher(
             PointCloud2, '/mcl/particles', 10)
 
@@ -64,15 +74,22 @@ class MCLNode(Node):
     def clock_cb(self, msg: Clock):
         self.clock = msg
 
-    def get_motion_delta(self, old_pose, current_pose):
-        if old_pose is None:
-            return np.zeros(3)
+    def speed_cb(self, msg: CarlaSpeedometer):
+        self.speed = msg.speed
 
-        delta = current_pose-old_pose
-        # delta[2] *= -1  # Why? I don't know
+    def getMotionDelta(self, current_gnss_pose, old_gnss_pose, speed: float, dt):
 
+        # Start by calculating heading change
+        delta = np.zeros((3))
+        delta[2] = current_gnss_pose[2] - old_gnss_pose[2]
         # Wrap heading to [0, 2*pi]
         delta[2] %= 2*np.pi
+
+        # Now calculate displacement via speedometer and dt
+        displacement = speed * dt  # result in meters
+        delta[0] = displacement * np.cos(delta[2])
+        delta[1] = displacement * np.sin(delta[2])
+
         return delta
 
     def publish_particle_cloud(self):
@@ -105,8 +122,17 @@ class MCLNode(Node):
         if self.filter is None:
             return
 
+        if self.previous_result is None:
+            self.previous_result = np.zeros((3))
+
         # Change in pose since last filter update
-        delta = self.get_motion_delta(self.old_gnss_pose, self.gnss_pose)
+        dt = time.time() - self.last_update_time
+        if self.gnss_pose is None or self.old_gnss_pose is None:
+            delta = [0., 0., 0.]
+        else:
+            delta = self.getMotionDelta(
+                self.gnss_pose, self.old_gnss_pose, self.speed, dt)
+        self.last_update_time = time.time()
 
         # The filter accepts clouds as a (N,2) array. Format accordingly.
         cloud_formatted = rnp.numpify(msg)
@@ -119,8 +145,6 @@ class MCLNode(Node):
 
         # step() is the critical function that feeds data into the filter
         # and returns a pose and covariance.
-
-        print(cloud)
 
         result_pose, pose_variance = self.filter.step(
             delta, cloud, self.gnss_pose, self.grid)
@@ -143,11 +167,12 @@ class MCLNode(Node):
         # self.get_logger().info("BROADCASTING")
 
         # Cache our gnss_pose to calculate the delta later
-        self.old_gnss_pose = self.gnss_pose
+        self.previous_result = result_pose
 
     def gnss_cb(self, msg: Odometry):
         pose_msg = msg.pose.pose
         yaw = 2*math.asin(pose_msg.orientation.z)
+        self.old_gnss_pose = self.gnss_pose
         self.gnss_pose = np.array([
             pose_msg.position.x,
             pose_msg.position.y,
@@ -157,9 +182,6 @@ class MCLNode(Node):
     def map_cb(self, msg: OccupancyGrid):
         self.grid = np.asarray(msg.data,
                                dtype=np.int8).reshape(msg.info.height, msg.info.width)
-
-        if self.gnss_pose is None:
-            return  # Wait for initial guess from GNSS
 
         if self.filter is not None:
             return

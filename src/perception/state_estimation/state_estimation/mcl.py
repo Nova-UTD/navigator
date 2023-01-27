@@ -105,7 +105,7 @@ class MCL:
 
         alignments = []
 
-        for particle in particles:
+        max_idx = np.argmax(weights)
 
             # We need the points in the particle frame.
             # They're in the base_link frame
@@ -128,6 +128,7 @@ class MCL:
             # Scale to grid
             # This converts the point's x/y unit from "meters" to "cells"
             transformed_cloud /= self.grid_resolution
+            transformed_cloud += [50., 75.]
 
             # Translate so that (0,0) is at the grid's origin, not the particle's
             transformed_cloud += cloud_location
@@ -136,30 +137,48 @@ class MCL:
             # # Now each point represents an index in grid. Convenient!
             grid_indices = transformed_cloud.astype(int)
 
-            start = time.time()
-
             hits = 0
 
-            for index in grid_indices[::100]:
+            for index in grid_indices:
                 if index[0] >= grid.shape[0] or index[1] >= grid.shape[1]:
                     continue
                 if grid[index[1], index[0]] == 100:
                     hits += 1
 
+            if idx == max_idx:
+                print(f"Hits: {hits}/{len(grid_indices)}")
+                plt.imshow(grid, origin='lower')
+                plt.scatter(
+                    grid_indices[:, 0], grid_indices[:, 1])
+                plt.show()
+
             alignments.append(hits)
 
+        # Plot for debugging
+        # Plot particle with best alignment
+        # if self.mu is not None and time.time() % 5 < 1:
+        #     plt.imshow(grid, origin='lower')
+        #     u = np.cos(particles[:, 2])
+        #     v = np.sin(particles[:, 2])
+        #     particles_on_grid = particles - self.mu
+        #     particles_on_grid[:, 0:2] += [50., 75.]
+        #     plt.quiver(particles_on_grid[:, 0], particles_on_grid[:, 1], u, v)
+        #     plt.show()
+
         alignments = np.array(alignments)
-        # plt.scatter(grid_indices[:,0], grid_indices[:,1])
-        if (time.time() % 5 < 1):
-            plt.hist(alignments)
-            plt.show()
-        # print(max(alignments))
+        self.alignment_history = np.append(
+            self.alignment_history, np.max(alignments))
+        # print(self.alignment_history)
+
+        # if len(self.alignment_history) % 50 == 0:
+        #     plt.plot(self.alignment_history)
+        #     plt.show()
 
         particles[:, 2] = gnss_pose[2]
 
         weights *= alignments
-        dists = np.linalg.norm(particles[:, 0:2] - gnss_pose[0:2], axis=1)
-        weights[dists > 4.0] *= 0.1  # Penalize particles too far from the GNSS
+        # dists = np.linalg.norm(particles[:, 0:2] - gnss_pose[0:2], axis=1)
+        # weights[dists > 4.0] *= 0.1  # Penalize particles too far from the GNSS
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
@@ -210,7 +229,8 @@ class MCL:
             mean=initial_pose, std=(2, 2, np.pi/8), N=N)
 
         self.weights = np.ones(N) / N
-        self.mu = initial_pose
+        self.alignment_history = None
+        self.mu = None
 
         self.map_origin = map_origin
         self.grid_resolution = grid_resolution
@@ -226,7 +246,10 @@ class MCL:
         self.predict(self.particles, delta, std=np.array([0.0, 0.0, 0.0]))
 
         self.update_weights(self.particles, self.weights,
-                            cloud, grid, gnss_pose, cloud_location=(100, 50))
+                            cloud, grid, gnss_pose)
+
+        # plt.plot(range(len(self.weights)), self.weights)
+        # plt.show()
 
         # Determine if a resample is necessary
         # N/2 is a good threshold
