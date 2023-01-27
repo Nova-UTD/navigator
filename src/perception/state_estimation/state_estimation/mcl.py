@@ -111,6 +111,8 @@ class MCL:
         #     if cell == 100:
         #         plt.scatter(idx[1]*10, idx[0]*10, c='k')
 
+        max_idx = np.argmax(weights)
+
         for idx, particle in enumerate(particles):
 
             # Our LiDAR data is in the vehicle ("base_link") frame.
@@ -130,11 +132,14 @@ class MCL:
             # Then translate
             transformed_cloud[:] += translation[0:2]
 
+            # We're now in the particle frame
+
             # Translate relative to map origin
-            transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
+            # transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
 
             # Scale to grid
             transformed_cloud /= self.grid_resolution
+            transformed_cloud += [50., 75.]
 
             # # Round each point in the cloud down to an int
             # # Now each point represents an index in grid. Convenient!
@@ -142,21 +147,31 @@ class MCL:
 
             hits = 0
 
-            for index in grid_indices[::100]:
+            for index in grid_indices:
                 if index[0] >= grid.shape[0] or index[1] >= grid.shape[1]:
                     continue
                 if grid[index[1], index[0]] == 100:
                     hits += 1
 
+            if idx == max_idx:
+                print(f"Hits: {hits}/{len(grid_indices)}")
+                plt.imshow(grid, origin='lower')
+                plt.scatter(
+                    grid_indices[:, 0], grid_indices[:, 1])
+                plt.show()
+
             alignments.append(hits)
 
-            # # Plot for debugging
-            # if (idx == 0):
-            #     plt.imshow(grid)
-            #     plt.scatter(cloud[:, 0], cloud[:, 1], c='red')
-            #     plt.scatter(transformed_cloud[:, 0],
-            #                 transformed_cloud[:, 1], c='green')
-            #     plt.show()
+        # Plot for debugging
+        # Plot particle with best alignment
+        # if self.mu is not None and time.time() % 5 < 1:
+        #     plt.imshow(grid, origin='lower')
+        #     u = np.cos(particles[:, 2])
+        #     v = np.sin(particles[:, 2])
+        #     particles_on_grid = particles - self.mu
+        #     particles_on_grid[:, 0:2] += [50., 75.]
+        #     plt.quiver(particles_on_grid[:, 0], particles_on_grid[:, 1], u, v)
+        #     plt.show()
 
         alignments = np.array(alignments)
         self.alignment_history = np.append(
