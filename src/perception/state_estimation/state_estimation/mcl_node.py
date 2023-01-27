@@ -87,8 +87,8 @@ class MCLNode(Node):
 
         # Now calculate displacement via speedometer and dt
         displacement = speed * dt  # result in meters
-        delta[0] = displacement * np.cos(delta[2])
-        delta[1] = displacement * np.sin(delta[2])
+        delta[0] = displacement * np.cos(current_gnss_pose[2])
+        delta[1] = displacement * np.sin(current_gnss_pose[2])
 
         return delta
 
@@ -136,8 +136,6 @@ class MCLNode(Node):
 
         # The filter accepts clouds as a (N,2) array. Format accordingly.
         cloud_formatted = rnp.numpify(msg)
-
-        # Limit to "road" points
         cloud_formatted = cloud_formatted[cloud_formatted['c'] == 0]
         cloud = np.vstack((cloud_formatted['x'], cloud_formatted['y'])).T
 
@@ -180,6 +178,9 @@ class MCLNode(Node):
         ])
 
     def map_cb(self, msg: OccupancyGrid):
+        if self.gnss_pose is None:
+            return  # Wait for initial guess from GNSS
+
         self.grid = np.asarray(msg.data,
                                dtype=np.int8).reshape(msg.info.height, msg.info.width)
 
