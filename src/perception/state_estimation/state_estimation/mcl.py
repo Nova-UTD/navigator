@@ -5,7 +5,7 @@ Package: state_estimation
 
 Python implementation of Monte Carlo Localization
 
-MCL (a.k.a. particle filter-based localization) has five steps:
+MCL (a.k.a. a particle filter) has five steps:
 1. Generate possible poses (particles) in a Gaussian distribution around an initial guess.
 2. Predict the next state of the particles with a motion_update, which includes noise
 3. For each updated particle, assign a probability score using the latest observations
@@ -92,7 +92,7 @@ class MCL:
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
 
-    def update_weights(self, particles, weights, cloud: np.array, grid: np.array, gnss_pose, cloud_location=(100, 50)):
+    def update_weights(self, particles, weights, cloud: np.array, grid: np.array, gnss_pose):
         """Update weights by checking each particle's alignment in the occupancy grid.
 
         Args:
@@ -103,35 +103,43 @@ class MCL:
             from map_origin to origin+width_meters.
         """
 
+        if self.alignment_history is None:
+            self.alignment_history = np.array([])
+
         alignments = []
+        # for idx, cell in np.ndenumerate(grid[::10, ::10]):
+        #     if cell == 100:
+        #         plt.scatter(idx[1]*10, idx[0]*10, c='k')
 
         max_idx = np.argmax(weights)
 
-            # We need the points in the particle frame.
-            # They're in the base_link frame
+        for idx, particle in enumerate(particles):
 
-            # First rotate:
-            # Theta is difference in heading from base_link->particle
-            theta = (particle[2] - self.mu[2]) % math.tau
-            r = np.array([[np.cos(theta), -1*np.sin(theta)],
-                          [np.sin(theta), np.cos(theta)]])
-            # Apply the rotation matrix
-            transformed_cloud = np.dot(cloud, r.T)
+            # Our LiDAR data is in the vehicle ("base_link") frame.
+            # In order for us to test alignment, we need this in the particle's frame
+
+            # Rotate from base_link to particle frame
+            if self.mu is None:
+                translation = np.zeros((3))  # Empty
+            else:
+                translation = particle - self.mu
+            d_theta = translation[2] % math.tau
+
+            r = np.array([[np.cos(d_theta), -1*np.sin(d_theta)],
+                          [np.sin(d_theta), np.cos(d_theta)]])
+            transformed_cloud = np.dot(cloud, r.T)  # Apply rotation matrix
 
             # Then translate
-            dx = particle[0] - self.mu[0]
-            dy = particle[1] - self.mu[1]
-            transformed_cloud[:] += [dx, dy]
+            transformed_cloud[:] += translation[0:2]
 
-            # Cloud should now be in the particle's frame
+            # We're now in the particle frame
+
+            # Translate relative to map origin
+            # transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
 
             # Scale to grid
-            # This converts the point's x/y unit from "meters" to "cells"
             transformed_cloud /= self.grid_resolution
             transformed_cloud += [50., 75.]
-
-            # Translate so that (0,0) is at the grid's origin, not the particle's
-            transformed_cloud += cloud_location
 
             # # Round each point in the cloud down to an int
             # # Now each point represents an index in grid. Convenient!
