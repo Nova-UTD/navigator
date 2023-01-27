@@ -49,6 +49,7 @@ class MCLNode(Node):
         self.last_update_time = time.time()
         self.old_gnss_pose = None
         self.grid: np.array = None
+        self.imu = None
         self.speed: float = 0.0  # m/s
 
         self.clock_sub = self.create_subscription(
@@ -59,6 +60,9 @@ class MCLNode(Node):
 
         self.gnss_sub = self.create_subscription(
             Odometry, '/odometry/gnss_processed', self.gnss_cb, 10)
+
+        self.imu_sub = self.create_subscription(
+            Imu, '/carla/hero/imu', self.imu_cb, 10)
 
         self.map_sub = self.create_subscription(
             OccupancyGrid, '/grid/drivable', self.map_cb, 10)
@@ -73,6 +77,9 @@ class MCLNode(Node):
 
     def clock_cb(self, msg: Clock):
         self.clock = msg
+    
+    def imu_cb(self, msg: Imu):
+        self.imu = msg
 
     def speed_cb(self, msg: CarlaSpeedometer):
         self.speed = msg.speed
@@ -119,7 +126,7 @@ class MCLNode(Node):
         """
 
         # Wait until filter is created
-        if self.filter is None:
+        if self.filter is None or self.imu is None:
             return
 
         if self.previous_result is None:
@@ -127,12 +134,7 @@ class MCLNode(Node):
 
         # Change in pose since last filter update
         dt = time.time() - self.last_update_time
-        if self.gnss_pose is None or self.old_gnss_pose is None:
-            delta = [0., 0., 0.]
-        else:
-            delta = self.getMotionDelta(
-                self.gnss_pose, self.old_gnss_pose, self.speed, dt)
-        self.last_update_time = time.time()
+        heading_rate = self.imu.angular_velocity.z
 
         # The filter accepts clouds as a (N,2) array. Format accordingly.
         cloud_formatted = rnp.numpify(msg)
@@ -145,7 +147,9 @@ class MCLNode(Node):
         # and returns a pose and covariance.
 
         result_pose, pose_variance = self.filter.step(
-            delta, cloud, self.gnss_pose, self.grid)
+            [heading_rate, self.speed], dt, cloud, self.gnss_pose, self.grid)
+
+        self.last_update_time = time.time()
         self.publish_particle_cloud()
 
         # self.get_logger().info(f"Diff: {str(self.gnss_pose-result_pose)}")
