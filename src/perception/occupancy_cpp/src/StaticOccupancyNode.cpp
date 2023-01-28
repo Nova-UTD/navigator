@@ -261,10 +261,9 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
     {
       ray_tracing_approximation_x_increment(0, 0, (-1) * x, y, -1, 1, false);
     }
-    else {
-      //printf("Did not match a case.\n");
-      //printf("X: %f, Y: %f, SLOPE %f\n", x, y, slope);
-    }
+    
+      
+    
   }
 }
 
@@ -405,14 +404,14 @@ void StaticOccupancyNode::addEgoMask()
     }
   }
 
-  for (unsigned int i = 60; i < 70; i++)
-  {
-    for (unsigned int j = 110; j < 120; j++)
-    {
-      measured_occ[i][j] = 1.0;
-      measured_free[i][j] = 0.0;
-    }
-  }
+  // for (unsigned int i = 60; i < 70; i++)
+  // {
+  //   for (unsigned int j = 110; j < 120; j++)
+  //   {
+  //     measured_occ[i][j] = 1.0;
+  //     measured_free[i][j] = 0.0;
+  //   }
+  // }
 }
 
 //-------------HELPERS----------------------------//
@@ -545,8 +544,6 @@ void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x1, int y1, 
     // printf("Measured_occ value: %f\n", measured_occ[x_coordinate][y_coordinate]);
     // printf("Measured_free value: %f\n\n", measured_free[x_coordinate][y_coordinate]);
   }
-
-  
 }
 
 void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive)
@@ -578,7 +575,8 @@ void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x1, int y1, 
   }
 }
 
-void StaticOccupancyNode::ray_tracing_horizontal(int x2)
+// VERTICLE ++!!!!!!!
+void StaticOccupancyNode::ray_tracing_vertical(int x2)
 {
   int x1 = 0;
   int y1 = 0;
@@ -586,10 +584,14 @@ void StaticOccupancyNode::ray_tracing_horizontal(int x2)
 
   for (int x = x1; x <= x2; x++)
   {
-    if (measured_occ[x + 64][64] == meas_mass)
+    //checks if the point is occupied
+
+    if (measured_occ[64][x + 64] == meas_mass)
     {
+      printf("BROKE! VERTICAL + \n\n");
       break;
     }
+    
 
     measured_free[x + 64][64] = meas_mass;
   }
@@ -597,7 +599,8 @@ void StaticOccupancyNode::ray_tracing_horizontal(int x2)
   measured_free[x2 + 64][64] = 0.0;
 }
 
-void StaticOccupancyNode::ray_tracing_horizontal_n(int x1)
+// VERTICAL NEGATIVE!!!!
+void StaticOccupancyNode::ray_tracing_vertical_n(int x1)
 {
   int x2 = 0;
   int y2 = 0;
@@ -605,8 +608,9 @@ void StaticOccupancyNode::ray_tracing_horizontal_n(int x1)
 
   for (int x = x1; x <= x2; x++)
   {
-    if (measured_occ[x + 64][64] == meas_mass)
+    if (measured_occ[64][x + 64] == meas_mass)
     {
+      printf("BROKE! VERTICAL - \n\n");
       break;
     }
 
@@ -616,7 +620,7 @@ void StaticOccupancyNode::ray_tracing_horizontal_n(int x1)
   measured_free[x2 + 64][64] = 0.0;
 }
 
-void StaticOccupancyNode::ray_tracing_vertical(int y2)
+void StaticOccupancyNode::ray_tracing_horizontal(int y2)
 {
   int x1 = 0;
   int y1 = 0;
@@ -626,13 +630,14 @@ void StaticOccupancyNode::ray_tracing_vertical(int y2)
   {
     if (measured_occ[64][y + 64] == meas_mass)
     {
+      printf("BROKE! HORIZONTAL + \n\n");
       break;
     }
     measured_free[64][y + 64] = meas_mass;
   }
 }
 
-void StaticOccupancyNode::ray_tracing_vertical_n(int y1)
+void StaticOccupancyNode::ray_tracing_horizontal_n(int y1)
 {
   int x1 = 0;
   int y2 = 0;
@@ -640,8 +645,10 @@ void StaticOccupancyNode::ray_tracing_vertical_n(int y1)
 
   for (int y = y1; y <= y2; y++)
   {
-    if (measured_occ[64][y + 64] == meas_mass)
+    if (
+    measured_occ[64][y + 64] == meas_mass)
     {
+      printf("BROKE! HORIZONTAL - \n\n");
       break;
     }
     measured_free[64][y + 64] = meas_mass;
