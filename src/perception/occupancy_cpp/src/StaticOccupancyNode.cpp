@@ -56,6 +56,8 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
   pcl::PointCloud<pcl::PointXYZI> cloud;
   pcl::fromROSMsg(*msg, cloud);
 
+  
+
   // 1. Convert new measurement into a DST grid.
   createOccupancyGrid(cloud);
 
@@ -171,16 +173,17 @@ void StaticOccupancyNode::createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &c
  */
 void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> &cloud)
 {
-  std::printf("Adding %i points to the DST.\n\n", cloud.size());
+  //std::printf("Adding %i points to the DST.\n\n", cloud.size());
   for (size_t i = 0; i < cloud.size(); i++)
   {
+
+    //Dimensions for X & Y [0 -> 128 (grid_size)]
+    //Subtract half of grid_size so resulting dimension is [-64 -> 64]
 
     int x = (int)(cloud[i].x / res);
     int y = (int)(cloud[i].y / res);
 
     float z = cloud[i].z;
-
-    
 
     // Ignores points above a certain height?
     if (z * (-1) > 0.5)
@@ -188,9 +191,10 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
       std::printf("Point was above max height, skipping.\n");
       continue;
     }
-    else if (x < -1 * SIZE && y < -1 * SIZE && x >= SIZE && y >= SIZE)
+    
+    if (x < (-1*SIZE) || y < (-1*SIZE) || x >= SIZE || y >= SIZE)
     {
-      std::printf("Point was outside grid boundaries, skipping.\n");
+      //std::printf("Point was outside grid boundaries, skipping.\n");
       continue;
     }
 
@@ -392,12 +396,21 @@ void StaticOccupancyNode::add_free_spaces_to_the_DST()
 void StaticOccupancyNode::addEgoMask()
 {
   // Vehicle shape.
-  for (unsigned int j = 60; j < 68; j++)
+  for (unsigned int i = 60; i < 68; i++)
   {
-    for (unsigned int i = 62; i < 67; i++)
+    for (unsigned int j = 62; j < 67; j++)
     {
-      measured_occ[j][i] = 1.0;
-      measured_free[j][i] = 0.0;
+      measured_occ[i][j] = 1.0;
+      measured_free[i][j] = 0.0;
+    }
+  }
+
+  for (unsigned int i = 60; i < 70; i++)
+  {
+    for (unsigned int j = 110; j < 120; j++)
+    {
+      measured_occ[i][j] = 1.0;
+      measured_free[i][j] = 0.0;
     }
   }
 }
@@ -488,7 +501,6 @@ std::vector<std::vector<float>> StaticOccupancyNode::getGridCellProbabilities()
 int StaticOccupancyNode::find_nearest(int n, float v, float v0, float vn, float res)
 {
   int index = std::floor(n * (v - v0 + res / 2.) / (vn - v0 + res));
-  //printf("INDEX: %i\n\n", index);
   return index;
 }
 //------------------------------------------------//
@@ -496,11 +508,16 @@ int StaticOccupancyNode::find_nearest(int n, float v, float v0, float vn, float 
 //-------------RAY TRACING HELPERS----------------//
 void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive)
 {
+
+  //MEAS MASS IS 1
+
+  
   int slope = 2 * (y2 - y1);
   int slope_error = slope - (x2 - x1);
   int x_sample, y_sample;
   for (int x = x1, y = y1; x < x2; x++)
   {
+    //checks if the point is occupied
     if (measured_occ[flip_x * x + 64][flip_y * y + 64] == meas_mass)
     {
       break;
@@ -516,10 +533,11 @@ void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x1, int y1, 
     }
   }
 
-  if (inclusive == false)
+  if (inclusive == false) //TODO: Check
   {
     int x_coordinate = flip_x * x2 + 64;
     int y_coordinate = flip_y * y2 + 64;
+    //printf("(%i,%i)\n", x_coordinate, y_coordinate);
     measured_occ[x_coordinate][y_coordinate] = meas_mass;
     measured_free[x_coordinate][y_coordinate] = 0.0;
 
