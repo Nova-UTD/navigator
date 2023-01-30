@@ -107,13 +107,13 @@ class ImageSegmentationNode(Node):
         )
 
         self.left_rgb_sub = self.create_subscription(
-            Image, "/carla/hero/rgb_left/image", self.rgb_left_cb, image_qos_policy)
+            Image, "/carla/hero/rgb_left/image", self.rgbLeftCb, image_qos_policy)
 
         self.left_result_pub = self.create_publisher(
             Image, '/semantic/left', 1)
 
         self.right_rgb_sub = self.create_subscription(
-            Image, "/carla/hero/rgb_right/image", self.rgb_right_cb, image_qos_policy)
+            Image, "/carla/hero/rgb_right/image", self.rgbRightCb, image_qos_policy)
         self.right_result_pub = self.create_publisher(
             Image, '/semantic/right', 1)
 
@@ -185,45 +185,51 @@ class ImageSegmentationNode(Node):
 
         return im
 
-    def convert_to_color(self, mono_result) -> np.array:
+    def convertToColor(self, mono_result) -> np.array:
         plt.imshow(mono_result)
         # plt.show()
         result_rgb = np.zeros(
             (mono_result.shape[0], mono_result.shape[1], 3), dtype=np.uint8)
         result_rgb[:, :][mono_result == 0] = [128, 64, 128]  # Road
         result_rgb[:, :][mono_result == 1] = [244, 35, 232]  # Sidewalk
-        result_rgb[:, :][mono_result == 2] = [70, 70, 70]  # Building
+        result_rgb[:, :][np.logical_or(np.logical_or(
+            mono_result == 2, mono_result == 3), mono_result == 4)] = [70, 70, 70]  # Building, wall, fence
         result_rgb[:, :][mono_result == 3] = [100, 40, 40]  # Fence
         result_rgb[:, :][mono_result == 5] = [153, 153, 153]  # Pole
-        # result_rgb[:, :][mono_result == 6] = [220, 220, 0]  # Traffic sign
         result_rgb[:, :][mono_result == 6] = [250, 170, 30]  # Traffic light
+        result_rgb[:, :][mono_result == 7] = [220, 220, 0]  # Traffic light
         result_rgb[:, :][mono_result == 8] = [107, 142, 35]  # Vegetation
         result_rgb[:, :][mono_result == 9] = [145, 170, 100]  # Terrain
         result_rgb[:, :][mono_result == 10] = [70, 130, 180]  # Sky
         result_rgb[:, :][mono_result == 11] = [220, 20, 60]  # Person
-        result_rgb[:, :][mono_result == 13] = [0, 0, 142]  # Car
+        result_rgb[:, :][np.logical_or(np.logical_or(
+            np.logical_or(mono_result == 12, mono_result == 13),
+            np.logical_or(mono_result == 14, mono_result == 15)),
+            mono_result == 16)] = [0, 0, 142]  # Car, rider, truck, bus, train, motorcycle
+        result_rgb[:, :][np.logical_or(mono_result == 17, mono_result == 18)] = [
+            119, 11, 32]  # Building, wall, fence
         return result_rgb
 
-    def rgb_left_cb(self, msg: Image):
+    def rgbLeftCb(self, msg: Image):
         img_array = self.bridge.imgmsg_to_cv2(
             msg, 'rgb8')[:, :, :3]  # Cut out alpha
 
         result = inference_segmentor(self.model, img_array)[0]
 
-        result_rgb = self.convert_to_color(result)
+        result_rgb = self.convertToColor(result)
 
         result_msg_rgb = self.bridge.cv2_to_imgmsg(result_rgb, encoding='rgb8')
         result_msg_rgb.header = msg.header
 
         self.left_result_pub.publish(result_msg_rgb)
 
-    def rgb_right_cb(self, msg: Image):
+    def rgbRightCb(self, msg: Image):
         img_array = self.bridge.imgmsg_to_cv2(
             msg, 'rgb8')[:, :, :3]  # Cut out alpha
 
         result = inference_segmentor(self.model, img_array)[0]
 
-        result_rgb = self.convert_to_color(result)
+        result_rgb = self.convertToColor(result)
 
         result_msg_rgb = self.bridge.cv2_to_imgmsg(result_rgb, encoding='rgb8')
         result_msg_rgb.header = msg.header
