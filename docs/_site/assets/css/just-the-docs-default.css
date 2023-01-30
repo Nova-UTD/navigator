@@ -135,6 +135,32 @@
 
 .highlight .il { color: #2aa198; }
 
+.swatch { padding: 0.5rem; vertical-align: middle; display: inline-block; box-sizing: border-box; margin-right: 0.25rem; }
+
+.bg-road { background-color: #804080; }
+
+.bg-building { background-color: #464646; }
+
+.bg-sidewalk { background-color: #f423e8; }
+
+.bg-person { background-color: crimson; }
+
+.bg-car { background-color: #00008e; }
+
+.bg-fence { background-color: #642828; }
+
+.bg-pole { background-color: #999999; }
+
+.bg-traffic-sign { background-color: #dcdc00; }
+
+.bg-traffic-light { background-color: #faaa1e; }
+
+.bg-vegetation { background-color: olivedrab; }
+
+.bg-terrain { background-color: #91aa64; }
+
+.bg-sky { background-color: steelblue; }
+
 /*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */
 /* Document ========================================================================== */
 /** 1. Correct the line height in all browsers. 2. Prevent adjustments of font size after orientation changes in iOS. */
@@ -596,6 +622,10 @@ figure.highlight pre, figure.highlight :not(pre) > code { overflow-x: auto; padd
 .code-example + .highlighter-rouge, .code-example + .sectionbody .listingblock, .code-example + .content, .code-example + figure.highlight, .listingblock > .title + .highlighter-rouge, .listingblock > .title + .sectionbody .listingblock, .listingblock > .title + .content, .listingblock > .title + figure.highlight { position: relative; margin-top: -1rem; border-right: 1px solid #eeebee; border-bottom: 1px solid #eeebee; border-left: 1px solid #eeebee; border-top-left-radius: 0; border-top-right-radius: 0; }
 
 code.language-mermaid { padding: 0; background-color: inherit; border: 0; }
+
+.highlight, pre.highlight { background: #f5f6fa; color: #5c5962; }
+
+.highlight pre { background: #f5f6fa; }
 
 .text-grey-dk-000 { color: #959396 !important; }
 
