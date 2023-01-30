@@ -351,7 +351,7 @@
   },"50": {
     "doc": "Planning",
     "title": "Costmap specifications",
-    "content": ". | All costmaps should be in the map frame, aligned with the x/y axes of the map. This eliminates the need to perform costly transforms. | All costmaps should have resolutions (cell sizes) that are multiples of the same base resolution. Example: 0.4, 0.8, and 1.6 meters. This allows them to be cleanly scaled. | The costmaps do not necessarily need to share an origin nor size, though their sum will only be accurate in the region where they align. | . ",
+    "content": ". | All costmaps should be in the base_link frame, centered on the vehicle. | All costmaps should have resolutions (cell sizes) that are multiples of the same base resolution. Example: 0.4, 0.8, and 1.6 meters. This allows them to be cleanly scaled. | The costmaps do not necessarily need to share an origin nor size, though their sum will only be accurate in the region where they align. | . ",
     "url": "/navigator/planning/planning-overview.html#costmap-specifications",
     
     "relUrl": "/planning/planning-overview.html#costmap-specifications"
@@ -412,167 +412,188 @@
     
     "relUrl": "/interface/schematics.html#epas"
   },"59": {
+    "doc": "Semantic segmentation",
+    "title": "Semantic segmentation",
+    "content": "Maintained by Will Heitman . ",
+    "url": "/navigator/perception/segmentation.html",
+    
+    "relUrl": "/perception/segmentation.html"
+  },"60": {
+    "doc": "Semantic segmentation",
+    "title": "Table of contents",
+    "content": ". | TOC | . ",
+    "url": "/navigator/perception/segmentation.html#table-of-contents",
+    
+    "relUrl": "/perception/segmentation.html#table-of-contents"
+  },"61": {
+    "doc": "Semantic segmentation",
+    "title": "Class dictionary",
+    "content": "Our semantic segmentation model is trained on the Cityscapes Dataset. | Description | Class ID (int) | RGB | . | Road | 0 | (128, 64, 128) | . | Sidewalk | 1 | (244, 35, 232) | . | Parking |   |   | . | Rail track |   |   | . | Person | 11 | (220, 20, 60) | . | Rider |   |   | . | Car | 13 | (0, 0, 142) | . | Truck |   |   | . | Bus |   |   | . | On rails |   |   | . | Motorcycle |   |   | . | Bicycle |   |   | . | Caravan |   |   | . | Trailer |   |   | . | Building |   | (70, 70, 70) | . | Wall |   |   | . | Fence | 3 | (100, 40, 40) | . | Guard rail |   |   | . | Bridge |   |   | . | Tunnel |   |   | . | Pole | 5 | (153, 153, 153) | . | Traffic sign |   | (220, 220, 0) | . | Traffic light | 6 | (250, 170, 30) | . | Vegetation | 8 | (107, 142, 35) | . | Terrain | 9 | (145, 170, 100) | . | Sky | 10 | (70, 130, 180) | . ",
+    "url": "/navigator/perception/segmentation.html#class-dictionary",
+    
+    "relUrl": "/perception/segmentation.html#class-dictionary"
+  },"62": {
     "doc": "Sensing",
     "title": "Sensing overview",
     "content": " ",
     "url": "/navigator/sensing/sensing-overview.html#sensing-overview",
     
     "relUrl": "/sensing/sensing-overview.html#sensing-overview"
-  },"60": {
+  },"63": {
     "doc": "Sensing",
     "title": "Table of contents",
     "content": ". The Sensing system is responsible for processing raw sensor data into a usable form for the Perception system. For example, raw LiDAR data from our front and rear sensors is merged into a single reference frame, downsampled, and cropped to remove points along the vehicle itself (points of our vehicle’s doors, for example). More info to come! But our filters aren’t reinvinting the wheel. ",
     "url": "/navigator/sensing/sensing-overview.html#table-of-contents",
     
     "relUrl": "/sensing/sensing-overview.html#table-of-contents"
-  },"61": {
+  },"64": {
     "doc": "Sensing",
     "title": "Sensing",
     "content": " ",
     "url": "/navigator/sensing/sensing-overview.html",
     
     "relUrl": "/sensing/sensing-overview.html"
-  },"62": {
+  },"65": {
     "doc": "Simulation",
     "title": "Simulation overview",
     "content": "Maintained by Connor Scally &amp; Daniel Vayman . ",
     "url": "/navigator/simulation/simulation-overview.html#simulation-overview",
     
     "relUrl": "/simulation/simulation-overview.html#simulation-overview"
-  },"63": {
+  },"66": {
     "doc": "Simulation",
     "title": "Table of contents",
     "content": ". | Simulation Enviroment | Launching the simulator &amp; running Navigator: | Using the Simulator: | Troubleshooting: | Sourcing Foxy Automatically in Bash: | . Before demonstrating our codebase on the vehicle, in the real world, we must first test our stack in a virtual one. The following documentation outlines essential CARLA usage and syntax, to allow for simulating our stack in a virtual enviroment. Nova utilizes CARLA for virtualization. For further information on CARLA, and to learn more about advanced usage, please see the following links: . | https://carla.org/ | https://carla.readthedocs.io/en/latest/ | . ",
     "url": "/navigator/simulation/simulation-overview.html#table-of-contents",
     
     "relUrl": "/simulation/simulation-overview.html#table-of-contents"
-  },"64": {
+  },"67": {
     "doc": "Simulation",
     "title": "Simulation Enviroment",
     "content": ". | Prerequisites: . | CARLA Simulator: Please follow the instructions in the above links to install CARLA on your chosen operating system | Navigator: Please see our GitHub page for the latest releases of Navigator | RVIZ (Or an equivalent ROS visualizer) | ROS2 | Dependencies for the above: Self-explanatory, Navigator comes with most of what you need, CARLA may not, do not forget to check! | . | . ",
     "url": "/navigator/simulation/simulation-overview.html#simulation-enviroment",
     
     "relUrl": "/simulation/simulation-overview.html#simulation-enviroment"
-  },"65": {
+  },"68": {
     "doc": "Simulation",
     "title": "Launching the simulator &amp; running Navigator:",
     "content": ". | Launching CARLA: . | Your first step should be to navigate to your CARLA directory and launch CARLA with the CARLAUE4.sh script with the -RenderOffScreen flag. If you are on a unix system, the command will look like this: | . $ /home/share/carla/CarlaUE4.sh -RenderOffscreen . | The “RenderOffscreen” flag hides the rendering window, which saves some resources. See here for more details . | Launching RVIZ (within our Docker container): . | Open a new terminal window. | Navigate to the root directory of Navigator . | Enable Docker to launch GUI programs . $ xhost + . | Run our docker container start script. (If first time running container, refer to step 3) . $ ./start.sh . | Source the setup script via a command like: . install/setup.bash . | Run: rviz2 | Select File followed by Open Config Select default.rviz from the share folder. It is recommended that you have your own copy of this as well for your own configuration. | . | Launching Navigator: . | Open a new terminal window. | Navigate to the root directory of Navigator. | Run the docker container ./start.sh . | Run source /install/setup.bash (if you have bash sourcing ROS automatically (see below), that works too) . | Run ros2 launch carla_interface carla-lite.launch.py . | Check RVIZ and terminal output. The sim_bridge will publish sensor data just as if you were driving on campus, and it will similary accept commands from our standard topics. As of writing, our custom bridge publishes: . | . | GNSS (GPS) | IMU | Front and rear Lidar (not fully functional) | Front RGB camera | Front depth camera | CARLA ground truths for | Car’s odometry (position, orientation, speed) | CARLA virtual bird’s-eye camera (/carla/birds_eye_rgb) | . The most up-to-date information on our bridge’s capabilities can be found at the top of the script itself. | . ",
     "url": "/navigator/simulation/simulation-overview.html#launching-the-simulator--running-navigator",
     
     "relUrl": "/simulation/simulation-overview.html#launching-the-simulator--running-navigator"
-  },"66": {
+  },"69": {
     "doc": "Simulation",
     "title": "Using the Simulator:",
     "content": ". | You can control our ego vehicle with ros2 run manual_control manual_control_node . | At the moment, this only supports keyboard control through NoMachine or similar, not SSH. | If you get a “pynput” error, try running pip3 install pynput. | . | You can change a number of simulation settings by editing our script’s contants (here). | Don’t forget to rebuild the package or use colcon build --symlink-install (recommended). | ROS param support in the works. | . | . ",
     "url": "/navigator/simulation/simulation-overview.html#using-the-simulator",
     
     "relUrl": "/simulation/simulation-overview.html#using-the-simulator"
-  },"67": {
+  },"70": {
     "doc": "Simulation",
     "title": "Troubleshooting:",
     "content": ". | If you get a “pynput” error, try running pip3 install pynput. | If you get a CARLA segmentation fault, it’s likely you just need to restart CARLA. This will be fixed… eventually. This should only happen after starting the bridge 10 times or so, and should not happen while the bridge is running. | If CARLA gives you a SIGFAULT error attach the -carla-rpc-port=N where N = your favorite (Not in use) port number. | . ",
     "url": "/navigator/simulation/simulation-overview.html#troubleshooting",
     
     "relUrl": "/simulation/simulation-overview.html#troubleshooting"
-  },"68": {
+  },"71": {
     "doc": "Simulation",
     "title": "Sourcing Foxy Automatically in Bash:",
     "content": ". | Open your terminal | Write the command –&gt; gedit ~/.bashrc (or nano, whatever really) | Go under the last line line and write –&gt; source /opt/ros/foxy/setup.bash | Save and exit | Now with every new shell you open, it will source automatically | . ",
     "url": "/navigator/simulation/simulation-overview.html#sourcing-foxy-automatically-in-bash",
     
     "relUrl": "/simulation/simulation-overview.html#sourcing-foxy-automatically-in-bash"
-  },"69": {
+  },"72": {
     "doc": "Simulation",
     "title": "Simulation",
     "content": " ",
     "url": "/navigator/simulation/simulation-overview.html",
     
     "relUrl": "/simulation/simulation-overview.html"
-  },"70": {
+  },"73": {
     "doc": "System overview",
     "title": "System overview",
     "content": "Maintained by Will Heitman . ",
     "url": "/navigator/system-overview.html",
     
     "relUrl": "/system-overview.html"
-  },"71": {
+  },"74": {
     "doc": "System overview",
     "title": "Table of contents",
     "content": ". | Design . | About nodes and topics | . | Subsystems | Cost maps | Topics | . ",
     "url": "/navigator/system-overview.html#table-of-contents",
     
     "relUrl": "/system-overview.html#table-of-contents"
-  },"72": {
+  },"75": {
     "doc": "System overview",
     "title": "Design",
     "content": "Navigator is designed to be: . | Simple, with components that are easy to use an extend . | When a more powerful but complex algorithm is used, a simpler alternative should also be present | . | Modular, with nodes that can be swapped, added, and updated with the help of ROS2 . | Since nodes are all built using standard C++ and Python libraries, code is future-proofed. | . | Open source, with all of our code licensed under the highly permissable MIT license . | Our dependencies are also open-source | . | . About nodes and topics . Navigator is built upon ROS2, a communications framework where individual executables called “nodes” exchange messages throguh “topics.” A node can either subscribe to a topic or publish to it. In this fashion, individual nodes form a dense network where everything from camera streams to steering commands are passed from one node to the next. Nodes can be grouped into packages. Packages are then grouped in workspaces. Navigator itself is a ROS workspace. It contains many packages, and each package contains at least one node. Using ROS2, one node can gather raw LiDAR data from a sensor, where it publishes the pointcloud as a PointCloud2 message to a topic called /lidar/raw. Another node can then subscribe to /lidar/raw, filter the data, and publish the result to /lidar/filtered. To learn more about ROS, watch this lecture by Katherine Scott, a developer advocate at Open Robotics. &lt;!– ## Subsystems . Navigator is split into five main subsystems: . | Sensing, where raw sensor data from cameras, GNSS, and more is filtered before being passed along | Perception, which uses the filtered sensor data to build a rich understanding of the car’s surroundings | Planning, which uses this rich understanding, plus the desired destination, to decide how the car should act on a high level | Controls, where the desired action is compared to the car’s current state and low-level action is calculated | Interface, where the low-level action is sent to the steering wheel and pedals. –&gt; | . ",
     "url": "/navigator/system-overview.html#design",
     
     "relUrl": "/system-overview.html#design"
-  },"73": {
+  },"76": {
     "doc": "System overview",
     "title": "Subsystems",
     "content": "We can divide Navigator’s nodes into four groups. The sensing subsystem takes raw sensor data and publishes them as Image messages, PointCloud2 messages, Imu messages, and so on. This subsystem also include sensor filters, which subscribe to raw data and publish their filtered results. The perception subsystem draws inferences from the sensor data, including the location of pedestrians, our position on the map, and the predicted motion of surrounding vehicles. Nodes in this subsystem often publish their results as cost maps. The planning subsystem takes our perception results and decides what our vehicle should do. This subsystem handles both high-level decisions (Should we pass a car that’s stopped in the road?) and low-level ones (How far should we press the throttle pedal to reach our desired speed?). The interface subsystem is the link between our software and hardware. It includes nodes that communicate with our steering hardware, our microcontroller, and more. Both the sensing and interface subsystems are vehicle-specific, which means that they need to be configured to suite each individual vehicle. At Nova, we have separate configurations for simulated driving and real-world use. ",
     "url": "/navigator/system-overview.html#subsystems",
     
     "relUrl": "/system-overview.html#subsystems"
-  },"74": {
+  },"77": {
     "doc": "System overview",
     "title": "Cost maps",
     "content": "During execution, Navigator calculates several cost maps, which are grid-based maps of our surrounding area that describe where our car should or should not drive. Each cell in the grid is assigned a cost. The higher the cost, the less likely our car will generate a path that moves through the cell. This results in paths that weave their way through only low-cost cells. If no low-cost cells are available, the car stops and waits. We calculate and use multiple cost maps, each one representing a unique factor to consider. For example: . | Our occupancy grid generator describes the location of objects (cars, people, curbs). | Our prediction network (PredNet) node describes the future location of obstacles. | Our red light detector marks intersections as high-cost regions if the light is red. | Our map manager assigns costs based on how far a cell is from the route and from the goal. | . We add as many of these layers together to form a single, holisitic costmap that our motion planner uses as its input. Above: Cost map dimensions . Cost maps should be in the base_link (vehicle) reference frame. They should extend 40 meters in front and to the side of the car and 20 meters behind, forming a total area of 80 x 60 meters. Cells should have a side length of either 0.2, 0.4, 0.8, or 1.6 meters. In the above example, each image is 200 x 150 pixels, representing a cost map layer with a resolution of 0.4 meters/cell. Clockwise from top left: Current occupancy, junction cost (due to a stop sign), route distance, and drivable area. ",
     "url": "/navigator/system-overview.html#cost-maps",
     
     "relUrl": "/system-overview.html#cost-maps"
-  },"75": {
+  },"78": {
     "doc": "System overview",
     "title": "Topics",
     "content": ". | /lidar/fused: Raw LiDAR fused together to create a 360-degree picture. Otherwise unfiltered. | /lidar/filtered: Filtered LiDAR, with ground points removed. | /grid/drivable | /grid/route_distance | /grid/occupancy/current: Only the current occupancy grid. | /grid/occupancy/combined: Both the current and all future prediction occupancy grids, summed together. | . ",
     "url": "/navigator/system-overview.html#topics",
     
     "relUrl": "/system-overview.html#topics"
-  },"76": {
+  },"79": {
     "doc": "Troubleshooting",
     "title": "Troubleshooting",
     "content": "Maintained by Nova members . ",
     "url": "/navigator/contributing/troubleshooting.html",
     
     "relUrl": "/contributing/troubleshooting.html"
-  },"77": {
+  },"80": {
     "doc": "Troubleshooting",
     "title": "Table of contents",
     "content": ". | “New publisher discovered on this topic, offering incompatible QoS” . | Solution | . | “RuntimeError: trying to create rpc server for traffic manager…” | When running the leaderboard evaluator: “No module named ‘agent’” . | Solution: Ensure that there isn’t a typo in the --agent flag to leaderboard_evaluator.py. As of writing, this is in leaderboard.bash. | . | “The RMW implementation has been specified as…” . | Solution | . | . “New publisher discovered on this topic, offering incompatible QoS” . [WARN] [1669075701.737584987] [leaderboard_node]: New publisher discovered on this topic, offering incompatible QoS. No messages will be received from it. Last incompatible policy: DURABILITY_QOS_POLICY . A warning similar to the above example will appear when a publisher and subscriber attempt to exchange messages with incompatible quality of service QoS policies. Solution . Edit the QoS policy of either the relevant publisher or subscriber so that the two can “speak” to each other. For more information on QoS in ROS2, including compatibility between policies, see here. “RuntimeError: trying to create rpc server for traffic manager…” ... File \"/workspace/leaderboard/leaderboard/leaderboard_evaluator.py\", line 83, in __init__ self.traffic_manager = self.client.get_trafficmanager(args.traffic_manager_port) RuntimeError: trying to create rpc server for traffic manager; but the system failed to create because of bind error. This is caused when a CARLA client attempts to connect to CARLA on a port that is already being used. This is either because: . | Another user is currently using the simulator . | In which case you should change your port by using the --traffic_manager_port or similar, depending on which script you’re running | . | An earlier CARLA client has died before it freed its port, and so there is some orphaned Python process on the system that is using up the RPC port. One brute force method is to run sudo pkill -9 python, but this is a very ugly solution. | . When running the leaderboard evaluator: “No module named ‘agent’” . As of 12 Nov ‘22 . # ./leaderboard.bash Starting the CARLA evaluation script. This may take some time. Sit tight! Traceback (most recent call last): ... ModuleNotFoundError: No module named 'agent' . Solution: Ensure that there isn’t a typo in the --agent flag to leaderboard_evaluator.py. As of writing, this is in leaderboard.bash. “The RMW implementation has been specified as…” . As of 11 Nov ‘22 . CMake Error at /opt/ros/foxy/share/rmw_implementation/cmake/rmw_implementation-extras.cmake:54 (message): The RMW implementation has been specified as 'rmw_cyclonedds_cpp' via environment variable 'RMW_IMPLEMENTATION', but it is not available at this time. Currently available middlewares: 'rmw_fastrtps_cpp' . Solution . Navigator uses a slightly modified ROS Middleware (RMW) implementation called CycloneDDS. In order for ROS and its nodes to use it, our custom version must be built and sourced, just like any other ROS workspace. Docker includes the CycloneDDS workspace under /opt/cyclone_ws, and this workspace should be sourced automatically as part of the Docker entrypoint.sh. If you receive the above error, CycloneDDS was either not properly built or sourced. You can verify that the CycloneDDS is loaded properly using the command # ros2 doctor --report, which should show: ... processor : x86_64 RMW MIDDLEWARE middleware name : rmw_cyclonedds_cpp ... ",
     "url": "/navigator/contributing/troubleshooting.html#table-of-contents",
     
     "relUrl": "/contributing/troubleshooting.html#table-of-contents"
-  },"78": {
+  },"81": {
     "doc": "Writing documentation",
     "title": "System overview",
     "content": " ",
     "url": "/navigator/writing-documentation.html#system-overview",
     
     "relUrl": "/writing-documentation.html#system-overview"
-  },"79": {
+  },"82": {
     "doc": "Writing documentation",
     "title": "Table of contents",
     "content": ". | Testing locally | Editing online | . This documentation site is built off of Navigator’s dev branch. All files within the /doc directory are remapped to nova-utd.github.io. Adding to the site is easy. Here are two good options: . ",
     "url": "/navigator/writing-documentation.html#table-of-contents",
     
     "relUrl": "/writing-documentation.html#table-of-contents"
-  },"80": {
+  },"83": {
     "doc": "Writing documentation",
     "title": "Testing locally",
     "content": "To test locally, cd into /docs and run . docker run --rm --volume=\"$PWD:/srv/jekyll:Z\" -p 8083:8083 jekyll/jekyll jekyll serve --port 8083 . Use a browser to view localhost:8083. Refresh the page to show the latest updates. See the official Docker README for more info. ",
     "url": "/navigator/writing-documentation.html#testing-locally",
     
     "relUrl": "/writing-documentation.html#testing-locally"
-  },"81": {
+  },"84": {
     "doc": "Writing documentation",
     "title": "Editing online",
     "content": "On GitHub, move to the /docs directory on the dev branch (here), then press the period key on your keyboard. This will open GitHub’s web editor. See here for more info. ",
     "url": "/navigator/writing-documentation.html#editing-online",
     
     "relUrl": "/writing-documentation.html#editing-online"
-  },"82": {
+  },"85": {
     "doc": "Writing documentation",
     "title": "Writing documentation",
     "content": " ",

@@ -100,10 +100,10 @@ class ImageProjectioNode(Node):
             CameraInfo, '/carla/hero/rgb_left/camera_info', self.leftCameraInfoCb, 1)
 
         left_camera_image_sub = self.create_subscription(
-            Image, '/semantic/left_mono', self.leftCameraImageCb, 1)
+            Image, '/semantic/left', self.leftCameraImageCb, 1)
 
         right_camera_image_sub = self.create_subscription(
-            Image, '/semantic/right_mono', self.rightCameraImageCb, 1)
+            Image, '/semantic/right', self.rightCameraImageCb, 1)
 
         right_camera_info_sub = self.create_subscription(
             CameraInfo, '/carla/hero/rgb_right/camera_info', self.rightCameraInfoCb, 1)

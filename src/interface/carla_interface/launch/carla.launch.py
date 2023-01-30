@@ -119,7 +119,7 @@ def generate_launch_description():
         rviz,
 
         # PERCEPTION
-        image_segmentation,
+        # image_segmentation,
         semantic_projection,
         lidar_processor,
         ground_seg,
