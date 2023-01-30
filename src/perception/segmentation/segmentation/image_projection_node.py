@@ -28,6 +28,8 @@ from std_msgs.msg import Float32
 import image_geometry
 import matplotlib.pyplot as plt
 
+import struct
+
 name_to_dtypes = {
     "rgb8":    (np.uint8,  3),
     "rgba8":   (np.uint8,  4),
@@ -217,6 +219,7 @@ class ImageProjectioNode(Node):
                              t.transform.translation.z]
 
         classified_pts = []
+        rgb = []
 
         for idx, pt in enumerate(lidar_array_tfed):
             uv = self.right_cam_model.project3dToPixel(pt)
@@ -228,10 +231,17 @@ class ImageProjectioNode(Node):
                 continue
 
             pixel_class = semantic_img[pixel_coords[1], pixel_coords[0]]
-            classified_pt = np.append(pts[idx], pixel_class)
-            classified_pts.append(classified_pt)
+            # print(pixel_class)
+            r = int(pixel_class[0])
+            g = int(pixel_class[1])
+            b = int(pixel_class[2])
+            a = 255
+            rgb.append(struct.unpack('I', struct.pack('BBBB', b, g, r, a))[0])
+            # classified_pt = np.append(pts[idx], pixel_class)
+            classified_pts.append(pts[idx])
 
         classified_pts = np.array(classified_pts)  # Convert to np array
+        rgb = np.array(rgb).astype(np.uint32)
 
         if len(classified_pts) < 1:
             return
@@ -240,13 +250,13 @@ class ImageProjectioNode(Node):
             ('x', np.float32),
             ('y', np.float32),
             ('z', np.float32),
-            ('c', np.uint8)
+            ('rgb', np.uint32)
         ])
 
         xyzc['x'] = classified_pts[:, 0]
         xyzc['y'] = classified_pts[:, 1]
         xyzc['z'] = classified_pts[:, 2]
-        xyzc['c'] = classified_pts[:, 3].astype(np.uint8)
+        xyzc['rgb'] = rgb
 
         return xyzc
 

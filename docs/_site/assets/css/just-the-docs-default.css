@@ -161,6 +161,20 @@
 
 .bg-sky { background-color: steelblue; }
 
+.bg-wall { background-color: #66669c; }
+
+.bg-rider { background-color: red; }
+
+.bg-truck { background-color: #000046; }
+
+.bg-bus { background-color: #003c64; }
+
+.bg-train { background-color: #005064; }
+
+.bg-motorcycle { background-color: #0000e6; }
+
+.bg-bicycle { background-color: #770b20; }
+
 /*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */
 /* Document ========================================================================== */
 /** 1. Correct the line height in all browsers. 2. Prevent adjustments of font size after orientation changes in iOS. */

@@ -11,6 +11,7 @@ Panels:
         - /Cameras1
         - /Cameras1/RGB Left1
         - /Cameras1/Semantic Left1
+        - /Cameras1/Semantic Right1
         - /Grids1
         - /Grids1/Drivable Area1
         - /Grids1/Flat Surfaces1
@@ -222,14 +223,14 @@ Visualization Manager:
         - Alpha: 0.699999988079071
           Autocompute Intensity Bounds: false
           Autocompute Value Bounds:
-            Max Value: 10
-            Min Value: -10
+            Max Value: 8.593732833862305
+            Min Value: -0.0016748905181884766
             Value: true
           Axis: Z
           Channel Name: c
           Class: rviz_default_plugins/PointCloud2
           Color: 255; 255; 255
-          Color Transformer: Intensity
+          Color Transformer: FlatColor
           Decay Time: 0
           Enabled: true
           Invert Rainbow: false
@@ -370,7 +371,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /semantic/left_mono
+            Value: /semantic/left
           Value: true
         - Class: rviz_default_plugins/Image
           Enabled: true
@@ -384,7 +385,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /semantic/right_mono
+            Value: /semantic/right
           Value: true
       Enabled: true
       Name: Cameras
@@ -517,7 +518,10 @@ Visualization Manager:
           Value: true
         Grid: true
         Grids:
-          "": true
+          Current Occupancy: true
+          Drivable Area: true
+          Flat Surfaces: true
+          Route Distance: true
           Value: true
         LiDAR:
           "": true
@@ -588,10 +592,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.539797067642212
+      Pitch: 1.094797134399414
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 3.2310211658477783
+      Yaw: 2.9660210609436035
     Saved: ~
 Window Geometry:
   Bird's Eye:
