@@ -36,7 +36,7 @@ using namespace std::chrono_literals;
 using nav_msgs::msg::OccupancyGrid;
 using rosgraph_msgs::msg::Clock;
 using sensor_msgs::msg::PointCloud2;
-// using nova_msgs::msg::Masses;
+using nova_msgs::msg::Masses;
 
 namespace navigator
 {
@@ -53,7 +53,7 @@ namespace navigator
 
       // Publishers
       rclcpp::Publisher<OccupancyGrid>::SharedPtr occupancy_grid_pub;
-      // rclcpp::Publisher<Masses>::SharedPtr masses_pub;
+      rclcpp::Publisher<Masses>::SharedPtr masses_pub;
 
       // Subscribers
       rclcpp::Subscription<Clock>::SharedPtr clock_sub;
@@ -123,6 +123,11 @@ namespace navigator
       float updated_occP[grid_size][grid_size]= {{0}};
       float updated_free[grid_size][grid_size]= {{0}};
       float updated_occ[grid_size][grid_size]= {{0}};
+
+      // Masses measurement (probability distribution)
+      float probabilities[grid_size][grid_size] = {{0}};
+      float probabilities_plot[grid_size][grid_size] = {{0}};
+
       bool angles[360];
       bool first;
 
@@ -136,6 +141,8 @@ namespace navigator
       int find_nearest(int n, float v, float v0, float vn, float res);
       void mass_update();
       void update_of();
+      void get_mass();
+      void plotting();
       std::vector<std::vector<float>> getGridCellProbabilities();
       void publishOccupancyGrid();
       void clear();
