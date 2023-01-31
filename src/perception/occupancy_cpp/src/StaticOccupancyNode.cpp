@@ -14,6 +14,7 @@ using namespace std::chrono_literals;
 
 StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node")
 {
+  //------Subscribers-------//
   // Subscribe to and use CARLA's clock
   clock_sub = this->create_subscription<Clock>(
       "/clock", 10,
@@ -25,8 +26,9 @@ StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node")
       10,
       std::bind(&StaticOccupancyNode::pointCloudCb, this, std::placeholders::_1));
 
+  //----Publishers-------//
   occupancy_grid_pub = this->create_publisher<OccupancyGrid>("/grid/occupancy/current", 10);
-  // masses_pub = this->create_publisher<nova_msgs::msg::Masses>("masses", 10);
+  masses_pub = this->create_publisher<Masses>("/grid/masses", 10);
 }
 
 StaticOccupancyNode::~StaticOccupancyNode()
@@ -69,65 +71,62 @@ void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
   y_new_low = change_y - 64 * res;
   y_new_high = change_y + 64 * res;
 
-  // if (/*initialization_phase == */false)
-  // {
+  if (/*initialization_phase == */false)
+  {
     
-  //   if ((x_new_low >= x_old_low) && (x_old_high >= x_new_low))
-  //   {
-  //     xstart = x_new_low;
-  //     xend = x_old_high;    }
+    if ((x_new_low >= x_old_low) && (x_old_high >= x_new_low))
+    {
+      xstart = x_new_low;
+      xend = x_old_high;    }
 
-  //   if ((y_new_low >= y_old_low) && (y_old_high >= y_new_low))
-  //   {
-  //     ystart = y_new_low;
-  //     yend = y_old_high;    }
+    if ((y_new_low >= y_old_low) && (y_old_high >= y_new_low))
+    {
+      ystart = y_new_low;
+      yend = y_old_high;    }
 
-  //   if ((x_new_low < x_old_low) && (x_new_high >= x_old_low))
-  //   {
-  //     xstart = x_old_low;
-  //     xend = x_new_high;    }
+    if ((x_new_low < x_old_low) && (x_new_high >= x_old_low))
+    {
+      xstart = x_old_low;
+      xend = x_new_high;    }
 
-  //   if ((y_new_low < y_old_low) && (y_new_high >= y_old_low))
-  //   {
-  //     ystart = y_old_low;
-  //     yend = y_new_high;    }
+    if ((y_new_low < y_old_low) && (y_new_high >= y_old_low))
+    {
+      ystart = y_old_low;
+      yend = y_new_high;    }
 
-  //   if ((xstart != -1) && (ystart != -1))
-  //   {
+    if ((xstart != -1) && (ystart != -1))
+    {
       
-  //     /**
-  //      * NL = New Low, OH = Old High
-  //      */
-  //     //x
-  //     int index_xNL = find_nearest(grid_size, xstart, x_new_low, x_new_high, res);
-  //     int index_xNH = find_nearest(grid_size, xend, x_new_low, x_new_high, res);
-  //     int index_xOL = find_nearest(grid_size, xstart, x_old_low, x_old_high, res);
-  //     int index_xOH = find_nearest(grid_size, xend, x_old_low, x_old_high, res);
-  //     //y
-  //     int index_yNL = find_nearest(grid_size, ystart, y_new_low, y_new_high, res);
-  //     int index_yNH = find_nearest(grid_size, yend, y_new_low, y_new_high, res);
-  //     int index_yOL = find_nearest(grid_size, ystart, y_old_low, y_old_high, res);
-  //     int index_yOH = find_nearest(grid_size, yend, y_old_low, y_old_high, res);
+      /**
+       * NL = New Low, OH = Old High
+       */
+      //x
+      int index_xNL = find_nearest(grid_size, xstart, x_new_low, x_new_high, res);
+      int index_xNH = find_nearest(grid_size, xend, x_new_low, x_new_high, res);
+      int index_xOL = find_nearest(grid_size, xstart, x_old_low, x_old_high, res);
+      int index_xOH = find_nearest(grid_size, xend, x_old_low, x_old_high, res);
+      //y
+      int index_yNL = find_nearest(grid_size, ystart, y_new_low, y_new_high, res);
+      int index_yNH = find_nearest(grid_size, yend, y_new_low, y_new_high, res);
+      int index_yOL = find_nearest(grid_size, ystart, y_old_low, y_old_high, res);
+      int index_yOH = find_nearest(grid_size, yend, y_old_low, y_old_high, res);
 
-  //     //printf("index_xNL: %i, index_xNH: %i, index_xOL: %i, index_xOH: %i\n\n", index_xNL, index_xNH, index_xOL, index_xOH);
+      //printf("index_xNL: %i, index_xNH: %i, index_xOL: %i, index_xOH: %i\n\n", index_xNL, index_xNH, index_xOL, index_xOH);
 
-  //     for (unsigned int i = 0; i < index_xOH - index_xOL + 1; i++)
-  //     {
-  //       for (unsigned int j = 0; j < index_yOH - index_yOL + 1; j++)
-  //       {
-  //         previous_free[index_xNL + i][index_yNL + j] = updated_free[index_xOL + i][index_yOL + j];
-  //         previous_occ[index_xNL + i][index_yNL + j] = updated_occ[index_xOL + i][index_yOL + j];
-  //       }
-  //     }
-  //   }
-  // }
+      for (unsigned int i = 0; i < index_xOH - index_xOL + 1; i++)
+      {
+        for (unsigned int j = 0; j < index_yOH - index_yOL + 1; j++)
+        {
+          previous_free[index_xNL + i][index_yNL + j] = updated_free[index_xOL + i][index_yOL + j];
+          previous_occ[index_xNL + i][index_yNL + j] = updated_occ[index_xOL + i][index_yOL + j];
+        }
+      }
+    }
+  }
   
 
   mass_update();
-  // printf("Measured Occupancy: %f\n", measured_occ[20][20]);
-  // printf("Updated Occ: %f, Up_Free: %f\n", updated_occ[20][20], updated_free[120][120]);
-  // printf("Prev_Occ: %f, Prev_Free: %f\n\n", previous_occ[20][20], previous_free[120][120]);
-  // get_mass();
+ 
   publishOccupancyGrid();
   clear();
 
@@ -224,9 +223,6 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
 
     float slope = (float)(y) / (x);
 
-    // printf("X: %i, Y: %i, Z: %f\n", x, y, z);
-    // printf("Slope: %f\n", slope);
-    // printf("Angle: %i\n\n", angle);
 
     // ray tracing from origin to point, identifies free space using Bresenhaum's line algo
     if (slope > 0 && slope <= 1 && x > 0)
@@ -261,9 +257,6 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
     {
       ray_tracing_approximation_x_increment(0, 0, (-1) * x, y, -1, 1, false);
     }
-    
-      
-    
   }
 }
 
@@ -282,8 +275,6 @@ void StaticOccupancyNode::add_free_spaces_to_the_DST()
 
     if (angles[(int)(angle)] == false)
     {
-      
-      //printf("ANGLE: %i\n\n", (int)angle);
       int x, y;
       if (angle > 0.0f && angle <= 45.0f)
       {
@@ -403,21 +394,13 @@ void StaticOccupancyNode::addEgoMask()
       measured_free[i][j] = 0.0;
     }
   }
-
-  // for (unsigned int i = 60; i < 70; i++)
-  // {
-  //   for (unsigned int j = 110; j < 120; j++)
-  //   {
-  //     measured_occ[i][j] = 1.0;
-  //     measured_free[i][j] = 0.0;
-  //   }
-  // }
 }
 
 //-------------HELPERS----------------------------//
 void StaticOccupancyNode::publishOccupancyGrid()
 {
 
+  //--Occupancy Grid--//
   OccupancyGrid msg;
 
   msg.header.stamp = this->clock.clock;
@@ -428,8 +411,15 @@ void StaticOccupancyNode::publishOccupancyGrid()
   msg.info.origin.position.z = 0.2;
   msg.info.origin.position.x = -64.0 * (1. / 3.);
   msg.info.origin.position.y = -64.0 * (1. / 3.);
-  // masses_msg.width = grid_size;
-  // masses_msg.height = grid_size;
+  //-----------------//
+
+  //--Masses--//
+  Masses masses_msg;
+  masses_msg.occ.clear();
+  masses_msg.free.clear();
+  masses_msg.width = grid_size;
+  masses_msg.height = grid_size;
+  //----------//
 
   auto probabilities = getGridCellProbabilities();
 
@@ -438,11 +428,12 @@ void StaticOccupancyNode::publishOccupancyGrid()
     for (int j = 0; j < grid_size; j++)
     {
       msg.data.push_back(100 * probabilities.at(j).at(i));
-      
+      masses_msg.occ.push_back(updated_occ[j][i]);
+      masses_msg.free.push_back(updated_free[j][i]);
     }
   }
   occupancy_grid_pub->publish(msg);
-  // masses_pub->publish(masses_msg);
+  masses_pub->publish(masses_msg);
 }
 
 void StaticOccupancyNode::mass_update()
@@ -471,7 +462,6 @@ void StaticOccupancyNode::update_of()
 
       updated_occ[i][j] = (updated_occP[i][j] * measured_cell_unknown + unknown_pred * measured_occ[i][j] + updated_occP[i][j] * measured_occ[i][j]) / (1.0f - k_value);
       updated_free[i][j] = (updated_freeP[i][j] * measured_cell_unknown + unknown_pred * measured_free[i][j] + updated_freeP[i][j] * measured_free[i][j]) / (1.0f - k_value);
-      
     }
   }
 }
@@ -507,10 +497,6 @@ int StaticOccupancyNode::find_nearest(int n, float v, float v0, float vn, float 
 //-------------RAY TRACING HELPERS----------------//
 void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive)
 {
-
-  //MEAS MASS IS 1
-
-  
   int slope = 2 * (y2 - y1);
   int slope_error = slope - (x2 - x1);
   int x_sample, y_sample;
@@ -532,17 +518,12 @@ void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x1, int y1, 
     }
   }
 
-  if (inclusive == false) //TODO: Check
+  if (inclusive == false)
   {
     int x_coordinate = flip_x * x2 + 64;
     int y_coordinate = flip_y * y2 + 64;
-    //printf("(%i,%i)\n", x_coordinate, y_coordinate);
     measured_occ[x_coordinate][y_coordinate] = meas_mass;
     measured_free[x_coordinate][y_coordinate] = 0.0;
-
-    // printf("X coordinate: %i, Y coordinate: %i, Meas Mass: %f\n", x_coordinate, y_coordinate, meas_mass);
-    // printf("Measured_occ value: %f\n", measured_occ[x_coordinate][y_coordinate]);
-    // printf("Measured_free value: %f\n\n", measured_free[x_coordinate][y_coordinate]);
   }
 }
 
@@ -575,7 +556,7 @@ void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x1, int y1, 
   }
 }
 
-// VERTICLE ++!!!!!!!
+// VERTICLE +
 void StaticOccupancyNode::ray_tracing_vertical(int x2)
 {
   int x1 = 0;
@@ -585,14 +566,12 @@ void StaticOccupancyNode::ray_tracing_vertical(int x2)
   for (int x = x1; x <= x2; x++)
   {
     //checks if the point is occupied
-
     if (measured_occ[64][x + 64] == meas_mass)
     {
       printf("BROKE! VERTICAL + \n\n");
       break;
     }
     
-
     measured_free[x + 64][64] = meas_mass;
   }
 
