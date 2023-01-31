@@ -138,7 +138,6 @@ class MCLNode(Node):
 
         # The filter accepts clouds as a (N,2) array. Format accordingly.
         cloud_formatted = rnp.numpify(msg)
-        print(cloud_formatted)
 
         cloud_formatted = cloud_formatted[cloud_formatted['rgb'] == 4286595200]
         cloud = np.vstack((cloud_formatted['x'], cloud_formatted['y'])).T
