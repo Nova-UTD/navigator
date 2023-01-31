@@ -139,8 +139,16 @@ class MCLNode(Node):
         # The filter accepts clouds as a (N,2) array. Format accordingly.
         cloud_formatted = rnp.numpify(msg)
 
-        cloud_formatted = cloud_formatted[cloud_formatted['rgb'] == 4286595200]
-        cloud = np.vstack((cloud_formatted['x'], cloud_formatted['y'])).T
+        ROAD_ID = 4286595200
+        TRAFFIC_LIGHT_ID = 4294617630
+        POLE_ID = 4288256409
+
+        cloud_formatted = cloud_formatted[np.logical_or(cloud_formatted['rgb'] == POLE_ID,
+                                                        np.logical_or(cloud_formatted['rgb'] == ROAD_ID,
+                                                                      cloud_formatted['rgb'] == TRAFFIC_LIGHT_ID))]
+
+        cloud = np.vstack(
+            (cloud_formatted['x'], cloud_formatted['y'], cloud_formatted['rgb'])).T
 
         # Filter to road points only
 
@@ -195,7 +203,7 @@ class MCLNode(Node):
         origin = msg.info.origin.position
         res = msg.info.resolution
         self.filter = MCL(res, initial_pose=self.gnss_pose,
-                          map_origin=np.array([origin.x, origin.y]), N=10)
+                          map_origin=np.array([origin.x, origin.y]), N=1)
 
         self.get_logger().info("MCL filter created")
 

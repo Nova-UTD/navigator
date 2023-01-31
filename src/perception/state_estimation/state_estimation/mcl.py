@@ -34,6 +34,10 @@ import scipy.stats
 import time
 import matplotlib.pyplot as plt
 
+ROAD_ID = 4286595200
+TRAFFIC_LIGHT_ID = 4294617630
+POLE_ID = 4288256409
+
 
 class MCL:
 
@@ -103,11 +107,13 @@ class MCL:
         CELL_SIZE = 0.4  # meters/cell
 
         # Crop cloud to nearby
-        nearby_cloud = cloud[np.linalg.norm(cloud, axis=1) < 14]
+        nearby_cloud = cloud[np.linalg.norm(cloud[:, 0:2], axis=1) < 14]
 
         # Transform cloud to grid
         # 1. Translate to grid origin
-        cloud_on_grid = nearby_cloud - GRID_ORIGIN_METERS
+        cloud_on_grid = np.copy(nearby_cloud)
+
+        cloud_on_grid[:, 0:2] -= GRID_ORIGIN_METERS
         # 2. Scale to cell size
         cloud_on_grid /= CELL_SIZE
 
@@ -127,36 +133,47 @@ class MCL:
 
             # Rotate cloud to particle frame
             GRID_ORIGIN_METERS = np.array(GRID_ORIGIN_METERS)
-            cloud_on_grid += GRID_ORIGIN_METERS/CELL_SIZE
+            cloud_on_particle = np.copy(cloud_on_grid)
+            cloud_on_particle[:, 0:2] += GRID_ORIGIN_METERS/CELL_SIZE
             d_theta = particle_on_grid[2]
             r = np.array([[np.cos(d_theta), -1*np.sin(d_theta)],
                           [np.sin(d_theta), np.cos(d_theta)]])
-            transformed_cloud = np.dot(
-                cloud_on_grid, r.T)  # Apply rotation matrix
-            cloud_on_grid -= GRID_ORIGIN_METERS/CELL_SIZE
+            cloud_on_particle[:, 0:2] = np.dot(
+                cloud_on_particle[:, 0:2], r.T)  # Apply rotation matrix
+            # cloud_on_grid[:, 0:2] -= GRID_ORIGIN_METERS/CELL_SIZE
 
             # Translate cloud to complete transform
-            transformed_cloud += particle_on_grid[0:2]
-            transformed_cloud = transformed_cloud.astype(int)
+            cloud_on_particle[:, 0:2] += particle_on_grid[0:2]
+            cloud_on_particle = cloud_on_particle.astype(int)
 
             hits = 0
-            for pt in transformed_cloud:
-                if grid[pt[0]][pt[1]] == 100:
+            for pt in cloud_on_particle:
+                if pt[0] >= grid.shape[0] or pt[1] >= grid.shape[1]:
+                    continue
+                if grid[pt[0]][pt[1]] == 100 and pt[2] == ROAD_ID:
                     hits += 1
-
+                elif grid[pt[0]][pt[1]] == 100 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
+                    hits -= 5
             alignments.append(hits)
 
-            plt.scatter(particle_on_grid[0], particle_on_grid[1], c='blue')
-            plt.scatter(transformed_cloud[:, 0],
-                        transformed_cloud[:, 1], s=1.0)
+            # plt.scatter(particle_on_grid[0], particle_on_grid[1], c='blue')
+            # print(cloud_on_particle)
+            # plt.scatter(cloud_on_particle[:, 0],
+            #             cloud_on_particle[:, 1], s=1.0)
 
         # plt.show()
 
-        alignments = np.array(alignments)
-        weights *= alignments
+        alignments = np.array(alignments) / len(particles)
+
+        if np.max(alignments) > 0.5:
+            weights *= alignments
+        else:
+            print(f"Max alignment was only {np.max(alignments)}")
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
+
+        return alignments
 
     def estimate(self, particles: np.array, weights) -> tuple:
         """Return mean and variance of particles
@@ -230,14 +247,19 @@ class MCL:
         particles[self.weights < threshold][:, 2] += (randn(low_N) * std[2])
         particles[self.weights < threshold][:, 2] %= 2 * np.pi
 
+    def replaceWeakParticles(self, particles, weights, gnss_pose):
+        return
+
     def step(self, u, dt, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
 
         self.predictMotion(self.particles, u, std=[1.0, 0.1], dt=dt)
 
         self.particles[:, 2] = gnss_pose[2]
 
-        self.updateWeights(self.particles, self.weights,
-                           cloud, grid, gnss_pose)
+        alignments = self.updateWeights(self.particles, self.weights,
+                                        cloud, grid, gnss_pose)
+
+        # self.replaceWeakParticles(self.particles, self.weights, gnss_pose)
 
         # Determine if a resample is necessary
         # N/2 is a good threshold
