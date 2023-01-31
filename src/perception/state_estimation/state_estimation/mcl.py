@@ -137,15 +137,23 @@ class MCL:
 
             # Translate cloud to complete transform
             transformed_cloud += particle_on_grid[0:2]
+            transformed_cloud = transformed_cloud.astype(int)
+
+            hits = 0
+            for pt in transformed_cloud:
+                if grid[pt[0]][pt[1]] == 100:
+                    hits += 1
+
+            alignments.append(hits)
 
             plt.scatter(particle_on_grid[0], particle_on_grid[1], c='blue')
             plt.scatter(transformed_cloud[:, 0],
                         transformed_cloud[:, 1], s=1.0)
 
-        plt.show()
+        # plt.show()
 
-        # alignments = np.array(alignment)
-        # weights *= alignments
+        alignments = np.array(alignments)
+        weights *= alignments
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
@@ -224,7 +232,9 @@ class MCL:
 
     def step(self, u, dt, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
 
-        self.predictMotion(self.particles, u, std=[0.1, 0.1], dt=dt)
+        self.predictMotion(self.particles, u, std=[1.0, 0.1], dt=dt)
+
+        self.particles[:, 2] = gnss_pose[2]
 
         self.updateWeights(self.particles, self.weights,
                            cloud, grid, gnss_pose)
