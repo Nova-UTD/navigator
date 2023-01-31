@@ -19,10 +19,10 @@ Publishes:
 '''
 
 import math
-
 import numpy as np
 import rclpy
 import ros2_numpy as rnp
+import struct
 import time
 
 # Message definitions
@@ -77,7 +77,7 @@ class MCLNode(Node):
 
     def clock_cb(self, msg: Clock):
         self.clock = msg
-    
+
     def imu_cb(self, msg: Imu):
         self.imu = msg
 
@@ -138,7 +138,9 @@ class MCLNode(Node):
 
         # The filter accepts clouds as a (N,2) array. Format accordingly.
         cloud_formatted = rnp.numpify(msg)
-        cloud_formatted = cloud_formatted[cloud_formatted['c'] == 0]
+        print(cloud_formatted)
+
+        cloud_formatted = cloud_formatted[cloud_formatted['rgb'] == 4286595200]
         cloud = np.vstack((cloud_formatted['x'], cloud_formatted['y'])).T
 
         # Filter to road points only
@@ -194,7 +196,7 @@ class MCLNode(Node):
         origin = msg.info.origin.position
         res = msg.info.resolution
         self.filter = MCL(res, initial_pose=self.gnss_pose,
-                          map_origin=np.array([origin.x, origin.y]))
+                          map_origin=np.array([origin.x, origin.y]), N=10)
 
         self.get_logger().info("MCL filter created")
 
