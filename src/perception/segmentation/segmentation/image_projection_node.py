@@ -296,8 +296,13 @@ class ImageProjectioNode(Node):
 
         left_classified_pts = self.tagPoints(self.left_camera_frame, lidar_array_raw,
                                              self.left_semantic_image)
+
+        left_classified_pts = left_classified_pts[left_classified_pts['y'] > 0]
+
         right_classified_pts = self.tagPoints(self.right_camera_frame, lidar_array_raw,
                                               self.right_semantic_image)
+
+        right_classified_pts = right_classified_pts[right_classified_pts['y'] < 0]
 
         classified_pts = np.concatenate(
             (left_classified_pts, right_classified_pts), axis=0)

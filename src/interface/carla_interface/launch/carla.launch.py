@@ -120,7 +120,7 @@ def generate_launch_description():
 
         # PERCEPTION
         image_segmentation,
-        # semantic_projection,
+        semantic_projection,
         lidar_processor,
         ground_seg,
 

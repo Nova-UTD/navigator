@@ -220,7 +220,7 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
-        - Alpha: 0.699999988079071
+        - Alpha: 1
           Autocompute Intensity Bounds: false
           Autocompute Value Bounds:
             Max Value: 8.593732833862305
@@ -230,7 +230,7 @@ Visualization Manager:
           Channel Name: c
           Class: rviz_default_plugins/PointCloud2
           Color: 255; 255; 255
-          Color Transformer: FlatColor
+          Color Transformer: RGB8
           Decay Time: 0
           Enabled: true
           Invert Rainbow: false
@@ -518,10 +518,7 @@ Visualization Manager:
           Value: true
         Grid: true
         Grids:
-          Current Occupancy: true
-          Drivable Area: true
-          Flat Surfaces: true
-          Route Distance: true
+          "": true
           Value: true
         LiDAR:
           "": true
@@ -592,10 +589,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.094797134399414
+      Pitch: 0.5497971773147583
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 2.9660210609436035
+      Yaw: 3.0210211277008057
     Saved: ~
 Window Geometry:
   Bird's Eye:
