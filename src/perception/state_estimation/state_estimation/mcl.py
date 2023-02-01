@@ -60,19 +60,30 @@ class MCL:
 
         return particles
 
-    def predictMotion(self, particles, u, std, dt=1.):
+    def predictMotion(self, particles, u, std, dt, new_heading=None):
         """ move according to control input u (heading rate, speed)
         with noise Q (std heading change, std velocity)`"""
 
         N = len(particles)
         # update heading
-        particles[:, 2] += u[0] * dt + (randn(N) * std[0])
-        particles[:, 2] %= 2 * np.pi
+
+        if new_heading is None:
+            particles[:, 2] += u[0] * dt + (randn(N) * std[0])
+            particles[:, 2] %= 2 * np.pi
+        else:
+            particles[:, 2] = new_heading
 
         # move in the (noisy) commanded direction
-        dist = (u[1] * dt) + (randn(N) * std[1])
+        ERROR_CORRECTION = 1.0
+        dist = (self.previous_speed * dt) + \
+            (randn(N) * std[1]) * ERROR_CORRECTION
         particles[:, 0] += np.cos(particles[:, 2]) * dist
         particles[:, 1] += np.sin(particles[:, 2]) * dist
+
+        print("dt: {:.2f}, dyaw: {:.2f}, speed: {:.2f}".format(
+            dt, u[0]*dt, u[1]))
+
+        self.previous_speed = u[1]
 
     def update_orig(self, particles: np.array, weights: np.array, z: np.array, R: np.array, landmarks: np.array) -> None:
         """Update the weights of each particle based on our current observation
@@ -153,6 +164,8 @@ class MCL:
                 if grid[pt[0]][pt[1]] == 100 and pt[2] == ROAD_ID:
                     hits += 1
                 elif grid[pt[0]][pt[1]] == 100 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
+                    # Pole and traffic light misalignment penalty
+                    # Poles and traffic lights should not fall into roads, so penalize particles that present this
                     hits -= 5
             alignments.append(hits)
 
@@ -216,7 +229,7 @@ class MCL:
         particles[:, 2] %= 2 * np.pi
         return particles
 
-    def __init__(self, grid_resolution: float, initial_pose=np.array([0.0, 0.0, 0.0]), map_origin=np.array([0.0, 0.0]), N=30):
+    def __init__(self, clock, grid_resolution: float, initial_pose=np.array([0.0, 0.0, 0.0]), map_origin=np.array([0.0, 0.0]), N=30):
         self.particles = self.create_gaussian_particles(
             mean=initial_pose, std=(2, 2, np.pi/8), N=N)
 
@@ -228,6 +241,9 @@ class MCL:
         self.grid_resolution = grid_resolution
 
         self.mus = []
+        self.gnss_poses = []
+        self.last_update_time = clock
+        self.previous_speed = 0.0
 
     def reset(self, initial_pose, N):
         self.particles = self.create_gaussian_particles(
@@ -250,14 +266,17 @@ class MCL:
     def replaceWeakParticles(self, particles, weights, gnss_pose):
         return
 
-    def step(self, u, dt, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
+    def step(self, u, clock, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
 
-        self.predictMotion(self.particles, u, std=[1.0, 0.1], dt=dt)
+        self.predictMotion(self.particles, u, std=[
+                           0.0, 0.00], dt=clock - self.last_update_time, new_heading=gnss_pose[2])
+
+        self.last_update_time = clock
 
         self.particles[:, 2] = gnss_pose[2]
 
-        alignments = self.updateWeights(self.particles, self.weights,
-                                        cloud, grid, gnss_pose)
+        # alignments = self.updateWeights(self.particles, self.weights,
+        #                                 cloud, grid, gnss_pose)
 
         # self.replaceWeakParticles(self.particles, self.weights, gnss_pose)
 
@@ -272,11 +291,18 @@ class MCL:
         mu, var = self.estimate(self.particles, self.weights)
 
         gnss_difference = np.linalg.norm(mu - gnss_pose)
-        if gnss_difference > 5:
-            print("KIDNAPPED! Reseting.")
-            self.reset(gnss_pose, N=N)
+        # if gnss_difference > 5:
+        #     print("KIDNAPPED! Reseting.")
+        #     self.reset(gnss_pose, N=N)
 
         self.mu = mu
+
+        self.mus.append(mu)
+        self.gnss_poses.append(gnss_pose)
+
+        # plt.plot(self.mus)
+        # plt.plot(self.gnss_poses)
+        # plt.show()
 
         return mu, var
 
