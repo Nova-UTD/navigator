@@ -155,8 +155,10 @@ class MCLNode(Node):
         # step() is the critical function that feeds data into the filter
         # and returns a pose and covariance.
 
+        clock_seconds = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
+
         result_pose, pose_variance = self.filter.step(
-            [heading_rate, self.speed], dt, cloud, self.gnss_pose, self.grid)
+            [heading_rate, self.speed], clock_seconds, cloud, self.gnss_pose, self.grid)
 
         self.last_update_time = time.time()
         self.publish_particle_cloud()
@@ -202,7 +204,9 @@ class MCLNode(Node):
 
         origin = msg.info.origin.position
         res = msg.info.resolution
-        self.filter = MCL(res, initial_pose=self.gnss_pose,
+
+        clock_seconds = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
+        self.filter = MCL(clock_seconds, res, initial_pose=self.gnss_pose,
                           map_origin=np.array([origin.x, origin.y]), N=1)
 
         self.get_logger().info("MCL filter created")
