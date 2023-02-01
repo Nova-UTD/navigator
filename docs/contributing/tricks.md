@@ -1,0 +1,30 @@
+---
+layout: default
+title: Tricks
+nav_order: 5
+---
+
+# Tricks
+
+{: .no_toc }
+
+_Maintained by Nova members_
+
+## Table of contents
+
+{: .no_toc .text-delta }
+
+1. TOC
+   {:toc}
+
+---
+
+## Tools
+
+- You can get the publishing frequency of a topic with `$ ros2 topic hz [topic_name]`
+- Show a graph of all current topics and nodes with `$ rqt_graph`
+- VS Code's "Remote - SSH" extension is a good way to develop remotely on the Quad. Files, terminals, and more all appear as though you were working locally on the Quad.
+
+## Other
+
+- ROS [Services](https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Service-And-Client.html) are alternatives to publishers/subscribers. They return results only when requested by a Client.
