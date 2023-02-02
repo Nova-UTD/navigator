@@ -124,11 +124,12 @@ namespace navigator
             odr::OpenDriveMap *map_ = nullptr;
             std::vector<odr::LanePair> lane_polys_;
             std::vector<odr::Lane> lanes_in_route_;
+            std::vector<std::pair<odr::RoadObject, odr::point>> map_objects_;
             Path smoothed_path_msg_;
             bg::model::linestring<odr::point> route_linestring_;
             bg::model::linestring<odr::point> local_route_linestring_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
-            bgi::rtree<odr::value, bgi::rstar<16, 4>> map_object_tree_;
+            bgi::rtree<odr::value, bgi::rstar<16, 4>> map_objects_tree_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> route_tree_;
         };
     }
