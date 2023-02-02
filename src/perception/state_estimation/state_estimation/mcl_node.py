@@ -29,12 +29,15 @@ import time
 from carla_msgs.msg import CarlaSpeedometer
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid, Odometry
+from nova_msgs.srv import GetLandmarks
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, PointCloud2
 from tf2_ros import TransformBroadcaster
 
 from .mcl import MCL
+
+import matplotlib.pyplot as plt
 
 
 class MCLNode(Node):
@@ -65,13 +68,23 @@ class MCLNode(Node):
             Imu, '/carla/hero/imu', self.imu_cb, 10)
 
         self.map_sub = self.create_subscription(
-            OccupancyGrid, '/grid/drivable', self.map_cb, 10)
+            OccupancyGrid, '/grid/semantic_map', self.map_cb, 10)
 
         self.speed_sub = self.create_subscription(
             CarlaSpeedometer, '/carla/hero/speedometer', self.speed_cb, 1)
 
         self.particle_cloud_pub = self.create_publisher(
             PointCloud2, '/mcl/particles', 10)
+
+        self.landmark_client = self.create_client(
+            GetLandmarks, 'get_landmarks')
+
+        # landmark_request = GetLandmarks.Request()
+        # self.get_logger().info("Sending request")
+        # self.landmarks: GetLandmarks.Response = self.landmark_client.call(
+        #     landmark_request)
+        # self.get_logger().info(
+        #     f"Received {len(self.landmarks.speed_limit_signs)} speed limit signs")
 
         self.tf_broadcaster = TransformBroadcaster(self)
 
@@ -193,6 +206,11 @@ class MCLNode(Node):
         ])
 
     def map_cb(self, msg: OccupancyGrid):
+        data = np.array(msg.data).reshape(151, 151)
+        plt.imshow(data)
+        print("Showing!")
+        plt.show()
+
         if self.gnss_pose is None:
             return  # Wait for initial guess from GNSS
 
@@ -207,7 +225,7 @@ class MCLNode(Node):
 
         clock_seconds = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
         self.filter = MCL(clock_seconds, res, initial_pose=self.gnss_pose,
-                          map_origin=np.array([origin.x, origin.y]), N=1)
+                          map_origin=np.array([origin.x, origin.y]), N=30)
 
         self.get_logger().info("MCL filter created")
 

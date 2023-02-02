@@ -24,6 +24,7 @@ _Maintained by Nova members_
 - You can get the publishing frequency of a topic with `$ ros2 topic hz [topic_name]`
 - Show a graph of all current topics and nodes with `$ rqt_graph`
 - VS Code's "Remote - SSH" extension is a good way to develop remotely on the Quad. Files, terminals, and more all appear as though you were working locally on the Quad.
+- Other useful VS Code extensions include Prettier, GitLens, Doxygen Documenttion Generator (C++), autoDocstring (Python), and the C/C++ entension pack.
 
 ## Other
 

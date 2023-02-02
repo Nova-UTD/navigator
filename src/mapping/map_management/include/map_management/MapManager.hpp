@@ -44,6 +44,7 @@
 #include "nav_msgs/msg/map_meta_data.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
+#include "nova_msgs/srv/get_landmarks.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
 
 using namespace std::chrono_literals;
@@ -58,10 +59,27 @@ using geometry_msgs::msg::PoseStamped;
 using geometry_msgs::msg::TransformStamped;
 using rosgraph_msgs::msg::Clock;
 
+using nova_msgs::srv::GetLandmarks;
+
 namespace navigator
 {
     namespace perception
     {
+
+        enum CellClass
+        {
+            NONE = 0,
+            DRIVING_LANE = 1,
+            SHOULDER = 2,
+            CURB = 3,
+            SIDEWALK = 4,
+            MEDIAN = 5,
+            PARKING = 6,
+            STOP_SIGN = 11,
+            SPEED_LIMIT_SIGN = 12,
+            TRAFFIC_LIGHT = 13,
+            CROSSWALK = 21
+        };
 
         class MapManagementNode : public rclcpp::Node
         {
@@ -81,20 +99,22 @@ namespace navigator
 
             void clockCb(Clock::SharedPtr msg);
             TransformStamped getVehicleTf();
-            void drivableAreaGridPubTimerCb();
+            void landmarkServiceCb(const GetLandmarks::Request::SharedPtr request, GetLandmarks::Response::SharedPtr response);
             void refineRoughPath(Path::SharedPtr msg);
+            void semanticGridPubTimerCb();
             void updateRoute();
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
-            rclcpp::Publisher<OccupancyGrid>::SharedPtr drivable_grid_pub_;
+            rclcpp::Publisher<OccupancyGrid>::SharedPtr semantic_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr flat_surface_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr route_dist_grid_pub_;
             rclcpp::Publisher<Path>::SharedPtr route_path_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
             rclcpp::Subscription<Path>::SharedPtr rough_path_sub_;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
+            rclcpp::Service<GetLandmarks>::SharedPtr landmark_service;
 
-            rclcpp::TimerBase::SharedPtr drivable_area_grid_pub_timer_;
+            rclcpp::TimerBase::SharedPtr semantic_grid_pub_timer_;
             rclcpp::TimerBase::SharedPtr route_distance_grid_pub_timer_;
 
             std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
@@ -109,6 +129,6 @@ namespace navigator
             bg::model::linestring<odr::point> local_route_linestring_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> route_tree_;
-                };
+        };
     }
 }
