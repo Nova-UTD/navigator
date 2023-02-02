@@ -128,6 +128,7 @@ namespace navigator
             bg::model::linestring<odr::point> route_linestring_;
             bg::model::linestring<odr::point> local_route_linestring_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
+            bgi::rtree<odr::value, bgi::rstar<16, 4>> map_object_tree_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> route_tree_;
         };
     }

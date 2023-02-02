@@ -112,6 +112,9 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     if (this->map_wide_tree_.size() == 0)
         this->map_wide_tree_ = this->map_->generate_mesh_tree();
 
+    if (this->map_object_tree_.size() == 0)
+        this->map_object_tree_ = this->map_->generate_object_tree();
+
     // Get the search region
     TransformStamped vehicle_tf = getVehicleTf();
     auto vehicle_pos = vehicle_tf.transform.translation;
