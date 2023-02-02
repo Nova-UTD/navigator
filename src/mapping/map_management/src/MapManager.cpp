@@ -112,8 +112,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     if (this->map_wide_tree_.size() == 0)
         this->map_wide_tree_ = this->map_->generate_mesh_tree();
 
-    if (this->map_object_tree_.size() == 0)
-        this->map_object_tree_ = this->map_->generate_object_tree();
+    if (this->map_objects_tree_.size() == 0)
+        this->map_objects_tree_ = this->map_->generate_object_tree();
 
     // Get the search region
     TransformStamped vehicle_tf = getVehicleTf();
@@ -127,7 +127,11 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     std::vector<odr::value> lane_shapes_in_range;
     map_wide_tree_.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
 
-    // std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
+    // Find all map objects within the search region
+    std::vector<odr::value> map_objects_in_range;
+    map_objects_tree_.query(bgi::intersects(search_region), std::back_inserter(map_objects_in_range));
+
+    std::printf("There are %i objects in range.\n", map_objects_in_range.size());
 
     int idx = 0;
 
@@ -225,6 +229,13 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             area += 1;
         }
         height += 1;
+    }
+
+    // Add cells for map objects (signs, lights, etc)
+    for (odr::value object_value : map_objects_in_range)
+    {
+        auto object_pair = map_objects_[object_value.second];
+        std::printf(object_pair.first.name.c_str());
     }
 
     auto clock = this->clock_->clock;
@@ -593,6 +604,9 @@ void MapManagementNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
     this->map_ = new odr::OpenDriveMap(msg->opendrive, true);
     // Get lane polygons as pairs (Lane object, ring polygon)
     this->lane_polys_ = map_->get_lane_polygons(1.0, false);
+
+    // Get lane objects (signs, lights, etc) and their center points
+    this->map_objects_ = map_->get_road_object_centers();
 
     RCLCPP_INFO(this->get_logger(), "Loaded %s", msg->map_name.c_str());
 }
