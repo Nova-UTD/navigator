@@ -80,9 +80,6 @@ class MCL:
         particles[:, 0] += np.cos(particles[:, 2]) * dist
         particles[:, 1] += np.sin(particles[:, 2]) * dist
 
-        print("dt: {:.2f}, dyaw: {:.2f}, speed: {:.2f}".format(
-            dt, u[0]*dt, u[1]))
-
         self.previous_speed = u[1]
 
     def update_orig(self, particles: np.array, weights: np.array, z: np.array, R: np.array, landmarks: np.array) -> None:
@@ -126,12 +123,14 @@ class MCL:
 
         cloud_on_grid[:, 0:2] -= GRID_ORIGIN_METERS
         # 2. Scale to cell size
-        cloud_on_grid /= CELL_SIZE
+        cloud_on_grid[:, 0:2] /= CELL_SIZE
 
         alignments = []
 
         plt.imshow(grid, origin='lower')
         plt.scatter(cloud_on_grid[:, 0], cloud_on_grid[:, 1], c='red', s=1.0)
+
+        particles_on_grid = []
 
         for particle in particles:
             # particle_on_grid = np.copy(particle)
@@ -158,30 +157,49 @@ class MCL:
             cloud_on_particle = cloud_on_particle.astype(int)
 
             hits = 0
+            good_points = []
+            bad_points = []
             for pt in cloud_on_particle:
                 if pt[0] >= grid.shape[0] or pt[1] >= grid.shape[1]:
                     continue
-                if grid[pt[0]][pt[1]] == 100 and pt[2] == ROAD_ID:
+                if grid[pt[1]][pt[0]] == 100 and pt[2] == ROAD_ID:
                     hits += 1
-                elif grid[pt[0]][pt[1]] == 100 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
+                    good_points.append(pt)
+                elif grid[pt[1]][pt[0]] == 100 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
                     # Pole and traffic light misalignment penalty
                     # Poles and traffic lights should not fall into roads, so penalize particles that present this
                     hits -= 5
+                else:
+                    bad_points.append(pt)
             alignments.append(hits)
 
+            # bad_points = np.array(bad_points)
+            # good_points = np.array(good_points)
             # plt.scatter(particle_on_grid[0], particle_on_grid[1], c='blue')
-            # print(cloud_on_particle)
-            # plt.scatter(cloud_on_particle[:, 0],
-            #             cloud_on_particle[:, 1], s=1.0)
+            # # # print(cloud_on_particle)
+            # plt.scatter(bad_points[:, 0],
+            #             bad_points[:, 1], s=1.0, c='red')
+            # if len(good_points) > 1:
+            #     plt.scatter(good_points[:, 0],
+            #                 good_points[:, 1], s=1.0, c='green')
 
-        # plt.show()
+            particles_on_grid.append(particle_on_grid)
+
+        particles_on_grid = np.array(particles_on_grid)
+
+        plt.scatter(particles_on_grid[:, 0],
+                    particles_on_grid[:, 1], c=alignments)
+
+        print(np.max(alignments))
+        plt.show()
 
         alignments = np.array(alignments) / len(particles)
 
-        if np.max(alignments) > 0.5:
-            weights *= alignments
-        else:
-            print(f"Max alignment was only {np.max(alignments)}")
+        # if np.max(alignments) > 0.5:
+        #     weights *= alignments
+        # else:
+        #     print(f"Max alignment was only {np.max(alignments)}")
+        weights *= alignments
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
@@ -269,7 +287,7 @@ class MCL:
     def step(self, u, clock, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
 
         self.predictMotion(self.particles, u, std=[
-                           0.0, 0.00], dt=clock - self.last_update_time, new_heading=gnss_pose[2])
+                           0.3, 0.05], dt=clock - self.last_update_time, new_heading=gnss_pose[2])
 
         self.last_update_time = clock
 
@@ -284,6 +302,7 @@ class MCL:
         # N/2 is a good threshold
         N = len(self.particles)
         if self.neff(self.weights) < 2*N/3:
+            print("Resampling.")
             indexes = self.systematic_resample(self.weights)
             self.resample_from_index(self.particles, self.weights, indexes)
             assert np.allclose(self.weights, 1/N)
@@ -291,9 +310,9 @@ class MCL:
         mu, var = self.estimate(self.particles, self.weights)
 
         gnss_difference = np.linalg.norm(mu - gnss_pose)
-        # if gnss_difference > 5:
-        #     print("KIDNAPPED! Reseting.")
-        #     self.reset(gnss_pose, N=N)
+        if gnss_difference > 5:
+            print("KIDNAPPED! Reseting.")
+            self.reset(gnss_pose, N=N)
 
         self.mu = mu
 

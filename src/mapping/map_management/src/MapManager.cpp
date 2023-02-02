@@ -22,7 +22,7 @@ using namespace navigator::perception;
 MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
     // Publishers and subscribers
-    drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
+    semantic_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/semantic_map", 10);
     flat_surface_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/flat_surface", 10);
     route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
     route_path_pub_ = this->create_publisher<Path>("/route/smooth_path", 10);
@@ -31,11 +31,37 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     rough_path_sub_ = this->create_subscription<Path>("/route/rough_path", 10, bind(&MapManagementNode::refineRoughPath, this, std::placeholders::_1));
     world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
 
-    drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
+    landmark_service = create_service<GetLandmarks>("get_landmarks", std::bind(&MapManagementNode::landmarkServiceCb, this, std::placeholders::_1, std::placeholders::_2));
+
+    semantic_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::semanticGridPubTimerCb, this));
     route_distance_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::updateRoute, this));
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+}
+
+/**
+ * @brief When the service is called, return the location of all map landmarks as Point messages.
+ *
+ * @param request
+ * @param response Contains points for signs and traffic lights.
+ */
+void MapManagementNode::landmarkServiceCb(const std::shared_ptr<GetLandmarks::Request> request,
+                                          std::shared_ptr<GetLandmarks::Response> response)
+{
+    RCLCPP_INFO(this->get_logger(), "Responding to landmark service call.");
+
+    if (this->map_ == nullptr)
+        return;
+
+    for (auto road : this->map_->get_roads())
+    {
+        for (odr::RoadObject object : road.get_road_objects())
+        {
+            RCLCPP_INFO(this->get_logger(), object.name.c_str());
+        }
+    }
+    response->speed_limit_signs;
 }
 
 /**
@@ -68,11 +94,11 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     // Used to calculate function runtime
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-    OccupancyGrid drivable_area_grid;
+    OccupancyGrid semantic_grid;
     OccupancyGrid flat_surface_grid;
     OccupancyGrid route_dist_grid;
     MapMetaData grid_info;
-    std::vector<int8_t> drivable_grid_data;
+    std::vector<int8_t> semantic_grid_data;
     std::vector<int8_t> flat_surface_grid_data;
     std::vector<int8_t> route_dist_grid_data;
 
@@ -98,7 +124,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     std::vector<odr::value> lane_shapes_in_range;
     map_wide_tree_.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
 
-    std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
+    // std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
 
     int idx = 0;
 
@@ -119,6 +145,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             j = static_cast<float>(j);
             bool cell_is_drivable = false;
             bool cell_is_flat_surface = false;
+            CellClass cell_class = CellClass::NONE;
 
             // Transform this query into the map frame
             // First rotate, then translate. 2D rotation eq:
@@ -142,23 +169,37 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                     bool point_is_within_shape = bg::within(p, ring);
                     if (point_is_within_shape)
                     {
-                        if (lane.type == "driving")
+                        if (lane.type == "shoulder")
                         {
-                            cell_is_drivable = true;
-                            cell_is_flat_surface = true;
-                            break;
-                        } else if (lane.type == "shoulder" || lane.type == "sidewalk" || lane.type == "parking" || lane.type == "curb")
-                        {
-                            cell_is_flat_surface = true;
-                            break;
+                            cell_class = CellClass::SHOULDER;
                         }
+                        else if (lane.type == "parking")
+                        {
+                            cell_class = CellClass::PARKING;
+                        }
+                        else if (lane.type == "curb")
+                        {
+                            cell_class = CellClass::CURB;
+                        }
+                        else if (lane.type == "sidewalk")
+                        {
+                            cell_class = CellClass::SIDEWALK;
+                        }
+                        else if (lane.type == "median")
+                        {
+                            cell_class = CellClass::MEDIAN;
+                        }
+                        else if (lane.type == "driving")
+                        {
+                            cell_class = CellClass::DRIVING_LANE;
+                            cell_is_flat_surface = true;
+                        }
+                        break;
                     }
-                    
                 }
             }
-
-           drivable_grid_data.push_back(cell_is_drivable ? 100 : 0);
-           flat_surface_grid_data.push_back(cell_is_flat_surface ? 100 : 0);
+            semantic_grid_data.push_back(cell_class * 10);
+            flat_surface_grid_data.push_back(cell_is_flat_surface ? 100 : 0);
 
             // Get closest route point
             if (local_route_linestring_.size() > 0)
@@ -184,9 +225,9 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     }
 
     auto clock = this->clock_->clock;
-    drivable_area_grid.data = drivable_grid_data;
-    drivable_area_grid.header.frame_id = "base_link";
-    drivable_area_grid.header.stamp = clock;
+    semantic_grid.data = semantic_grid_data;
+    semantic_grid.header.frame_id = "base_link";
+    semantic_grid.header.stamp = clock;
 
     flat_surface_grid.data = flat_surface_grid_data;
     flat_surface_grid.header.frame_id = "base_link";
@@ -204,15 +245,15 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     grid_info.origin.position.y = y_min;
 
     // Set the grids' metadata
-    drivable_area_grid.info = grid_info;
+    semantic_grid.info = grid_info;
     flat_surface_grid.info = grid_info;
     route_dist_grid.info = grid_info;
 
     // Output function runtime
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+    // std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 
-    drivable_grid_pub_->publish(drivable_area_grid);
+    semantic_grid_pub_->publish(semantic_grid);
     flat_surface_grid_pub_->publish(flat_surface_grid);
     route_dist_grid_pub_->publish(route_dist_grid); // Route distance grid
 }
@@ -254,7 +295,7 @@ TransformStamped navigator::perception::MapManagementNode::getVehicleTf()
  * @brief Gets the drivable area OccupancyGrid and publishes it.
  *
  */
-void navigator::perception::MapManagementNode::drivableAreaGridPubTimerCb()
+void navigator::perception::MapManagementNode::semanticGridPubTimerCb()
 {
     publishGrids(40, 20, 30, 0.4);
 }

@@ -683,7 +683,7 @@ namespace odr
         std::cout << "Start of generate_mesh_tree()" << std::endl;
         bgi::rtree<value, bgi::rstar<16, 4>> rtree;
 
-        std::vector<std::pair<Lane, ring>> polys = get_lane_polygons(1.0);
+        std::vector<std::pair<Lane, ring>> polys = get_lane_polygons(1.0, false);
         std::printf("get_road_polygons returned %i shapes\n", polys.size());
 
         // fill the spatial index

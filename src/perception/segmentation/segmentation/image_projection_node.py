@@ -258,6 +258,8 @@ class ImageProjectioNode(Node):
         xyzc['z'] = classified_pts[:, 2]
         xyzc['rgb'] = rgb
 
+        # self.get_logger().info(str(xyzc[rgb == 4286595200]))
+
         return xyzc
 
     def lidarCb(self, msg: PointCloud2):
