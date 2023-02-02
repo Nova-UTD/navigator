@@ -699,6 +699,48 @@ namespace odr
         return rtree;
     }
 
+    std::vector<std::pair<RoadObject, point>> OpenDriveMap::get_road_object_centers()
+    {
+        if (object_centers_.size() > 0)
+            return object_centers_; // No need to calculate twice.
+
+        for (Road road : get_roads())
+        {
+            for (RoadObject obj : road.get_road_objects())
+            {
+                float s = obj.s0;
+                float t = obj.t0;
+                odr::Vec3D xyz = road.get_surface_pt(s, t);
+                point pt = point(xyz[0], xyz[1]);
+                object_centers_.push_back(std::make_pair(obj, pt));
+            }
+        }
+        return object_centers_;
+    }
+
+    bgi::rtree<value, bgi::rstar<16, 4>> OpenDriveMap::generate_object_tree()
+    {
+        std::cout << "Start of generate_object_tree()" << std::endl;
+        bgi::rtree<value, bgi::rstar<16, 4>> rtree;
+
+        if (object_centers_.size() < 1)
+            get_road_object_centers();
+
+        std::printf("map has %i objects\n", object_centers_.size());
+
+        // fill the spatial index
+        for (unsigned i = 0; i < object_centers_.size(); ++i)
+        {
+            // calculate polygon bounding box
+            box b = bg::return_envelope<box>(object_centers_[i].second);
+            // insert new value
+            rtree.insert(std::make_pair(b, i));
+            // std::printf("Inserting box (%f, %f)-(%f,%f)\n", b.min_corner().get<0>(), b.min_corner().get<1>(), b.max_corner().get<0>(), b.max_corner().get<1>());
+        }
+        // std::printf("End of generate_mesh_tree(), tree has %i shapes\n", rtree.size());
+        return rtree;
+    }
+
     RoadNetworkMesh OpenDriveMap::get_road_network_mesh(double eps)
     {
         std::cout << "Start of get_road_network_mesh()" << std::endl;
