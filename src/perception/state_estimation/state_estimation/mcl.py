@@ -39,6 +39,7 @@ TRAFFIC_LIGHT_ID = 4294617630
 POLE_ID = 4288256409
 
 GRID_ORIGIN_METERS = [-20., -30.]
+GRID_ORIGIN_METERS = np.array(GRID_ORIGIN_METERS)
 CELL_SIZE = 0.4  # meters/cell
 
 
@@ -96,9 +97,6 @@ class MCL:
             R (np.array): sensor error standard deviation
             landmarks (np.array): landmark positions [x,y]
         """
-        # for i, landmark in enumerate(landmarks):
-        #     distance = np.linalg.norm(particles[:, 0:2] - landmark, axis=1)
-        #     weights *= scipy.stats.norm(distance, R).pdf(z[i])
 
         if len(landmarks) < 1:
             return
@@ -113,7 +111,14 @@ class MCL:
         particle_distances = np.linalg.norm(particles[:, :2]-landmark, axis=1)
         print(f"Particle dists: {particle_distances}")
         print(f"Observed dists: {z}")
+
+        # pdf() gives the likelihood that the observed distance z
+        # matches the particle's distance. Higher likelihoods
+        # mean relatively higher weights.
         weights *= scipy.stats.norm(particle_distances, R).pdf(z[0])
+
+        plt.scatter(particles[:, 0], particles[:, 1], c=weights)
+        plt.show()
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
@@ -143,8 +148,8 @@ class MCL:
 
         alignments = []
 
-        # plt.imshow(grid, origin='lower')
-        # plt.scatter(cloud_on_grid[:, 0], cloud_on_grid[:, 1], c='red', s=1.0)
+        plt.imshow(grid, origin='lower')
+        plt.scatter(cloud_on_grid[:, 0], cloud_on_grid[:, 1], c='red', s=1.0)
 
         particles_on_grid = []
 
@@ -158,7 +163,7 @@ class MCL:
             particle_on_grid = particle_on_grid.astype(int)
 
             # Rotate cloud to particle frame
-            GRID_ORIGIN_METERS = np.array(GRID_ORIGIN_METERS)
+
             cloud_on_particle = np.copy(cloud_on_grid)
             cloud_on_particle[:, 0:2] += GRID_ORIGIN_METERS/CELL_SIZE
             d_theta = particle_on_grid[2]
@@ -176,12 +181,14 @@ class MCL:
             good_points = []
             bad_points = []
             for pt in cloud_on_particle:
+
                 if pt[0] >= grid.shape[0] or pt[1] >= grid.shape[1]:
                     continue
-                if grid[pt[1]][pt[0]] == 100 and pt[2] == ROAD_ID:
+                if grid[pt[1]][pt[0]] == 1 and pt[2] == ROAD_ID:
                     hits += 1
+                    print(pt[2])
                     good_points.append(pt)
-                elif grid[pt[1]][pt[0]] == 100 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
+                elif grid[pt[1]][pt[0]] == 1 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
                     # Pole and traffic light misalignment penalty
                     # Poles and traffic lights should not fall into roads, so penalize particles that present this
                     hits -= 5
@@ -189,15 +196,15 @@ class MCL:
                     bad_points.append(pt)
             alignments.append(hits)
 
-            # bad_points = np.array(bad_points)
-            # good_points = np.array(good_points)
+            bad_points = np.array(bad_points)
+            good_points = np.array(good_points)
             # plt.scatter(particle_on_grid[0], particle_on_grid[1], c='blue')
             # # # print(cloud_on_particle)
-            # plt.scatter(bad_points[:, 0],
-            #             bad_points[:, 1], s=1.0, c='red')
-            # if len(good_points) > 1:
-            #     plt.scatter(good_points[:, 0],
-            #                 good_points[:, 1], s=1.0, c='green')
+            plt.scatter(bad_points[:, 0],
+                        bad_points[:, 1], s=1.0, c='red')
+            if len(good_points) > 1:
+                plt.scatter(good_points[:, 0],
+                            good_points[:, 1], s=1.0, c='green')
 
             particles_on_grid.append(particle_on_grid)
 
@@ -372,13 +379,10 @@ class MCL:
 
         self.predictMotion(self.particles, u, std=[
                            0.3, 0.05], dt=clock - self.last_update_time, new_heading=gnss_pose[2])
-
         self.last_update_time = clock
 
-        self.particles[:, 2] = gnss_pose[2]
-
-        # alignments = self.updateWeights(self.particles, self.weights,
-        #                                 cloud, grid, gnss_pose)
+        alignments = self.updateWeights(self.particles, self.weights,
+                                        cloud, grid, gnss_pose)
 
         sensor_std_err = 1.0  # meters?
         landmarks = self.getLandmarks(grid, self.mu)
@@ -390,26 +394,26 @@ class MCL:
         # zs = (np.linalg.norm(landmarks - self.mu[0:2], axis=1) +
         #       (randn(len(landmarks)) * sensor_std_err))
         # print(zs)
-        self.updateOriginal(self.particles, self.weights, z=distances, R=sensor_std_err,
-                            landmarks=landmarks)
+        # self.updateOriginal(self.particles, self.weights, z=distances, R=sensor_std_err,
+        #                     landmarks=landmarks)
 
         # self.replaceWeakParticles(self.particles, self.weights, gnss_pose)
 
-        # Determine if a resample is necessary
-        # N/2 is a good threshold
-        N = len(self.particles)
-        if self.neff(self.weights) < 2*N/3:
-            print("Resampling.")
-            indexes = self.systematic_resample(self.weights)
-            self.resample_from_index(self.particles, self.weights, indexes)
-            assert np.allclose(self.weights, 1/N)
+        # # Determine if a resample is necessary
+        # # N/2 is a good threshold
+        # N = len(self.particles)
+        # if self.neff(self.weights) < 2*N/3:
+        #     print("Resampling.")
+        #     indexes = self.systematic_resample(self.weights)
+        #     self.resample_from_index(self.particles, self.weights, indexes)
+        #     assert np.allclose(self.weights, 1/N)
 
         mu, var = self.estimate(self.particles, self.weights)
 
         gnss_difference = np.linalg.norm(mu - gnss_pose)
         if gnss_difference > 5:
             print("KIDNAPPED! Reseting.")
-            self.reset(gnss_pose, N=N)
+            self.reset(gnss_pose, N=len(self.particles))
 
         self.mu = mu
 

@@ -112,7 +112,6 @@ namespace navigator
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
             rclcpp::Subscription<Path>::SharedPtr rough_path_sub_;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
-            rclcpp::Service<GetLandmarks>::SharedPtr landmark_service;
 
             rclcpp::TimerBase::SharedPtr semantic_grid_pub_timer_;
             rclcpp::TimerBase::SharedPtr route_distance_grid_pub_timer_;

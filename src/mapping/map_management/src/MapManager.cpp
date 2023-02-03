@@ -31,37 +31,11 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     rough_path_sub_ = this->create_subscription<Path>("/route/rough_path", 10, bind(&MapManagementNode::refineRoughPath, this, std::placeholders::_1));
     world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
 
-    landmark_service = create_service<GetLandmarks>("get_landmarks", std::bind(&MapManagementNode::landmarkServiceCb, this, std::placeholders::_1, std::placeholders::_2));
-
     semantic_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::semanticGridPubTimerCb, this));
     route_distance_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::updateRoute, this));
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
-}
-
-/**
- * @brief When the service is called, return the location of all map landmarks as Point messages.
- *
- * @param request
- * @param response Contains points for signs and traffic lights.
- */
-void MapManagementNode::landmarkServiceCb(const std::shared_ptr<GetLandmarks::Request> request,
-                                          std::shared_ptr<GetLandmarks::Response> response)
-{
-    RCLCPP_INFO(this->get_logger(), "Responding to landmark service call.");
-
-    if (this->map_ == nullptr)
-        return;
-
-    for (auto road : this->map_->get_roads())
-    {
-        for (odr::RoadObject object : road.get_road_objects())
-        {
-            RCLCPP_INFO(this->get_logger(), object.name.c_str());
-        }
-    }
-    response->speed_limit_signs;
 }
 
 /**
