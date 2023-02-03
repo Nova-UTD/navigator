@@ -92,13 +92,21 @@ class MCL:
         Args:
             particles (np.array): particles to update
             weights (np.array): weights of our particles
-            z (np.array): _description_
+            z (np.array): Distances to nearby landmarks
             R (np.array): sensor error standard deviation
             landmarks (np.array): landmark positions [x,y]
         """
-        for i, landmark in enumerate(landmarks):
-            distance = np.linalg.norm(particles[:, 0:2] - landmark, axis=1)
-            weights *= scipy.stats.norm(distance, R).pdf(z[i])
+        # for i, landmark in enumerate(landmarks):
+        #     distance = np.linalg.norm(particles[:, 0:2] - landmark, axis=1)
+        #     weights *= scipy.stats.norm(distance, R).pdf(z[i])
+
+        if len(landmarks) < 1:
+            return
+
+        # Consider only the nearest landmark
+        landmark = landmarks[np.argmin(
+            np.linalg.norm(landmarks-self.mu[:2], axis=1))]
+        print(f"Nearest lm: {landmark}")
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
@@ -282,8 +290,38 @@ class MCL:
         particles[self.weights < threshold][:, 2] += (randn(low_N) * std[2])
         particles[self.weights < threshold][:, 2] %= 2 * np.pi
 
-    def replaceWeakParticles(self, particles, weights, gnss_pose):
-        return
+    def sense(self, cloud, noise):
+
+        MAX_LANDMARK_DIST = 15.0  # meters
+
+        traffic_light_pts = cloud[cloud[:, 2] == TRAFFIC_LIGHT_ID][:, 0:2]
+
+        # Filter out faraway pts
+        traffic_light_pts = traffic_light_pts[np.linalg.norm(
+            traffic_light_pts, axis=1) < MAX_LANDMARK_DIST]
+
+        downsampled_pts = []
+
+        # Only include points not super close to other ones
+        MIN_DISTANCE = 1.0  # Points closer than this will be simplified to one pt
+        for pt_a in traffic_light_pts:
+            too_close = False
+            for pt_b in downsampled_pts:
+                if np.linalg.norm(pt_a - pt_b) < MIN_DISTANCE:
+                    too_close = True
+                    break
+            if not too_close:
+                downsampled_pts.append(pt_a)
+
+        downsampled_pts = np.array(downsampled_pts)
+
+        print("Traffic light points:")
+        print(downsampled_pts)
+
+        distances = np.linalg.norm(
+            downsampled_pts, axis=1) + randn(downsampled_pts.shape[0]) * noise
+
+        return distances
 
     def getLandmarks(self, grid, mu):
         plt.imshow(grid, origin='lower')
@@ -319,7 +357,7 @@ class MCL:
         plt.scatter(mu[0], mu[1], c='r')
         plt.show()
 
-        return landmarks_on_grid
+        return landmarks_on_map
 
     def step(self, u, clock, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
 
@@ -338,9 +376,12 @@ class MCL:
         if landmarks.shape[0] < 0:
             print("No landmarks found!")
             return
-        zs = (np.linalg.norm(landmarks - self.mu[0:2], axis=1) +
-              (randn(len(landmarks)) * sensor_std_err))
-        self.updateOriginal(self.particles, self.weights, z=zs, R=sensor_std_err,
+
+        distances = self.sense(cloud, noise=0.5)
+        # zs = (np.linalg.norm(landmarks - self.mu[0:2], axis=1) +
+        #       (randn(len(landmarks)) * sensor_std_err))
+        # print(zs)
+        self.updateOriginal(self.particles, self.weights, z=distances, R=sensor_std_err,
                             landmarks=landmarks)
 
         # self.replaceWeakParticles(self.particles, self.weights, gnss_pose)
