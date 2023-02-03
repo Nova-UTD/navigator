@@ -12,6 +12,11 @@
 using namespace navigator::perception;
 using namespace std::chrono_literals;
 
+/**
+ * @brief Constructor for static occupancy node
+ * Subscribers: CARLA clock, Ground Segmented Pointcloud
+ * Publishers: Static Occupancy Grid, Masses Grid
+ */
 StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node")
 {
   //------Subscribers-------//
@@ -37,131 +42,53 @@ StaticOccupancyNode::~StaticOccupancyNode()
 }
 
 /**
- * @brief Each time that raw LiDAR is received, remove the ground points and publish the filtered version.
+ * @brief Each time that raw LiDAR pcl is received:
+ * 1. Convert to pcl::PointCloud<pcl::PointXYZI> (x, y, z, intensity), keep in mind this reverses rows and columns?
+ * 2. Fills and ray traces static occupancy grid
  *
- * @param raw_cloud The unfiltered LiDAR point cloud
+ * @param msg The LiDAR point cloud previously ground segmented
  */
 void StaticOccupancyNode::pointCloudCb(PointCloud2::SharedPtr msg)
 {
-  /*
-  PC processing.
-  */
-
-  float centerpoint_x = 64;
-  float centerpoint_y = 64;
-  float xstart = -1;
-  float ystart = -1;
-  float xend = -1;
-  float yend = -1;
-
   // Converts the PCL ros message using pcl_conversions.
   pcl::PointCloud<pcl::PointXYZI> cloud;
   pcl::fromROSMsg(*msg, cloud);
 
-  
-
   // 1. Convert new measurement into a DST grid.
   createOccupancyGrid(cloud);
 
-  change_x = 0.0; // TODO: Remove or fix the "change" variables.
-  change_y = 0.0;
+  // 2. Updates previous grid with updated grid values (important in cases of variable grid size)
+  update_previous();
 
-  x_new_low = change_x - 64 * res;
-  x_new_high = change_x + 64 * res;
-  y_new_low = change_y - 64 * res;
-  y_new_high = change_y + 64 * res;
-
-  if (/*initialization_phase == */false)
-  {
-    
-    if ((x_new_low >= x_old_low) && (x_old_high >= x_new_low))
-    {
-      xstart = x_new_low;
-      xend = x_old_high;    }
-
-    if ((y_new_low >= y_old_low) && (y_old_high >= y_new_low))
-    {
-      ystart = y_new_low;
-      yend = y_old_high;    }
-
-    if ((x_new_low < x_old_low) && (x_new_high >= x_old_low))
-    {
-      xstart = x_old_low;
-      xend = x_new_high;    }
-
-    if ((y_new_low < y_old_low) && (y_new_high >= y_old_low))
-    {
-      ystart = y_old_low;
-      yend = y_new_high;    }
-
-    if ((xstart != -1) && (ystart != -1))
-    {
-      
-      /**
-       * NL = New Low, OH = Old High
-       */
-      //x
-      int index_xNL = find_nearest(grid_size, xstart, x_new_low, x_new_high, res);
-      int index_xNH = find_nearest(grid_size, xend, x_new_low, x_new_high, res);
-      int index_xOL = find_nearest(grid_size, xstart, x_old_low, x_old_high, res);
-      int index_xOH = find_nearest(grid_size, xend, x_old_low, x_old_high, res);
-      //y
-      int index_yNL = find_nearest(grid_size, ystart, y_new_low, y_new_high, res);
-      int index_yNH = find_nearest(grid_size, yend, y_new_low, y_new_high, res);
-      int index_yOL = find_nearest(grid_size, ystart, y_old_low, y_old_high, res);
-      int index_yOH = find_nearest(grid_size, yend, y_old_low, y_old_high, res);
-
-      //printf("index_xNL: %i, index_xNH: %i, index_xOL: %i, index_xOH: %i\n\n", index_xNL, index_xNH, index_xOL, index_xOH);
-
-      for (unsigned int i = 0; i < index_xOH - index_xOL + 1; i++)
-      {
-        for (unsigned int j = 0; j < index_yOH - index_yOL + 1; j++)
-        {
-          previous_free[index_xNL + i][index_yNL + j] = updated_free[index_xOL + i][index_yOL + j];
-          previous_occ[index_xNL + i][index_yNL + j] = updated_occ[index_xOL + i][index_yOL + j];
-        }
-      }
-    }
-  }
-  
-
+  // 3. Add decayed region (previous grid) to the updated grid
   mass_update();
  
+  // 4. Publish static occupancy grid and mass grid
   publishOccupancyGrid();
-  clear();
 
-  initialization_phase = false;
-  x_old_low = x_new_low;
-  x_old_high = x_new_high;
-  y_old_low = y_new_low;
-  y_old_high = y_new_high;
+  // 5. Clear current measured grid
+  clear();
 }
 
 /**
  * @brief Returns a grid using Dempster-Shafer Theory (DST)
+ * 1. Ray-traces free space towards recorded points (occupied space)
+ * 2. Fills the rest of the grid with free space using same ray-tracing algorithms (can combine steps 1 and 2?)
+ * 3. Adds occupied space representing the vehicle
  *
  * @param cloud
  * @return pcl::PointCloud<pcl::PointXYZI>
  */
 void StaticOccupancyNode::createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &cloud)
 {
-  // The grid is created in three stages.
-
-  // Initialize DST grid
-  // pcl::PointCloud<pcl::PointXYZI> grid;
-
-  
-
-  // 1. Add occupied cells to the DST grid
+  // 1. Ray traces towards occupied spaces
   add_points_to_the_DST(cloud);
   
-  // 2. Identify free space in the DST grid.
+  // 2. Ray traces rest of grid to fill with empty space
   add_free_spaces_to_the_DST();
 
   // 3. Add an ego vehicle mask to the grid.
   addEgoMask();
-
-  //return grid;
 }
 
 /**
@@ -176,22 +103,22 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
   for (size_t i = 0; i < cloud.size(); i++)
   {
 
-    //Dimensions for X & Y [0 -> 128 (grid_size)]
-    //Subtract half of grid_size so resulting dimension is [-64 -> 64]
+    //Dimensions for X & Y [-64 -> 64 (HALF_SiZE)]
 
+    //Record occupancy value for the corresponding point in the pcl, nearest index
     int x = (int)(cloud[i].x / res);
     int y = (int)(cloud[i].y / res);
 
     float z = cloud[i].z;
 
-    // Ignores points above a certain height?
+    // Ignores points above a certain height
     if (z * (-1) > 0.5)
     {
       std::printf("Point was above max height, skipping.\n");
       continue;
     }
     
-    if (x < (-1*SIZE) || y < (-1*SIZE) || x >= SIZE || y >= SIZE)
+    if (x < (-1*HALF_SIZE) || y < (-1*HALF_SIZE) || x >= HALF_SIZE || y >= HALF_SIZE)
     {
       //std::printf("Point was outside grid boundaries, skipping.\n");
       continue;
@@ -227,35 +154,35 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
     // ray tracing from origin to point, identifies free space using Bresenhaum's line algo
     if (slope > 0 && slope <= 1 && x > 0)
     {
-      ray_tracing_approximation_y_increment(0, 0, x, y, 1, 1, false);
+      ray_tracing_approximation_y_increment(x, y, 1, 1, false);
     }
     else if (slope > 1 && x > 0)
     {
-      ray_tracing_approximation_x_increment(0, 0, x, y, 1, 1, false);
+      ray_tracing_approximation_x_increment(x, y, 1, 1, false);
     }
     else if (slope < 0 && slope >= -1 && x > 0)
     {
-      ray_tracing_approximation_y_increment(0, 0, x, (-1) * y, 1, -1, false);
+      ray_tracing_approximation_y_increment(x, (-1) * y, 1, -1, false);
     }
     else if (slope < -1 && x > 0)
     {
-      ray_tracing_approximation_x_increment(0, 0, x, (-1) * y, 1, -1, false);
+      ray_tracing_approximation_x_increment(x, (-1) * y, 1, -1, false);
     }
     else if (slope > 1 && x < 0)
     {
-      ray_tracing_approximation_x_increment(0, 0, (-1) * x, (-1) * y, -1, -1, false);
+      ray_tracing_approximation_x_increment((-1) * x, (-1) * y, -1, -1, false);
     }
     else if (slope > 0 && slope <= 1 && x < 0)
     {
-      ray_tracing_approximation_y_increment(0, 0, (-1) * x, (-1) * y, -1, -1, false);
+      ray_tracing_approximation_y_increment((-1) * x, (-1) * y, -1, -1, false);
     }
     else if (slope < 0 && slope >= -1 && x < 0)
     {
-      ray_tracing_approximation_y_increment(0, 0, (-1) * x, y, -1, 1, false);
+      ray_tracing_approximation_y_increment((-1) * x, y, -1, 1, false);
     }
     else if (slope < -1 && x < 0)
     {
-      ray_tracing_approximation_x_increment(0, 0, (-1) * x, y, -1, 1, false);
+      ray_tracing_approximation_x_increment((-1) * x, y, -1, 1, false);
     }
   }
 }
@@ -343,35 +270,35 @@ void StaticOccupancyNode::add_free_spaces_to_the_DST()
 
         if (slope > 0 && slope <= 1 && x > 0)
         {
-          ray_tracing_approximation_y_increment(0, 0, x, y, 1, 1, true);
+          ray_tracing_approximation_y_increment(x, y, 1, 1, true);
         }
         else if (slope > 1 && x > 0)
         {
-          ray_tracing_approximation_x_increment(0, 0, x, y, 1, 1, true);
+          ray_tracing_approximation_x_increment(x, y, 1, 1, true);
         }
         else if (slope < 0 && slope >= -1 && x > 0)
         {
-          ray_tracing_approximation_y_increment(0, 0, x, (-1) * y, 1, -1, true);
+          ray_tracing_approximation_y_increment(x, (-1) * y, 1, -1, true);
         }
         else if (slope < -1 && x > 0)
         {
-          ray_tracing_approximation_x_increment(0, 0, x, (-1) * y, 1, -1, true);
+          ray_tracing_approximation_x_increment(x, (-1) * y, 1, -1, true);
         }
         else if (slope > 1 && x < 0)
         {
-          ray_tracing_approximation_x_increment(0, 0, (-1) * x, (-1) * y, -1, -1, true);
+          ray_tracing_approximation_x_increment((-1) * x, (-1) * y, -1, -1, true);
         }
         else if (slope > 0 && slope <= 1 && x < 0)
         {
-          ray_tracing_approximation_y_increment(0, 0, (-1) * x, (-1) * y, -1, -1, true);
+          ray_tracing_approximation_y_increment((-1) * x, (-1) * y, -1, -1, true);
         }
         else if (slope < 0 && slope >= -1 && x < 0)
         {
-          ray_tracing_approximation_y_increment(0, 0, (-1) * x, y, -1, 1, true);
+          ray_tracing_approximation_y_increment((-1) * x, y, -1, 1, true);
         }
         else if (slope < -1 && x < 0)
         {
-          ray_tracing_approximation_x_increment(0, 0, (-1) * x, y, -1, 1, true);
+          ray_tracing_approximation_x_increment((-1) * x, y, -1, 1, true);
         }
       }
     }
@@ -436,6 +363,97 @@ void StaticOccupancyNode::publishOccupancyGrid()
   masses_pub->publish(masses_msg);
 }
 
+void StaticOccupancyNode::update_previous()
+{
+  for (unsigned int i = 0; i < grid_size; i++)
+  {
+    for (unsigned int j = 0; j < grid_size; j++)
+    {
+      previous_free[i][j] = updated_free[i][j];
+      previous_occ[i][j] = updated_occ[i][j];
+    }
+  }
+
+  //--------CODE FOR VARIABLE INPUT GRID SIZE BELOW----------//
+
+  // float xstart = -1;
+  // float ystart = -1;
+  // float xend = -1;
+  // float yend = -1;
+
+  // change_x = 0.0; // TODO: Remove or fix the "change" variables.
+  // change_y = 0.0;
+
+  // x_new_low = change_x - 64 * res;
+  // x_new_high = change_x + 64 * res;
+  // y_new_low = change_y - 64 * res;
+  // y_new_high = change_y + 64 * res;
+
+  // if (initialization_phase == false)
+  // {
+    
+  //   if ((x_new_low >= x_old_low) && (x_old_high >= x_new_low))
+  //   {
+  //     xstart = x_new_low;
+  //     xend = x_old_high;    }
+
+  //   if ((y_new_low >= y_old_low) && (y_old_high >= y_new_low))
+  //   {
+  //     ystart = y_new_low;
+  //     yend = y_old_high;    }
+
+  //   if ((x_new_low < x_old_low) && (x_new_high >= x_old_low))
+  //   {
+  //     xstart = x_old_low;
+  //     xend = x_new_high;    }
+
+  //   if ((y_new_low < y_old_low) && (y_new_high >= y_old_low))
+  //   {
+  //     ystart = y_old_low;
+  //     yend = y_new_high;    }
+
+  //   if ((xstart != -1) && (ystart != -1))
+  //   {
+      
+  //     /**
+  //      * NL = New Low, OH = Old High
+  //      */
+  //     //x
+  //     int index_xNL = find_nearest(grid_size, xstart, x_new_low, x_new_high, res);
+  //     int index_xNH = find_nearest(grid_size, xend, x_new_low, x_new_high, res);
+  //     int index_xOL = find_nearest(grid_size, xstart, x_old_low, x_old_high, res);
+  //     int index_xOH = find_nearest(grid_size, xend, x_old_low, x_old_high, res);
+  //     //y
+  //     int index_yNL = find_nearest(grid_size, ystart, y_new_low, y_new_high, res);
+  //     int index_yNH = find_nearest(grid_size, yend, y_new_low, y_new_high, res);
+  //     int index_yOL = find_nearest(grid_size, ystart, y_old_low, y_old_high, res);
+  //     int index_yOH = find_nearest(grid_size, yend, y_old_low, y_old_high, res);
+
+  //     printf("index_xNL: %i, index_xNH: %i, index_xOL: %i, index_xOH: %i\n\n", index_xNL, index_xNH, index_xOL, index_xOH);
+
+  //     for (unsigned int i = 0; i < index_xOH - index_xOL + 1; i++)
+  //     {
+  //       for (unsigned int j = 0; j < index_yOH - index_yOL + 1; j++)
+  //       {
+  //         previous_free[index_xNL + i][index_yNL + j] = updated_free[index_xOL + i][index_yOL + j];
+  //         previous_occ[index_xNL + i][index_yNL + j] = updated_occ[index_xOL + i][index_yOL + j];
+  //       }
+  //     }
+  //   }
+  // }
+
+  // initialization_phase = false;
+  // x_old_low = x_new_low;
+  // x_old_high = x_new_high;
+  // y_old_low = y_new_low;
+  // y_old_high = y_new_high;
+
+  //----------END OF CODE------------//
+}
+
+/**
+ * @brief: Updates current grids with previous grid values plus a decay
+ */
 void StaticOccupancyNode::mass_update()
 {
   for (unsigned int i = 0; i < grid_size; i++)
@@ -446,22 +464,28 @@ void StaticOccupancyNode::mass_update()
       updated_freeP[i][j] = std::min(decay_factor * previous_free[i][j], 1.0f - previous_occ[i][j]);
     }
   }
-  // Combine measurement nad prediction to form posterior occupied and free masses.
+  // Combine measurement and prediction to form posterior occupied and free masses.
   update_of();
 }
 
+// updates probabilities using a bayes filter. Takes into account measured probabilities and predicted probability values.
 void StaticOccupancyNode::update_of()
 {
   for (unsigned int i = 0; i < grid_size; i++)
   {
     for (unsigned int j = 0; j < grid_size; j++)
     {
+      //probability of cell being unknown
       float unknown_pred = 1.0 - updated_freeP[i][j] - updated_occP[i][j];
+
+      //probabilityy of measured cell being unknown
       float measured_cell_unknown = 1.0 - measured_free[i][j] - measured_occ[i][j];
+
+      //normalizing factor, ensures probabilities for occupancy/free add up to 1
       float k_value = updated_freeP[i][j] * measured_occ[i][j] + updated_occP[i][j] * measured_free[i][j];
 
-      updated_occ[i][j] = (updated_occP[i][j] * measured_cell_unknown + unknown_pred * measured_occ[i][j] + updated_occP[i][j] * measured_occ[i][j]) / (1.0f - k_value);
-      updated_free[i][j] = (updated_freeP[i][j] * measured_cell_unknown + unknown_pred * measured_free[i][j] + updated_freeP[i][j] * measured_free[i][j]) / (1.0f - k_value);
+      updated_occ[i][j] = (updated_occP[i][j]*measured_cell_unknown + unknown_pred*measured_occ[i][j] + updated_occP[i][j]*measured_occ[i][j]) / (1.0f - k_value);
+      updated_free[i][j] = (updated_freeP[i][j]*measured_cell_unknown + unknown_pred*measured_free[i][j] + updated_freeP[i][j]*measured_free[i][j]) / (1.0f - k_value);
     }
   }
 }
@@ -469,6 +493,7 @@ void StaticOccupancyNode::update_of()
 /**
  * @brief Gets the average of the updated occupancy and updated free values and adds to a cell_probabilities
  *
+ * @return Returns a vector of grid cell probabilities used to fill the OccupancyGrid message
  */
 std::vector<std::vector<float>> StaticOccupancyNode::getGridCellProbabilities()
 {
@@ -487,16 +512,18 @@ std::vector<std::vector<float>> StaticOccupancyNode::getGridCellProbabilities()
   return cell_probabilities;
 }
 
-int StaticOccupancyNode::find_nearest(int n, float v, float v0, float vn, float res)
+int StaticOccupancyNode::find_nearest(int num, float value, float min, float max, float res)
 {
-  int index = std::floor(n * (v - v0 + res / 2.) / (vn - v0 + res));
+  int index = std::floor(num * (value - min + res / 2.) / (max - min + res));
   return index;
 }
 //------------------------------------------------//
 
 //-------------RAY TRACING HELPERS----------------//
-void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive)
+void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x2, int y2, int flip_x, int flip_y, bool inclusive)
 {
+  int x1 = 0, y1 = 0;
+
   int slope = 2 * (y2 - y1);
   int slope_error = slope - (x2 - x1);
   int x_sample, y_sample;
@@ -518,6 +545,7 @@ void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x1, int y1, 
     }
   }
 
+  //if the point ray-traced to is occupied
   if (inclusive == false)
   {
     int x_coordinate = flip_x * x2 + 64;
@@ -527,13 +555,16 @@ void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x1, int y1, 
   }
 }
 
-void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive)
+void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x2, int y2, int flip_x, int flip_y, bool inclusive)
 {
+  int x1 = 0, y1 = 0;
+
   int slope = 2 * (x2 - x1);
   int slope_error = slope - (y2 - y1);
   int x_sample, y_sample;
   for (int x = x1, y = y1; y < y2; y++)
   {
+    //checks if the point is occupied
     if (measured_occ[flip_x * x + 64][flip_y * y + 64] == meas_mass)
     {
       break;
@@ -549,10 +580,13 @@ void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x1, int y1, 
     }
   }
 
+  //if the point ray-traced to is occupied
   if (inclusive == false)
   {
-    measured_occ[flip_x * x2 + 64][flip_y * y2 + 64] = meas_mass;
-    measured_free[flip_x * x2 + 64][flip_y * y2 + 64] = 0.0;
+    int x_coordinate = flip_x * x2 + 64;
+    int y_coordinate = flip_y * y2 + 64;
+    measured_occ[x_coordinate][y_coordinate] = meas_mass;
+    measured_free[x_coordinate][y_coordinate] = 0.0;
   }
 }
 
@@ -578,7 +612,7 @@ void StaticOccupancyNode::ray_tracing_vertical(int x2)
   measured_free[x2 + 64][64] = 0.0;
 }
 
-// VERTICAL NEGATIVE!!!!
+// VERTICLE -
 void StaticOccupancyNode::ray_tracing_vertical_n(int x1)
 {
   int x2 = 0;
@@ -599,6 +633,7 @@ void StaticOccupancyNode::ray_tracing_vertical_n(int x1)
   measured_free[x2 + 64][64] = 0.0;
 }
 
+// HORIZONTAL +
 void StaticOccupancyNode::ray_tracing_horizontal(int y2)
 {
   int x1 = 0;
@@ -616,6 +651,7 @@ void StaticOccupancyNode::ray_tracing_horizontal(int y2)
   }
 }
 
+// HORIZONTAL -
 void StaticOccupancyNode::ray_tracing_horizontal_n(int y1)
 {
   int x1 = 0;
