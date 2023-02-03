@@ -102,11 +102,18 @@ class MCL:
 
         if len(landmarks) < 1:
             return
+        if len(z) < 1:
+            return
 
         # Consider only the nearest landmark
         landmark = landmarks[np.argmin(
             np.linalg.norm(landmarks-self.mu[:2], axis=1))]
         print(f"Nearest lm: {landmark}")
+
+        particle_distances = np.linalg.norm(particles[:, :2]-landmark, axis=1)
+        print(f"Particle dists: {particle_distances}")
+        print(f"Observed dists: {z}")
+        weights *= scipy.stats.norm(particle_distances, R).pdf(z[0])
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
@@ -196,11 +203,11 @@ class MCL:
 
         particles_on_grid = np.array(particles_on_grid)
 
-        plt.scatter(particles_on_grid[:, 0],
-                    particles_on_grid[:, 1], c=alignments)
+        # plt.scatter(particles_on_grid[:, 0],
+        #             particles_on_grid[:, 1], c=alignments)
 
         print(np.max(alignments))
-        plt.show()
+        # plt.show()
 
         alignments = np.array(alignments) / len(particles)
 
@@ -292,7 +299,7 @@ class MCL:
 
     def sense(self, cloud, noise):
 
-        MAX_LANDMARK_DIST = 15.0  # meters
+        MAX_LANDMARK_DIST = 10.0  # meters
 
         traffic_light_pts = cloud[cloud[:, 2] == TRAFFIC_LIGHT_ID][:, 0:2]
 
@@ -318,14 +325,16 @@ class MCL:
         print("Traffic light points:")
         print(downsampled_pts)
 
+        downsampled_pts = downsampled_pts.reshape((-1, 2))
+
         distances = np.linalg.norm(
             downsampled_pts, axis=1) + randn(downsampled_pts.shape[0]) * noise
 
         return distances
 
     def getLandmarks(self, grid, mu):
-        plt.imshow(grid, origin='lower')
-        plt.show()
+        # plt.imshow(grid, origin='lower')
+        # plt.show()
         landmarks_on_grid = np.flip(
             np.transpose((grid == 13).nonzero()), axis=1)
 
@@ -353,9 +362,9 @@ class MCL:
 
         print(landmarks_on_map)
 
-        plt.scatter(landmarks_on_map[:, 0], landmarks_on_map[:, 1])
-        plt.scatter(mu[0], mu[1], c='r')
-        plt.show()
+        # plt.scatter(landmarks_on_map[:, 0], landmarks_on_map[:, 1])
+        # plt.scatter(mu[0], mu[1], c='r')
+        # plt.show()
 
         return landmarks_on_map
 
