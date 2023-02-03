@@ -205,7 +205,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                     }
                 }
             }
-            semantic_grid_data.push_back(cell_class * 10);
+            semantic_grid_data.push_back(cell_class);
             flat_surface_grid_data.push_back(cell_is_flat_surface ? 100 : 0);
 
             // Get closest route point
@@ -232,10 +232,53 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     }
 
     // Add cells for map objects (signs, lights, etc)
-    for (odr::value object_value : map_objects_in_range)
+    for (odr::value tree_value : map_objects_in_range)
     {
-        auto object_pair = map_objects_[object_value.second];
-        std::printf(object_pair.first.name.c_str());
+        auto object_pair = map_objects_[tree_value.second];
+        odr::RoadObject obj = object_pair.first;
+
+        odr::point xy = tree_value.first.min_corner();
+        float x = xy.get<0>();
+        float y = xy.get<1>();
+
+        // Query results are in the map frame.
+        // We need base_link (vehicle) frame
+        // First rotate, then translate. 2D rotation eq:
+        // x' = xcos(h) - ysin(h)
+        // y' = ycos(h) + xsin(h)
+        float h = -2 * asin(vehicle_tf.transform.rotation.z); // TODO: Do not assume flat ground!
+        float x_in_bl = x * cos(h) - y * sin(h) - vehicle_pos.x;
+        float y_in_bl = y * cos(h) + x * sin(h) - vehicle_pos.y;
+
+        float dist_from_min_x = x_in_bl - x_min;
+        float dist_from_min_y = y_in_bl - y_min;
+        int i = static_cast<int>(dist_from_min_x / res);
+        int j = static_cast<int>(dist_from_min_y / res);
+        int width = static_cast<int>((x_max - x_min) / res);
+
+        int8_t cell_value;
+
+        if (obj.name == "Sign_Stop")
+            cell_value = 11;
+        else if (obj.name.find("Speed") != std::string::npos)
+            cell_value = 12; // Speed_*, speed limit sign
+        else if (obj.name == "Signal_3Light_Post01")
+            cell_value = 13;
+        else if (obj.name == "CContinentalCrosswalk")
+        {
+            RCLCPP_WARN_ONCE(get_logger(), "Warn once: Crosswalks are not yet properly shown by the semantic map grid.");
+            cell_value = 21;
+        }
+        else
+        {
+            RCLCPP_ERROR(get_logger(), "Unknown map object \"%s\" detected. Skipping.", obj.name.c_str());
+            continue;
+        }
+
+        semantic_grid_data[j * (width + 1) + i] = cell_value;
+
+        std::printf("%s @ (%.2f,%.2f) -> (%i, %i)\n", obj.name.c_str(),
+                    x_in_bl, y_in_bl, i, j);
     }
 
     auto clock = this->clock_->clock;

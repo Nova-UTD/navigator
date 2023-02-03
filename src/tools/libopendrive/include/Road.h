@@ -83,6 +83,7 @@ namespace odr
 
         std::vector<LaneSection> get_lanesections() const;
         std::vector<RoadObject> get_road_objects() const;
+        std::vector<RoadSignal> get_signals() const;
 
         double get_lanesection_s0(const double s) const;
         LaneSection get_lanesection(const double s) const;

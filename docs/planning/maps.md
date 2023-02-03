@@ -27,16 +27,17 @@ All grid maps are in the `base_link` (vehicle) reference frame. The semantic gri
 
 This is a general-purpose grid map drawn from OpenDRIVE map data, where each cell is tagged with an appropriate class.
 
-| ID   | Description                                                  |
-| ---- | ------------------------------------------------------------ |
-| 0    | None/unknown. Grass, buildings, and other regions not described in the OpenDRIVE map. |
-| 1    | Road                                                         |
-| 2    | Shoulder                                                     |
-| 3    | Curb                                                         |
-| 4    | Sidewalk                                                     |
-| 5    | Median                                                       |
-| 11   | Stop sign                                                    |
-| 12   | Speed limit sign                                             |
-| 13   | Traffic light                                                |
-| 21   | Crosswalk                                                    |
+| ID   | Description                                                  | Class  | Name                               | Included? |
+| ---- | ------------------------------------------------------------ | ------ | ---------------------------------- | --------- |
+| 0    | None/unknown. Grass, buildings, and other regions not described in the OpenDRIVE map. |        | ✅                                  |           |
+| 1    | Driving lane                                                 | Lane   | ✅                                  |           |
+| 2    | Shoulder                                                     | Lane   | ✅                                  |           |
+| 3    | Curb                                                         | Lane   | ✅                                  |           |
+| 4    | Sidewalk                                                     | Lane   | ✅                                  |           |
+| 5    | Median                                                       | Lane   | ✅                                  |           |
+| 6    | Parking                                                      | Lane   | ✅                                  |           |
+| 11   | Stop sign                                                    | Signal | `Sign_Stop`                        |           |
+| 12   | Speed limit sign                                             | Object | `Speed_30`, `Speed_60`, `Speed_90` |           |
+| 13   | Traffic light                                                | Signal | `Signal_3Light_Post01`             |           |
+| 21   | Crosswalk                                                    | Object | `CContinentalCrosswalk`            |           |
 

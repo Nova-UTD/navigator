@@ -747,6 +747,17 @@ namespace odr
                 point pt = point(xyz[0], xyz[1]);
                 object_centers_.push_back(std::make_pair(obj, pt));
             }
+            for (RoadSignal sig : road.get_signals())
+            {
+                RoadObject obj(road.id, sig.id, sig.s, sig.t, sig.z0,
+                               0.0, 0.0, sig.width, 0.1, sig.height, sig.hdg, sig.pitch,
+                               sig.roll, sig.type, sig.name, sig.orientation);
+                float s = obj.s0;
+                float t = obj.t0;
+                odr::Vec3D xyz = road.get_surface_pt(s, t);
+                point pt = point(xyz[0], xyz[1]);
+                object_centers_.push_back(std::make_pair(obj, pt));
+            }
         }
         return object_centers_;
     }

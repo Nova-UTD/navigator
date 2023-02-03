@@ -206,10 +206,10 @@ class MCLNode(Node):
         ])
 
     def map_cb(self, msg: OccupancyGrid):
-        data = np.array(msg.data).reshape(151, 151)
-        plt.imshow(data)
-        print("Showing!")
-        plt.show()
+        data = np.rot90(np.array(msg.data).reshape(151, 151), k=1, axes=(1, 0))
+        # plt.imshow(data, origin='lower')
+        # print("Showing!")
+        # plt.show()
 
         if self.gnss_pose is None:
             return  # Wait for initial guess from GNSS
