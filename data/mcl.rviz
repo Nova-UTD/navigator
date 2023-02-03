@@ -11,7 +11,7 @@ Panels:
         - /Cameras1/Semantic Left1
         - /Cameras1/Semantic Right1
         - /Grids1
-        - /Grids1/Drivable Area1/Status1
+        - /Grids1/Drivable Area1
         - /Grids1/Flat Surfaces1
       Splitter Ratio: 0.5
     Tree Height: 399
@@ -391,7 +391,7 @@ Visualization Manager:
       Displays:
         - Alpha: 0.699999988079071
           Class: rviz_default_plugins/Map
-          Color Scheme: raw
+          Color Scheme: costmap
           Draw Behind: true
           Enabled: true
           Name: Drivable Area
@@ -453,7 +453,7 @@ Visualization Manager:
           Class: rviz_default_plugins/Map
           Color Scheme: costmap
           Draw Behind: true
-          Enabled: false
+          Enabled: true
           Name: Flat Surfaces
           Topic:
             Depth: 5
@@ -468,7 +468,7 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /grid/flat_surface_updates
           Use Timestamp: true
-          Value: false
+          Value: true
       Enabled: true
       Name: Grids
     - Alpha: 1
@@ -572,7 +572,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 27.034473419189453
+      Distance: 33.05908966064453
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -587,10 +587,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9447970986366272
+      Pitch: 0.9047971367835999
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 2.7810211181640625
+      Yaw: 2.931020736694336
     Saved: ~
 Window Geometry:
   Bird's Eye:
