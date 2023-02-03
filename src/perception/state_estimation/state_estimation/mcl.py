@@ -38,6 +38,9 @@ ROAD_ID = 4286595200
 TRAFFIC_LIGHT_ID = 4294617630
 POLE_ID = 4288256409
 
+GRID_ORIGIN_METERS = [-20., -30.]
+CELL_SIZE = 0.4  # meters/cell
+
 
 class MCL:
 
@@ -82,7 +85,7 @@ class MCL:
 
         self.previous_speed = u[1]
 
-    def update_orig(self, particles: np.array, weights: np.array, z: np.array, R: np.array, landmarks: np.array) -> None:
+    def updateOriginal(self, particles: np.array, weights: np.array, z: np.array, R: np.array, landmarks: np.array) -> None:
         """Update the weights of each particle based on our current observation
         using Sequential Importance Sampling (SIS)
 
@@ -111,8 +114,6 @@ class MCL:
             R (np.array): sensor error standard deviation
             landmarks (np.array): landmark positions [x,y]
         """
-        GRID_ORIGIN_METERS = [-20., -30.]
-        CELL_SIZE = 0.4  # meters/cell
 
         # Crop cloud to nearby
         nearby_cloud = cloud[np.linalg.norm(cloud[:, 0:2], axis=1) < 14]
@@ -127,8 +128,8 @@ class MCL:
 
         alignments = []
 
-        plt.imshow(grid, origin='lower')
-        plt.scatter(cloud_on_grid[:, 0], cloud_on_grid[:, 1], c='red', s=1.0)
+        # plt.imshow(grid, origin='lower')
+        # plt.scatter(cloud_on_grid[:, 0], cloud_on_grid[:, 1], c='red', s=1.0)
 
         particles_on_grid = []
 
@@ -284,6 +285,42 @@ class MCL:
     def replaceWeakParticles(self, particles, weights, gnss_pose):
         return
 
+    def getLandmarks(self, grid, mu):
+        plt.imshow(grid, origin='lower')
+        plt.show()
+        landmarks_on_grid = np.flip(
+            np.transpose((grid == 13).nonzero()), axis=1)
+
+        if landmarks_on_grid.shape[0] == 0:
+            return landmarks_on_grid  # If empty, send it out
+
+        print(landmarks_on_grid)
+        # landmarks_on_grid = landmarks_on_grid[landmarks_on_grid[:, 0] > 70]
+        # landmarks_on_grid = landmarks_on_grid[landmarks_on_grid[:, 0] < 85]
+        # landmarks_on_grid = landmarks_on_grid[landmarks_on_grid[:, 1] < 70]
+        # landmarks_on_grid = landmarks_on_grid[landmarks_on_grid[:, 1] > 60]
+
+        landmarks_on_map = landmarks_on_grid * CELL_SIZE
+        landmarks_on_map += GRID_ORIGIN_METERS
+
+        # Rotate to map
+        d_theta = -1 * mu[2]  # Invert to get base_link->map rotation
+        r = np.array([[np.cos(d_theta), -1*np.sin(d_theta)],
+                      [np.sin(d_theta), np.cos(d_theta)]])
+        landmarks_on_map[:, 0:2] = np.dot(
+            landmarks_on_map[:, 0:2], r.T)  # Apply rotation matrix
+
+        # Now translate
+        landmarks_on_map += mu[0:2]
+
+        print(landmarks_on_map)
+
+        plt.scatter(landmarks_on_map[:, 0], landmarks_on_map[:, 1])
+        plt.scatter(mu[0], mu[1], c='r')
+        plt.show()
+
+        return landmarks_on_grid
+
     def step(self, u, clock, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
 
         self.predictMotion(self.particles, u, std=[
@@ -295,6 +332,16 @@ class MCL:
 
         # alignments = self.updateWeights(self.particles, self.weights,
         #                                 cloud, grid, gnss_pose)
+
+        sensor_std_err = 1.0  # meters?
+        landmarks = self.getLandmarks(grid, self.mu)
+        if landmarks.shape[0] < 0:
+            print("No landmarks found!")
+            return
+        zs = (np.linalg.norm(landmarks - self.mu[0:2], axis=1) +
+              (randn(len(landmarks)) * sensor_std_err))
+        self.updateOriginal(self.particles, self.weights, z=zs, R=sensor_std_err,
+                            landmarks=landmarks)
 
         # self.replaceWeakParticles(self.particles, self.weights, gnss_pose)
 
