@@ -34,9 +34,10 @@ import scipy.stats
 import time
 import matplotlib.pyplot as plt
 
-ROAD_ID = 4286595200
-TRAFFIC_LIGHT_ID = 4294617630
 POLE_ID = 4288256409
+ROAD_ID = 4286595200
+TERRAIN_ID = 4287736420
+TRAFFIC_LIGHT_ID = 4294617630
 
 GRID_ORIGIN_METERS = [-20., -30.]
 GRID_ORIGIN_METERS = np.array(GRID_ORIGIN_METERS)
@@ -191,6 +192,9 @@ class MCL:
                 elif grid[pt[1]][pt[0]] == 100 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
                     # Pole and traffic light misalignment penalty
                     # Poles and traffic lights should not fall into roads, so penalize particles that present this
+                    hits -= 5
+                elif grid[pt[1]][pt[0]] == 100 and pt[2] == TERRAIN_ID:
+                    # Terrain misalignment penalty
                     hits -= 5
                 else:
                     bad_points.append(pt)
@@ -382,9 +386,16 @@ class MCL:
 
         return landmarks_on_map
 
-    def resample(self, particles, alignments):
-        # Sort particles from least aligned to most aligned
+    def resample(self, particles, alignments, gnss_pose):
+
         alignments = np.array(alignments).reshape((-1, 1))
+
+        # Kill off particles further than 5m from GNSS
+        dists = gnss_difference = np.linalg.norm(
+            particles[:, 0:2] - gnss_pose[0:2], axis=1)
+        alignments[dists > 5] = 0.
+
+        # Form a combined particle-alignment array
         combined_array = np.hstack((particles, alignments))
         # Sort by third column (alignments)
         combined_array = combined_array[combined_array[:, 3].argsort()]
@@ -400,10 +411,10 @@ class MCL:
         # Add a little noise
         print(randn(replacement_qty).T)
         print(combined_array[0: replacement_qty, 0])
-        combined_array[0: replacement_qty,
-                       0] += randn(replacement_qty).T * 0.1
-        combined_array[0: replacement_qty,
-                       1] += randn(replacement_qty).T * 0.1
+        # combined_array[0: replacement_qty,
+        #                0] += randn(replacement_qty).T * 0.4
+        # combined_array[0: replacement_qty,
+        #                1] += randn(replacement_qty).T * 0.4
 
         print(combined_array)
 
@@ -430,12 +441,12 @@ class MCL:
         alignments = self.updateWeights(self.particles, self.weights,
                                         cloud, grid, gnss_pose)
 
-        self.particles = self.resample(self.particles, alignments)
+        self.particles = self.resample(self.particles, alignments, gnss_pose)
 
         mu, var = self.estimate(self.particles, self.weights)
 
         gnss_difference = np.linalg.norm(mu - gnss_pose)
-        if gnss_difference > 5:
+        if gnss_difference > 3:
             print("KIDNAPPED! Reseting.")
             self.reset(gnss_pose, N=len(self.particles))
 
