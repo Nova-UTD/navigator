@@ -13,11 +13,9 @@ Despite major advances in autonomous driving research, there has yet to exist a 
 Navigator is our answer to this delimma. It's built on standard technologies, is kept as simple as possible, and its modular design makes adding new features straightforward.
 
 ## System requirements
-- System running Ubuntu 20.04 LTS or similar ([see here](http://docs.ros.org.ros.informatik.uni-freiburg.de/en/foxy/Installation/Alternatives/Ubuntu-Development-Setup.html#system-requirements))
-  - *[**Docker**](https://docs.docker.com/desktop/) engine already installed on Ubuntu*
-- [**Ros2 Foxy**](https://docs.ros.org/en/foxy/Installation.html)
-- [**CARLA 0.9.13**](https://carla.readthedocs.io/en/latest/start_quickstart/)
-- A dedicated GPU with at least 6 GB of memory, ideally 8 GB
+- [**Docker**](https://docs.docker.com/desktop/)
+- [**CARLA 0.9.13**](https://carla.readthedocs.io/en/latest/start_quickstart/) for simulated testing (optional)
+- For best results, a dedicated GPU with at least 6 GB of memory, ideally 8 GB
 - x86_64 CPU
 - About 20 GB of disk space
 
@@ -25,9 +23,9 @@ Navigator is our answer to this delimma. It's built on standard technologies, is
 
 > Note: Lines with "$" are on host, while lines with "#" are within the container.
 
-1. [Install ROS2 Foxy](https://docs.ros.org/en/foxy/Installation.html) if you haven't already done so
-2. [Install Docker](https://www.docker.com/get-started/) if you haven't already done so
-3. Clone our repository
+1. [Install Docker](https://www.docker.com/get-started/) if you haven't already done so
+2. If not already set, choose a number between 0-100 and use this for your user-wide ROS_DOMAIN_ID. Add this to your `.bashrc` with `echo 'export ROS_DOMAIN_ID=[your number]' >> ~/.bashrc`
+2. Clone our repository
 ```
 $ git clone --recursive https://github.com/Nova-UTD/navigator
 $ cd navigator
@@ -72,7 +70,7 @@ That's it!
 $ ./docker.sh
 ...
 root@yourhost:/navigator# ./navigator
-root@yourhost:/navigator# ros2 launch carla_interface carla-lite.launch.py
+root@yourhost:/navigator# ros2 launch carla_interface carla.launch.py
 ```
 This should start a series of ROS nodes, spawning an ego vehicle in the simulator along with a number of sensors:
 ```
