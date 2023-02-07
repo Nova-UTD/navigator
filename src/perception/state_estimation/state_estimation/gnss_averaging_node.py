@@ -1,6 +1,6 @@
 '''
 Package: state_estimation
-   File: gnss_estimation_node.py
+   File: gnss_averaging_node.py
  Author: Will Heitman (w at heit dot mn)
 
 Very simple node to convert raw GNSS odometry into a map->base_link transform.
@@ -25,58 +25,14 @@ from tf2_ros import TransformBroadcaster
 from xml.etree import ElementTree as ET
 
 
-class GnssProcessingNode(Node):
+class GnssAveragingNode(Node):
 
     def __init__(self):
         super().__init__('gnss_estimation_node')
 
-        self.odom_sub = self.create_subscription(
-            Odometry, '/odometry/gnss_raw', self.raw_odom_cb, 10
-        )
-        self.gnss_sub = self.create_subscription(
-            NavSatFix, '/carla/hero/gnss', self.gnss_cb, 10
-        )
-
-        self.clock_sub = self.create_subscription(
-            Clock, '/clock', self.clock_cb, 10)
-
-        self.imu_sub = self.create_subscription(
-            Imu, '/carla/hero/imu', self.imu_cb, 10
-        )
-
-        self.world_info_sub = self.create_subscription(
-            CarlaWorldInfo, '/carla/world_info', self.world_info_cb, 10
-        )
-
-        self.odom_pub = self.create_publisher(
-            Odometry, '/odometry/gnss_processed', 10
-        )
-
-        self.raw_odom_pub = self.create_publisher(
+        self.raw_gnss_sub = self.create_subscription(
             Odometry, '/odometry/gnss_raw', 10
         )
-
-        self.status_pub = self.create_publisher(
-            DiagnosticStatus, '/status', 1
-        )
-
-        self.status_timer = self.create_timer(1.0, self.update_status)
-
-        # self.tf_broadcaster = TransformBroadcaster(self)
-
-        self.cached_imu = Imu()
-        self.latest_timestamp = Time()
-        self.clock = Clock()
-        self.lat0 = None
-        self.lon0 = None
-
-        # Make a queue of previous poses for our weighted moving average
-        # where '10' is the size of our history
-        self.history_size = 5
-        self.previous_x_vals = np.zeros((self.history_size))
-        self.previous_y_vals = np.zeros((self.history_size))
-        self.previous_z_vals = np.zeros((self.history_size))
-        self.wma_pose = Pose()
 
     def _parse_header_(self, root: ET.Element) -> dict:
         header = root.find('header')
@@ -261,14 +217,14 @@ class GnssProcessingNode(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    gnss_processing_node = GnssProcessingNode()
+    gnss_averaging_node = GnssAveragingNode()
 
-    rclpy.spin(gnss_processing_node)
+    rclpy.spin(gnss_averaging_node)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    gnss_processing_node.destroy_node()
+    gnss_averaging_node.destroy_node()
     rclpy.shutdown()
 
 
