@@ -149,7 +149,7 @@ class MCL:
         alignments = []
 
         plt.imshow(grid, origin='lower')
-        plt.scatter(cloud_on_grid[:, 0], cloud_on_grid[:, 1], c='red', s=1.0)
+        # plt.scatter(cloud_on_grid[:, 0], cloud_on_grid[:, 1], c='red', s=1.0)
 
         particles_on_grid = []
 
@@ -182,11 +182,10 @@ class MCL:
             bad_points = []
             for pt in cloud_on_particle:
 
-                if pt[0] >= grid.shape[0] or pt[1] >= grid.shape[1]:
+                if pt[0] >= grid.shape[0] or pt[1] >= grid.shape[1] or pt[0] < 0 or pt[1] < 0:
                     continue
                 if grid[pt[1]][pt[0]] == 1 and pt[2] == ROAD_ID:
                     hits += 1
-                    print(pt[2])
                     good_points.append(pt)
                 elif grid[pt[1]][pt[0]] == 1 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
                     # Pole and traffic light misalignment penalty
@@ -200,8 +199,9 @@ class MCL:
             good_points = np.array(good_points)
             # plt.scatter(particle_on_grid[0], particle_on_grid[1], c='blue')
             # # # print(cloud_on_particle)
-            plt.scatter(bad_points[:, 0],
-                        bad_points[:, 1], s=1.0, c='red')
+            if len(bad_points) > 1:
+                plt.scatter(bad_points[:, 0],
+                            bad_points[:, 1], s=1.0, c='red')
             if len(good_points) > 1:
                 plt.scatter(good_points[:, 0],
                             good_points[:, 1], s=1.0, c='green')
@@ -210,19 +210,20 @@ class MCL:
 
         particles_on_grid = np.array(particles_on_grid)
 
-        # plt.scatter(particles_on_grid[:, 0],
-        #             particles_on_grid[:, 1], c=alignments)
+        plt.scatter(particles_on_grid[:, 0],
+                    particles_on_grid[:, 1], c=alignments)
 
-        print(np.max(alignments))
-        # plt.show()
+        print(np.max(alignments) / len(cloud))
+        plt.colorbar()
+        plt.show()
 
-        alignments = np.array(alignments) / len(particles)
+        # alignments = np.array(alignments) / len(particles)
 
-        # if np.max(alignments) > 0.5:
-        #     weights *= alignments
-        # else:
-        #     print(f"Max alignment was only {np.max(alignments)}")
-        weights *= alignments
+        # # if np.max(alignments) > 0.5:
+        # #     weights *= alignments
+        # # else:
+        # #     print(f"Max alignment was only {np.max(alignments)}")
+        # weights *= alignments
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
@@ -376,6 +377,17 @@ class MCL:
         return landmarks_on_map
 
     def step(self, u, clock, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
+        """Takes new data, runs it through the filter, and generates a result pose.
+
+        ✅ 1. Predict the motion of all particles using the latest speedometer and angular velocity data.
+        ❌ 2. Assign a likelihood score to each particle using the latest classified cloud and grid.
+        ❌ 3. Select and replace the bottom X percent of particles with copies of the top X percent
+        ✅ 4. Take the weighted mean and covariance of the particles, return them
+        ✅ 5. Repeat 1-4.
+
+        Returns:
+            (mean, covariance)
+        """
 
         self.predictMotion(self.particles, u, std=[
                            0.3, 0.05], dt=clock - self.last_update_time, new_heading=gnss_pose[2])
@@ -384,13 +396,13 @@ class MCL:
         alignments = self.updateWeights(self.particles, self.weights,
                                         cloud, grid, gnss_pose)
 
-        sensor_std_err = 1.0  # meters?
-        landmarks = self.getLandmarks(grid, self.mu)
-        if landmarks.shape[0] < 0:
-            print("No landmarks found!")
-            return
+        # sensor_std_err = 1.0  # meters?
+        # landmarks = self.getLandmarks(grid, self.mu)
+        # if landmarks.shape[0] < 0:
+        #     print("No landmarks found!")
+        #     return
 
-        distances = self.sense(cloud, noise=0.5)
+        # distances = self.sense(cloud, noise=0.5)
         # zs = (np.linalg.norm(landmarks - self.mu[0:2], axis=1) +
         #       (randn(len(landmarks)) * sensor_std_err))
         # print(zs)
