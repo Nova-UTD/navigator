@@ -20,7 +20,6 @@ from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, NavSatFix
 
-import pymap3d as pm
 from tf2_ros import TransformBroadcaster
 from xml.etree import ElementTree as ET
 
@@ -31,187 +30,17 @@ class GnssAveragingNode(Node):
         super().__init__('gnss_estimation_node')
 
         self.raw_gnss_sub = self.create_subscription(
-            Odometry, '/odometry/gnss_raw', 10
+            Odometry, '/odometry/gnss_raw', self.raw_gnss_cb, 10
         )
 
-    def _parse_header_(self, root: ET.Element) -> dict:
-        header = root.find('header')
+        self.speedometer_sub = self.create_subscription(
+            CarlaSpeedometer, '/carla/hero/speedometer', self.speedometer_cb, 10)
 
-        # Find our geoReference tag, which has contents like this:
-        # "<![CDATA[+proj=tmerc +lat_0=0 +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +geoidgrids=egm96_15.gtx +vunits=m +no_defs ]]>"
-        geo_reference: str = header.find('geoReference').text
-        geo_reference_parts = geo_reference.split('+')
+    def raw_gnss_cb(self, msg: Odometry):
+        self.get_logger().info("Got GNSS!")
 
-        for part in geo_reference_parts:
-            if part.startswith('lon_0'):
-                lon0 = float(part[6:])
-            elif part.startswith('lat_0'):
-                lat0 = float(part[6:])
-
-        return (lat0, lon0)
-
-    def world_info_cb(self, msg: CarlaWorldInfo):
-        if self.lat0 is not None:
-            return
-        if msg.opendrive == "":
-            return
-        root = ET.fromstring(msg.opendrive)
-        self.lat0, self.lon0 = self._parse_header_(root)
-        self.get_logger().info("World info received.")
-
-    def gnss_cb(self, msg: NavSatFix):
-        if self.lat0 is None:
-            return
-        enu_xyz = pm.geodetic2enu(
-            msg.latitude,
-            msg.longitude,
-            msg.altitude,
-            self.lat0,
-            self.lon0,
-            0.0
-        )
-        odom_msg = Odometry()
-
-        # The odometry is for the current time-- right now
-        odom_msg.header.stamp = self.clock.clock
-
-        # The odometry is the car's location on the map,
-        # so the child frame is "base_link"
-        odom_msg.header.frame_id = 'map'
-        odom_msg.child_frame_id = 'base_link'
-        pos = Point()
-
-        pos.x = enu_xyz[0]
-        pos.y = enu_xyz[1]
-        pos.z = enu_xyz[2]
-        odom_msg.pose.pose.position = pos
-        self.raw_odom_pub.publish(odom_msg)
-
-    def imu_cb(self, msg: Imu):
-        self.cached_imu = msg
-        msg.header.stamp
-
-    def clock_cb(self, msg: Clock):
-        self.clock = msg
-
-    def update_status(self):
-        status = DiagnosticStatus()
-        status.name = self.get_name()  # Get the node name
-
-        # Check if message is stale
-        current_time = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
-        data_received_time = self.latest_timestamp.sec + \
-            self.latest_timestamp.nanosec * 1e-9
-        time_since_data_received = current_time - data_received_time > 1.0
-        if time_since_data_received > 1.0:
-            status.level = DiagnosticStatus.STALE
-            status.message = f"No GNSS data received in {time_since_data_received} seconds"
-        else:
-            status.level = DiagnosticStatus.OK
-            # No message necessary if OK.
-        self.status_pub.publish(status)
-
-    def _update_odom_weighted_moving_average_(self, current_pos: Point):
-        # Calculate noisy yaw from the change in position
-        # old_pose = self.previous_poses[self.history_size-1]
-
-        # Calculate the weighted moving average (WMA) for odometry
-        # 1. Discard oldest reading and add newest to 'queue'
-
-        self.previous_x_vals = np.roll(self.previous_x_vals, -1)
-        self.previous_y_vals = np.roll(self.previous_y_vals, -1)
-        self.previous_z_vals = np.roll(self.previous_z_vals, -1)
-        self.previous_x_vals[self.history_size-1] = current_pos.x
-        self.previous_y_vals[self.history_size-1] = current_pos.y
-        self.previous_z_vals[self.history_size-1] = current_pos.z
-
-        # 2. Generate weight array: [1,2,3,...,n]
-        weights = np.arange(0, self.history_size)
-
-        # 3. Use a numpy functions to handle the rest :->)
-        wma_x = np.average(self.previous_x_vals, axis=0, weights=weights)
-        wma_y = np.average(self.previous_y_vals, axis=0, weights=weights)
-        wma_z = np.average(self.previous_z_vals, axis=0, weights=weights)
-
-        wma_pose = Pose()
-        wma_pose.position.x = wma_x
-        wma_pose.position.y = wma_y
-        wma_pose.position.z = wma_z
-
-        # IMU orientation is buggy. See imu_cb note.
-        buggy_quat = self.cached_imu.orientation
-        heading_x = buggy_quat.x * -0.48
-        heading_y = buggy_quat.y * 0.48
-        wma_yaw = math.atan2(heading_y, heading_x)
-
-        # q = cos(theta/2) + sin(theta/2)(xi + yj + zk)
-        # Set x, y = 0 s.t. theta = yaw
-        wma_pose.orientation.w = math.cos(wma_yaw/2)
-        wma_pose.orientation.x = 0.0
-        wma_pose.orientation.y = 0.0
-        wma_pose.orientation.z = math.sin(wma_yaw/2)
-
-        self.wma_pose = wma_pose
-
-    def _quat_to_yaw_(self, q: Quaternion):
-        t0 = +2.0 * (q.w * q.x + q.y * q.z)
-        t1 = +1.0 - 2.0 * (q.x * q.x + q.y * q.y)
-        roll = math.atan2(t0, t1)
-
-        t2 = +2.0 * (q.w * q.y - q.z * q.x)
-        t2 = +1.0 if t2 > +1.0 else t2
-        t2 = -1.0 if t2 < -1.0 else t2
-        pitch = math.asin(t2)
-
-        t3 = +2.0 * (q.w * q.z + q.x * q.y)
-        t4 = +1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-        yaw = math.atan2(t3, t4)
-
-        return yaw
-
-    def raw_odom_cb(self, msg: Odometry):
-
-        current_pos: Point = msg.pose.pose.position
-
-        # Form an odom message to store our result
-        odom_msg = Odometry()
-
-        # Copy the header from the GNSS odom message
-        odom_msg.header = msg.header
-        odom_msg.child_frame_id = msg.child_frame_id
-
-        self._update_odom_weighted_moving_average_(current_pos)
-
-        odom_msg.pose.pose = self.wma_pose
-
-        odom_msg.pose.covariance[0] = 2.0  # This is the variance of x
-        odom_msg.pose.covariance[7] = 2.0  # This is the variance of y
-
-        # LOCK Z to 0
-        odom_msg.pose.pose.position.z = 0.7
-
-        # Publish our odometry message, converted from GNSS
-        self.odom_pub.publish(odom_msg)
-
-        # Update our timestamp (used to check staleness)
-        self.latest_timestamp = odom_msg.header.stamp
-
-        # self.get_logger().info("{}".format(str(self.previous_y_vals)))
-        # self.get_logger().info(f"CURRENT Y: {current_pos.y}")
-
-        # Publish our map->base_link tf
-        t = TransformStamped()
-        t.header = msg.header
-        t.child_frame_id = 'hero'
-        transl = Vector3()
-        transl.x = self.wma_pose.position.x
-        transl.y = self.wma_pose.position.y
-        transl.z = self.wma_pose.position.z
-        t.transform.translation = transl
-        t.transform.rotation = self.wma_pose.orientation
-
-        # Uncomment to enable direct map->base_link tf
-        # self.tf_broadcaster.sendTransform(t)
+    def speedometer_cb(self, msg: CarlaSpeedometer):
+        self.get_logger().info(f"Got speed {msg.data}")
 
 
 def main(args=None):
