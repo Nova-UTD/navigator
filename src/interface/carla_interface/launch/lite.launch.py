@@ -85,6 +85,11 @@ def generate_launch_description():
         executable='ground_segmentation_exe'
     )
 
+    static_grid = Node(
+        package = 'occupancy_cpp',
+        executable='static_grid_exe'
+    )
+
     image_segmentation = Node(
         package='segmentation',
         executable='image_segmentation_node'
@@ -112,6 +117,7 @@ def generate_launch_description():
         image_segmentation,
         lidar_processor,
         ground_seg,
+        static_grid,
 
         # STATE ESTIMATION
         # map_manager,
