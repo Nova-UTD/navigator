@@ -225,7 +225,7 @@ class MCLNode(Node):
 
         clock_seconds = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
         self.filter = MCL(clock_seconds, res, initial_pose=self.gnss_pose,
-                          map_origin=np.array([origin.x, origin.y]), N=30)
+                          map_origin=np.array([origin.x, origin.y]), N=50)
 
         self.get_logger().info("MCL filter created")
 
