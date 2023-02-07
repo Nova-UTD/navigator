@@ -34,10 +34,9 @@ import scipy.stats
 import time
 import matplotlib.pyplot as plt
 
-POLE_ID = 4288256409
 ROAD_ID = 4286595200
-TERRAIN_ID = 4287736420
 TRAFFIC_LIGHT_ID = 4294617630
+POLE_ID = 4288256409
 
 GRID_ORIGIN_METERS = [-20., -30.]
 GRID_ORIGIN_METERS = np.array(GRID_ORIGIN_METERS)
@@ -192,9 +191,6 @@ class MCL:
                 elif grid[pt[1]][pt[0]] == 100 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
                     # Pole and traffic light misalignment penalty
                     # Poles and traffic lights should not fall into roads, so penalize particles that present this
-                    hits -= 5
-                elif grid[pt[1]][pt[0]] == 100 and pt[2] == TERRAIN_ID:
-                    # Terrain misalignment penalty
                     hits -= 5
                 else:
                     bad_points.append(pt)
@@ -411,10 +407,10 @@ class MCL:
         # Add a little noise
         print(randn(replacement_qty).T)
         print(combined_array[0: replacement_qty, 0])
-        # combined_array[0: replacement_qty,
-        #                0] += randn(replacement_qty).T * 0.4
-        # combined_array[0: replacement_qty,
-        #                1] += randn(replacement_qty).T * 0.4
+        combined_array[0: replacement_qty,
+                       0] += randn(replacement_qty).T * 0.1
+        combined_array[0: replacement_qty,
+                       1] += randn(replacement_qty).T * 0.1
 
         print(combined_array)
 
