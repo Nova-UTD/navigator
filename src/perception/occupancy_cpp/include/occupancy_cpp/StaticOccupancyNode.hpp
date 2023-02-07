@@ -36,7 +36,7 @@ using namespace std::chrono_literals;
 using nav_msgs::msg::OccupancyGrid;
 using rosgraph_msgs::msg::Clock;
 using sensor_msgs::msg::PointCloud2;
-// using nova_msgs::msg::Masses;
+using nova_msgs::msg::Masses;
 
 namespace navigator
 {
@@ -53,7 +53,7 @@ namespace navigator
 
       // Publishers
       rclcpp::Publisher<OccupancyGrid>::SharedPtr occupancy_grid_pub;
-      // rclcpp::Publisher<Masses>::SharedPtr masses_pub;
+      rclcpp::Publisher<Masses>::SharedPtr masses_pub;
 
       // Subscribers
       rclcpp::Subscription<Clock>::SharedPtr clock_sub;
@@ -88,9 +88,9 @@ namespace navigator
       const static int event_num = 2;
 
       // Grid size.
-      const static int grid_size = 128;
+      const static int GRID_SIZE = 128;
 
-      const int SIZE = 64;
+      const int HALF_SIZE = grid_size / 2;
 
       // Resolution.
       constexpr static float res = 1. / 3.;
@@ -123,6 +123,11 @@ namespace navigator
       float updated_occP[grid_size][grid_size]= {{0}};
       float updated_free[grid_size][grid_size]= {{0}};
       float updated_occ[grid_size][grid_size]= {{0}};
+
+      // Masses measurement (probability distribution)
+      float probabilities[grid_size][grid_size] = {{0}};
+      float probabilities_plot[grid_size][grid_size] = {{0}};
+
       bool angles[360];
       bool first;
 
@@ -131,11 +136,14 @@ namespace navigator
       void transform_listener();
       void pointCloudCb(const PointCloud2::SharedPtr msg);
       void create_DST_grid(pcl::PointCloud<pcl::PointXYZI> &cloud);
-      void ray_tracing_approximation_x_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive);
-      void ray_tracing_approximation_y_increment(int x1, int y1, int x2, int y2, int flip_x, int flip_y, bool inclusive);
-      int find_nearest(int n, double v, double v0, double vn, double res);
+      void ray_tracing_approximation_x_increment(int x2, int y2, int flip_x, int flip_y, bool inclusive);
+      void ray_tracing_approximation_y_increment(int x2, int y2, int flip_x, int flip_y, bool inclusive);
+      int find_nearest(int num, float value, float min, float max, float res);
+      void update_previous();
       void mass_update();
       void update_of();
+      void get_mass();
+      void plotting();
       std::vector<std::vector<float>> getGridCellProbabilities();
       void publishOccupancyGrid();
       void clear();
