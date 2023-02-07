@@ -391,7 +391,7 @@ Visualization Manager:
       Displays:
         - Alpha: 0.699999988079071
           Class: rviz_default_plugins/Map
-          Color Scheme: costmap
+          Color Scheme: raw
           Draw Behind: true
           Enabled: true
           Name: Drivable Area
@@ -400,13 +400,13 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /grid/semantic_map
+            Value: /grid/drivable
           Update Topic:
             Depth: 5
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /grid/semantic_map_updates
+            Value: /grid/drivable_updates
           Use Timestamp: true
           Value: true
         - Alpha: 0.699999988079071
@@ -512,7 +512,11 @@ Visualization Manager:
       Value: true
       Visibility:
         Cameras:
-          "": true
+          Bird's Eye: true
+          RGB Left: true
+          RGB Right: true
+          Semantic Left: true
+          Semantic Right: true
           Value: true
         Grid: true
         Grids:
@@ -572,7 +576,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 33.05908966064453
+      Distance: 22.910228729248047
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

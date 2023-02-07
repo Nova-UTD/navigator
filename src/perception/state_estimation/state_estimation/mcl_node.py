@@ -68,7 +68,7 @@ class MCLNode(Node):
             Imu, '/carla/hero/imu', self.imu_cb, 10)
 
         self.map_sub = self.create_subscription(
-            OccupancyGrid, '/grid/semantic_map', self.map_cb, 10)
+            OccupancyGrid, '/grid/drivable', self.map_cb, 10)
 
         self.speed_sub = self.create_subscription(
             CarlaSpeedometer, '/carla/hero/speedometer', self.speed_cb, 1)

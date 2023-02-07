@@ -42,6 +42,8 @@ GRID_ORIGIN_METERS = [-20., -30.]
 GRID_ORIGIN_METERS = np.array(GRID_ORIGIN_METERS)
 CELL_SIZE = 0.4  # meters/cell
 
+DO_PLOT_ALIGNMENT = False
+
 
 class MCL:
 
@@ -181,24 +183,29 @@ class MCL:
             good_points = []
             bad_points = []
             for pt in cloud_on_particle:
-
                 if pt[0] >= grid.shape[0] or pt[1] >= grid.shape[1] or pt[0] < 0 or pt[1] < 0:
                     continue
-                if grid[pt[1]][pt[0]] == 1 and pt[2] == ROAD_ID:
+                if grid[pt[1]][pt[0]] == 100 and pt[2] == ROAD_ID:
                     hits += 1
                     good_points.append(pt)
-                elif grid[pt[1]][pt[0]] == 1 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
+                elif grid[pt[1]][pt[0]] == 100 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
                     # Pole and traffic light misalignment penalty
                     # Poles and traffic lights should not fall into roads, so penalize particles that present this
                     hits -= 5
                 else:
                     bad_points.append(pt)
-            alignments.append(hits)
+            alignments.append(hits / len(cloud_on_particle))
 
             bad_points = np.array(bad_points)
             good_points = np.array(good_points)
             # plt.scatter(particle_on_grid[0], particle_on_grid[1], c='blue')
             # # # print(cloud_on_particle)
+
+            particles_on_grid.append(particle_on_grid)
+
+            if not DO_PLOT_ALIGNMENT:
+                continue  # Skip to next loop if plotting not enabled
+
             if len(bad_points) > 1:
                 plt.scatter(bad_points[:, 0],
                             bad_points[:, 1], s=1.0, c='red')
@@ -206,16 +213,15 @@ class MCL:
                 plt.scatter(good_points[:, 0],
                             good_points[:, 1], s=1.0, c='green')
 
-            particles_on_grid.append(particle_on_grid)
-
         particles_on_grid = np.array(particles_on_grid)
 
-        plt.scatter(particles_on_grid[:, 0],
-                    particles_on_grid[:, 1], c=alignments)
+        if DO_PLOT_ALIGNMENT:
+            print(np.max(alignments) / len(cloud))
+            plt.scatter(particles_on_grid[:, 0],
+                        particles_on_grid[:, 1], c=alignments)
 
-        print(np.max(alignments) / len(cloud))
-        plt.colorbar()
-        plt.show()
+            plt.colorbar()
+            plt.show()
 
         # alignments = np.array(alignments) / len(particles)
 
@@ -376,11 +382,39 @@ class MCL:
 
         return landmarks_on_map
 
+    def resample(self, particles, alignments):
+        # Sort particles from least aligned to most aligned
+        alignments = np.array(alignments).reshape((-1, 1))
+        combined_array = np.hstack((particles, alignments))
+        # Sort by third column (alignments)
+        combined_array = combined_array[combined_array[:, 3].argsort()]
+
+        # Determine the number of particles to be replaced
+        replacement_qty = int(len(particles)/10)
+
+        # Perform replacement
+        print(f"Replacing bottom {replacement_qty} particles")
+        combined_array[0:replacement_qty] = combined_array[-
+                                                           1*replacement_qty-1:-1]
+
+        # Add a little noise
+        print(randn(replacement_qty).T)
+        print(combined_array[0: replacement_qty, 0])
+        combined_array[0: replacement_qty,
+                       0] += randn(replacement_qty).T * 0.1
+        combined_array[0: replacement_qty,
+                       1] += randn(replacement_qty).T * 0.1
+
+        print(combined_array)
+
+        # Return only the particles, not the alignments
+        return combined_array[:, 0: 3]
+
     def step(self, u, clock, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
         """Takes new data, runs it through the filter, and generates a result pose.
 
         ✅ 1. Predict the motion of all particles using the latest speedometer and angular velocity data.
-        ❌ 2. Assign a likelihood score to each particle using the latest classified cloud and grid.
+        ✅ 2. Assign a likelihood score to each particle using the latest classified cloud and grid.
         ❌ 3. Select and replace the bottom X percent of particles with copies of the top X percent
         ✅ 4. Take the weighted mean and covariance of the particles, return them
         ✅ 5. Repeat 1-4.
@@ -396,29 +430,7 @@ class MCL:
         alignments = self.updateWeights(self.particles, self.weights,
                                         cloud, grid, gnss_pose)
 
-        # sensor_std_err = 1.0  # meters?
-        # landmarks = self.getLandmarks(grid, self.mu)
-        # if landmarks.shape[0] < 0:
-        #     print("No landmarks found!")
-        #     return
-
-        # distances = self.sense(cloud, noise=0.5)
-        # zs = (np.linalg.norm(landmarks - self.mu[0:2], axis=1) +
-        #       (randn(len(landmarks)) * sensor_std_err))
-        # print(zs)
-        # self.updateOriginal(self.particles, self.weights, z=distances, R=sensor_std_err,
-        #                     landmarks=landmarks)
-
-        # self.replaceWeakParticles(self.particles, self.weights, gnss_pose)
-
-        # # Determine if a resample is necessary
-        # # N/2 is a good threshold
-        # N = len(self.particles)
-        # if self.neff(self.weights) < 2*N/3:
-        #     print("Resampling.")
-        #     indexes = self.systematic_resample(self.weights)
-        #     self.resample_from_index(self.particles, self.weights, indexes)
-        #     assert np.allclose(self.weights, 1/N)
+        self.particles = self.resample(self.particles, alignments)
 
         mu, var = self.estimate(self.particles, self.weights)
 
