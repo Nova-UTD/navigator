@@ -44,7 +44,7 @@ RUN pip install -v -e . && mim download mmsegmentation --config pspnet_r50-d8_51
 # ARG PYTORCH
 # ARG CUDA
 # ARG MMCV
-# RUN pip3 install -U openmim && mim install mmcv-full
+RUN pip3 install -U openmim && mim install mmcv-full
 
 # # Install MMSegmentation
 # RUN git clone https://github.com/open-mmlab/mmsegmentation.git /mmsegmentation
@@ -72,7 +72,7 @@ RUN /opt/docker_ws/install-pip-dependencies.sh && rm -rf /var/lib/apt/lists/*
 
 COPY ./docker ./opt/docker_ws
 
-# # Copy and build our modified version of CycloneDDS, important ROS middleware
+# Copy and build our modified version of CycloneDDS, important ROS middleware
 COPY ./src/tools/cyclonedds /opt/cyclone_ws/cyclonedds
 COPY ./src/tools/rmw_cyclonedds /opt/cyclone_ws/rmw_cyclonedds
 WORKDIR /opt/cyclone_ws

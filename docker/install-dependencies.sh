@@ -3,17 +3,15 @@
 apt-get update
 
 apt-get install -y ros-foxy-diagnostic-updater \
-ros-foxy-velodyne-msgs \
+libfprint-2-2:amd64 \
+libpam-fprintd:amd64 \
+fprintd
+
+apt install -y ros-foxy-velodyne-msgs \
 ros-foxy-velodyne-driver \
 ros-foxy-velodyne-laserscan \
-ros-foxy-velodyne-pointcloud \
-ros-foxy-lanelet2-core \
-ros-foxy-lanelet2-io \
-ros-foxy-lanelet2-projection \
-ros-foxy-lanelet2 \
 ros-foxy-tf-transformations \
 ros-foxy-ros-testing \
-ros-foxy-lgsvl-msgs \
 ros-foxy-vision-opencv \
 ros-foxy-pcl-conversions \
 software-properties-common \
@@ -32,4 +30,5 @@ ros-foxy-rviz2 \
 ros-foxy-robot-localization \
 ros-foxy-derived-object-msgs \
 byobu \
+ros-foxy-velodyne-pointcloud \
 nvidia-cuda-toolkit
