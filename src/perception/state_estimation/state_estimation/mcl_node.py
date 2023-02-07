@@ -29,6 +29,7 @@ import time
 from carla_msgs.msg import CarlaSpeedometer
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid, Odometry
+from nova_msgs.srv import GetLandmarks
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, PointCloud2
@@ -75,6 +76,12 @@ class MCLNode(Node):
         self.particle_cloud_pub = self.create_publisher(
             PointCloud2, '/mcl/particles', 10)
 
+<<<<<<< HEAD
+=======
+        self.landmark_client = self.create_client(
+            GetLandmarks, 'get_landmarks')
+
+>>>>>>> a85804d2d77399a3b732bf7d7bcbe6f7108b446c
         # landmark_request = GetLandmarks.Request()
         # self.get_logger().info("Sending request")
         # self.landmarks: GetLandmarks.Response = self.landmark_client.call(
