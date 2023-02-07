@@ -55,6 +55,7 @@ namespace odr
     std::vector<LaneSection> Road::get_lanesections() const { return get_map_values(this->s_to_lanesection); }
 
     std::vector<RoadObject> Road::get_road_objects() const { return get_map_values(this->id_to_object); }
+    std::vector<RoadSignal> Road::get_signals() const { return get_map_values(this->id_to_signal); }
 
     Road::Road(std::string id, double length, std::string junction, std::string name) : length(length), id(id), junction(junction), name(name), ref_line(id, length)
     {

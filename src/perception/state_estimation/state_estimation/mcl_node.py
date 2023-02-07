@@ -19,10 +19,10 @@ Publishes:
 '''
 
 import math
-
 import numpy as np
 import rclpy
 import ros2_numpy as rnp
+import struct
 import time
 
 # Message definitions
@@ -35,6 +35,8 @@ from sensor_msgs.msg import Imu, PointCloud2
 from tf2_ros import TransformBroadcaster
 
 from .mcl import MCL
+
+import matplotlib.pyplot as plt
 
 
 class MCLNode(Node):
@@ -73,11 +75,18 @@ class MCLNode(Node):
         self.particle_cloud_pub = self.create_publisher(
             PointCloud2, '/mcl/particles', 10)
 
+        # landmark_request = GetLandmarks.Request()
+        # self.get_logger().info("Sending request")
+        # self.landmarks: GetLandmarks.Response = self.landmark_client.call(
+        #     landmark_request)
+        # self.get_logger().info(
+        #     f"Received {len(self.landmarks.speed_limit_signs)} speed limit signs")
+
         self.tf_broadcaster = TransformBroadcaster(self)
 
     def clock_cb(self, msg: Clock):
         self.clock = msg
-    
+
     def imu_cb(self, msg: Imu):
         self.imu = msg
 
@@ -138,16 +147,27 @@ class MCLNode(Node):
 
         # The filter accepts clouds as a (N,2) array. Format accordingly.
         cloud_formatted = rnp.numpify(msg)
-        cloud_formatted = cloud_formatted[cloud_formatted['c'] == 0]
-        cloud = np.vstack((cloud_formatted['x'], cloud_formatted['y'])).T
+
+        ROAD_ID = 4286595200
+        TRAFFIC_LIGHT_ID = 4294617630
+        POLE_ID = 4288256409
+
+        cloud_formatted = cloud_formatted[np.logical_or(cloud_formatted['rgb'] == POLE_ID,
+                                                        np.logical_or(cloud_formatted['rgb'] == ROAD_ID,
+                                                                      cloud_formatted['rgb'] == TRAFFIC_LIGHT_ID))]
+
+        cloud = np.vstack(
+            (cloud_formatted['x'], cloud_formatted['y'], cloud_formatted['rgb'])).T
 
         # Filter to road points only
 
         # step() is the critical function that feeds data into the filter
         # and returns a pose and covariance.
 
+        clock_seconds = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
+
         result_pose, pose_variance = self.filter.step(
-            [heading_rate, self.speed], dt, cloud, self.gnss_pose, self.grid)
+            [heading_rate, self.speed], clock_seconds, cloud, self.gnss_pose, self.grid)
 
         self.last_update_time = time.time()
         self.publish_particle_cloud()
@@ -182,6 +202,11 @@ class MCLNode(Node):
         ])
 
     def map_cb(self, msg: OccupancyGrid):
+        data = np.rot90(np.array(msg.data).reshape(151, 151), k=1, axes=(1, 0))
+        # plt.imshow(data, origin='lower')
+        # print("Showing!")
+        # plt.show()
+
         if self.gnss_pose is None:
             return  # Wait for initial guess from GNSS
 
@@ -193,8 +218,10 @@ class MCLNode(Node):
 
         origin = msg.info.origin.position
         res = msg.info.resolution
-        self.filter = MCL(res, initial_pose=self.gnss_pose,
-                          map_origin=np.array([origin.x, origin.y]))
+
+        clock_seconds = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
+        self.filter = MCL(clock_seconds, res, initial_pose=self.gnss_pose,
+                          map_origin=np.array([origin.x, origin.y]), N=50)
 
         self.get_logger().info("MCL filter created")
 
