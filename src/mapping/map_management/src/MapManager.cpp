@@ -26,6 +26,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     flat_surface_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/flat_surface", 10);
     route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
     route_path_pub_ = this->create_publisher<Path>("/route/smooth_path", 10);
+    traffic_light_points_pub_ = this->create_publisher<PolygonStamped>("/traffic_light_points", 10);
 
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
     rough_path_sub_ = this->create_subscription<Path>("/route/rough_path", 10, bind(&MapManagementNode::refineRoughPath, this, std::placeholders::_1));
@@ -33,6 +34,8 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 
     drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
     route_distance_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::updateRoute, this));
+    traffic_light_pub_timer_ = this->create_wall_timer(TRAFFIC_LIGHT_PUBLISH_FREQUENCY, [this]()
+                                                       { this->traffic_light_points_pub_->publish(traffic_light_points); });
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -147,18 +150,18 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                             cell_is_drivable = true;
                             cell_is_flat_surface = true;
                             break;
-                        } else if (lane.type == "shoulder" || lane.type == "sidewalk" || lane.type == "parking" || lane.type == "curb")
+                        }
+                        else if (lane.type == "shoulder" || lane.type == "sidewalk" || lane.type == "parking" || lane.type == "curb")
                         {
                             cell_is_flat_surface = true;
                             break;
                         }
                     }
-                    
                 }
             }
 
-           drivable_grid_data.push_back(cell_is_drivable ? 100 : 0);
-           flat_surface_grid_data.push_back(cell_is_flat_surface ? 100 : 0);
+            drivable_grid_data.push_back(cell_is_drivable ? 100 : 0);
+            flat_surface_grid_data.push_back(cell_is_flat_surface ? 100 : 0);
 
             // Get closest route point
             if (local_route_linestring_.size() > 0)
@@ -530,6 +533,29 @@ void navigator::perception::MapManagementNode::updateRoute()
     route_path_pub_->publish(this->smoothed_path_msg_);
 }
 
+PolygonStamped MapManagementNode::getTrafficLightCloud(std::vector<std::pair<odr::RoadObject, odr::point>> object_centers)
+{
+    int qty = 0;
+    PolygonStamped polygon;
+    polygon.header.stamp = this->clock_->clock;
+    polygon.header.frame_id = "map";
+    for (auto pair : object_centers)
+    {
+        odr::RoadObject obj = pair.first;
+        odr::point center = pair.second;
+        if (obj.name != "Signal_3Light_Post01")
+            continue;
+        qty++;
+        Point32 point;
+        point.x = center.get<0>();
+        point.y = center.get<1>();
+        point.z = 0;
+        polygon.polygon.points.push_back(point);
+    }
+    RCLCPP_INFO(this->get_logger(), "%i traffic lights", qty);
+    return polygon;
+}
+
 /**
  * @brief When map data is received from a CarlaWorldInfo message, load and process it
  *
@@ -549,6 +575,8 @@ void MapManagementNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
     this->map_ = new odr::OpenDriveMap(msg->opendrive, true);
     // Get lane polygons as pairs (Lane object, ring polygon)
     this->lane_polys_ = map_->get_lane_polygons(1.0, false);
+    // Get road objects
+    this->traffic_light_points = getTrafficLightCloud(map_->get_road_object_centers());
 
     RCLCPP_INFO(this->get_logger(), "Loaded %s", msg->map_name.c_str());
 }

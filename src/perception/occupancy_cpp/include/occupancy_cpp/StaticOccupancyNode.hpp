@@ -9,7 +9,6 @@
 
 #pragma once
 
-
 // Message definitions
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
@@ -34,9 +33,9 @@
 using namespace std::chrono_literals;
 
 using nav_msgs::msg::OccupancyGrid;
+using nova_msgs::msg::Masses;
 using rosgraph_msgs::msg::Clock;
 using sensor_msgs::msg::PointCloud2;
-using nova_msgs::msg::Masses;
 
 namespace navigator
 {
@@ -50,7 +49,6 @@ namespace navigator
       virtual ~StaticOccupancyNode();
 
     private:
-
       // Publishers
       rclcpp::Publisher<OccupancyGrid>::SharedPtr occupancy_grid_pub;
       rclcpp::Publisher<Masses>::SharedPtr masses_pub;
@@ -120,9 +118,9 @@ namespace navigator
       float previous_free[GRID_SIZE][GRID_SIZE] = {{0}};
       float previous_occ[GRID_SIZE][GRID_SIZE] = {{0}};
       float updated_freeP[GRID_SIZE][GRID_SIZE] = {{0}};
-      float updated_occP[GRID_SIZE][GRID_SIZE]= {{0}};
-      float updated_free[GRID_SIZE][GRID_SIZE]= {{0}};
-      float updated_occ[GRID_SIZE][GRID_SIZE]= {{0}};
+      float updated_occP[GRID_SIZE][GRID_SIZE] = {{0}};
+      float updated_free[GRID_SIZE][GRID_SIZE] = {{0}};
+      float updated_occ[GRID_SIZE][GRID_SIZE] = {{0}};
 
       // Masses measurement (probability distribution)
       float probabilities[GRID_SIZE][GRID_SIZE] = {{0}};
@@ -131,7 +129,7 @@ namespace navigator
       bool angles[360];
       bool first;
 
-      //void timer_cb(const ros::TimerEvent &);
+      // void timer_cb(const ros::TimerEvent &);
 
       void transform_listener();
       void pointCloudCb(const PointCloud2::SharedPtr msg);
