@@ -6,6 +6,8 @@ import can
 import math
 from rosgraph_msgs.msg import Clock
 
+
+from ros_carla_msgs.msg import CarlaEgoVehicleControl
 import rclpy
 from rclpy.node import Node
 import ros2_numpy as rnp
@@ -61,6 +63,13 @@ class epas_node(Node):
     can_msg = None
     k_p = 1.0
     error = 0.0
+    torque = []
+
+    def __init__(self):
+        super().__init__('epas_node')
+        self.target_angle = self.create_subscription(CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.receive_can_msg, 10)
+        #self. = self.create_publisher(array, 'static_grid', 10)
+
     def send_can_msg(self):
         bus = can.interface.Bus(bustype='slcan', channel='/dev/tty.usbmodem14201', bitrate=500000, receive_own_messages=True)
         torque_a = 100
@@ -89,7 +98,7 @@ class epas_node(Node):
         bus.send(message, timeout=0.2)
         '''
 
-    def receive_can_msg(self):
+    def receive_can_msg(self, control_msg: ):
         bus = can.interface.Bus(bustype='slcan', channel='/dev/tty.usbmodem14201', bitrate=500000, receive_own_messages=True)
         cached_msg1 = None
         while(True):
