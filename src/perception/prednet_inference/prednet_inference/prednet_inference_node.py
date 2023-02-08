@@ -68,7 +68,7 @@ class PredNetNode(Node):
         
         
         # Importing models
-        modelDir = "../models/prednet.pt"
+        modelDir = "/navigator/data/perception/models/prednet.pt"
         
         if torch.cuda.is_available():
             print("CUDA available! Inference on GPU.")
