@@ -25,10 +25,9 @@ import time
 from rosgraph_msgs.msg import Clock
 from std_msgs.msg import Float32
 
-from sensor_msgs.msg import PointCloud2
 from nav_msgs.msg import OccupancyGrid
 from nova_msgs.msg import Masses
-from nova_msgs.msg import Prediction
+# from nova_msgs.msg import Prediction
 
 
 import torch
@@ -37,15 +36,24 @@ import torch
 import matplotlib.pyplot as plt
 
 
+class Prediction:
+    
+    def __init__(self):
+        self.prediction = []
+    
+    def clear(self):
+        self.prediction = []
+
+
 class PredNetNode(Node):
 
     def __init__(self):
         super().__init__('prednet_inference_node')
         self.masses_sub = self.create_subscription(
-            PointCloud2, '/lidar/filtered', self.masses_callback, 10)
+            Masses, '/grid/masses', self.masses_callback, 10)
 
-        self.pred_all_pub = self.create_publisher(
-            Prediction, '/', 10)
+        #self.pred_all_pub = self.create_publisher(
+           #Prediction, '/grid/predictions', 10)
         
         self.history_m = []
         
@@ -79,12 +87,13 @@ class PredNetNode(Node):
     
     def masses_callback(self, mass):
         self.logger.info(self.time)
+        """
         mass = Masses()
         mass.width = 600
         mass.height = 400
         mass.occ = np.rand((mass.width * mass.height))
         mass.free = np.rand((mass.width * mass.height))
-        
+        """
         self.sizeX = mass.width
         self.sizeY = mass.height
     
@@ -142,7 +151,7 @@ class PredNetNode(Node):
             
             self.prediction_msg.prediction.append(occ_grid_msg)
            
-        self.pred_all_pub.publish(self.prediction_msg)
+        #self.pred_all_pub.publish(self.prediction_msg)
 
 
 
