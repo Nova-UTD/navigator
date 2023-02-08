@@ -105,8 +105,10 @@ class LeaderboardLiaisonNode(Node):
 
         self.get_logger().info(f"Spawned {walker_count} walkers!")
 
-        # self.traffic_light_timer = self.create_timer(
-        #     1.0, self.set_all_lights_to_green)
+        # self.set_all_lights_to_green()
+
+        self.traffic_light_timer = self.create_timer(
+            1.0, self.set_all_lights_to_green)
 
         # settings = self.world.get_settings()
         # settings.fixed_delta_seconds = 1.0 / 20
@@ -123,7 +125,8 @@ class LeaderboardLiaisonNode(Node):
         print(actors)
         for actor in actors:
             if actor.type_id == 'traffic.traffic_light':
-                actor.set_state(carla.TrafficLightState.Green)
+                actor.set_red_time(1.0)
+                actor.set_yellow_time(0.5)
 
     def world_info_cb(self, msg: CarlaWorldInfo):
         if msg.opendrive == "":

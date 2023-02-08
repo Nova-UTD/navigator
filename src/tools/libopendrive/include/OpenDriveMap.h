@@ -56,16 +56,19 @@ namespace odr
         std::map<std::string, Road> id_to_road;
         std::map<std::string, Junction> id_to_junction;
         bgi::rtree<value, bgi::rstar<16, 4>> generate_mesh_tree();
+        bgi::rtree<value, bgi::rstar<16, 4>> generate_object_tree();
         std::unique_ptr<RoadNetworkMesh> road_mesh_;
 
         std::vector<ring> get_drivable_lane_polygons(float res);
         std::vector<std::pair<Lane, ring>> get_lane_polygons(float res = 1.0, bool drivable_only = true);
+        std::vector<std::pair<RoadObject, point>> get_road_object_centers();
 
         RoadNetworkMesh get_road_network_mesh(double eps);
 
     private:
         std::unique_ptr<std::vector<std::pair<Lane, ring>>> drivable_lane_polygons_;
         std::unique_ptr<std::vector<std::pair<Lane, ring>>> lane_polygons_;
+        std::vector<std::pair<RoadObject, point>> object_centers_;
         std::unique_ptr<std::vector<ring>> road_polygons_;
         std::unique_ptr<bgi::rtree<value, bgi::rstar<16, 4>>> rtree_;
     };
