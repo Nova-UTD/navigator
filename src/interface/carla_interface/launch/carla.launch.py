@@ -126,11 +126,11 @@ def generate_launch_description():
 
         # PERCEPTION
         image_segmentation,
-        semantic_projection,
-        lidar_processor,
-        ground_seg,
+        # semantic_projection,
+        # lidar_processor,
+        # ground_seg,
 
         # STATE ESTIMATION
-        map_manager,
-        gnss_processor,
+        # map_manager,
+        # gnss_processor,
     ])
