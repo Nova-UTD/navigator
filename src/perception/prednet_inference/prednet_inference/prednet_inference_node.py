@@ -24,10 +24,11 @@ import time
 # Message definitions
 from rosgraph_msgs.msg import Clock
 from std_msgs.msg import Float32
+from sensor_msgs.msg import PointCloud2 
 
 from nav_msgs.msg import OccupancyGrid
 from nova_msgs.msg import Masses
-# from nova_msgs.msg import Prediction
+from nova_msgs.msg import Prediction
 
 
 import torch
@@ -36,24 +37,20 @@ import torch
 import matplotlib.pyplot as plt
 
 
-class Prediction:
-    
-    def __init__(self):
-        self.prediction = []
-    
-    def clear(self):
-        self.prediction = []
-
-
 class PredNetNode(Node):
 
     def __init__(self):
         super().__init__('prednet_inference_node')
+        
         self.masses_sub = self.create_subscription(
             Masses, '/grid/masses', self.masses_callback, 10)
-
-        #self.pred_all_pub = self.create_publisher(
-           #Prediction, '/grid/predictions', 10)
+        
+        """
+        self.masses_sub = self.create_subscription(
+            PointCloud2, '/lidar/filtered', self.masses_callback, 10)
+        """
+        self.pred_all_pub = self.create_publisher(
+           Prediction, '/grid/predictions', 10)
         
         self.history_m = []
         
@@ -70,23 +67,36 @@ class PredNetNode(Node):
         # Importing models
         modelDir = "/navigator/data/perception/models/prednet.pt"
         
+        torch.cuda.set_device(torch.device('cuda:2'))
+        torch.cuda.empty_cache()
+        
+        self.get_logger().info("Current GPU device: " + str(torch.cuda.current_device()))
+        
+        
         if torch.cuda.is_available():
-            print("CUDA available! Inference on GPU.")
+            self.get_logger().info("CUDA available! Inference on GPU.")
         else:
-            print("Inference on CPU.");  
+            self.get_logger().info("Inference on CPU.");  
         
         try:
             self.prednet_model = torch.jit.load(modelDir)
-            self.prednet_model.cuda()
-            self.prednet_model.eval()
         except:
             raise Exception("Couldn't load prednet model")
         
+        try:
+            self.prednet_model.cuda()
+        except:
+            raise Exception("Couldn't load cuda")
+        
+        try:
+            self.prednet_model.eval()
+        except:
+            raise Exception("Couldn't eval model")
         
             
     
     def masses_callback(self, mass):
-        self.logger.info(self.time)
+        self.get_logger().info(self.time)
         """
         mass = Masses()
         mass.width = 600
