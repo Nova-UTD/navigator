@@ -75,6 +75,12 @@ class MCLNode(Node):
 
         self.particle_cloud_pub = self.create_publisher(
             PointCloud2, '/mcl/particles', 10)
+        # landmark_request = GetLandmarks.Request()
+        # self.get_logger().info("Sending request")
+        # self.landmarks: GetLandmarks.Response = self.landmark_client.call(
+        #     landmark_request)
+        # self.get_logger().info(
+        #     f"Received {len(self.landmarks.speed_limit_signs)} speed limit signs")
 
         self.landmark_client = self.create_client(
             GetLandmarks, 'get_landmarks')
