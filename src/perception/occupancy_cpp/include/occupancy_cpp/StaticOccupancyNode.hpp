@@ -9,7 +9,6 @@
 
 #pragma once
 
-
 // Message definitions
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
@@ -34,9 +33,9 @@
 using namespace std::chrono_literals;
 
 using nav_msgs::msg::OccupancyGrid;
+using nova_msgs::msg::Masses;
 using rosgraph_msgs::msg::Clock;
 using sensor_msgs::msg::PointCloud2;
-using nova_msgs::msg::Masses;
 
 namespace navigator
 {
@@ -50,7 +49,6 @@ namespace navigator
       virtual ~StaticOccupancyNode();
 
     private:
-
       // Publishers
       rclcpp::Publisher<OccupancyGrid>::SharedPtr occupancy_grid_pub;
       rclcpp::Publisher<Masses>::SharedPtr masses_pub;
@@ -90,7 +88,7 @@ namespace navigator
       // Grid size.
       const static int GRID_SIZE = 128;
 
-      const int HALF_SIZE = grid_size / 2;
+      const int HALF_SIZE = GRID_SIZE / 2;
 
       // Resolution.
       constexpr static float res = 1. / 3.;
@@ -110,28 +108,28 @@ namespace navigator
       // Masses masses_msg;
 
       // Array with the DST data.
-      float meas_grids[event_num][grid_size][grid_size];
+      float meas_grids[event_num][GRID_SIZE][GRID_SIZE];
 
       // "Freeness" measurement.
-      float measured_free[grid_size][grid_size] = {{0}};
+      float measured_free[GRID_SIZE][GRID_SIZE] = {{0}};
 
       // Occupancy measurement.
-      float measured_occ[grid_size][grid_size] = {{0}};
-      float previous_free[grid_size][grid_size] = {{0}};
-      float previous_occ[grid_size][grid_size] = {{0}};
-      float updated_freeP[grid_size][grid_size] = {{0}};
-      float updated_occP[grid_size][grid_size]= {{0}};
-      float updated_free[grid_size][grid_size]= {{0}};
-      float updated_occ[grid_size][grid_size]= {{0}};
+      float measured_occ[GRID_SIZE][GRID_SIZE] = {{0}};
+      float previous_free[GRID_SIZE][GRID_SIZE] = {{0}};
+      float previous_occ[GRID_SIZE][GRID_SIZE] = {{0}};
+      float updated_freeP[GRID_SIZE][GRID_SIZE] = {{0}};
+      float updated_occP[GRID_SIZE][GRID_SIZE] = {{0}};
+      float updated_free[GRID_SIZE][GRID_SIZE] = {{0}};
+      float updated_occ[GRID_SIZE][GRID_SIZE] = {{0}};
 
       // Masses measurement (probability distribution)
-      float probabilities[grid_size][grid_size] = {{0}};
-      float probabilities_plot[grid_size][grid_size] = {{0}};
+      float probabilities[GRID_SIZE][GRID_SIZE] = {{0}};
+      float probabilities_plot[GRID_SIZE][GRID_SIZE] = {{0}};
 
       bool angles[360];
       bool first;
 
-      //void timer_cb(const ros::TimerEvent &);
+      // void timer_cb(const ros::TimerEvent &);
 
       void transform_listener();
       void pointCloudCb(const PointCloud2::SharedPtr msg);

@@ -62,7 +62,7 @@ class GnssProcessingNode(Node):
 
         self.status_timer = self.create_timer(1.0, self.update_status)
 
-        self.tf_broadcaster = TransformBroadcaster(self)
+        # self.tf_broadcaster = TransformBroadcaster(self)
 
         self.cached_imu = Imu()
         self.latest_timestamp = Time()
