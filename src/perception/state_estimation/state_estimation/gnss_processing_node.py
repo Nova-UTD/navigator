@@ -1,5 +1,5 @@
 '''
-Package: state_estimation
+Package: map_management
    File: gnss_estimation_node.py
  Author: Will Heitman (w at heit dot mn)
 
