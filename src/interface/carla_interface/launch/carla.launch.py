@@ -100,9 +100,15 @@ def generate_launch_description():
         executable='image_projection_node'
     )
 
+    throttle_node = Node(
+        package = 'throttle_node'
+        executable = 'throttle_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         carla_controller,
+        throttle_node,
 
         # INTERFACE
         carla_bridge_official,
