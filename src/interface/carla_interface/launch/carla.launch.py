@@ -67,6 +67,11 @@ def generate_launch_description():
         executable='gnss_processing_node'
     )
 
+    gnss_averager = Node(
+        package='state_estimation',
+        executable='gnss_averaging_node'
+    )
+
     mcl = Node(
         package='state_estimation',
         executable='mcl_node'
@@ -110,7 +115,8 @@ def generate_launch_description():
         leaderboard_liaison,
 
         # LOCALIZATION
-        mcl,
+        # gnss_averager,
+        # mcl,
 
         # MAPPING
 

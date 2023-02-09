@@ -80,9 +80,7 @@ class MCL:
             particles[:, 2] = new_heading
 
         # move in the (noisy) commanded direction
-        ERROR_CORRECTION = 1.0
-        dist = (self.previous_speed * dt) + \
-            (randn(N) * std[1]) * ERROR_CORRECTION
+        dist = (self.previous_speed * dt) + (randn(N) * std[1])
         particles[:, 0] += np.cos(particles[:, 2]) * dist
         particles[:, 1] += np.sin(particles[:, 2]) * dist
 
