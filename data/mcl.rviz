@@ -512,11 +512,7 @@ Visualization Manager:
       Value: true
       Visibility:
         Cameras:
-          Bird's Eye: true
-          RGB Left: true
-          RGB Right: true
-          Semantic Left: true
-          Semantic Right: true
+          "": true
           Value: true
         Grid: true
         Grids:
@@ -591,10 +587,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9047971367835999
+      Pitch: 1.0547971725463867
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 2.931020736694336
+      Yaw: 2.996020793914795
     Saved: ~
 Window Geometry:
   Bird's Eye:

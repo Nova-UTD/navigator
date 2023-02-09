@@ -20,9 +20,27 @@ from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, NavSatFix
 
-import pymap3d as pm
 from tf2_ros import TransformBroadcaster
 from xml.etree import ElementTree as ET
+
+
+def toRadians(degrees: float):
+    return degrees * math.pi / 180.0
+
+
+def latToScale(lat: float) -> float:
+    """Return UTM projection scale
+
+    Args:
+        lat (float): degrees latitude
+
+    Returns:
+        float: projection scale
+    """
+    return math.cos(toRadians(lat))
+
+
+EARTH_RADIUS_EQUA = 6378137.0
 
 
 class GnssProcessingNode(Node):
@@ -34,18 +52,18 @@ class GnssProcessingNode(Node):
             Odometry, '/odometry/gnss_raw', self.raw_odom_cb, 10
         )
         self.gnss_sub = self.create_subscription(
-            NavSatFix, '/carla/hero/gnss', self.gnss_cb, 10
+            NavSatFix, '/carla/hero/gnss', self.gnssCb, 10
         )
 
         self.clock_sub = self.create_subscription(
-            Clock, '/clock', self.clock_cb, 10)
+            Clock, '/clock', self.clockCb, 10)
 
         self.imu_sub = self.create_subscription(
-            Imu, '/carla/hero/imu', self.imu_cb, 10
+            Imu, '/carla/hero/imu', self.imuCb, 10
         )
 
         self.world_info_sub = self.create_subscription(
-            CarlaWorldInfo, '/carla/world_info', self.world_info_cb, 10
+            CarlaWorldInfo, '/carla/world_info', self.worldInfoCb, 10
         )
 
         self.odom_pub = self.create_publisher(
@@ -60,7 +78,7 @@ class GnssProcessingNode(Node):
             DiagnosticStatus, '/status', 1
         )
 
-        self.status_timer = self.create_timer(1.0, self.update_status)
+        self.status_timer = self.create_timer(1.0, self.updateStatus)
 
         # self.tf_broadcaster = TransformBroadcaster(self)
 
@@ -94,7 +112,7 @@ class GnssProcessingNode(Node):
 
         return (lat0, lon0)
 
-    def world_info_cb(self, msg: CarlaWorldInfo):
+    def worldInfoCb(self, msg: CarlaWorldInfo):
         if self.lat0 is not None:
             return
         if msg.opendrive == "":
@@ -103,17 +121,40 @@ class GnssProcessingNode(Node):
         self.lat0, self.lon0 = self._parse_header_(root)
         self.get_logger().info("World info received.")
 
-    def gnss_cb(self, msg: NavSatFix):
+    def latlonToMercator(self, lat: float, lon: float, scale: float) -> tuple:
+        """Convert geodetic coords (in degrees) to UTM coords (meters)
+
+        Copied to match CARLA:
+        [LatLonToMercator](https://github.com/carla-simulator/carla/blob/fe3cb6863a604f5c0cf8b692fe2b6300b45b5999/LibCarla/source/carla/geom/GeoLocation.cpp#L38)
+
+        Args:
+            lat (float): degrees
+            lon (float): degrees
+            scale (float): projection scale (see latToScale)
+
+        Returns:
+            tuple: (x,y) in UTM meters
+        """
+        x = scale * toRadians(lon) * EARTH_RADIUS_EQUA
+        y = scale * EARTH_RADIUS_EQUA * \
+            math.log(math.tan((90.0+lat) * math.pi/360.0))
+
+        return (x, y)
+
+    def gnssCb(self, msg: NavSatFix):
         if self.lat0 is None:
             return
-        enu_xyz = pm.geodetic2enu(
-            msg.latitude,
-            msg.longitude,
-            msg.altitude,
-            self.lat0,
-            self.lon0,
-            0.0
-        )
+
+        x0, y0 = self.latlonToMercator(
+            self.lat0, self.lon0, latToScale(self.lat0))
+
+        # TODO: Should scale here be from self.lat0?
+        x, y = self.latlonToMercator(
+            msg.latitude, msg.longitude, latToScale(msg.latitude))
+
+        position_x = x - x0
+        position_y = y - y0
+
         odom_msg = Odometry()
 
         # The odometry is for the current time-- right now
@@ -125,20 +166,20 @@ class GnssProcessingNode(Node):
         odom_msg.child_frame_id = 'base_link'
         pos = Point()
 
-        pos.x = enu_xyz[0]
-        pos.y = enu_xyz[1]
-        pos.z = enu_xyz[2]
+        pos.x = position_x
+        pos.y = position_y
+        pos.z = msg.altitude  # TODO: Make relative to georeference
         odom_msg.pose.pose.position = pos
         self.raw_odom_pub.publish(odom_msg)
 
-    def imu_cb(self, msg: Imu):
+    def imuCb(self, msg: Imu):
         self.cached_imu = msg
         msg.header.stamp
 
-    def clock_cb(self, msg: Clock):
+    def clockCb(self, msg: Clock):
         self.clock = msg
 
-    def update_status(self):
+    def updateStatus(self):
         status = DiagnosticStatus()
         status.name = self.get_name()  # Get the node name
 
