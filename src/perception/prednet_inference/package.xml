@@ -18,6 +18,7 @@
   <depend>nav_msgs</depend>
   <depend>nova_msgs</depend>
   <depend>torch</depend>
+  <depend>sensor_msgs</depend>
  
 
   <export>
