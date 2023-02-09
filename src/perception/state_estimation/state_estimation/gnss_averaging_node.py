@@ -74,7 +74,7 @@ class GnssAveragingNode(Node):
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.diagnostic_pub_timer = self.create_timer(
-            1.0, self.publish_diagnostics)
+            0.25, self.publish_diagnostics)
 
         self.speed = 0.0  # rad/s
         self.clock: Time = None
@@ -84,6 +84,12 @@ class GnssAveragingNode(Node):
         self.cached_gnss_poses = []
         self.current_pose = None  # [x, y, heading]
         self.yaw = 0.0
+
+        # This variable describes whether or not our pose was recently refreshed by average GNSS
+        # If the car has not recently been stationary for a significant period of time,
+        # this will be false, and our result will likely be inaccurate.
+        self.averaging_is_fresh = False
+        self.last_refresh_time = -1.0
 
         # Diagnostic state
         self.diag_state = 'OK'
@@ -112,9 +118,28 @@ class GnssAveragingNode(Node):
 
         current_time = self.clock.sec + self.clock.nanosec*1e-9
         dt = current_time - self.last_update_time
-        if dt > 0.1:  # seconds
-            status.level = DiagnosticStatus.STALE
-            status.message = f"Localization last updated {dt} seconds ago"
+        if dt > 0.3:  # seconds
+            status.level = DiagnosticStatus.ERROR
+            status.message = f"Localization last updated {dt} seconds ago."
+
+        last_refresh_gap = current_time - self.last_refresh_time
+        if last_refresh_gap > 15.0:
+            # It's been 15 seconds since our car was last stationary
+            # and our pose was reset from averaged GNSS data
+            status.level = DiagnosticStatus.WARN
+            status.message = f"Localization last refreshed {last_refresh_gap} seconds ago. Result likely inaccurate."
+
+        elif last_refresh_gap > 30.0:
+            # It's been 30 seconds since our car was last stationary
+            # and our pose was reset from averaged GNSS data. We need to stop to refresh.
+            status.level = DiagnosticStatus.ERROR
+            status.message = f"Localization last refreshed {last_refresh_gap} seconds ago. Result likely highly inaccurate."
+
+        else:
+            status.level = DiagnosticStatus.OK
+            status.message = "Localization operating normally."
+
+        self.diagnostic_pub.publish(status)
 
     def raw_gnss_cb(self, msg: Odometry):
         if self.clock is None:
@@ -172,6 +197,8 @@ class GnssAveragingNode(Node):
             # plt.show()
 
             self.current_pose = average_pose
+
+            self.last_refresh_time = current_time
 
             self.cached_gnss_poses.clear()
 
