@@ -69,7 +69,7 @@ class GnssAveragingNode(Node):
             Odometry, '/odometry/processed', 1)
 
         self.diagnostic_pub = self.create_publisher(
-            DiagnosticStatus, '/diagnostic', 1)
+            DiagnosticStatus, '/status', 1)
 
         self.tf_broadcaster = TransformBroadcaster(self)
 
