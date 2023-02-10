@@ -105,6 +105,10 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
 
     //Dimensions for X & Y [-64 -> 64 (HALF_SiZE)]
 
+    // Takes out points that repressent the car
+    if(Math.abs(x) >= 5 || Math.abs(y) >= 5)
+      continue;
+
     //Record occupancy value for the corresponding point in the pcl, nearest index
     int x = (int)(cloud[i].x / res);
     int y = (int)(cloud[i].y / res);
@@ -355,8 +359,8 @@ void StaticOccupancyNode::publishOccupancyGrid()
     for (int j = 0; j < GRID_SIZE; j++)
     {
       msg.data.push_back(100 * probabilities.at(j).at(i));
-      masses_msg.occ.push_back(updated_occ[j][i]);
-      masses_msg.free.push_back(updated_free[j][i]);
+      masses_msg.occ.push_back(updated_occ[i][j]);
+      masses_msg.free.push_back(updated_free[i][j]);
     }
   }
   occupancy_grid_pub->publish(msg);
