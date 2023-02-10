@@ -8,6 +8,7 @@ Node to semantically segment a 2D image using a model.
 
 
 import rclpy
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, Duration, QoSDurabilityPolicy
 # import ros2_numpy as rnp
 import numpy as np
 from rclpy.node import Node
@@ -25,6 +26,9 @@ from sensor_msgs.msg import Image, PointCloud2
 from std_msgs.msg import Float32
 
 import matplotlib.pyplot as plt
+
+import cv2
+from cv_bridge import CvBridge
 
 # OpenMMSegmentation
 from mmseg.apis import inference_segmentor, init_segmentor
@@ -94,20 +98,48 @@ class ImageSegmentationNode(Node):
         self.model = init_segmentor(
             config_file, checkpoint_file, device='cuda:1')
 
+        image_qos_policy = QoSProfile(
+            history=QoSHistoryPolicy.KEEP_LAST,
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+            depth=1,
+            durability=QoSDurabilityPolicy.VOLATILE,
+            lifespan=Duration(seconds=0, nanoseconds=2e8)
+        )
+
         self.left_rgb_sub = self.create_subscription(
-            Image, "/carla/hero/rgb_left/image", self.rgb_left_cb, 10)
+            Image, "/carla/hero/rgb_left/image", self.rgbLeftCb, image_qos_policy)
+
         self.left_result_pub = self.create_publisher(
-            Image, '/semantic/left_mono', 10)
+            Image, '/semantic/left', 1)
 
         self.right_rgb_sub = self.create_subscription(
-            Image, "/carla/hero/rgb_right/image", self.rgb_right_cb, 10)
+            Image, "/carla/hero/rgb_right/image", self.rgbRightCb, image_qos_policy)
         self.right_result_pub = self.create_publisher(
-            Image, '/semantic/right_mono', 10)
+            Image, '/semantic/right', 1)
 
         self.idx = 0
-        # model.show_result(img, result, out_file='result.jpg', opacity=1.0)
 
-    def image_to_numpy(self, msg):
+        self.clock_sub = self.create_subscription(
+            Clock, '/clock', self.clock_cb, 1)
+        self.clock = Clock()
+        # model.show_result(img, result, out_file='result.jpg', opacity=1.0)
+        self.bridge = CvBridge()
+
+    def clock_cb(self, msg: Clock):
+        self.clock = msg
+
+    def imageToNumpy(self, msg) -> np.ndarray:
+        """Converts Image message to numpy array
+
+        Args:
+            msg (Image): ROS Image message
+
+        Raises:
+            TypeError: If image encoding is not recognized
+
+        Returns:
+            np.ndarray: Image as np array
+        """
         if not msg.encoding in name_to_dtypes:
             raise TypeError('Unrecognized encoding {}'.format(msg.encoding))
 
@@ -127,7 +159,22 @@ class ImageSegmentationNode(Node):
             data = data[..., 0]
         return data
 
-    def numpy_to_image(self, arr, encoding):
+    def numpyToImage(self, arr: np.ndarray, encoding: str) -> Image:
+        """Converts np array to Image message
+
+        Args:
+            arr (np.ndarray): _description_
+            encoding (str): _description_
+
+        Raises:
+            TypeError: Unrecognized image encoding requested
+            TypeError: Input array shape is invalid
+            TypeError: Image channels did not match requested encoding
+            TypeError: Array dtype was invalid
+
+        Returns:
+            Image: ROS Image message
+        """
         if not encoding in name_to_dtypes:
             raise TypeError('Unrecognized encoding {}'.format(encoding))
 
@@ -154,9 +201,9 @@ class ImageSegmentationNode(Node):
             ))
 
         # make the array contiguous in memory, as mostly required by the format
-        contig = np.ascontiguousarray(arr)
-        im.data = contig.tostring()
-        im.step = contig.strides[0]
+        # contig = np.ascontiguousarray(arr)
+        im.data = arr.tostring()
+        im.step = arr.strides[0]
         im.is_bigendian = (
             arr.dtype.byteorder == '>' or
             arr.dtype.byteorder == '=' and sys.byteorder == 'big'
@@ -164,27 +211,64 @@ class ImageSegmentationNode(Node):
 
         return im
 
-    def rgb_left_cb(self, msg: Image):
-        img_array = mmcv.imread("/navigator/demo.png")
+    def convertToColor(self, mono_result: np.ndarray) -> np.array:
+        """Converts a one-channel segmentation result to a colored image using the CityScapes coloring scheme.
 
-        img_array = self.image_to_numpy(msg)[:, :, :3]  # Cut out alpha
+        Args:
+            mono_result (np.array): Segmentation result (2d)
+
+        Returns:
+            np.array: Colored result (3D array, accounting for RGB channel)
+        """
+        result_rgb = np.zeros(
+            (mono_result.shape[0], mono_result.shape[1], 3), dtype=np.uint8)
+        result_rgb[:, :][mono_result == 0] = [128, 64, 128]  # Road
+        result_rgb[:, :][mono_result == 1] = [244, 35, 232]  # Sidewalk
+        result_rgb[:, :][np.logical_or(np.logical_or(
+            mono_result == 2, mono_result == 3), mono_result == 4)] = [70, 70, 70]  # Building, wall, fence
+        result_rgb[:, :][mono_result == 3] = [100, 40, 40]  # Fence
+        result_rgb[:, :][mono_result == 5] = [153, 153, 153]  # Pole
+        result_rgb[:, :][mono_result == 6] = [250, 170, 30]  # Traffic light
+        result_rgb[:, :][mono_result == 7] = [220, 220, 0]  # Traffic light
+        result_rgb[:, :][mono_result == 8] = [107, 142, 35]  # Vegetation
+        result_rgb[:, :][mono_result == 9] = [145, 170, 100]  # Terrain
+        result_rgb[:, :][mono_result == 10] = [70, 130, 180]  # Sky
+        result_rgb[:, :][mono_result == 11] = [220, 20, 60]  # Person
+        result_rgb[:, :][np.logical_or(np.logical_or(
+            np.logical_or(mono_result == 12, mono_result == 13),
+            np.logical_or(mono_result == 14, mono_result == 15)),
+            mono_result == 16)] = [0, 0, 142]  # Car, rider, truck, bus, train, motorcycle
+        result_rgb[:, :][np.logical_or(mono_result == 17, mono_result == 18)] = [
+            119, 11, 32]  # Building, wall, fence
+        return result_rgb
+
+    def rgbLeftCb(self, msg: Image):
+        img_array = self.bridge.imgmsg_to_cv2(
+            msg, 'rgb8')[:, :, :3]  # Cut out alpha
+
+        # Actually performs the inference
         result = inference_segmentor(self.model, img_array)[0]
 
-        result_msg = self.numpy_to_image(result.astype(np.uint8), 'mono8')
-        result_msg.header = msg.header
+        result_rgb = self.convertToColor(result)
 
-        self.left_result_pub.publish(result_msg)
+        result_msg_rgb = self.bridge.cv2_to_imgmsg(result_rgb, encoding='rgb8')
+        result_msg_rgb.header = msg.header
 
-    def rgb_right_cb(self, msg: Image):
-        img_array = mmcv.imread("/navigator/demo.png")
+        self.left_result_pub.publish(result_msg_rgb)
 
-        img_array = self.image_to_numpy(msg)[:, :, :3]  # Cut out alpha
+    def rgbRightCb(self, msg: Image):
+        img_array = self.bridge.imgmsg_to_cv2(
+            msg, 'rgb8')[:, :, :3]  # Cut out alpha
+
+        # Actually performs the inference
         result = inference_segmentor(self.model, img_array)[0]
 
-        result_msg = self.numpy_to_image(result.astype(np.uint8), 'mono8')
-        result_msg.header = msg.header
+        result_rgb = self.convertToColor(result)
 
-        self.right_result_pub.publish(result_msg)
+        result_msg_rgb = self.bridge.cv2_to_imgmsg(result_rgb, encoding='rgb8')
+        result_msg_rgb.header = msg.header
+
+        self.right_result_pub.publish(result_msg_rgb)
 
 
 def main(args=None):
