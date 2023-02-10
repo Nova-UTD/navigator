@@ -333,8 +333,8 @@ void StaticOccupancyNode::publishOccupancyGrid()
   msg.header.stamp = this->clock.clock;
   msg.header.frame_id = "base_link"; // TODO: Make sure the frame is the correct one.
   msg.info.resolution = res;
-  msg.info.width = grid_size;
-  msg.info.height = grid_size;
+  msg.info.width = GRID_SIZE;
+  msg.info.height = GRID_SIZE;
   msg.info.origin.position.z = 0.2;
   msg.info.origin.position.x = -64.0 * (1. / 3.);
   msg.info.origin.position.y = -64.0 * (1. / 3.);
@@ -344,15 +344,15 @@ void StaticOccupancyNode::publishOccupancyGrid()
   Masses masses_msg;
   masses_msg.occ.clear();
   masses_msg.free.clear();
-  masses_msg.width = grid_size;
-  masses_msg.height = grid_size;
+  masses_msg.width = GRID_SIZE;
+  masses_msg.height = GRID_SIZE;
   //----------//
 
   auto probabilities = getGridCellProbabilities();
 
-  for (int i = 0; i < grid_size; i++)
+  for (int i = 0; i < GRID_SIZE; i++)
   {
-    for (int j = 0; j < grid_size; j++)
+    for (int j = 0; j < GRID_SIZE; j++)
     {
       msg.data.push_back(100 * probabilities.at(j).at(i));
       masses_msg.occ.push_back(updated_occ[j][i]);
@@ -365,9 +365,9 @@ void StaticOccupancyNode::publishOccupancyGrid()
 
 void StaticOccupancyNode::update_previous()
 {
-  for (unsigned int i = 0; i < grid_size; i++)
+  for (unsigned int i = 0; i < GRID_SIZE; i++)
   {
-    for (unsigned int j = 0; j < grid_size; j++)
+    for (unsigned int j = 0; j < GRID_SIZE; j++)
     {
       previous_free[i][j] = updated_free[i][j];
       previous_occ[i][j] = updated_occ[i][j];
@@ -419,15 +419,15 @@ void StaticOccupancyNode::update_previous()
   //      * NL = New Low, OH = Old High
   //      */
   //     //x
-  //     int index_xNL = find_nearest(grid_size, xstart, x_new_low, x_new_high, res);
-  //     int index_xNH = find_nearest(grid_size, xend, x_new_low, x_new_high, res);
-  //     int index_xOL = find_nearest(grid_size, xstart, x_old_low, x_old_high, res);
-  //     int index_xOH = find_nearest(grid_size, xend, x_old_low, x_old_high, res);
+  //     int index_xNL = find_nearest(GRID_SIZE, xstart, x_new_low, x_new_high, res);
+  //     int index_xNH = find_nearest(GRID_SIZE, xend, x_new_low, x_new_high, res);
+  //     int index_xOL = find_nearest(GRID_SIZE, xstart, x_old_low, x_old_high, res);
+  //     int index_xOH = find_nearest(GRID_SIZE, xend, x_old_low, x_old_high, res);
   //     //y
-  //     int index_yNL = find_nearest(grid_size, ystart, y_new_low, y_new_high, res);
-  //     int index_yNH = find_nearest(grid_size, yend, y_new_low, y_new_high, res);
-  //     int index_yOL = find_nearest(grid_size, ystart, y_old_low, y_old_high, res);
-  //     int index_yOH = find_nearest(grid_size, yend, y_old_low, y_old_high, res);
+  //     int index_yNL = find_nearest(GRID_SIZE, ystart, y_new_low, y_new_high, res);
+  //     int index_yNH = find_nearest(GRID_SIZE, yend, y_new_low, y_new_high, res);
+  //     int index_yOL = find_nearest(GRID_SIZE, ystart, y_old_low, y_old_high, res);
+  //     int index_yOH = find_nearest(GRID_SIZE, yend, y_old_low, y_old_high, res);
 
   //     printf("index_xNL: %i, index_xNH: %i, index_xOL: %i, index_xOH: %i\n\n", index_xNL, index_xNH, index_xOL, index_xOH);
 
@@ -456,9 +456,9 @@ void StaticOccupancyNode::update_previous()
  */
 void StaticOccupancyNode::mass_update()
 {
-  for (unsigned int i = 0; i < grid_size; i++)
+  for (unsigned int i = 0; i < GRID_SIZE; i++)
   {
-    for (unsigned int j = 0; j < grid_size; j++)
+    for (unsigned int j = 0; j < GRID_SIZE; j++)
     {
       updated_occP[i][j] = std::min(decay_factor * previous_occ[i][j], 1.0f - previous_free[i][j]);
       updated_freeP[i][j] = std::min(decay_factor * previous_free[i][j], 1.0f - previous_occ[i][j]);
@@ -471,9 +471,9 @@ void StaticOccupancyNode::mass_update()
 // updates probabilities using a bayes filter. Takes into account measured probabilities and predicted probability values.
 void StaticOccupancyNode::update_of()
 {
-  for (unsigned int i = 0; i < grid_size; i++)
+  for (unsigned int i = 0; i < GRID_SIZE; i++)
   {
-    for (unsigned int j = 0; j < grid_size; j++)
+    for (unsigned int j = 0; j < GRID_SIZE; j++)
     {
       //probability of cell being unknown
       float unknown_pred = 1.0 - updated_freeP[i][j] - updated_occP[i][j];
@@ -498,10 +498,10 @@ void StaticOccupancyNode::update_of()
 std::vector<std::vector<float>> StaticOccupancyNode::getGridCellProbabilities()
 {
   std::vector<std::vector<float>> cell_probabilities;
-  for (unsigned int i = 0; i < grid_size; i++)
+  for (unsigned int i = 0; i < GRID_SIZE; i++)
   {
     std::vector<float> row;
-    for (unsigned int j = 0; j < grid_size; j++)
+    for (unsigned int j = 0; j < GRID_SIZE; j++)
     {
       float probability = (0.5 * updated_occ[i][j] + 0.5 * (1.0 - updated_free[i][j]));
       row.push_back(probability);
@@ -674,9 +674,9 @@ void StaticOccupancyNode::ray_tracing_horizontal_n(int y1)
 
 void StaticOccupancyNode::clear()
 {
-  for (unsigned int i = 0; i < grid_size; i++)
+  for (unsigned int i = 0; i < GRID_SIZE; i++)
   {
-    for (unsigned int j = 0; j < grid_size; j++)
+    for (unsigned int j = 0; j < GRID_SIZE; j++)
     {
       measured_occ[i][j] = 0.0;
       measured_free[i][j] = 0.0;
