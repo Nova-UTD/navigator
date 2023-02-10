@@ -88,7 +88,7 @@ void StaticOccupancyNode::createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &c
   add_free_spaces_to_the_DST();
 
   // 3. Add an ego vehicle mask to the grid.
-  addEgoMask();
+  // addEgoMask();
 }
 
 /**
@@ -104,10 +104,6 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
   {
 
     //Dimensions for X & Y [-64 -> 64 (HALF_SiZE)]
-
-    // Takes out points that repressent the car
-    if(Math.abs(x) >= 5 || Math.abs(y) >= 5)
-      continue;
 
     //Record occupancy value for the corresponding point in the pcl, nearest index
     int x = (int)(cloud[i].x / res);

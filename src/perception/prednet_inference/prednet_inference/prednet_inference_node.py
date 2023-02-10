@@ -31,7 +31,7 @@ from sensor_msgs.msg import PointCloud2
 
 from nav_msgs.msg import OccupancyGrid
 from nova_msgs.msg import Masses
-from nova_msgs.msg import Prediction
+from nova_msgs.msg import Egma
 
 
 import torch
@@ -54,11 +54,11 @@ class PredNetNode(Node):
         self.timer = self.create_timer(0.1, self.makePrediction)
         
         self.pred_all_pub = self.create_publisher(
-           Prediction, '/grid/predictions', 10)
+           Egma, '/grid/predictions', 10)
         
         self.history_m = []
         
-        self.prediction_msg = Prediction()
+        self.prediction_msg = Egma()
         
         self.data_acquired = False
         
@@ -199,7 +199,7 @@ class PredNetNode(Node):
     
     def Publish(self, output):
         
-        self.prediction_msg = Prediction()
+        self.prediction_msg = Egma()
         
         
         new_output = output.to("cpu")
@@ -230,7 +230,7 @@ class PredNetNode(Node):
             
             output_occ = new_output
             
-            self.prediction_msg.prediction.append(occ_grid_msg)
+            self.prediction_msg.egma.append(occ_grid_msg)
         
         
         
