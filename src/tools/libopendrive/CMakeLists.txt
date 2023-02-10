@@ -16,9 +16,7 @@ project(${directory_name})
 
 find_package(nova_auto_package REQUIRED)
 
-add_library(OpenDrive SHARED
-    src/pugixml.cpp
-)
+
 
 # Default to C++17 
 if(NOT CMAKE_CXX_STANDARD) 

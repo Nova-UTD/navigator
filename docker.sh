@@ -16,7 +16,9 @@ docker run \
     -v /home/share/carla:/workspace \
     --net=host \
     --privileged \
+    --gpus all \
     -v $HOME/.Xauthority:/root/.Xauthority \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
     -e="DISPLAY" \
     -e ROS_DOMAIN_ID \
     navigator
