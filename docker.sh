@@ -17,7 +17,9 @@ docker run \
     -v /dev/input/js0:/dev/input/jso \
     --net=host \
     --privileged \
+    --gpus all \
     -v $HOME/.Xauthority:/root/.Xauthority \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
     -e="DISPLAY" \
     -e ROS_DOMAIN_ID \
     navigator
