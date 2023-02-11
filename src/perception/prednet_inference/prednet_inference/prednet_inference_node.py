@@ -45,72 +45,87 @@ class PredNetNode(Node):
     def __init__(self):
         super().__init__('prednet_inference_node')
         
+        # Subcribes to masses
         self.masses_sub = self.create_subscription(
             Masses, '/grid/masses', self.masses_callback, 10)
-        
+        # Subscribes to clock for headers
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 10)
-        
+        # Subscribes to timer in order to make predictions at a constant rate
         self.timer = self.create_timer(0.1, self.makePrediction)
         
+        # Instantiates publisher
         self.pred_all_pub = self.create_publisher(
            Egma, '/grid/predictions', 10)
         
+        # Stores the past 0.5 seconds of occupancy grids 
         self.history_m = []
         
+        # Message to be published
         self.prediction_msg = Egma()
         
+        # Whether the required history has been obtained
         self.data_acquired = False
         
+        # Amount of grids that have been made
         self.time = 0
         
+        # Size of the grids
         self.sizeX = None
         self.sizeY = None
         
-        self.predicting = False
-        
+        # GPU that the prednet model will use
         self.device = 'cuda:2'
         
-        self.madeExample = False
+        # Whether the images have been made (for testing)
+        self.madeExample = True
         
+        # Model directry
         # Importing models
         modelDir = "/navigator/data/perception/models/prednet.pt"
         
+        # Sets the device to the rigth GPU
         torch.cuda.set_device(torch.device(self.device))
         # torch.cuda.empty_cache()
         
+        # Prints out the GPU being used
         self.get_logger().info("Current GPU device: " + str(torch.cuda.current_device()))
         
-        
+        # Checks if Cuda is avaiable
         if torch.cuda.is_available():
             self.get_logger().info("CUDA available! Inference on GPU.")
         else:
             self.get_logger().info("Inference on CPU.");  
         
+        # Loads the prednet model
         try:
             self.prednet_model = torch.jit.load(modelDir, map_location=torch.device(self.device))
         except:
             raise Exception("Couldn't load prednet model")
         
+        # Makes sures the model is on the GPU
         try:
             self.prednet_model.to(torch.device(self.device))
         except:
             raise Exception("Couldn't load cuda")
         
+        # Evaluates the model to make sure it's working correctly
         try:
             self.prednet_model.eval()
         except:
             raise Exception("Couldn't eval model")
         
+    # Updates the clock for the header
     def clock_cb(self, msg):
-        
         self.clock = msg.clock
     
+    # Adds masses to history
     def masses_callback(self, mass):
-    
+        
+        # Sets the grid size to the given grid size
         self.sizeX = mass.width
         self.sizeY = mass.height
-    
+
         # Iterates Time
         self.time += 1
         
@@ -130,14 +145,20 @@ class PredNetNode(Node):
                 
     
     def makePrediction(self):
-        # 0.09 average prediction time
+        # 0.09s average prediction time 
+        
+        # If there isn't enough past data to make a prediction
         if not self.data_acquired:
             return
         
+        # To check how long it takes to make a prediction
         startTime = self.get_clock().now()
-                
+        
+        # Creates tensor frames onto the GPU
         tensorFrames = self.createTensorFromFrames()
         
+        # *** For Testing ***
+        # Saves the image of the current occupancy grid
         if  not self.madeExample and self.time > 100:
             IMAGES_FN = '/navigator/src/perception/prednet_inference/predictionTest/'
             
@@ -150,9 +171,13 @@ class PredNetNode(Node):
             fig1.savefig(IMAGES_FN + 'original_5' + '.png') 
             plt.close()
         
+        
+        # Makes the prediction and publishes the prediction
         prediction = self.Infer(tensorFrames)
         self.Publish(prediction)
         
+        # *** For Testing ***
+        # Saves the images of the predicted occupancy grids
         if not self.madeExample and self.time > 100:
             self.get_logger().info("Making visualization")
             self.madeExample = True
@@ -174,7 +199,7 @@ class PredNetNode(Node):
                 plt.close()
             
                 
-                
+        # Gets the total time takes to make the prediction
         totalTimeTaken = self.get_clock().now() - startTime
         
         # self.get_logger().info("Published the model prednet Model Prediction in " + str(totalTimeTaken.nanoseconds / pow(10,9)))
@@ -193,29 +218,33 @@ class PredNetNode(Node):
         return input_data
     
     def Infer(self, input):
+        # Makes the prediction using the prednet model
         output = self.prednet_model(input)
         
         return output
     
     def Publish(self, output):
-        
+        # Prediction message instantiation
         self.prediction_msg = Egma()
         
-        
+        # Moves the output off the GPU onto the CPU
         new_output = output.to("cpu")
+        # 5+ indexs are the predicted images
         new_output = new_output[:,5:,:,:,:]
         
+        # Gets the clock for the headers
         cur_clock = self.clock
         
         for i in range(new_output.shape[1]):
+            
+            # Makes a new clock for time that the occupancy grid is predicted for
             cur_clock = copy.deepcopy(cur_clock)
-            
             cur_clock.nanosec = cur_clock.nanosec + pow(10, 7)
-            
             if cur_clock.nanosec >= pow(10, 9):
                 cur_clock.nanosec = cur_clock.nanosec - pow(10, 9)
                 cur_clock.sec = cur_clock.sec + 1
             
+            # Creates the occupancy grid message
             occ_grid_msg = OccupancyGrid()
             occ_grid_msg.header.stamp = cur_clock
             occ_grid_msg.header.frame_id = "base_link"
@@ -224,16 +253,19 @@ class PredNetNode(Node):
             occ_grid_msg.info.width = self.sizeX
             occ_grid_msg.info.height = self.sizeY
             
+            # Calcualtes the probabilitisc occupancy grid
             prob_2D = (new_output[0,i,0] * 0.5 + (new_output[0,i,1] * -0.5 + 0.5)) * 100
             
+            # Flattens the grid and puts it into the message
             occ_grid_msg.data = prob_2D.flatten().type(torch.int8).numpy().tolist()
             
             output_occ = new_output
             
+            # Adds the occ grid message to the prediction message
             self.prediction_msg.egma.append(occ_grid_msg)
         
         
-        
+        # Publish the prediction message
         self.pred_all_pub.publish(self.prediction_msg)
 
 
