@@ -24,7 +24,8 @@ matplotlib \
 six \
 simple-watchdog-timer \
 numpy \
-python-can 
+python-can \
+pyserial
 # distro \
 # torch==1.12.0 \
 # torchvision \
