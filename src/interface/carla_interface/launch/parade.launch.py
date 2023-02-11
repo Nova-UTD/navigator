@@ -100,9 +100,27 @@ def generate_launch_description():
         executable='image_projection_node'
     )
 
+    throttle_node = Node(
+        package = 'throttle_node',
+        executable = 'throttle_node'
+    )
+
+    joy_interface_node = Node(
+        package = 'joy_interface_node',
+        executable = 'joy_interface_node'
+    )
+
+    joy_linux = Node(
+        package = 'joy_linux',
+        executable = 'joy_linux_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         carla_controller,
+        throttle_node,
+        joy_interface_node,
+        joy_linux,
 
         # INTERFACE
         # carla_bridge_official,
