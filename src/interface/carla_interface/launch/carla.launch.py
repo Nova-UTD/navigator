@@ -42,6 +42,11 @@ def generate_launch_description():
         executable='controller'
     )
 
+    joy_interface_node = Node(
+        package = 'joy_interface_node'
+        executable = 'joy_interface_node'
+    )
+
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',

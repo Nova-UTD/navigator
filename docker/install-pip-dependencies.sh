@@ -23,7 +23,8 @@ ephem \
 matplotlib \
 six \
 simple-watchdog-timer \
-numpy
+numpy \
+python-can 
 # distro \
 # torch==1.12.0 \
 # torchvision \
