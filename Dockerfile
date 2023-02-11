@@ -95,6 +95,8 @@ RUN pip3 install pyserial
 
 # https://stackoverflow.com/questions/66669735/ubuntu-20-04-cant-find-pcl-because-of-incorrect-include-directory-after-install
 RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10/pcl /lib/x86_64-linux-gnu/cmake/pcl/include/pcl
+
+RUN pip3 install python-can
 #################
 #  END CLEANUP  #
 #################
