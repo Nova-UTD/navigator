@@ -14,9 +14,9 @@ docker run \
     --rm \
     -v $PWD:/navigator \
     -v /home/share/carla:/workspace \
+    -v /dev/input/js0:/dev/input/jso \
     --net=host \
     --privileged \
-    --gpus all \
     -v $HOME/.Xauthority:/root/.Xauthority \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -e="DISPLAY" \

@@ -1,0 +1,4 @@
+---
+geometry_msgs/Point[] speed_limit_signs
+geometry_msgs/Point[] stop_signs
+geometry_msgs/Point[] traffic_lights
