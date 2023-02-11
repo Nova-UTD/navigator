@@ -71,7 +71,7 @@ class epas_node(Node):
         #self. = self.create_publisher(array, 'static_grid', 10)
 
     def send_can_msg(self):
-        bus = can.interface.Bus(bustype='slcan', channel='/dev/ttyACM0', bitrate=500000, receive_own_messages=True)
+        bus = can.interface.Bus(bustype='slcan', channel='/dev/ttyACM1', bitrate=500000, receive_own_messages=True)
         torque_a = 100
         torque_b = 155
         #data = [0x03, torque_a, torque_b, 0x00, 0x00, 0x00, 0x00, 0x00]
@@ -100,8 +100,9 @@ class epas_node(Node):
 
     def receive_can_msg(self, msg: CarlaEgoVehicleControl):
         self.target_angle = msg.steer
-        bus = can.interface.Bus(bustype='slcan', channel='/dev/ttyACM0', bitrate=500000, receive_own_messages=True)
+        bus = can.interface.Bus(bustype='slcan', channel='/dev/ttyACM1', bitrate=500000, receive_own_messages=True)
         cached_msg1 = None
+        self.get_logger().info(f"Target Angle: {self.target_angle}")
         while(True):
             msg = bus.recv(0.2)
             if (msg is None):
@@ -132,5 +133,5 @@ def main(args=None):
 	EPAS = epas_node()
 	rclpy.spin(EPAS)
 	#self.get_logger().info('#####################################################################################')
-	dynamic_grid.destroy_node()
+	EPAS.destroy_node()
 	rclpy.shutdown()

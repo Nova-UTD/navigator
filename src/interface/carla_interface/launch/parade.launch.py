@@ -14,68 +14,68 @@ from ament_index_python import get_package_share_directory
 
 def generate_launch_description():
 
-    leaderboard_liaison = Node(
-        package='carla_interface',
-        executable='liaison_node',
-        parameters=[]
-    )
+    # leaderboard_liaison = Node(
+    #     package='carla_interface',
+    #     executable='liaison_node',
+    #     parameters=[]
+    # )
 
-    lidar_processor = Node(
-        package='sensor_processing',
-        executable='lidar_processing_node'
-    )
+    # lidar_processor = Node(
+    #     package='sensor_processing',
+    #     executable='lidar_processing_node'
+    # )
 
-    mcl = Node(
-        package='state_estimation',
-        executable='mcl_node'
-    )
+    # mcl = Node(
+    #     package='state_estimation',
+    #     executable='mcl_node'
+    # )
 
-    carla_spawner = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([get_package_share_directory(
-            'carla_spawn_objects'), '/carla_spawn_objects.launch.py']),
-        launch_arguments={
-            'objects_definition_file': '/navigator/data/carla_objects.json'}.items(),
-    )
+    # carla_spawner = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource([get_package_share_directory(
+    #         'carla_spawn_objects'), '/carla_spawn_objects.launch.py']),
+    #     launch_arguments={
+    #         'objects_definition_file': '/navigator/data/carla_objects.json'}.items(),
+    # )
 
-    carla_controller = Node(
-        package='carla_controller',
-        executable='controller'
-    )
+    # carla_controller = Node(
+    #     package='carla_controller',
+    #     executable='controller'
+    # )
 
-    urdf_publisher = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        arguments=[path.join("/navigator/data", "carla.urdf")]
-    )
+    # urdf_publisher = Node(
+    #     package='robot_state_publisher',
+    #     executable='robot_state_publisher',
+    #     arguments=[path.join("/navigator/data", "carla.urdf")]
+    # )
 
-    carla_bridge_official = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([get_package_share_directory(
-            'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
-        launch_arguments={
-            'host': 'localhost',
-            'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
-            'synchronous_mode': 'True',
-            'town': 'Town02',
-            'register_all_sensors': 'False',
-            'ego_vehicle_role_name': 'hero',
-            'timeout': '30'
-        }.items(),
-    )
+    # carla_bridge_official = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource([get_package_share_directory(
+    #         'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
+    #     launch_arguments={
+    #         'host': 'localhost',
+    #         'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
+    #         'synchronous_mode': 'True',
+    #         'town': 'Town02',
+    #         'register_all_sensors': 'False',
+    #         'ego_vehicle_role_name': 'hero',
+    #         'timeout': '30'
+    #     }.items(),
+    # )
 
-    gnss_processor = Node(
-        package='state_estimation',
-        executable='gnss_processing_node'
-    )
+    # gnss_processor = Node(
+    #     package='state_estimation',
+    #     executable='gnss_processing_node'
+    # )
 
-    mcl = Node(
-        package='state_estimation',
-        executable='mcl_node'
-    )
+    # mcl = Node(
+    #     package='state_estimation',
+    #     executable='mcl_node'
+    # )
 
-    map_manager = Node(
-        package='map_management',
-        executable='map_management_node'
-    )
+    # map_manager = Node(
+    #     package='map_management',
+    #     executable='map_management_node'
+    # )
 
     rviz = Node(
         package='rviz2',
@@ -85,29 +85,34 @@ def generate_launch_description():
         arguments=['-d' + '/navigator/data/mcl.rviz']
     )
 
-    ground_seg = Node(
-        package='occupancy_cpp',
-        executable='ground_segmentation_exe'
-    )
+    # ground_seg = Node(
+    #     package='occupancy_cpp',
+    #     executable='ground_segmentation_exe'
+    # )
 
-    image_segmentation = Node(
-        package='segmentation',
-        executable='image_segmentation_node'
-    )
+    # image_segmentation = Node(
+    #     package='segmentation',
+    #     executable='image_segmentation_node'
+    # )
 
-    semantic_projection = Node(
-        package='segmentation',
-        executable='image_projection_node'
-    )
+    # semantic_projection = Node(
+    #     package='segmentation',
+    #     executable='image_projection_node'
+    # )
 
     throttle_node = Node(
-        package = 'throttle_node',
+        package = 'throttle_control',
         executable = 'throttle_node'
     )
 
     joy_interface_node = Node(
         package = 'joy_interface_node',
         executable = 'joy_interface_node'
+    )
+
+    epas_node = Node(
+        package = 'epas_node',
+        executable = 'epas_node'
     )
 
     joy_linux = Node(
@@ -117,10 +122,11 @@ def generate_launch_description():
 
     return LaunchDescription([
         # CONTROL
-        carla_controller,
+        # carla_controller,
         throttle_node,
         joy_interface_node,
         joy_linux,
+        epas_node,
 
         # INTERFACE
         # carla_bridge_official,
@@ -133,16 +139,16 @@ def generate_launch_description():
         # MAPPING
 
         # MISC
-        urdf_publisher,
+        # urdf_publisher,
         rviz,
 
         # PERCEPTION
-        image_segmentation,
-        semantic_projection,
-        lidar_processor,
-        ground_seg,
+        # image_segmentation,
+        # semantic_projection,
+        # lidar_processor,
+        # ground_seg,
 
         # STATE ESTIMATION
-        map_manager,
-        gnss_processor,
+        # map_manager,
+        # gnss_processor,
     ])
