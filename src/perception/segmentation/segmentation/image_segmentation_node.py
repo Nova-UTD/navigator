@@ -96,7 +96,7 @@ class ImageSegmentationNode(Node):
         checkpoint_file = '/navigator/data/perception/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth'
 
         self.model = init_segmentor(
-            config_file, checkpoint_file, device='cuda:0')
+            config_file, checkpoint_file, device='cuda:1')
 
         image_qos_policy = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,

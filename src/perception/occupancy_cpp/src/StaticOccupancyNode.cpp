@@ -88,7 +88,7 @@ void StaticOccupancyNode::createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &c
   add_free_spaces_to_the_DST();
 
   // 3. Add an ego vehicle mask to the grid.
-  addEgoMask();
+  // addEgoMask();
 }
 
 /**
@@ -353,8 +353,8 @@ void StaticOccupancyNode::publishOccupancyGrid()
     for (int j = 0; j < GRID_SIZE; j++)
     {
       msg.data.push_back(100 * probabilities.at(j).at(i));
-      masses_msg.occ.push_back(updated_occ[j][i]);
-      masses_msg.free.push_back(updated_free[j][i]);
+      masses_msg.occ.push_back(updated_occ[i][j]);
+      masses_msg.free.push_back(updated_free[i][j]);
     }
   }
   occupancy_grid_pub->publish(msg);
