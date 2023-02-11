@@ -2,7 +2,7 @@ from setuptools import setup
 from glob import glob
 import os
 
-package_name = 'dynamic_grid'
+package_name = 'throttle_control'
 
 setup(
     name=package_name,
@@ -17,13 +17,13 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='main',
-    maintainer_email='will.heitman@utdallas.edu',
+    maintainer_email='jai.peris@utdallas.edu',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'dynamic_grid_node = dynamic_grid.dynamic_grid_node:main',
+            'throttle_node = throttle_control.throttle_node:main',
         ],
     },
 )
