@@ -77,6 +77,11 @@ def generate_launch_description():
     #     executable='map_management_node'
     # )
 
+    left_lidar_driver = Node(
+        
+        parameters = ["/navigator/param/perception/lidar_driver_left.param.yaml"]
+    )
+
     rviz = Node(
         package='rviz2',
         namespace='',
