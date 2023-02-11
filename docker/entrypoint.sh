@@ -14,6 +14,8 @@ echo "🦊 Sourcing ROS2 Foxy..."
 source /opt/ros/foxy/setup.bash
 
 echo "🔗 Configuring the ROS DDS..."
+FASTRTPS_DEFAULT_PROFILES_FILE=/navigator/data/fastrtps.xml
+RMW_FASTRTPS_USE_QOS_FROM_XML=1
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 source /opt/cyclone_ws/install/setup.bash
 

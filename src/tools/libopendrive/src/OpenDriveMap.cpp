@@ -13,6 +13,7 @@
 #include "Road.h"
 #include "RoadMark.h"
 #include "RoadObject.h"
+#include "RoadSignal.h"
 #include "Utils.hpp"
 
 #include <algorithm>
@@ -550,6 +551,38 @@ namespace odr
                         road_object.outline.push_back(road_object_corner_road);
                     }
                 }
+
+                for (pugi::xml_node signal_node : road_node.child("signals").children("signal"))
+                {
+                    std::string road_signal_id = signal_node.attribute("id").as_string("");
+                    CHECK_AND_REPAIR(road.id_to_signal.find(road_signal_id) == road.id_to_signal.end(),
+                                     (std::string("signal::id already exists - ") + road_signal_id).c_str(),
+                                     road_signal_id = road_signal_id + std::string("_dup"));
+
+                    RoadSignal &road_signal = road.id_to_signal
+                                                  .insert({road_signal_id,
+                                                           RoadSignal(road_id,
+                                                                      road_signal_id,
+                                                                      signal_node.attribute("s").as_double(0),
+                                                                      signal_node.attribute("t").as_double(0),
+                                                                      signal_node.attribute("zOffset").as_double(0),
+                                                                      signal_node.attribute("dynamic").as_bool(0),
+                                                                      signal_node.attribute("width").as_double(0),
+                                                                      signal_node.attribute("height").as_double(0),
+                                                                      signal_node.attribute("hdg").as_double(0),
+                                                                      signal_node.attribute("pitch").as_double(0),
+                                                                      signal_node.attribute("roll").as_double(0),
+                                                                      signal_node.attribute("type").as_string(""),
+                                                                      signal_node.attribute("subtype").as_string(""),
+                                                                      signal_node.attribute("name").as_string(""),
+                                                                      signal_node.attribute("orientation").as_string(""),
+                                                                      signal_node.attribute("country").as_string(""))})
+                                                  .first->second;
+                    road_signal.xml_node = signal_node;
+
+                    CHECK_AND_REPAIR(road_signal.s >= 0, "signal::s < 0", road_signal.s = 0);
+                    CHECK_AND_REPAIR(road_signal.width >= 0, "signal::width < 0", road_signal.width = 0);
+                }
             }
         }
     }
@@ -683,7 +716,7 @@ namespace odr
         std::cout << "Start of generate_mesh_tree()" << std::endl;
         bgi::rtree<value, bgi::rstar<16, 4>> rtree;
 
-        std::vector<std::pair<Lane, ring>> polys = get_lane_polygons(1.0);
+        std::vector<std::pair<Lane, ring>> polys = get_lane_polygons(1.0, false);
         std::printf("get_road_polygons returned %i shapes\n", polys.size());
 
         // fill the spatial index
@@ -691,6 +724,59 @@ namespace odr
         {
             // calculate polygon bounding box
             box b = bg::return_envelope<box>(polys[i].second);
+            // insert new value
+            rtree.insert(std::make_pair(b, i));
+            // std::printf("Inserting box (%f, %f)-(%f,%f)\n", b.min_corner().get<0>(), b.min_corner().get<1>(), b.max_corner().get<0>(), b.max_corner().get<1>());
+        }
+        // std::printf("End of generate_mesh_tree(), tree has %i shapes\n", rtree.size());
+        return rtree;
+    }
+
+    std::vector<std::pair<RoadObject, point>> OpenDriveMap::get_road_object_centers()
+    {
+        if (object_centers_.size() > 0)
+            return object_centers_; // No need to calculate twice.
+
+        for (Road road : get_roads())
+        {
+            for (RoadObject obj : road.get_road_objects())
+            {
+                float s = obj.s0;
+                float t = obj.t0;
+                odr::Vec3D xyz = road.get_surface_pt(s, t);
+                point pt = point(xyz[0], xyz[1]);
+                object_centers_.push_back(std::make_pair(obj, pt));
+            }
+            for (RoadSignal sig : road.get_signals())
+            {
+                RoadObject obj(road.id, sig.id, sig.s, sig.t, sig.z0,
+                               0.0, 0.0, sig.width, 0.1, sig.height, sig.hdg, sig.pitch,
+                               sig.roll, sig.type, sig.name, sig.orientation);
+                float s = obj.s0;
+                float t = obj.t0;
+                odr::Vec3D xyz = road.get_surface_pt(s, t);
+                point pt = point(xyz[0], xyz[1]);
+                object_centers_.push_back(std::make_pair(obj, pt));
+            }
+        }
+        return object_centers_;
+    }
+
+    bgi::rtree<value, bgi::rstar<16, 4>> OpenDriveMap::generate_object_tree()
+    {
+        std::cout << "Start of generate_object_tree()" << std::endl;
+        bgi::rtree<value, bgi::rstar<16, 4>> rtree;
+
+        if (object_centers_.size() < 1)
+            get_road_object_centers();
+
+        std::printf("map has %i objects\n", object_centers_.size());
+
+        // fill the spatial index
+        for (unsigned i = 0; i < object_centers_.size(); ++i)
+        {
+            // calculate polygon bounding box
+            box b = bg::return_envelope<box>(object_centers_[i].second);
             // insert new value
             rtree.insert(std::make_pair(b, i));
             // std::printf("Inserting box (%f, %f)-(%f,%f)\n", b.min_corner().get<0>(), b.min_corner().get<1>(), b.max_corner().get<0>(), b.max_corner().get<1>());

@@ -66,7 +66,7 @@ RUN pip3 install -U openmim && mim install mmcv-full
 
 COPY ./docker/install-dependencies.sh /opt/docker_ws/
 RUN apt update && apt install -y software-properties-common && /opt/docker_ws/install-dependencies.sh
-
+RUN apt install ros-foxy-joy-linux
 COPY ./docker/install-pip-dependencies.sh /opt/docker_ws/
 RUN /opt/docker_ws/install-pip-dependencies.sh && rm -rf /var/lib/apt/lists/*
 
@@ -85,10 +85,13 @@ RUN apt update && echo "net.core.rmem_max=8388608\nnet.core.rmem_default=8388608
 #################
 # Code here should either be moved to install-dependencies.sh or removed
 # before each major release.
-RUN apt update && apt install -y ros-foxy-octomap octovis ros-foxy-pcl-ros ros-foxy-tf2-eigen
+#RUN apt update && apt install -y ros-foxy-octomap octovis ros-foxy-pcl-ros ros-foxy-tf2-eigen
 RUN pip3 install shapely==2.0.0
 
-RUN pip3 install --upgrade scipy networkx
+RUN pip3 install --upgrade scipy networkx 
+RUN pip3 install python-can
+RUN pip3 install transforms3d
+RUN pip3 install pyserial
 
 # https://stackoverflow.com/questions/66669735/ubuntu-20-04-cant-find-pcl-because-of-incorrect-include-directory-after-install
 RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10/pcl /lib/x86_64-linux-gnu/cmake/pcl/include/pcl
@@ -102,4 +105,10 @@ ENV ROS_VERSION 2
 
 WORKDIR /navigator
 COPY ./docker/entrypoint.sh /opt/entrypoint.sh
+
+RUN useradd -ms /bin/bash dock
+RUN usermod -a -G dialout dock
+RUN usermod -a -G tty dock
+# USER dock
+
 ENTRYPOINT [ "/opt/entrypoint.sh" ]
