@@ -2,7 +2,7 @@ from setuptools import setup
 from glob import glob
 import os
 
-package_name = 'joy_interface_node'
+package_name = 'joy_translation'
 
 setup(
     name=package_name,
@@ -24,7 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             #'dynamic_grid_node = dynamic_grid.dynamic_grid_node:main',
-            'joy_interface_node = joy_interface_node.joy_interface_node:main',
+            'joy_translation_node = joy_translation.joy_translation_node:main',
         ],
     },
 )

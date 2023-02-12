@@ -2,7 +2,7 @@ from setuptools import setup
 from glob import glob
 import os
 
-package_name = 'epas_node'
+package_name = 'epas'
 
 setup(
     name=package_name,
@@ -23,8 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            #'dynamic_grid_node = dynamic_grid.dynamic_grid_node:main',
-            'epas_node = epas_node.epas_node:main',
+            'epas_node = epas.epas_node:main',
         ],
     },
 )

@@ -19,24 +19,28 @@ from nova_msgs.msg import GridRow
 
 
 
-class joy_interface_node(Node):
+class joy_translation_node(Node):
     target_joy = 0.0
     output_msg = None
 
     def __init__(self):
-        super().__init__('joy_interface_node')
+        super().__init__('joy_translation_node')
         self.target_joy = self.create_subscription(Joy, '/joy',self.process_joy, 10)
         self.output_msg = self.create_publisher(CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
         #self. = self.create_publisher(array, 'static_grid', 10)
 
     def process_joy(self, joy_msg: Joy):
-        self.get_logger().info(str(joy_msg))
         msg = CarlaEgoVehicleControl()
         msg.header.stamp = Clock().clock
         msg.header.frame_id = 'base_link'
-        msg.throttle = joy_msg.axes[2]*-1
+        msg.throttle = ((joy_msg.axes[5]*-1)+1)/2
+
+        # TODO: Fix this jank.
+        if msg.throttle == 0.5:
+            msg.throttle = 0.0
+
         msg.steer = joy_msg.axes[0]*-1
-        msg.brake = joy_msg.axes[5]*-1
+        msg.brake = joy_msg.axes[2]*-1
         msg.hand_brake = True if joy_msg.buttons[2]==1 else False
         msg.reverse = True if joy_msg.buttons[0]==1 else False
         msg.gear = True if joy_msg.buttons[3]==1 else False
@@ -46,8 +50,8 @@ class joy_interface_node(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    JOYNODE = joy_interface_node()
+    JOYNODE = joy_translation_node()
     rclpy.spin(JOYNODE)
     #self.get_logger().info('#####################################################################################')
-    joy_interface_node.destroy_node()
+    joy_translation_node.destroy_node()
     rclpy.shutdown()
