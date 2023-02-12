@@ -92,7 +92,7 @@ RUN pip3 install --upgrade scipy networkx
 # https://stackoverflow.com/questions/66669735/ubuntu-20-04-cant-find-pcl-because-of-incorrect-include-directory-after-install
 RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10/pcl /lib/x86_64-linux-gnu/cmake/pcl/include/pcl
 
-RUN apt update && apt install -y ros-foxy-joy-linux ros-foxy-pcl-ros
+RUN apt update && apt install -y ros-foxy-joy-linux ros-foxy-pcl-ros minicom
 #################
 #  END CLEANUP  #
 #################
@@ -102,9 +102,9 @@ ENV ROS_VERSION 2
 WORKDIR /navigator
 COPY ./docker/entrypoint.sh /opt/entrypoint.sh
 
-RUN useradd -ms /bin/bash dock
-RUN usermod -a -G dialout dock
-RUN usermod -a -G tty dock
-# USER dock
+# RUN useradd -ms /bin/bash docker
+RUN usermod -a -G dialout root
+RUN usermod -a -G tty root
+# USER docker
 
 ENTRYPOINT [ "/opt/entrypoint.sh" ]

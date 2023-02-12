@@ -14,6 +14,7 @@ docker run \
     --rm \
     -v $PWD:/navigator \
     -v /home/share/carla:/workspace \
+    -v /dev:/dev \
     --net=host \
     --privileged \
     -v $HOME/.Xauthority:/root/.Xauthority \

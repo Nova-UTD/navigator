@@ -105,7 +105,6 @@ def generate_launch_description():
     return LaunchDescription([
         # CONTROL
         carla_controller,
-        throttle_node,
 
         # INTERFACE
         carla_bridge_official,
