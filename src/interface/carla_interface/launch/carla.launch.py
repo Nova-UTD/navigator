@@ -53,7 +53,7 @@ def generate_launch_description():
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
         launch_arguments={
             'host': 'localhost',
-            'port': "2016",
+            'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
             'synchronous_mode': 'True',
             'town': 'Town02',
             'register_all_sensors': 'False',
@@ -84,9 +84,7 @@ def generate_launch_description():
 
     rviz = Node(
         package='rviz2',
-        namespace='',
         executable='rviz2',
-        name='rviz2',
         arguments=['-d' + '/navigator/data/mcl.rviz']
     )
 
@@ -122,13 +120,11 @@ def generate_launch_description():
         # LOCALIZATION
         gnss_averager,
         # mcl,
-        gnss_averaging,
 
         # MAPPING
 
         # MISC
         urdf_publisher,
-        rviz,
         rviz,
 
         # PERCEPTION
