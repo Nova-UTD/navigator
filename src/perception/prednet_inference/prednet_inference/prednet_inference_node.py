@@ -1,18 +1,12 @@
 '''
-Package: sensor_processing
-   File: lidar_processing_node.py
- Author: Will Heitman (w at heit dot mn)
+Package: prednet_inference
+   File: prednet_inference_node.py
+ Author: Jesse Musa
 
-Node to filter and process raw LiDAR pointclouds
+Node that makes inferences (prediction) on occupied regions around the vehicle,
+provided a static occupancy grid
 
-This node specifically deals with quirks with the
-CARLA simulator. Namely, synching issues mean that
-raw LiDAR streams "flicker" from left-sided PCDs
-to right-sided ones. This node first merges
-these left- and right-sided PCDs into a complete
-cloud before cutting out points near the car.
 '''
-# https://1drv.ms/v/s!An_6l1bJUIotjlN-qg-uqKdIORgC?e=s5RDv6
 
 import rclpy
 import ros2_numpy as rnp
