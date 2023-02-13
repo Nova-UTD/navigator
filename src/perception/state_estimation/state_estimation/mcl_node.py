@@ -82,6 +82,16 @@ class MCLNode(Node):
         # self.get_logger().info(
         #     f"Received {len(self.landmarks.speed_limit_signs)} speed limit signs")
 
+        self.landmark_client = self.create_client(
+            GetLandmarks, 'get_landmarks')
+
+        # landmark_request = GetLandmarks.Request()
+        # self.get_logger().info("Sending request")
+        # self.landmarks: GetLandmarks.Response = self.landmark_client.call(
+        #     landmark_request)
+        # self.get_logger().info(
+        #     f"Received {len(self.landmarks.speed_limit_signs)} speed limit signs")
+
         self.tf_broadcaster = TransformBroadcaster(self)
 
     def clock_cb(self, msg: Clock):

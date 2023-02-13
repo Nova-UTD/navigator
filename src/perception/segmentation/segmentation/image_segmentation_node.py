@@ -96,7 +96,7 @@ class ImageSegmentationNode(Node):
         checkpoint_file = '/navigator/data/perception/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth'
 
         self.model = init_segmentor(
-            config_file, checkpoint_file, device='cuda:0')
+            config_file, checkpoint_file, device='cuda:1')
 
         image_qos_policy = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
@@ -128,7 +128,18 @@ class ImageSegmentationNode(Node):
     def clock_cb(self, msg: Clock):
         self.clock = msg
 
-    def image_to_numpy(self, msg):
+    def imageToNumpy(self, msg) -> np.ndarray:
+        """Converts Image message to numpy array
+
+        Args:
+            msg (Image): ROS Image message
+
+        Raises:
+            TypeError: If image encoding is not recognized
+
+        Returns:
+            np.ndarray: Image as np array
+        """
         if not msg.encoding in name_to_dtypes:
             raise TypeError('Unrecognized encoding {}'.format(msg.encoding))
 
@@ -148,7 +159,22 @@ class ImageSegmentationNode(Node):
             data = data[..., 0]
         return data
 
-    def numpy_to_image(self, arr, encoding):
+    def numpyToImage(self, arr: np.ndarray, encoding: str) -> Image:
+        """Converts np array to Image message
+
+        Args:
+            arr (np.ndarray): _description_
+            encoding (str): _description_
+
+        Raises:
+            TypeError: Unrecognized image encoding requested
+            TypeError: Input array shape is invalid
+            TypeError: Image channels did not match requested encoding
+            TypeError: Array dtype was invalid
+
+        Returns:
+            Image: ROS Image message
+        """
         if not encoding in name_to_dtypes:
             raise TypeError('Unrecognized encoding {}'.format(encoding))
 
@@ -185,9 +211,15 @@ class ImageSegmentationNode(Node):
 
         return im
 
-    def convertToColor(self, mono_result) -> np.array:
-        plt.imshow(mono_result)
-        # plt.show()
+    def convertToColor(self, mono_result: np.ndarray) -> np.array:
+        """Converts a one-channel segmentation result to a colored image using the CityScapes coloring scheme.
+
+        Args:
+            mono_result (np.array): Segmentation result (2d)
+
+        Returns:
+            np.array: Colored result (3D array, accounting for RGB channel)
+        """
         result_rgb = np.zeros(
             (mono_result.shape[0], mono_result.shape[1], 3), dtype=np.uint8)
         result_rgb[:, :][mono_result == 0] = [128, 64, 128]  # Road
@@ -214,6 +246,7 @@ class ImageSegmentationNode(Node):
         img_array = self.bridge.imgmsg_to_cv2(
             msg, 'rgb8')[:, :, :3]  # Cut out alpha
 
+        # Actually performs the inference
         result = inference_segmentor(self.model, img_array)[0]
 
         result_rgb = self.convertToColor(result)
@@ -227,6 +260,7 @@ class ImageSegmentationNode(Node):
         img_array = self.bridge.imgmsg_to_cv2(
             msg, 'rgb8')[:, :, :3]  # Cut out alpha
 
+        # Actually performs the inference
         result = inference_segmentor(self.model, img_array)[0]
 
         result_rgb = self.convertToColor(result)

@@ -89,6 +89,11 @@ def generate_launch_description():
         package = 'occupancy_cpp',
         executable='static_grid_exe'
     )
+    
+    prednet_inference = Node(
+        package = 'prednet_inference',
+        executable='prednet_inference_node'
+    )
 
     image_segmentation = Node(
         package='segmentation',
@@ -118,7 +123,8 @@ def generate_launch_description():
         lidar_processor,
         ground_seg,
         static_grid,
-
+        prednet_inference,
+        
         # STATE ESTIMATION
         # map_manager,
         state_estimation,

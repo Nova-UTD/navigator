@@ -30,11 +30,6 @@ def generate_launch_description():
         executable='mcl_node'
     )
 
-    gnss_averaging = Node(
-        package='state_estimation',
-        executable='gnss_averaging_node'
-    )
-
     carla_spawner = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([get_package_share_directory(
             'carla_spawn_objects'), '/carla_spawn_objects.launch.py']),
@@ -58,7 +53,7 @@ def generate_launch_description():
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
         launch_arguments={
             'host': 'localhost',
-            'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
+            'port': "2016",
             'synchronous_mode': 'True',
             'town': 'Town02',
             'register_all_sensors': 'False',
@@ -70,6 +65,11 @@ def generate_launch_description():
     gnss_processor = Node(
         package='state_estimation',
         executable='gnss_processing_node'
+    )
+
+    gnss_averager = Node(
+        package='state_estimation',
+        executable='gnss_averaging_node'
     )
 
     mcl = Node(
@@ -120,6 +120,7 @@ def generate_launch_description():
         leaderboard_liaison,
 
         # LOCALIZATION
+        gnss_averager,
         # mcl,
         gnss_averaging,
 
@@ -127,6 +128,7 @@ def generate_launch_description():
 
         # MISC
         urdf_publisher,
+        rviz,
         rviz,
 
         # PERCEPTION
