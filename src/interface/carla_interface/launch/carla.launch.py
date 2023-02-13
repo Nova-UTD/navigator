@@ -30,6 +30,11 @@ def generate_launch_description():
         executable='mcl_node'
     )
 
+    gnss_averaging = Node(
+        package='state_estimation',
+        executable='gnss_averaging_node'
+    )
+
     carla_spawner = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([get_package_share_directory(
             'carla_spawn_objects'), '/carla_spawn_objects.launch.py']),
@@ -100,7 +105,10 @@ def generate_launch_description():
         executable='image_projection_node'
     )
 
-    
+    static_grid = Node(
+        package='occupancy_cpp',
+        executable='static_grid_exe'
+    )
 
     return LaunchDescription([
         # CONTROL
@@ -112,7 +120,8 @@ def generate_launch_description():
         leaderboard_liaison,
 
         # LOCALIZATION
-        mcl,
+        # mcl,
+        gnss_averaging,
 
         # MAPPING
 
@@ -125,6 +134,7 @@ def generate_launch_description():
         semantic_projection,
         lidar_processor,
         ground_seg,
+        static_grid,
 
         # STATE ESTIMATION
         map_manager,

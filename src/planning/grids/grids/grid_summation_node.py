@@ -31,6 +31,8 @@ class GridSummationNode(Node):
         """Subscribe to the desired cost maps
 
         - Drivable surface
+        - Route distance
+        - Occupancy
 
         """
         super().__init__('grid_summation_node')
