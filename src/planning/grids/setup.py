@@ -2,7 +2,7 @@ from setuptools import setup
 from glob import glob
 import os
 
-package_name = 'state_estimation'
+package_name = 'grids'
 
 setup(
     name=package_name,
@@ -13,20 +13,17 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name), glob('launch/*.launch.py'))
-
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='main',
     maintainer_email='will.heitman@utdallas.edu',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Package to process, combine, and publish grids, including cost maps',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'gnss_processing_node = state_estimation.gnss_processing_node:main',
-            'gnss_averaging_node = state_estimation.gnss_averaging_node:main',
-            'mcl_node = state_estimation.mcl_node:main',
+            'grid_summation_node = grids.grid_summation_node:main',
         ],
-    }
+    },
 )
