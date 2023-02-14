@@ -177,6 +177,9 @@ class GnssAveragingNode(Node):
                 cached_poses = np.array(self.cached_gnss_poses)
                 self.current_pose = np.mean(cached_poses, axis=0)
 
+            # if len(self.cached_gnss_poses) > 50:
+            #     self.cached_gnss_poses = self.cached_gnss_poses[:-50]
+
         elif self.is_stationary:
             # We're over the stationary speed, so update our state
             self.is_stationary = False

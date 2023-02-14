@@ -160,8 +160,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                 }
             }
 
-            drivable_grid_data.push_back(cell_is_drivable ? 100 : 0);
-            flat_surface_grid_data.push_back(cell_is_flat_surface ? 100 : 0);
+            drivable_grid_data.push_back(cell_is_drivable ? 0 : 100);
+            flat_surface_grid_data.push_back(cell_is_flat_surface ? 0 : 100);
 
             // Get closest route point
             if (local_route_linestring_.size() > 0)
