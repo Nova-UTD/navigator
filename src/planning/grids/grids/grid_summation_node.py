@@ -19,6 +19,7 @@ from tf2_ros.transform_listener import TransformListener
 # Message definitions
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
+from nova_msgs.msg import Egma
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Float32
@@ -61,6 +62,9 @@ class GridSummationNode(Node):
 
         self.combined_map_pub = self.create_publisher(
             OccupancyGrid, '/grid/cost', 1)
+
+        self.combined_egma_pub = self.create_publisher(
+            Egma, '/egma/cost', 1)
 
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/status/grid_summation', 1)
@@ -182,6 +186,27 @@ class GridSummationNode(Node):
         result_msg.header = self.drivable_grid.header
 
         self.combined_map_pub.publish(result_msg)
+
+        egma_msg = Egma()
+        egma_msg.header = result_msg.header
+
+        current_stamp = result_msg.header.stamp
+        t = current_stamp.sec + current_stamp.nanosec * 1e-9
+        for i in range(15):
+            frame = result_msg
+
+            t += 0.1 # dt = 0.1 seconds
+            print(t)
+            next_stamp = current_stamp
+            next_stamp.sec = int(t)
+            next_stamp.nanosec = int(t * 1e9 % 1e9) 
+
+            result_msg.header.stamp = next_stamp
+            result_msg.header.frame_id = 'base_link'
+
+            egma_msg.egma.append(frame)
+
+        self.combined_egma_pub.publish(egma_msg)
 
 
 def main(args=None):
