@@ -67,11 +67,6 @@ def generate_launch_description():
         executable='gnss_processing_node'
     )
 
-    gnss_averager = Node(
-        package='state_estimation',
-        executable='gnss_averaging_node'
-    )
-
     mcl = Node(
         package='state_estimation',
         executable='mcl_node'
@@ -84,7 +79,9 @@ def generate_launch_description():
 
     rviz = Node(
         package='rviz2',
+        namespace='',
         executable='rviz2',
+        name='rviz2',
         arguments=['-d' + '/navigator/data/mcl.rviz']
     )
 
@@ -103,53 +100,35 @@ def generate_launch_description():
         executable='image_projection_node'
     )
 
-    static_grid = Node(
-        package='occupancy_cpp',
-        executable='static_grid_exe'
+    mcu_interface = Node(
+        package='mcu_interface',
+        executable='mcu_interface_node'
     )
 
-    grid_summation = Node(
-        package='grids',
-        executable='grid_summation_node'
+    joy = Node(
+        package='joy_linux',
+        executable='joy_linux_node'
     )
 
-    rqt = Node(
-        package='rqt_gui',
-        executable='rqt_gui',
-        arguments=["--perspective-file=/navigator/data/rqt.perspective"]
+    joy_translator = Node(
+        package='joy_translation',
+        executable='joy_translation_node'
     )
+
+    epas = Node(
+        package='epas',
+        executable='epas_node'
+    )
+    
 
     return LaunchDescription([
-        # CONTROL
-        carla_controller,
-
         # INTERFACE
-        # carla_bridge_official,
-        # carla_spawner,
-        leaderboard_liaison,
-
-        # LOCALIZATION
-        gnss_averager,
-        # mcl,
-
-        # MAPPING
+        joy,
+        joy_translator,
+        epas,
+        mcu_interface,
 
         # MISC
         urdf_publisher,
-        rviz,
-        # rqt,
-
-        # PERCEPTION
-        image_segmentation,
-        semantic_projection,
-        lidar_processor,
-        ground_seg,
-        static_grid,
-
-        # PLANNING
-        # grid_summation,
-
-        # STATE ESTIMATION
-        map_manager,
-        gnss_processor,
+        # rviz,
     ])

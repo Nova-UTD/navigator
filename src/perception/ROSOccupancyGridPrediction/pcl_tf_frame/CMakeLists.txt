@@ -1,6 +1,0 @@
-project(pcl_tf_frame)
-find_package(catkin REQUIRED COMPONENTS roscpp tf2 tf2_ros)
-catkin_package()
-include_directories(${catkin_INCLUDE_DIRS})
-add_executable(frame_broadcaster src/frame_broadcaster.cpp)
-target_link_libraries(frame_broadcaster ${catkin_LIBRARIES})
