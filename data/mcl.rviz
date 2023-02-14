@@ -10,6 +10,10 @@ Panels:
         - /Cameras1/Semantic Left1
         - /Cameras1/Semantic Right1
         - /Grids1
+        - /Path2
+        - /Pose1
+        - /Pose1/Status1
+        - /Pose1/Topic1
       Splitter Ratio: 0.5
     Tree Height: 399
   - Class: rviz_common/Selection
@@ -504,7 +508,7 @@ Visualization Manager:
         Y: 0
         Z: 0
       Pose Color: 255; 85; 255
-      Pose Style: Axes
+      Pose Style: None
       Radius: 1
       Shaft Diameter: 2
       Shaft Length: 10
@@ -551,11 +555,31 @@ Visualization Manager:
         Marker: true
         Particles: true
         Path: true
+        Pose: true
         RobotModel: true
         Smoothed GNSS: true
         TF: true
         Value: true
       Zoom Factor: 1
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz_default_plugins/Pose
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.30000001192092896
+      Head Radius: 0.10000000149011612
+      Name: Pose
+      Shaft Length: 10
+      Shaft Radius: 10
+      Shape: Arrow
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /planning/goal_pose
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 222; 255; 251
@@ -599,7 +623,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 59.64730453491211
+      Distance: 29.66815185546875
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -614,10 +638,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 1.2097961902618408
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 3.1210219860076904
+      Yaw: 3.0610218048095703
     Saved: ~
 Window Geometry:
   Bird's Eye:
