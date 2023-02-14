@@ -13,6 +13,7 @@ import rclpy
 import random
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
+import time
 
 from carla_msgs.msg import CarlaRoute, CarlaWorldInfo
 from geometry_msgs.msg import Pose, PoseStamped
@@ -56,7 +57,7 @@ class LeaderboardLiaisonNode(Node):
         self.route = None
         self.clock = Clock()
 
-        connect_to_carla = True  # TODO: Make this a param
+        connect_to_carla = False  # TODO: Make this a param
 
         if connect_to_carla is False:
             return
@@ -69,6 +70,19 @@ class LeaderboardLiaisonNode(Node):
 
         WALKER_COUNT = 30
         CAR_COUNT = 30
+
+        # Wait for ego to spawn
+        time.sleep(5.0)
+
+        # Find ego vehicle
+        actor_list = self.world.get_actors()
+        self.ego = actor_list.filter("vehicle.tesla.model3")[0]
+        self.get_logger().info(str(self.ego))
+
+        self.actor_true_pose_timer = self.create_timer(
+            0.1, self.publish_true_pose)
+        self.true_pose_pub = self.create_publisher(
+            PoseStamped, '/true_pose', 10)
 
         # Spawn some cars
         car_count = 0
@@ -103,22 +117,17 @@ class LeaderboardLiaisonNode(Node):
                         self.world.get_random_location_from_navigation())
                 walker_count += 1
 
-        self.get_logger().info(f"Spawned {walker_count} walkers!")
+    def publish_true_pose(self):
+        carla_tf = self.ego.get_transform()
+        carla_pos = carla_tf.location
+        msg = PoseStamped()
+        msg.pose.position.x = carla_pos.x
+        msg.pose.position.y = carla_pos.y
+        msg.pose.position.z = carla_pos.z
+        msg.header.frame_id = 'map'
+        msg.header.stamp = self.clock.clock
 
-        # self.set_all_lights_to_green()
-
-        self.traffic_light_timer = self.create_timer(
-            1.0, self.set_all_lights_to_green)
-
-        # settings = self.world.get_settings()
-        # settings.fixed_delta_seconds = 1.0 / 20
-        # settings.synchronous_mode = True
-        # settings.tile_stream_distance = 650
-        # settings.actor_active_distance = 650
-
-        # self.world.apply_settings(settings)
-
-        # self.get_logger().info("Settings applied!")
+        self.true_pose_pub.publish(msg)
 
     def set_all_lights_to_green(self):
         actors = self.world.get_actors()

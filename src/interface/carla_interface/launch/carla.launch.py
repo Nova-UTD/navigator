@@ -67,6 +67,11 @@ def generate_launch_description():
         executable='gnss_processing_node'
     )
 
+    gnss_averager = Node(
+        package='state_estimation',
+        executable='gnss_averaging_node'
+    )
+
     mcl = Node(
         package='state_estimation',
         executable='mcl_node'
@@ -79,9 +84,7 @@ def generate_launch_description():
 
     rviz = Node(
         package='rviz2',
-        namespace='',
         executable='rviz2',
-        name='rviz2',
         arguments=['-d' + '/navigator/data/mcl.rviz']
     )
 
@@ -100,7 +103,21 @@ def generate_launch_description():
         executable='image_projection_node'
     )
 
-    
+    static_grid = Node(
+        package='occupancy_cpp',
+        executable='static_grid_exe'
+    )
+
+    grid_summation = Node(
+        package='grids',
+        executable='grid_summation_node'
+    )
+
+    rqt = Node(
+        package='rqt_gui',
+        executable='rqt_gui',
+        arguments=["--perspective-file=/navigator/data/rqt.perspective"]
+    )
 
     return LaunchDescription([
         # CONTROL
@@ -112,21 +129,27 @@ def generate_launch_description():
         leaderboard_liaison,
 
         # LOCALIZATION
-        mcl,
+        gnss_averager,
+        # mcl,
 
         # MAPPING
 
         # MISC
         urdf_publisher,
         rviz,
+        # rqt,
 
         # PERCEPTION
         image_segmentation,
         semantic_projection,
         lidar_processor,
         ground_seg,
+        static_grid,
+
+        # PLANNING
+        grid_summation,
 
         # STATE ESTIMATION
-        map_manager,
+        # map_manager,
         gnss_processor,
     ])
