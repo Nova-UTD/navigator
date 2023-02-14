@@ -27,7 +27,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
     route_path_pub_ = this->create_publisher<Path>("/route/smooth_path", 10);
     traffic_light_points_pub_ = this->create_publisher<PolygonStamped>("/traffic_light_points", 10);
-    goal_cell_pub_ = this->create_publisher<PointMsg>("/planning/goal_cell", 1);
+    goal_pose_pub_ = this->create_publisher<PoseStamped>("/planning/goal_pose", 1);
 
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
     rough_path_sub_ = this->create_subscription<Path>("/route/rough_path", 10, bind(&MapManagementNode::refineRoughPath, this, std::placeholders::_1));
@@ -114,7 +114,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     int area = 0;
     int height = 0;
 
-    bool goalCellIsPublished = false;
+    bool goalPoseIsPublished = false;
 
     for (float j = y_min; j <= y_max; j += res)
     {
@@ -177,17 +177,19 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                 else
                     dist *= 10;
 
-                if (!goalCellIsPublished && dist < 0.8)
+                if (!goalPoseIsPublished && dist < 0.8)
                 {
                     odr::point origin = odr::point(0.0, 0.0);
                     float distToCar = bg::distance(p, origin);
                     if (distToCar > 20)
                     {
-                        PointMsg goal_cell;
-                        goal_cell.x = i;
-                        goal_cell.y = j;
-                        goal_cell_pub_->publish(goal_cell);
-                        goalCellIsPublished = true;
+                        PoseStamped goal_pose;
+                        goal_pose.header.stamp = this->clock_->clock;
+                        goal_pose.header.frame_id = "base_link";
+                        goal_pose.pose.position.x = i;
+                        goal_pose.pose.position.y = j;
+                        goal_pose_pub_->publish(goal_pose);
+                        goalPoseIsPublished = true;
                     }
                 }
 
