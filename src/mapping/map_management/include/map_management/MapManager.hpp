@@ -96,6 +96,7 @@ namespace navigator
             rclcpp::Publisher<OccupancyGrid>::SharedPtr route_dist_grid_pub_;
             rclcpp::Publisher<Path>::SharedPtr route_path_pub_;
             rclcpp::Publisher<PolygonStamped>::SharedPtr traffic_light_points_pub_;
+            rclcpp::Publisher<PoseStamped>::SharedPtr goal_pose_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
             rclcpp::Subscription<Path>::SharedPtr rough_path_sub_;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
