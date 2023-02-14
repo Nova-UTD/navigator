@@ -27,6 +27,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
     route_path_pub_ = this->create_publisher<Path>("/route/smooth_path", 10);
     traffic_light_points_pub_ = this->create_publisher<PolygonStamped>("/traffic_light_points", 10);
+    goal_cell_pub_ = this->create_publisher<PointMsg>("/planning/goal_cell", 1);
 
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
     rough_path_sub_ = this->create_subscription<Path>("/route/rough_path", 10, bind(&MapManagementNode::refineRoughPath, this, std::placeholders::_1));
@@ -113,6 +114,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     int area = 0;
     int height = 0;
 
+    bool goalCellIsPublished = false;
+
     for (float j = y_min; j <= y_max; j += res)
     {
         for (float i = x_min; i <= x_max; i += res)
@@ -173,6 +176,20 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                     dist = 100;
                 else
                     dist *= 10;
+
+                if (!goalCellIsPublished && dist < 0.8)
+                {
+                    odr::point origin = odr::point(0.0, 0.0);
+                    float distToCar = bg::distance(p, origin);
+                    if (distToCar > 20)
+                    {
+                        PointMsg goal_cell;
+                        goal_cell.x = i;
+                        goal_cell.y = j;
+                        goal_cell_pub_->publish(goal_cell);
+                        goalCellIsPublished = true;
+                    }
+                }
 
                 route_dist_grid_data.push_back(dist);
             }
@@ -426,7 +443,23 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
         odr::Lane lane = lsec.id_to_lane.at(key.lane_id);
         // printf("Lane was %i\n", lane.id);
 
-        odr::Line3D line = road.get_lane_border_line(lane, 1.0, true);
+        odr::Line3D outer_border = road.get_lane_border_line(lane, 1.0, true);
+        odr::Line3D inner_border = road.get_lane_border_line(lane, 1.0, false);
+
+        odr::Line3D line;
+
+        for (int i = 0; i < outer_border.size(); i++)
+        {
+            odr::Vec3D center_pt;
+            auto inner_pt = inner_border[i];
+            auto outer_pt = outer_border[i];
+            // RCLCPP_INFO(get_logger(), "Inner: (%f, %f)\n", inner_pt[0], inner_pt[1]);
+            // RCLCPP_INFO(get_logger(), "Outer: (%f, %f)\n", outer_pt[0], outer_pt[1]);
+
+            center_pt[0] = (inner_pt[0] + outer_pt[0]) / 2;
+            center_pt[1] = (inner_pt[1] + outer_pt[1]) / 2;
+            line.push_back(center_pt);
+        }
 
         // Test to see if the direction of this lane needs to be reversed
         if (route_linestring.size() > 0)
@@ -468,6 +501,7 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
         PoseStamped pose_msg;
         pose_msg.pose.position.x = pt.get<0>();
         pose_msg.pose.position.y = pt.get<1>();
+        pose_msg.header = smoothed_path_msg_.header;
         smoothed_path_msg_.poses.push_back(pose_msg);
     }
 

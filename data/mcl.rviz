@@ -10,6 +10,7 @@ Panels:
         - /Cameras1/Semantic Left1
         - /Cameras1/Semantic Right1
         - /Grids1
+        - /Path2
       Splitter Ratio: 0.5
     Tree Height: 399
   - Class: rviz_common/Selection
@@ -504,7 +505,7 @@ Visualization Manager:
         Y: 0
         Z: 0
       Pose Color: 255; 85; 255
-      Pose Style: Axes
+      Pose Style: None
       Radius: 1
       Shaft Diameter: 2
       Shaft Length: 10
@@ -614,10 +615,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 1.2547963857650757
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 3.1210219860076904
+      Yaw: 3.146021842956543
     Saved: ~
 Window Geometry:
   Bird's Eye:
