@@ -115,7 +115,7 @@ mapping:
     ros__parameters:
       # lio sam
       ## Topics
-      pointCloudTopic: "/lidar_front/velodyne_points" # Point cloud data
+      pointCloudTopic: "/lidar_right/velodyne_points" # Point cloud data
       imuTopic: "/sensors/zed/imu" # IMU data
       odomTopic: "odometry/imu" # IMU pre-preintegration odometry, same frequency as IMU
       gpsTopic: "/sensors/gnss/odometry" # GPS odometry topic from navsat, see module_navsat.launch file
@@ -252,7 +252,7 @@ perception:
       view_width: 6.283185307179586 # The width, in radians, of the view to generate for the resulting pointcloud. Combined with view_direction, this allows the node to generate a pointcloud only for the given width, centered at the view_direction point. This can vastly reduce the CPU requirements of the node. Must be between 0 and 2Pi. Defaults to 2Pi.
       organize_cloud: True # Whether to organize the cloud by ring (True), or to use the order as it comes directly from the driver (False). Defaults to True.
       target_frame: "base_link" # The coordinate frame to apply to the generated point cloud header before publishing. If the empty string (the default), the frame is passed along from the driver packet. If this frame is different than the fixed_frame, a transformation to this coordinate frame is performed while creating the pointcloud.
-      fixed_frame: "lidar_front" # The fixed coordinate frame to transform the data from.
+      fixed_frame: "lidar_right" # The fixed coordinate frame to transform the data from.
 
       # lidar pointcloud rear
       calibration: "/home/main/navigator/data/VLP16db.yaml" # The path to the calibration file for the particular device. There are a set of default calibration files to start with in the "params" subdirectory in this package. Defaults to the empty string.
@@ -262,21 +262,21 @@ perception:
       view_width: 6.283185307179586 # The width, in radians, of the view to generate for the resulting pointcloud. Combined with view_direction, this allows the node to generate a pointcloud only for the given width, centered at the view_direction point. This can vastly reduce the CPU requirements of the node. Must be between 0 and 2Pi. Defaults to 2Pi.
       organize_cloud: True # Whether to organize the cloud by ring (True), or to use the order as it comes directly from the driver (False). Defaults to True.
       target_frame: "base_link" # The coordinate frame to apply to the generated point cloud header before publishing. If the empty string (the default), the frame is passed along from the driver packet. If this frame is different than the fixed_frame, a transformation to this coordinate frame is performed while creating the pointcloud.
-      fixed_frame: "lidar_rear" # The fixed coordinate frame to transform the data from.
+      fixed_frame: "lidar_left" # The fixed coordinate frame to transform the data from.
 
       # lidar rear
       ip: "0.0.0.0"
       port: 2368
       cloud_size:  55000
       topic: "points_raw"  # UdpDriverNode strictly expects to get the topic via `declare_parameter`.
-      frame_id: "lidar_rear"
+      frame_id: "lidar_left"
       timeout_ms: 10
       rpm: 600
 
       # pc filter transform front
       timeout_ms:       110
       pcl_size:         55000
-      input_frame_id:  "lidar_front"
+      input_frame_id:  "lidar_right"
       output_frame_id: "base_link"
       init_timeout_ms:  5000
       expected_num_subscribers: 1
@@ -299,7 +299,7 @@ perception:
       # pc filter transform front
       timeout_ms:       110
       pcl_size:         55000
-      input_frame_id:  "lidar_front"
+      input_frame_id:  "lidar_right"
       output_frame_id: "base_link"
       init_timeout_ms:  5000
       expected_num_subscribers: 1
@@ -322,7 +322,7 @@ perception:
       # pc filter transform rear
       timeout_ms:       110
       pcl_size:         55000
-      input_frame_id:  "lidar_rear"
+      input_frame_id:  "lidar_left"
       output_frame_id: "base_link" # Use URDF transform
       init_timeout_ms:  5000
       expected_num_subscribers: 1
@@ -345,7 +345,7 @@ perception:
       # pc filter transform rear sim
       timeout_ms:       110
       pcl_size:         55000
-      input_frame_id:  "lidar_rear"
+      input_frame_id:  "lidar_left"
       output_frame_id: "base_link"
       init_timeout_ms:  5000
       expected_num_subscribers: 1

@@ -14,6 +14,7 @@ from ament_index_python import get_package_share_directory
 
 def generate_launch_description():
 
+<<<<<<< HEAD
     leaderboard_liaison = Node(
         package='carla_interface',
         executable='liaison_node',
@@ -42,39 +43,36 @@ def generate_launch_description():
         executable='controller'
     )
 
+=======
+>>>>>>> 6f24d93b (Replaced all references to lidar_front/rear to right/left. Parade launch file now contains necessary lidar packages)
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         arguments=[path.join("/navigator/data", "carla.urdf")]
     )
 
-    carla_bridge_official = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([get_package_share_directory(
-            'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
-        launch_arguments={
-            'host': 'localhost',
-            'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
-            'synchronous_mode': 'True',
-            'town': 'Town02',
-            'register_all_sensors': 'False',
-            'ego_vehicle_role_name': 'hero',
-            'timeout': '30'
-        }.items(),
+    left_lidar_driver = Node(
+        package = 'velodyne_driver',
+        executable = 'velodyne_driver_node',
+        parameters = ["/navigator/param/perception/lidar_driver_left.param.yaml"]
     )
 
-    gnss_processor = Node(
-        package='state_estimation',
-        executable='gnss_processing_node'
+    right_lidar_driver = Node(
+        package = 'velodyne_driver',
+        executable = 'velodyne_driver_node',
+        parameters = ["/navigator/param/perception/lidar_driver_right.param.yaml"]
     )
 
-    mcl = Node(
-        package='state_estimation',
-        executable='mcl_node'
+    left_lidar_pointcloud = Node(
+        package = 'velodyne_pointcloud',
+        executable = 'velodyne_transform_node',
+        parameters = ["/navigator/param/perception/lidar_pointcloud_left.param.yaml"]
     )
 
-    map_manager = Node(
-        package='map_management',
-        executable='map_management_node'
+    right_lidar_pointcloud = Node(
+        package = 'velodyne_pointcloud',
+        executable = 'velodyne_transform_node',
+        parameters = ["/navigator/param/perception/lidar_pointcloud_right.param.yaml"]
     )
 
     rviz = Node(
@@ -85,9 +83,20 @@ def generate_launch_description():
         arguments=['-d' + '/navigator/data/mcl.rviz']
     )
 
+<<<<<<< HEAD
     ground_seg = Node(
         package='occupancy_cpp',
         executable='ground_segmentation_exe'
+=======
+    # semantic_projection = Node(
+    #     package='segmentation',
+    #     executable='image_projection_node'
+    # )
+
+    throttle_node = Node(
+        package = 'throttle_control',
+        executable = 'throttle_node'
+>>>>>>> 6f24d93b (Replaced all references to lidar_front/rear to right/left. Parade launch file now contains necessary lidar packages)
     )
 
     image_segmentation = Node(
@@ -122,6 +131,7 @@ def generate_launch_description():
     
 
     return LaunchDescription([
+<<<<<<< HEAD
         # INTERFACE
         joy,
         joy_translator,
@@ -131,4 +141,23 @@ def generate_launch_description():
         # MISC
         urdf_publisher,
         # rviz,
+=======
+        # CONTROL
+        throttle_node,
+        joy_interface_node,
+        joy_linux,
+        epas_node,
+
+        # LIDAR
+        left_lidar_driver,
+        right_lidar_driver,
+        left_lidar_pointcloud,
+        right_lidar_pointcloud,
+
+        # MISC
+        urdf_publisher,
+        rviz,
+
+
+>>>>>>> 6f24d93b (Replaced all references to lidar_front/rear to right/left. Parade launch file now contains necessary lidar packages)
     ])

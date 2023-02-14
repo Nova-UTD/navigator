@@ -70,7 +70,7 @@
     <origin xyz="0.0 -0.5 0.5" rpy="0 0 0"/>
   </joint>
 
-  <link name="lidar_front">
+  <link name="lidar_right">
     <visual>
       <geometry>
         <cylinder length="0.0869" radius="0.05165"/>
@@ -89,13 +89,13 @@
     </inertial>
   </link>
 
-  <joint name="lidar_front_joint" type="fixed">
+  <joint name="lidar_right_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="lidar_front"/>
+    <child link="lidar_right"/>
     <origin xyz="0.0 -0.902 0.7876" rpy="-0.015 -0.03 -1.45"/>
   </joint>
 
-  <link name="lidar_rear">
+  <link name="lidar_left">
     <visual>
       <geometry>
         <cylinder length="0.0869" radius="0.05165"/>
@@ -114,9 +114,9 @@
     </inertial>
   </link>
 
-  <joint name="lidar_rear_joint" type="fixed">
+  <joint name="lidar_left_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="lidar_rear"/>
+    <child link="lidar_left"/>
     <origin xyz="-3.5 0.9 1.1" rpy="+0.03 -0.0472 2.65"/>
   </joint>
 
