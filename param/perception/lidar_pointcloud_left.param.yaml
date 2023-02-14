@@ -9,5 +9,5 @@
     view_width: 6.283185307179586 # The width, in radians, of the view to generate for the resulting pointcloud. Combined with view_direction, this allows the node to generate a pointcloud only for the given width, centered at the view_direction point. This can vastly reduce the CPU requirements of the node. Must be between 0 and 2Pi. Defaults to 2Pi.
     organize_cloud: True # Whether to organize the cloud by ring (True), or to use the order as it comes directly from the driver (False). Defaults to True.
     target_frame: "base_link" # The coordinate frame to apply to the generated point cloud header before publishing. If the empty string (the default), the frame is passed along from the driver packet. If this frame is different than the fixed_frame, a transformation to this coordinate frame is performed while creating the pointcloud.
-    fixed_frame: "lidar_rear" # The fixed coordinate frame to transform the data from.
+    fixed_frame: "lidar_left" # The fixed coordinate frame to transform the data from.
     

@@ -1,11 +1,11 @@
 # config/test.param.yaml
 ---
-lidar_rear:
+lidar_left:
   point_cloud_filter_transform_node:
     ros__parameters:
       timeout_ms:       110
       pcl_size:         55000
-      input_frame_id:  "lidar_rear"
+      input_frame_id:  "lidar_left"
       output_frame_id: "base_link" # Use URDF transform
       init_timeout_ms:  5000
       expected_num_subscribers: 1

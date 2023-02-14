@@ -151,7 +151,7 @@ class SimBridgeNode(Node):
         # Taken from carla_ros_bridge's "lidar.py". WSH.
         header = Header(
             stamp=self.get_clock().now().to_msg(),
-            frame_id='lidar_front'
+            frame_id='lidar_right'
         )
 
         lidar_data = np.fromstring(
@@ -291,7 +291,7 @@ class SimBridgeNode(Node):
         # Taken from carla_ros_bridge's "lidar.py". WSH.
         header = Header(
             stamp=self.get_clock().now().to_msg(),
-            frame_id='lidar_front'
+            frame_id='lidar_right'
         )
 
         lidar_data = np.fromstring(
@@ -503,7 +503,7 @@ class SimBridgeNode(Node):
 
         self.front_lidar_pub = self.create_publisher(
             PointCloud2,
-            '/lidar_front/points_raw',
+            '/lidar_right/points_raw',
             1
         )
 
@@ -515,7 +515,7 @@ class SimBridgeNode(Node):
 
         self.rear_lidar_pub = self.create_publisher(
             PointCloud2,
-            '/lidar_rear/points_raw',
+            '/lidar_left/points_raw',
             1
         )
 
