@@ -17,6 +17,7 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
 # Message definitions
+from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
@@ -24,167 +25,161 @@ from std_msgs.msg import Float32
 
 import matplotlib.pyplot as plt
 
+STALENESS_TOLERANCE = 0.2  # seconds. Grids older than this will be ignored.
+
+CURRENT_OCCUPANCY_SCALE = 1.0
+DRIVABLE_GRID_SCALE = 1.0
+ROUTE_DISTANCE_GRID_SCALE = 3.0
+
 
 class GridSummationNode(Node):
 
     def __init__(self):
         """Subscribe to the desired cost maps
 
-        - Drivable surface
+        - Drivable surface  (~5 Hz)
         - Route distance
-        - Occupancy
+        - Current occupancy (~8 Hz)
 
         """
         super().__init__('grid_summation_node')
 
-        self.lidar_sub = self.create_subscription(
-            PointCloud2, '/carla/hero/lidar', self.lidar_cb, 10)
+        self.current_occupancy_grid = OccupancyGrid()
+        self.drivable_grid = OccupancyGrid()
+        self.route_dist_grid = OccupancyGrid()
+        self.status = DiagnosticStatus()
 
-        self.semantic_lidar_sub = self.create_subscription(
-            PointCloud2, '/carla/hero/semantic_lidar', self.semantic_lidar_cb, 10)
+        # Subscriptions and publishers
+        self.current_occupancy_sub = self.create_subscription(
+            OccupancyGrid, '/grid/occupancy/current', self.currentOccupancyCb, 1)
+
+        self.drivable_grid_sub = self.create_subscription(
+            OccupancyGrid, '/grid/drivable', self.drivableGridCb, 1)
+
+        self.route_dist_grid_sub = self.create_subscription(
+            OccupancyGrid, '/grid/route_distance', self.routeDistGridCb, 1)
+
+        self.combined_map_pub = self.create_publisher(
+            OccupancyGrid, '/grid/cost', 1)
+
+        self.status_pub = self.create_publisher(
+            DiagnosticStatus, '/status/grid_summation', 1)
+
+        self.combine_timer = self.create_timer(0.2, self.createCostMap)
 
         self.clock_sub = self.create_subscription(
-            Clock, '/clock', self.clock_cb, 10
-        )
-        self.clean_lidar_pub = self.create_publisher(
-            PointCloud2, '/lidar/fused', 10
-        )
+            Clock, '/clock', self.clockCb, 1)
 
-        self.clean_semantic_lidar_pub = self.create_publisher(
-            PointCloud2, '/lidar_semantic_filtered', 10
-        )
+        self.clock = Clock()
 
-        self.occupancy_grid_pub = self.create_publisher(
-            OccupancyGrid, '/cost/occupancy', 10)
+    def clockCb(self, msg: Clock):
+        self.clock = msg
 
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
+    def currentOccupancyCb(self, msg: OccupancyGrid):
+        self.current_occupancy_grid = msg
 
-        self.carla_clock = Clock()
-        self.left_pcd_cached = np.zeros(0, dtype=[
-            ('x', np.float32),
-            ('y', np.float32),
-            ('z', np.float32),
-            ('intensity', np.float32)
-        ])
-        self.right_pcd_cached = np.zeros(0, dtype=[
-            ('x', np.float32),
-            ('y', np.float32),
-            ('z', np.float32),
-            ('intensity', np.float32)
-        ])
+    def drivableGridCb(self, msg: OccupancyGrid):
+        self.drivable_grid = msg
 
-        self.left_sem_pcd_cached = np.zeros(0, dtype=[
-            ('x', np.float32),
-            ('y', np.float32),
-            ('z', np.float32)
-        ])
-        self.right_sem_pcd_cached = np.zeros(0, dtype=[
-            ('x', np.float32),
-            ('y', np.float32),
-            ('z', np.float32)
-        ])
+    def routeDistGridCb(self, msg: OccupancyGrid):
+        self.route_dist_grid = msg
 
-    def clock_cb(self, msg: Clock):
-        self.carla_clock = msg
+    def checkForStaleness(self, grid: OccupancyGrid, status: DiagnosticStatus):
+        stamp = self.current_occupancy_grid.header.stamp
+        stamp_in_seconds = stamp.sec + stamp.nanosec*1e-9
+        current_time_in_seconds = self.clock.clock.sec + self.clock.clock.nanosec*1e-9
+        stale = current_time_in_seconds - stamp_in_seconds > STALENESS_TOLERANCE
+        if stale:
+            if status.level == DiagnosticStatus.OK:
+                status.level = DiagnosticStatus.WARN
+                status.message = "Current occupancy was stale."
+            else:
+                status.level = DiagnosticStatus.ERROR
+                status.message = "More than one layer was stale!"
 
-    def lidar_cb(self, msg: PointCloud2):
-        pcd_array: np.array = rnp.numpify(msg)
+    def getWeightedArray(self, msg: OccupancyGrid, scale: float) -> np.ndarray:
+        """Converts the OccupancyGrid message into a numpy array, then multiplies it by scale
 
-        min_y = np.min(pcd_array['y'])
-        max_y = np.max(pcd_array['y'])
+        Args:
+            msg (OccupancyGrid)
+            scale (float)
 
-        if (min_y < -5.0):
-            # This PCD is from the right side of the car
-            # (Recall that +y points to the left)
-            self.right_pcd_cached = pcd_array
-        elif (max_y > 5.0):
-            self.left_pcd_cached = pcd_array
-        else:
-            self.get_logger().warning('Incoming LiDAR PCD may be invalid.')
+        Returns:
+            np.ndarray: Weighted ndarray
+        """
+        arr = np.asarray(msg.data, dtype=np.float16).reshape(
+            msg.info.height, msg.info.width)
 
-        merged_x = np.append(
-            self.left_pcd_cached['x'], self.right_pcd_cached['x'])
-        merged_y = np.append(
-            self.left_pcd_cached['y'], self.right_pcd_cached['y'])
-        merged_z = np.append(
-            self.left_pcd_cached['z'], self.right_pcd_cached['z'])
-        merged_i = np.append(
-            self.left_pcd_cached['intensity'], self.right_pcd_cached['intensity'])
+        arr *= scale
 
-        total_length = self.left_pcd_cached['x'].shape[0] + \
-            self.right_pcd_cached['x'].shape[0]
+        return arr
 
-        msg_array = np.zeros(total_length, dtype=[
-            ('x', np.float32),
-            ('y', np.float32),
-            ('z', np.float32),
-            ('intensity', np.float32)
-        ])
+    def resizeOccupancyGrid(self, original: np.ndarray) -> np.ndarray:
+        # This is a temporary measure until our current occ. grid's params
+        # match the rest of our stack. Basically, due to the difference in cell size,
+        # 1 out of 6 cells in the array needs to be deleted.
+        downsampled = np.delete(original, np.arange(0, 128, 6), axis=0)
+        downsampled = np.delete(downsampled, np.arange(
+            0, 128, 6), axis=1)  # 106x106 result
 
-        msg_array['x'] = merged_x
-        msg_array['y'] = merged_y
-        msg_array['z'] = merged_z
-        msg_array['intensity'] = merged_i
+        # trim the bottom columns (behind the car)
+        downsampled = downsampled[:, 3:]
 
-        msg_array = self.transform_to_base_link(msg_array)
-        msg_array = self.remove_nearby_points(msg_array, 3.0, 2.0)
-        # msg_array = self.remove_points_above(msg_array, 2.0)
-        # msg_array = self.remove_ground_points(msg_array, 0.2)
+        background = np.zeros((151, 151))
 
-        # self.publish_occupancy_grid(msg_array, range=40.0, res=0.5)
+        background[22:128, 0:103] = downsampled
+        return background  # Correct scale
 
-        merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
-        merged_pcd_msg.header.frame_id = 'base_link'
-        merged_pcd_msg.header.stamp = self.carla_clock.clock
+    def createCostMap(self):
+        status = DiagnosticStatus()
+        status.level = DiagnosticStatus.OK
+        status.name = 'grid_summation'
 
-        self.clean_lidar_pub.publish(merged_pcd_msg)
+        # Calculate the weighted cost map layers
 
-    def semantic_lidar_cb(self, msg: PointCloud2):
-        pcd_array: np.array = rnp.numpify(msg)
+        # 1. Current occupancy
+        stale = self.checkForStaleness(self.current_occupancy_grid, status)
+        empty = len(self.current_occupancy_grid.data) == 0
 
-        # Only keep ground points for now
-        pcd_array = pcd_array[pcd_array['ObjTag'] == 7]
+        if not stale and not empty:
+            msg = self.current_occupancy_grid
+            weighted_current_occ_arr = self.getWeightedArray(
+                msg, CURRENT_OCCUPANCY_SCALE)
+            weighted_current_occ_arr = self.resizeOccupancyGrid(
+                weighted_current_occ_arr)
 
-        min_y = np.min(pcd_array['y'])
-        max_y = np.max(pcd_array['y'])
+        # 2. Drivable area
+        stale = self.checkForStaleness(self.drivable_grid, status)
+        empty = len(self.drivable_grid.data) == 0
 
-        if (min_y < -1.0):
-            # This PCD is from the right side of the car
-            # (Recall that +y points to the left)
-            self.right_sem_pcd_cached = pcd_array
-        elif (max_y > 1.0):
-            self.left_sem_pcd_cached = pcd_array
-        else:
-            self.get_logger().warning('Incoming LiDAR PCD may be invalid.')
+        if not stale and not empty:
+            msg = self.drivable_grid
+            weighted_drivable_arr = self.getWeightedArray(
+                msg, DRIVABLE_GRID_SCALE)
 
-        merged_x = np.append(
-            self.left_sem_pcd_cached['x'], self.right_sem_pcd_cached['x'])
-        merged_y = np.append(
-            self.left_sem_pcd_cached['y'], self.right_sem_pcd_cached['y'])
-        merged_z = np.append(
-            self.left_sem_pcd_cached['z'], self.right_sem_pcd_cached['z'])
+        # 3. Route distance
+        stale = self.checkForStaleness(self.route_dist_grid, status)
+        empty = len(self.route_dist_grid.data) == 0
 
-        total_length = self.left_sem_pcd_cached['x'].shape[0] + \
-            self.right_sem_pcd_cached['x'].shape[0]
+        if not stale and not empty:
+            msg = self.route_dist_grid
+            weighted_route_dist_arr = self.getWeightedArray(
+                msg, ROUTE_DISTANCE_GRID_SCALE)
 
-        msg_array = np.zeros(total_length, dtype=[
-            ('x', np.float32),
-            ('y', np.float32),
-            ('z', np.float32)
-        ])
+        result = weighted_current_occ_arr + \
+            weighted_drivable_arr + weighted_route_dist_arr
 
-        msg_array['x'] = merged_x
-        msg_array['y'] = merged_y
-        msg_array['z'] = merged_z
+        # Cap this to 100
+        result = np.clip(result, 0, 100)
 
-        msg_array = self.transform_to_base_link(msg_array)
+        # Publish as an OccupancyGrid
+        result_msg = OccupancyGrid()
 
-        merged_pcd_msg: PointCloud2 = rnp.msgify(PointCloud2, msg_array)
-        merged_pcd_msg.header.frame_id = 'base_link'
-        merged_pcd_msg.header.stamp = self.carla_clock.clock
+        result_msg.data = result.astype(np.int8).flatten().tolist()
+        result_msg.info = self.drivable_grid.info
+        result_msg.header = self.drivable_grid.header
 
-        self.clean_semantic_lidar_pub.publish(merged_pcd_msg)
+        self.combined_map_pub.publish(result_msg)
 
 
 def main(args=None):

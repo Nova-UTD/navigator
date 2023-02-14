@@ -6,13 +6,10 @@ Panels:
       Expanded:
         - /Global Options1
         - /TF1/Frames1
-        - /Cameras1
         - /Cameras1/RGB Left1
         - /Cameras1/Semantic Left1
         - /Cameras1/Semantic Right1
         - /Grids1
-        - /Grids1/Drivable Area1
-        - /Grids1/Flat Surfaces1
       Splitter Ratio: 0.5
     Tree Height: 399
   - Class: rviz_common/Selection
@@ -393,7 +390,7 @@ Visualization Manager:
           Class: rviz_default_plugins/Map
           Color Scheme: raw
           Draw Behind: true
-          Enabled: true
+          Enabled: false
           Name: Drivable Area
           Topic:
             Depth: 5
@@ -408,10 +405,10 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /grid/drivable_updates
           Use Timestamp: true
-          Value: true
+          Value: false
         - Alpha: 0.699999988079071
           Class: rviz_default_plugins/Map
-          Color Scheme: raw
+          Color Scheme: map
           Draw Behind: true
           Enabled: false
           Name: Current Occupancy
@@ -453,7 +450,7 @@ Visualization Manager:
           Class: rviz_default_plugins/Map
           Color Scheme: costmap
           Draw Behind: true
-          Enabled: true
+          Enabled: false
           Name: Flat Surfaces
           Topic:
             Depth: 5
@@ -468,6 +465,26 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /grid/flat_surface_updates
           Use Timestamp: true
+          Value: false
+        - Alpha: 0.699999988079071
+          Class: rviz_default_plugins/Map
+          Color Scheme: map
+          Draw Behind: false
+          Enabled: true
+          Name: Cost
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /grid/cost
+          Update Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /grid/cost_updates
+          Use Timestamp: false
           Value: true
       Enabled: true
       Name: Grids
@@ -517,6 +534,7 @@ Visualization Manager:
         Grid: true
         Grids:
           "": true
+          Cost: true
           Value: true
         LiDAR:
           "": true
@@ -572,25 +590,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 22.910228729248047
+      Distance: 51.193965911865234
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -2.7114906311035156
-        Y: 0.4789555072784424
-        Z: 0
+        X: -5.102858066558838
+        Y: 1.323423147201538
+        Z: 6.97347513778368e-06
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.0547971725463867
+      Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 2.996020793914795
+      Yaw: 3.121021032333374
     Saved: ~
 Window Geometry:
   Bird's Eye:

@@ -108,6 +108,12 @@ def generate_launch_description():
         executable='static_grid_exe'
     )
 
+    rqt = Node(
+        package='rqt_gui',
+        executable='rqt_gui',
+        arguments=["--perspective-file=/navigator/data/rqt.perspective"]
+    )
+
     return LaunchDescription([
         # CONTROL
         carla_controller,
@@ -126,6 +132,7 @@ def generate_launch_description():
         # MISC
         urdf_publisher,
         rviz,
+        # rqt,
 
         # PERCEPTION
         image_segmentation,
