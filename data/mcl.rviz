@@ -248,7 +248,7 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: true
           Value: true
-      Enabled: true
+      Enabled: false
       Name: LiDAR
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -516,7 +516,7 @@ Visualization Manager:
         Value: /route/smooth_path
       Value: true
     - Class: rviz_default_plugins/Camera
-      Enabled: true
+      Enabled: false
       Image Rendering: background and overlay
       Name: Camera
       Overlay Alpha: 0.5
@@ -526,18 +526,27 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /carla/hero/rgb_right/image
-      Value: true
+      Value: false
       Visibility:
         Cameras:
-          "": true
+          Bird's Eye: true
+          RGB Left: true
+          RGB Right: true
+          Semantic Left: true
+          Semantic Right: true
           Value: true
         Grid: true
         Grids:
-          "": true
           Cost: true
+          Current Occupancy: true
+          Drivable Area: true
+          Flat Surfaces: true
+          Route Distance: true
           Value: true
         LiDAR:
-          "": true
+          Filtered LiDAR: true
+          Road Points: true
+          Semantic LiDAR: true
           Value: true
         Marker: true
         Particles: true
@@ -590,16 +599,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 51.193965911865234
+      Distance: 59.64730453491211
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -5.102858066558838
-        Y: 1.323423147201538
-        Z: 6.97347513778368e-06
+        X: -0.3763124942779541
+        Y: -0.34373900294303894
+        Z: 2.420269447611645e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -608,7 +617,7 @@ Visualization Manager:
       Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 3.121021032333374
+      Yaw: 3.1210219860076904
     Saved: ~
 Window Geometry:
   Bird's Eye:

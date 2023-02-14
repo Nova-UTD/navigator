@@ -29,7 +29,7 @@ STALENESS_TOLERANCE = 0.2  # seconds. Grids older than this will be ignored.
 
 CURRENT_OCCUPANCY_SCALE = 1.0
 DRIVABLE_GRID_SCALE = 1.0
-ROUTE_DISTANCE_GRID_SCALE = 3.0
+ROUTE_DISTANCE_GRID_SCALE = 1.0
 
 
 class GridSummationNode(Node):
@@ -135,6 +135,8 @@ class GridSummationNode(Node):
         status.level = DiagnosticStatus.OK
         status.name = 'grid_summation'
 
+        result = np.zeros((151, 151))
+
         # Calculate the weighted cost map layers
 
         # 1. Current occupancy
@@ -147,6 +149,7 @@ class GridSummationNode(Node):
                 msg, CURRENT_OCCUPANCY_SCALE)
             weighted_current_occ_arr = self.resizeOccupancyGrid(
                 weighted_current_occ_arr)
+            result += weighted_current_occ_arr
 
         # 2. Drivable area
         stale = self.checkForStaleness(self.drivable_grid, status)
@@ -156,6 +159,7 @@ class GridSummationNode(Node):
             msg = self.drivable_grid
             weighted_drivable_arr = self.getWeightedArray(
                 msg, DRIVABLE_GRID_SCALE)
+            result += weighted_drivable_arr
 
         # 3. Route distance
         stale = self.checkForStaleness(self.route_dist_grid, status)
@@ -165,9 +169,7 @@ class GridSummationNode(Node):
             msg = self.route_dist_grid
             weighted_route_dist_arr = self.getWeightedArray(
                 msg, ROUTE_DISTANCE_GRID_SCALE)
-
-        result = weighted_current_occ_arr + \
-            weighted_drivable_arr + weighted_route_dist_arr
+            result += weighted_route_dist_arr
 
         # Cap this to 100
         result = np.clip(result, 0, 100)

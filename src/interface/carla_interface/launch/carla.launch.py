@@ -108,6 +108,11 @@ def generate_launch_description():
         executable='static_grid_exe'
     )
 
+    grid_summation = Node(
+        package='grids',
+        executable='grid_summation_node'
+    )
+
     rqt = Node(
         package='rqt_gui',
         executable='rqt_gui',
@@ -119,8 +124,8 @@ def generate_launch_description():
         carla_controller,
 
         # INTERFACE
-        carla_bridge_official,
-        carla_spawner,
+        # carla_bridge_official,
+        # carla_spawner,
         leaderboard_liaison,
 
         # LOCALIZATION
@@ -140,6 +145,9 @@ def generate_launch_description():
         lidar_processor,
         ground_seg,
         static_grid,
+
+        # PLANNING
+        # grid_summation,
 
         # STATE ESTIMATION
         map_manager,
