@@ -27,7 +27,7 @@
             <geometry>
                 <box size="4.37 2.0 1.85" />
             </geometry>
-            <origin xyz="-1.7 0 0.645" rpy="0 0 0" />
+            <origin xyz="-0.7 0 0.645" rpy="0 0 0" />
         </collision>
     </link>
     <link name="hero"/>
