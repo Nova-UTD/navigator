@@ -7,13 +7,25 @@ Controller for the hoco parade that follows our flag
 '''
 
 from rosgraph_msgs.msg import Clock
-import rclpy
 from rclpy.node import Node
 
+from sensor_msgs.msg import PointCloud2
+
+import rclpy
+import ros2_numpy as np
 
 class ParadeController(Node):
     def __init__(self):
-        super().__init__('parade_controller')
+        super().__init__('parade_controller_node')
+
+        # Subscriber
+        self.lidar_left_sub = self.create_subscription(PointCloud2, 'velodyne_points', self.pointclouds_cb, 10)
+
+        # Publisher
+        self.throttle_pub = self.create_publisher(CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
+    
+    def pointclouds_cb(self, msg: PointCloud2)
+        
         
 
 def main(args=None):
