@@ -501,7 +501,7 @@ Visualization Manager:
       Head Length: 5
       Length: 10
       Line Style: Billboards
-      Line Width: 2
+      Line Width: 1
       Name: Path
       Offset:
         X: 0
@@ -567,11 +567,11 @@ Visualization Manager:
       Class: rviz_default_plugins/Pose
       Color: 255; 25; 0
       Enabled: true
-      Head Length: 0.30000001192092896
-      Head Radius: 0.10000000149011612
+      Head Length: 1
+      Head Radius: 4
       Name: Pose
-      Shaft Length: 10
-      Shaft Radius: 10
+      Shaft Length: 2
+      Shaft Radius: 2
       Shape: Arrow
       Topic:
         Depth: 5
@@ -623,25 +623,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 29.66815185546875
+      Distance: 22.669103622436523
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.3763124942779541
-        Y: -0.34373900294303894
-        Z: 2.420269447611645e-05
+        X: 1.4114561080932617
+        Y: 0.6209628582000732
+        Z: 0
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.2097961902618408
+      Pitch: 0.8147964477539062
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 3.0610218048095703
+      Yaw: 1.7822139263153076
     Saved: ~
 Window Geometry:
   Bird's Eye:
