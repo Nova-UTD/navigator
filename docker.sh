@@ -44,6 +44,7 @@ docker run \
     -v $PWD:/navigator \
     -v /home/share/carla:/workspace \
     -v /dev:/dev \
+    --gpus all \
     --net=host \
     --privileged \
     -v $HOME/.Xauthority:/root/.Xauthority \
