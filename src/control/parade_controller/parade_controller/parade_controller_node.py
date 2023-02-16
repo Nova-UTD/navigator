@@ -21,6 +21,10 @@ class ParadeController(Node):
         super().__init__('parade_controller_node')
 
         self.INTENSITY_THRESHOLD = 0.75
+        self.DESIRED_DISTANCE = 10
+
+        # PID control params
+        self.Kp = 0.1 # Proportional gain
 
         # Subscriber
         self.lidar_left_sub = self.create_subscription(PointCloud2, 'velodyne_points', self.pointclouds_cb, 10)
@@ -32,7 +36,7 @@ class ParadeController(Node):
         pcd_temp: np.array = rnp.numpify(msg)
         pcd: np.array
 
-        # Logic for combining 2 point clouds into pcd, maybe holding on to pointclouds until first point intensity is differet?
+        # TODO: Logic for combining 2 point clouds into pcd, maybe holding on to pointclouds until first point intensity is differet?
         #
         #
         #
@@ -43,14 +47,24 @@ class ParadeController(Node):
         # Finds the center of mass of banner points, resulting in a 1D numpy array (x, y) with the center coordinate of the banner
         banner = np.mean(pcd[:, :2], axis = 0)
 
-        # TODO: Compute the distance between (0, 0) and the banner coordinate
+        # Finds the distance to the banner (distance_x) and how far it is to the right or left (distance_y)
+        distance_x = abs(banner[0])
+        distance_y = abs(banner[1])
 
-        # TODO: Controller logic
+        # Error
+        error_x = DESIRED_DISTANCE - distance_x
+        error_y = 0 - distance_y
 
-        # TODO: Set msg fields and publish throttle value
+        # Throttle & steering values TODO: integral & derivative temrs
+        throttle = Kp * error_x
+        steer = Kp * error_y
 
+        # Set msg fields and publish throttle value
+        msg: CarlaEgoVehicleControl
+        msg.throttle = throttle
+        msg.steer = (banner[1] < 0 ? steer*-1 : steer)
 
-        
+        self.throttle_pub.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)
