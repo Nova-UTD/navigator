@@ -6,6 +6,7 @@ Author:    Daniel Vayman
 Controller for the hoco parade that follows our flag
 '''
 
+from carla_msgs.msg import CarlaEgoVehicleControl
 from rosgraph_msgs.msg import Clock
 from rclpy.node import Node
 
@@ -32,7 +33,7 @@ class ParadeController(Node):
         # Publisher
         self.throttle_pub = self.create_publisher(CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
     
-    def pointclouds_cb(self, msg: PointCloud2)
+    def pointclouds_cb(self, msg: PointCloud2):
         pcd: np.array
 
         # Removes all points below the intensity threshold
@@ -55,8 +56,8 @@ class ParadeController(Node):
 
         # Set msg fields and publish throttle value
         msg: CarlaEgoVehicleControl
-        msg.throttle = (throttle > 1 ? 1 : throttle)
-        msg.steer = (banner[1] < 0 ? steer*-1 : steer)
+        msg.throttle = (1 if throttle > 1 else throttle)
+        msg.steer = (steer*-1 if banner[1] < 0 else steer)
 
         self.throttle_pub.publish(msg)
 
