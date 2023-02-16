@@ -48,6 +48,11 @@ def generate_launch_description():
         arguments=[path.join("/navigator/data", "carla.urdf")]
     )
 
+    airbags = Node(
+        package='airbags',
+        executable='airbag_node'
+    )
+
     carla_bridge_official = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([get_package_share_directory(
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
@@ -148,8 +153,9 @@ def generate_launch_description():
 
         # PLANNING
         grid_summation,
+        airbags,
 
         # STATE ESTIMATION
-        # map_manager,
+        map_manager,
         gnss_processor,
     ])
