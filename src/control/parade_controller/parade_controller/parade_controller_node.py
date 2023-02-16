@@ -33,13 +33,7 @@ class ParadeController(Node):
         self.throttle_pub = self.create_publisher(CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
     
     def pointclouds_cb(self, msg: PointCloud2)
-        pcd_temp: np.array = rnp.numpify(msg)
         pcd: np.array
-
-        # TODO: Logic for combining 2 point clouds into pcd, maybe holding on to pointclouds until first point intensity is differet?
-        #
-        #
-        #
 
         # Removes all points below the intensity threshold
         pcd = pcd[pcd[:, 3] > self.INTENSITY_THRESHOLD]
@@ -61,7 +55,7 @@ class ParadeController(Node):
 
         # Set msg fields and publish throttle value
         msg: CarlaEgoVehicleControl
-        msg.throttle = throttle
+        msg.throttle = (throttle > 1 ? 1 : throttle)
         msg.steer = (banner[1] < 0 ? steer*-1 : steer)
 
         self.throttle_pub.publish(msg)
