@@ -29,6 +29,8 @@ class McuInterfaceNode(Node):
     def __init__(self, bus):
         super().__init__('mcu_interface_node')
 
+        self.last_command_rcv_time = None
+
         self.vehicle_command_sub = self.create_subscription(
             CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.commandCb, 1)
 
@@ -43,25 +45,33 @@ class McuInterfaceNode(Node):
 
         self.get_logger().info("Bus now connected.")
 
-        self.vehicle_command_timer = self.create_timer(0.3, self.publishCommand)
+        self.vehicle_command_timer = self.create_timer(0.5, self.publishCommand)
         self.throttle = 0
 
     def commandCb(self, msg: CarlaEgoVehicleControl):
         self.throttle = msg.throttle
+        self.last_command_rcv_time = time.time()
 
     def publishCommand(self):
-        throttle = self.throttle
-        if throttle < 0.1:
+        if self.last_command_rcv_time is None:
             return
+        
+
+        throttle = self.throttle
+        if time.time() - self.last_command_rcv_time > 0.5:
+            throttle = 0.0
+        # if throttle < 0.1:
+        #     return
         throttle = min(throttle, 0.3)
         self.get_logger().info(f"Throttle = {throttle}")
 
-        command = str.encode(f"$throttle,{throttle};\n")
+        command = str.encode(f"{throttle}\r\n")
         self.bus.write(command)
+        # self.bus.write(b"0.7\r\n")
 
         # self.sio.write(f"$throttle,{throttle};\n")
 
-        response = self.sio.readline()
+        # response = self.sio.readline()
         # self.get_logger().info(response)
         # self.sio.flush()
     
@@ -87,6 +97,8 @@ def main(args=None):
     rclpy.spin(mcu_interface_node)
 
     # Close the serial connection
+    command = str.encode(f"0.0\r\n")
+    bus.write(command)
     bus.close()
 
     # Destroy the node explicitly

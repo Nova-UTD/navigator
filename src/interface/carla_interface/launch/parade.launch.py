@@ -154,7 +154,7 @@ def generate_launch_description():
         # CONTROL
         controller,
         # INTERFACE
-        joy,
+        # joy,
         # joy_translator,
         # epas,
         # mcu_interface,
