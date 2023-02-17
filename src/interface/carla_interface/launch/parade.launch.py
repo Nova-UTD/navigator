@@ -152,11 +152,11 @@ def generate_launch_description():
 
     return LaunchDescription([
         # CONTROL
-        # controller,
+        controller,
         # INTERFACE
         joy,
-        joy_translator,
-        epas,
+        # joy_translator,
+        # epas,
         # mcu_interface,
         # left_lidar_driver,
         # left_lidar_pointcloud,

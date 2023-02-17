@@ -60,6 +60,7 @@ class EpasNode(Node):
 
     def sendCommand(self, target, bus):
         current_angle_normalized = ((self.current_angle-self.limit_left)/(self.limit_right-self.limit_left)*2)-1
+        print("Curr: {:.2f}, target {:.2f}".format(current_angle_normalized, target))
         e = target - current_angle_normalized # Error = target - current
 
         # We need to map [-1.0, 1.0] to [0, 255]
@@ -76,12 +77,11 @@ class EpasNode(Node):
         data = [0x03, torqueA, torqueB, 0x00, 0x00, 0x00, 0x00, 0x00]
         message = can.Message(arbitration_id=0x296, data=data, check=True, is_extended_id=False)
         bus.send(message, timeout=0.2)
-
-        print (f"{torqueA}")
         # print(e)
 
     def vehicleControlCb(self, msg: CarlaEgoVehicleControl):
 
+        target = 0.0
         self.target_angle = msg.steer
 
         response_msg = self.bus.recv(0.1)
@@ -97,7 +97,7 @@ class EpasNode(Node):
             current_state = self.parseIncomingMessages(msg1, msg2)
             self.current_angle = current_state.angle
 
-        self.get_logger().info(f"Target: {self.target_angle}, current: {self.current_angle}")
+        # self.get_logger().info(f"Target: {self.target_angle}, current: {self.current_angle}")
 
         self.sendCommand(self.target_angle, self.bus)
 
