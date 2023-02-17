@@ -130,14 +130,14 @@ class ParadeController(Node):
         elif steer < -1.:
             steer = -1.
         
-        throttle_msg.throttle = (1 if throttle > 1. else throttle)
-        throttle_msg.steer = -1*steer
+        throttle_msg.throttle = (1. if throttle > 1. else throttle)
+        throttle_msg.steer = -1.*steer
 
         
 
         self.get_logger().info("Distance X: " + str(distance_x))
         self.get_logger().info("Distance Y: " + str(distance_y))
-        self.get_logger().info("Steer: " + str(steer))
+        self.get_logger().info("Thr: " + str(throttle))
 
         self.throttle_pub.publish(throttle_msg)
 
