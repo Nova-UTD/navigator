@@ -156,6 +156,6 @@ def generate_launch_description():
         airbags,
 
         # STATE ESTIMATION
-        # map_manager,
+        map_manager,
         gnss_processor,
     ])

@@ -169,13 +169,13 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             // Get closest route point
             if (local_route_linestring_.size() > 0)
             {
-                int dist = static_cast<int>(bg::distance(local_route_linestring_, p));
+                int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 2);
 
                 // Distances > 10 are set to 100
-                if (dist > 10)
+                if (dist > 20)
                     dist = 100;
                 else
-                    dist *= 10;
+                    dist *= 5;
 
                 if (!goalPoseIsPublished && dist < 0.8)
                 {
