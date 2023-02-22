@@ -129,8 +129,8 @@ def generate_launch_description():
         carla_controller,
 
         # INTERFACE
-        carla_bridge_official,
-        carla_spawner,
+        # carla_bridge_official,
+        # carla_spawner,
         leaderboard_liaison,
 
         # LOCALIZATION
@@ -156,6 +156,6 @@ def generate_launch_description():
         airbags,
 
         # STATE ESTIMATION
-        map_manager,
+        # map_manager,
         gnss_processor,
     ])

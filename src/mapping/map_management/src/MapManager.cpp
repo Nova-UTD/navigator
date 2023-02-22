@@ -102,7 +102,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     std::vector<odr::value> lane_shapes_in_range;
     map_wide_tree_.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
 
-    std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
+    // std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
 
     int idx = 0;
 
@@ -231,12 +231,12 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     route_dist_grid.info = grid_info;
 
     // Output function runtime
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
-
     drivable_grid_pub_->publish(drivable_area_grid);
     flat_surface_grid_pub_->publish(flat_surface_grid);
     route_dist_grid_pub_->publish(route_dist_grid); // Route distance grid
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    // std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
 /**
@@ -298,10 +298,10 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
 {
     if (this->map_ == nullptr)
         return;
-    if (this->smoothed_path_msg_.poses.size() > 0)
+    if (this->smoothed_route_msg_.poses.size() > 0)
     {
         // RCLCPP_WARN(this->get_logger(), "Lanes already calculated from rough path.");
-        // route_path_pub_->publish(smoothed_path_msg_);
+        // route_path_pub_->publish(smoothed_route_msg_);
         return;
     }
 
@@ -367,9 +367,9 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
 
     this->lanes_in_route_ = lanes_in_route;
 
-    smoothed_path_msg_.poses.clear();
-    smoothed_path_msg_.header.frame_id = "map";
-    smoothed_path_msg_.header.stamp = this->clock_->clock;
+    smoothed_route_msg_.poses.clear();
+    smoothed_route_msg_.header.frame_id = "map";
+    smoothed_route_msg_.header.stamp = this->clock_->clock;
 
     auto routing_graph = this->map_->get_routing_graph();
 
@@ -494,20 +494,20 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
     }
 
     // Publish route as Path msg
-    smoothed_path_msg_.header.stamp = this->clock_->clock;
-    smoothed_path_msg_.header.frame_id = "map";
+    smoothed_route_msg_.header.stamp = this->clock_->clock;
+    smoothed_route_msg_.header.frame_id = "map";
 
-    smoothed_path_msg_.poses.clear();
+    smoothed_route_msg_.poses.clear();
     for (odr::point pt : route_linestring)
     {
         PoseStamped pose_msg;
         pose_msg.pose.position.x = pt.get<0>();
         pose_msg.pose.position.y = pt.get<1>();
-        pose_msg.header = smoothed_path_msg_.header;
-        smoothed_path_msg_.poses.push_back(pose_msg);
+        pose_msg.header = smoothed_route_msg_.header;
+        smoothed_route_msg_.poses.push_back(pose_msg);
     }
 
-    route_path_pub_->publish(smoothed_path_msg_);
+    route_path_pub_->publish(smoothed_route_msg_);
     this->route_linestring_ = route_linestring;
 
     bgi::rtree<odr::value, bgi::rstar<16, 4>> rtree;
@@ -524,7 +524,7 @@ void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr m
 
     this->route_tree_ = rtree;
 
-    RCLCPP_INFO(this->get_logger(), "Publishing path with %i poses. Started with %i poses.\n", smoothed_path_msg_.poses.size(), msg->poses.size());
+    RCLCPP_INFO(this->get_logger(), "Publishing path with %i poses. Started with %i poses.\n", smoothed_route_msg_.poses.size(), msg->poses.size());
 }
 
 /**
@@ -566,7 +566,8 @@ void navigator::perception::MapManagementNode::updateRoute()
         bg::append(local_route_linestring_, route_linestring_[nearest_route_pt_idx - i]);
     }
 
-    route_path_pub_->publish(this->smoothed_path_msg_);
+    RCLCPP_INFO(get_logger(), "Publishing smoothed route");
+    route_path_pub_->publish(this->smoothed_route_msg_);
 }
 
 PolygonStamped MapManagementNode::getTrafficLightCloud(std::vector<std::pair<odr::RoadObject, odr::point>> object_centers)
