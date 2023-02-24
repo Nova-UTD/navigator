@@ -25,7 +25,11 @@ Second, these goal timestamps should be taken lightly. Unlike the timestamp from
 
 Third, the route should be updated routinely to ensure that any poses already reached are removed from the route. In other words, all poses in the latest route should be ahead of the car in terms of route progression.
 
-Fourth, the route should be divided into 
+Fourth, the route should be divided into a **refined** and a **rough** section. In the rough section, the route poses have *no maximum spacing*. The rough section should have the goal pose as its final point, and it should always succeed the refined section.
+
+The refined section extends from the car's current position to the area immediately ahead in the route, with the section's length determined by a "lookahead distance" set as a node parameter. In the refined section, the route poses should have a spacing of between 0.5-10 meters (see the table below).
+
+As the car progresses along the route, the refined section will move with it, refining more and more of the route. When the goal pose is sufficiently close, the refined section will cover the entirety of the remaining route, and the rough section will be empty.
 
 ### Message
 
@@ -43,3 +47,15 @@ geometry_msgs/PoseStamped[] poses
 |                                               |                                 |                                     |
 |                                               |                                 |                                     |
 
+## Rough route test
+
+#### A
+
+```xml
+<position x="17.0" y="-105.6" z="1"/>
+<position x="10.0" y="-105.6" z="1"/>
+<position x="6.0" y="-105.6" z="1"/>
+<position x="-7.67" y="-164.57" z="1"/>
+```
+
+![image-20230222163645409](/home/main/.config/Typora/typora-user-images/image-20230222163645409.png)
