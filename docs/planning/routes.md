@@ -19,13 +19,13 @@ As an example, consider making a turn at an intersection. The route planner will
 
 Let's define some operational constraints on the route.
 
-First, the route will be formatted as a standard ROS [Path](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Path.html) message, where each pose is stamped with a timestamp reflecting the general goal arrival time. For example, the final pose in the Path message (that is, the goal pose of the route) may have a timestamp set to fifteen minutes past the current time for a neighborhood route four miles long. 
+First, the route will be formatted as a standard ROS [Path](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Path.html) message, where each pose is stamped with a timestamp reflecting the general goal arrival time. For example, the final pose in the Path message (that is, the goal pose of the route) may have a timestamp set to fifteen minutes past the current time for a neighborhood route four miles long.
 
 Second, these goal timestamps should be taken lightly. Unlike the timestamp from the motion planner, these should serve as loose targets, just like the poses themselves.
 
 Third, the route should be updated routinely to ensure that any poses already reached are removed from the route. In other words, all poses in the latest route should be ahead of the car in terms of route progression.
 
-Fourth, the route should be divided into a **refined** and a **rough** section. In the rough section, the route poses have *no maximum spacing*. The rough section should have the goal pose as its final point, and it should always succeed the refined section.
+Fourth, the route should be divided into a **refined** and a **rough** section. In the rough section, the route poses have _no maximum spacing_. The rough section should have the goal pose as its final point, and it should always succeed the refined section.
 
 The refined section extends from the car's current position to the area immediately ahead in the route, with the section's length determined by a "lookahead distance" set as a node parameter. In the refined section, the route poses should have a spacing of between 0.5-10 meters (see the table below).
 
@@ -47,15 +47,9 @@ geometry_msgs/PoseStamped[] poses
 |                                               |                                 |                                     |
 |                                               |                                 |                                     |
 
-## Rough route test
+## Route generation
 
-#### A
-
-```xml
-<position x="17.0" y="-105.6" z="1"/>
-<position x="10.0" y="-105.6" z="1"/>
-<position x="6.0" y="-105.6" z="1"/>
-<position x="-7.67" y="-164.57" z="1"/>
-```
-
-![image-20230222163645409](/home/main/.config/Typora/typora-user-images/image-20230222163645409.png)
+1. Receive rough route from CARLA
+2. Get closest route point to car
+3. Trim all points not within interval (closestPoint, goalPoint), where the goal point is the final point in the list
+4. While distanceFromCar < some param, insert refined points. using HD map data for lane centerlines

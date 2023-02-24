@@ -14,6 +14,8 @@ cmake_minimum_required(VERSION 3.5)
 get_filename_component(directory_name ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 project(${directory_name})
 
+add_library(route_manager STATIC src/RouteManager.cpp)
+target_include_directories(route_manager PUBLIC include/)
 find_package(nova_auto_package REQUIRED)
 
 # Default to C++17 
