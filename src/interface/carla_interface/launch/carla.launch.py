@@ -152,7 +152,7 @@ def generate_launch_description():
         static_grid,
 
         # PLANNING
-        grid_summation,
+        # grid_summation,
         airbags,
 
         # STATE ESTIMATION

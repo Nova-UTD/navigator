@@ -134,15 +134,13 @@ Visualization Manager:
       Show Arrows: true
       Show Axes: true
       Show Names: false
-      Tree:
-        {}
+      Tree: {}
       Update Interval: 0
       Value: false
     - Class: rviz_default_plugins/Marker
       Enabled: true
       Name: Marker
-      Namespaces:
-        {}
+      Namespaces: {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -393,7 +391,7 @@ Visualization Manager:
           Class: rviz_default_plugins/Map
           Color Scheme: raw
           Draw Behind: true
-          Enabled: false
+          Enabled: true
           Name: Drivable Area
           Topic:
             Depth: 5
@@ -408,7 +406,7 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /grid/drivable_updates
           Use Timestamp: true
-          Value: false
+          Value: true
         - Alpha: 0.699999988079071
           Class: rviz_default_plugins/Map
           Color Scheme: map
@@ -557,9 +555,9 @@ Visualization Manager:
       Axes Radius: 0.10000000149011612
       Class: rviz_default_plugins/Pose
       Color: 255; 25; 0
-      Enabled: true
-      Head Length: 1
-      Head Radius: 4
+      Enabled: false
+      Head Length: 0.30000001192092896
+      Head Radius: 0.10000000149011612
       Name: Pose
       Shaft Length: 2
       Shaft Radius: 2
@@ -570,7 +568,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /planning/goal_pose
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/Marker
       Enabled: true
       Name: Marker
@@ -625,7 +623,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -1.5700000524520874
+      Angle: -1.6150003671646118
       Class: rviz_default_plugins/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -635,7 +633,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 10
+      Scale: 18.387767791748047
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
       X: 5.83077335357666
