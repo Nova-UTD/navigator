@@ -129,8 +129,8 @@ def generate_launch_description():
         carla_controller,
 
         # INTERFACE
-        carla_bridge_official,
-        carla_spawner,
+        # carla_bridge_official,
+        # carla_spawner,
         leaderboard_liaison,
 
         # LOCALIZATION
@@ -141,7 +141,7 @@ def generate_launch_description():
 
         # MISC
         urdf_publisher,
-        rviz,
+        # rviz,
         # rqt,
 
         # PERCEPTION
