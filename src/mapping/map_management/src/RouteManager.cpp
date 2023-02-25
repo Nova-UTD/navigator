@@ -15,4 +15,5 @@ RouteManager::RouteManager()
  */
 LineString RouteManager::getRoute(const LineString rough, const BoostPoint pos)
 {
+    std::printf("Rough route has %i waypoints\n", rough.size());
 }
