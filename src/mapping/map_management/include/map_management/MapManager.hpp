@@ -94,6 +94,8 @@ namespace navigator
             void updateRoute();
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
+            LineString getLaneCenterline(odr::LaneKey key);
+
             rclcpp::Publisher<OccupancyGrid>::SharedPtr drivable_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr flat_surface_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr route_dist_grid_pub_;
