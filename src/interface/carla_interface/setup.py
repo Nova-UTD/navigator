@@ -23,7 +23,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'liaison_node = carla_interface.liaison_node:main'
+            'liaison_node = carla_interface.liaison_node:main',
+            'route_reader_node = carla_interface.route_reader:main'
         ],
     },
 )

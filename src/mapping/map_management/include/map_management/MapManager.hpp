@@ -118,13 +118,12 @@ namespace navigator
             std::vector<odr::Lane> lanes_in_route_;
             Path smoothed_route_msg_;
             LineString rough_route_;
+            Path rough_route_msg_;
             bg::model::linestring<odr::point> route_linestring_;
             bg::model::linestring<odr::point> local_route_linestring_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> route_tree_;
             PolygonStamped traffic_light_points;
-
-            PolygonStamped getTrafficLightCloud(std::vector<std::pair<odr::RoadObject, odr::point>> object_centers);
 
             RouteManager rm;
         };
