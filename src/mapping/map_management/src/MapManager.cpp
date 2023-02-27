@@ -283,12 +283,11 @@ void MapManagementNode::drivableAreaGridPubTimerCb()
     publishGrids(40, 20, 30, 0.4);
 }
 
-
 // CPP code for printing shortest path between
 // two vertices of unweighted graph
 #include <bits/stdc++.h>
 using namespace std;
- 
+
 // utility function to form edge between two vertices
 // source and dest
 void add_edge(vector<int> adj[], int src, int dest)
@@ -296,7 +295,7 @@ void add_edge(vector<int> adj[], int src, int dest)
     adj[src].push_back(dest);
     adj[dest].push_back(src);
 }
- 
+
 std::unordered_map<odr::LaneKey, odr::LaneKey> bfs(odr::LaneKey source, odr::LaneKey dest, odr::RoutingGraph graph)
 {
     std::unordered_set<odr::LaneKey> visited_lanes;
@@ -316,7 +315,7 @@ std::unordered_map<odr::LaneKey, odr::LaneKey> bfs(odr::LaneKey source, odr::Lan
             std::printf("DESTINATION FOUND\n");
             return parents;
         }
-            
+
         for (auto w : graph.get_lane_predecessors(v))
         {
             if (visited_lanes.find(w) == visited_lanes.end())
@@ -433,38 +432,19 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
     {
         odr::Lane lane = this->lane_polys_.at(pair.second).first;
 
+        // Breadth-first search
         auto parents = bfs(lane.key, edge_lane.key, graph);
 
+        odr::LaneKey dest = edge_lane.key;
+
+        do
+        {
+            auto parent_pair = *parents.find(dest);
+            printf("%s\n", parent_pair.second.to_string().c_str());
+            dest = parent_pair.second;
+        } while (dest.to_string() != lane.key.to_string());
         std::printf("BFS returned %i pairs\n", parents.size());
 
-        for (auto pair : parents)
-        {
-            std::printf("(%s, %s)\n", pair.first.to_string().c_str(), pair.second.to_string().c_str());
-        }
-
-        // std::vector<odr::LaneKey> route = map_->get_routing_graph().shortest_path(lane.key, edge_lane.key);
-
-        // if (route.empty() || route.back().to_string() == lane.key.to_string())
-        // {
-        //     std::printf("Flipping start and end\n");
-        //     route = map_->get_routing_graph().shortest_path(edge_lane.key, lane.key);
-        //     std::printf("From (%s, %i) to (%s, %i). Route to edge has %i lanes\n", edge_lane.key.road_id.c_str(), edge_lane.id, lane.key.road_id.c_str(), lane.id, route.size());
-        // }
-
-        // if (route.empty() || route.front().to_string() == edge_lane.key.to_string())
-        // {
-        //     std::printf("Failed. Flipping start side.\n");
-        //     lane.key.lane_id *= -1;
-        //     route = map_->get_routing_graph().shortest_path(lane.key, edge_lane.key);
-        //     std::printf("From (%s, %i) to (%s, %i). Route to edge has %i lanes\n", lane.key.road_id.c_str(), lane.id, edge_lane.key.road_id.c_str(), edge_lane.id, route.size());
-        // }
-
-        // if (route.empty() || route.front().to_string() == edge_lane.key.to_string())
-        // {
-        //     std::printf("Failed. Flipping start and end (again).\n");
-        //     route = map_->get_routing_graph().shortest_path(edge_lane.key, lane.key);
-        //     std::printf("From (%s, %i) to (%s, %i). Route to edge has %i lanes\n", edge_lane.key.road_id.c_str(), edge_lane.id, lane.key.road_id.c_str(), lane.id, route.size());
-        // }
 
         // else {
         //     std::printf("From (%s, %i) to (%s, %i). Route to edge has %i lanes\n", lane.key.road_id.c_str(), lane.id, edge_lane.key.road_id.c_str(), edge_lane.id, route.size());
