@@ -296,6 +296,15 @@ void add_edge(vector<int> adj[], int src, int dest)
     adj[dest].push_back(src);
 }
 
+/**
+ * @brief Simple breadth-first search using libOpenDRIVE's inbuilt routing graph.
+ * Undirected! See https://en.wikipedia.org/wiki/Breadth-first_search#Pseudocode
+ *
+ * @param source
+ * @param dest
+ * @param graph
+ * @return std::unordered_map<odr::LaneKey, odr::LaneKey>
+ */
 std::unordered_map<odr::LaneKey, odr::LaneKey> bfs(odr::LaneKey source, odr::LaneKey dest, odr::RoutingGraph graph)
 {
     std::unordered_set<odr::LaneKey> visited_lanes;
@@ -343,23 +352,35 @@ LineString getRoughSection(LineString full_route, BoostPoint ego, int &edge_idx,
 {
     float MIN_START_DISTANCE = 40.0; // meters. Start of rough section must be at least this far away.
 
-    LineString rough_section;
-    int idx = 0;
-    for (auto iter = full_route.begin(); iter != full_route.end(); iter++)
+    // Get closest waypoint in full_route
+    float closest_dist = 999.9;
+    int closest_idx = -1;
+
+    for (int i = 0; i < full_route.size(); i++)
     {
-        if (bg::distance(ego, *iter) < MIN_START_DISTANCE)
+        auto wp = full_route[i];
+        float dist_to_ego = bg::distance(ego, wp);
+        if (dist_to_ego < closest_dist)
         {
-            rough_section.clear();
-            if (near_idx == 0 && idx > 0)
-                near_idx = idx - 1;
+            closest_dist = dist_to_ego;
+            closest_idx = i;
         }
-        else
-        {
-            if (edge_idx == 0)
-                edge_idx = idx;
-            bg::append(rough_section, *iter);
-        }
-        idx++;
+    }
+
+    near_idx = closest_idx;
+
+    LineString rough_section;
+    edge_idx = closest_idx + 1;
+    float edge_distance = closest_dist;
+
+    // Find the "edge" waypoint
+    // That's the divider between the smooth and rough route sections
+    // It should be > 40m from the ego
+    while (edge_distance < 40.0)
+    {
+        auto wp = full_route[edge_idx];
+        edge_distance = bg::distance(ego, wp);
+        edge_idx++;
     }
 
     return rough_section;
@@ -389,6 +410,7 @@ LineString MapManagementNode::getLaneCenterline(odr::LaneKey key)
 
 LineString getReorientedRoute(std::vector<LineString> centerlines)
 {
+    printf("392\n");
     LineString result;
 
     auto iter = centerlines.begin();
@@ -405,7 +427,7 @@ LineString getReorientedRoute(std::vector<LineString> centerlines)
         auto next_begin = (iter + 1)->front();
         float dist = bg::distance(current_end, next_begin);
 
-        std::printf("Distance was %f. ", dist);
+        // std::printf("Distance was %f. ", dist);
 
         if (dist > MAX_ENDPOINT_GAP)
         {
@@ -413,14 +435,15 @@ LineString getReorientedRoute(std::vector<LineString> centerlines)
         }
 
         next_begin = (iter + 1)->front();
-        dist = bg::distance(current_end, next_begin);
-        std::printf("Distance is now %f.\n", dist);
+        // dist = bg::distance(current_end, next_begin);
+        // std::printf("Distance is now %f.\n", dist);
 
         bg::append(result, *iter);
 
         iter++;
     }
     bg::append(result, centerlines.back());
+    printf("425\n");
 
     return result;
 }
@@ -457,7 +480,7 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
     int near_idx = 0;
     LineString rough_section = getRoughSection(full_route, ego_pos, edge_idx, near_idx);
 
-    std::printf("Edge idx = %i\n", edge_idx);
+    std::printf("Near: %i, Edge: %i\n", near_idx, edge_idx);
 
     // Try to find route b/w near and edge waypoints (region from near ego to the rough region)
 
@@ -472,7 +495,10 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
     odr::RoutingGraph graph = map_->get_routing_graph();
 
     // Breadth-first search
+    printf("477\n");
+
     auto parents = bfs(near_lane.key, edge_lane.key, graph);
+    printf("480\n");
 
     odr::LaneKey dest = edge_lane.key;
 
@@ -480,7 +506,14 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
 
     do
     {
+        if (parents.find(dest) == parents.end())
+        {
+            RCLCPP_ERROR(get_logger(), "Parent-child pair not found!");
+            return;
+        }
+
         auto parent_pair = *parents.find(dest);
+
         printf("%s\n", parent_pair.second.to_string().c_str());
 
         LineString centerline = getLaneCenterline(parent_pair.second);
