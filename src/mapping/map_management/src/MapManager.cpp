@@ -339,7 +339,9 @@ std::unordered_map<odr::LaneKey, odr::LaneKey> bfs(odr::LaneKey source, odr::Lan
     return parents;
 }
 
-LineString getRoughSection(LineString full_route, BoostPoint ego, int &edge_idx)
+
+
+LineString getRoughSection(LineString full_route, BoostPoint ego, int &edge_idx, int &near_idx)
 {
     float MIN_START_DISTANCE = 40.0; // meters. Start of rough section must be at least this far away.
 
@@ -348,7 +350,11 @@ LineString getRoughSection(LineString full_route, BoostPoint ego, int &edge_idx)
     for (auto iter = full_route.begin(); iter != full_route.end(); iter++)
     {
         if (bg::distance(ego, *iter) < MIN_START_DISTANCE)
+        {
             rough_section.clear();
+            if (near_idx == 0 && idx > 0)
+                near_idx = idx-1;
+        }
         else
         {
             if (edge_idx == 0)
@@ -383,6 +389,12 @@ LineString MapManagementNode::getLaneCenterline(odr::LaneKey key)
     return centerline;
 }
 
+LineString getReorientedRoute(std::vector<LineString> centerlines)
+{
+    auto iter = centerlines.begin();
+
+}
+
 /**
  * @brief Refine a rough path from CARLA into a smooth, sub-meter accurate path
  *
@@ -412,38 +424,45 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
     }
 
     int edge_idx = 0;
-    LineString rough_section = getRoughSection(full_route, ego_pos, edge_idx);
+    int near_idx = 0;
+    LineString rough_section = getRoughSection(full_route, ego_pos, edge_idx, near_idx);
 
     std::printf("Edge idx = %i\n", edge_idx);
 
-    // Try to find route b/w ego and edge waypoint (the divider b/w rough and refined)
+    // Try to find route b/w near and edge waypoints (region from near ego to the rough region)
 
     std::vector<odr::value> edge_query_results;
     map_wide_tree_.query(bgi::contains(full_route[edge_idx]), std::back_inserter(edge_query_results));
     odr::Lane edge_lane = lane_polys_[edge_query_results.front().second].first;
 
-    std::vector<odr::value> query_results;
-    map_wide_tree_.query(bgi::contains(ego_pos), std::back_inserter(query_results));
+    std::vector<odr::value> near_query_results;
+    map_wide_tree_.query(bgi::contains(full_route[near_idx]), std::back_inserter(near_query_results));
+    odr::Lane near_lane = lane_polys_[near_query_results.front().second].first;
 
-    LineString smooth_section;
     odr::RoutingGraph graph = map_->get_routing_graph();
 
-    for (auto pair : query_results)
+    // Breadth-first search
+    auto parents = bfs(near_lane.key, edge_lane.key, graph);
+
+    odr::LaneKey dest = edge_lane.key;
+
+    std::vector<LineString> nearby_centerlines;
+
+    do
     {
-        odr::Lane lane = this->lane_polys_.at(pair.second).first;
+        auto parent_pair = *parents.find(dest);
+        printf("%s\n", parent_pair.second.to_string().c_str());
 
-        // Breadth-first search
-        auto parents = bfs(lane.key, edge_lane.key, graph);
+        LineString centerline = getLaneCenterline(parent_pair.second);
+        nearby_centerlines.push_back(centerline);
 
-        odr::LaneKey dest = edge_lane.key;
+        dest = parent_pair.second;
+    } while (dest.to_string() != near_lane.key.to_string());
 
-        do
-        {
-            auto parent_pair = *parents.find(dest);
-            printf("%s\n", parent_pair.second.to_string().c_str());
-            dest = parent_pair.second;
-        } while (dest.to_string() != lane.key.to_string());
-        std::printf("BFS returned %i pairs\n", parents.size());
+    LineString smooth_section = getReorientedRoute(nearby_centerlines);
+
+
+    std::printf("BFS returned %i pairs\n", parents.size());
 
 
         // else {
@@ -457,7 +476,6 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
         //     LineString centerline = getLaneCenterline(key);
         //     bg::append(smooth_section, centerline);
         // }
-    }
 
     // Publish result as a Path message
     Path result;
