@@ -70,6 +70,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
         return;
     }
 
+    printf("Publish grids... ");
+
     // Used to calculate function runtime
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -178,22 +180,6 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                 else
                     dist *= 5;
 
-                if (!goalPoseIsPublished && dist < 0.8)
-                {
-                    odr::point origin = odr::point(0.0, 0.0);
-                    float distToCar = bg::distance(p, origin);
-                    if (distToCar > 20)
-                    {
-                        PoseStamped goal_pose;
-                        goal_pose.header.stamp = this->clock_->clock;
-                        goal_pose.header.frame_id = "base_link";
-                        goal_pose.pose.position.x = i;
-                        goal_pose.pose.position.y = j;
-                        goal_pose_pub_->publish(goal_pose);
-                        goalPoseIsPublished = true;
-                    }
-                }
-
                 route_dist_grid_data.push_back(dist);
             }
             else
@@ -237,7 +223,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     route_dist_grid_pub_->publish(route_dist_grid); // Route distance grid
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    // std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+    std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
 /**
@@ -280,7 +266,7 @@ TransformStamped MapManagementNode::getVehicleTf()
 void MapManagementNode::drivableAreaGridPubTimerCb()
 {
     // std::printf("Publishing grids\n");
-    publishGrids(40, 20, 30, 0.4);
+    publishGrids(40, 20, 30, 0.8);
 }
 
 // CPP code for printing shortest path between
@@ -321,7 +307,6 @@ std::unordered_map<odr::LaneKey, odr::LaneKey> bfs(odr::LaneKey source, odr::Lan
 
         if (v.to_string() == dest.to_string())
         {
-            std::printf("DESTINATION FOUND\n");
             return parents;
         }
 
@@ -344,13 +329,12 @@ std::unordered_map<odr::LaneKey, odr::LaneKey> bfs(odr::LaneKey source, odr::Lan
             }
         }
     }
-    std::printf("Destination not found\n");
+    // RCLCPP_ERROR(get_logger(), "Destination not found");
     return parents;
 }
 
 LineString getRoughSection(LineString full_route, BoostPoint ego, int &edge_idx, int &near_idx)
 {
-    float MIN_START_DISTANCE = 40.0; // meters. Start of rough section must be at least this far away.
 
     // Get closest waypoint in full_route
     float closest_dist = 999.9;
@@ -367,7 +351,7 @@ LineString getRoughSection(LineString full_route, BoostPoint ego, int &edge_idx,
         }
     }
 
-    near_idx = closest_idx;
+    near_idx = closest_idx < 1 ? closest_idx : closest_idx - 1;
 
     LineString rough_section;
     edge_idx = closest_idx + 1;
@@ -410,7 +394,6 @@ LineString MapManagementNode::getLaneCenterline(odr::LaneKey key)
 
 LineString getReorientedRoute(std::vector<LineString> centerlines)
 {
-    printf("392\n");
     LineString result;
 
     auto iter = centerlines.begin();
@@ -443,7 +426,6 @@ LineString getReorientedRoute(std::vector<LineString> centerlines)
         iter++;
     }
     bg::append(result, centerlines.back());
-    printf("425\n");
 
     return result;
 }
@@ -463,8 +445,9 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
     if (this->map_ == nullptr || this->lane_polys_.empty() || this->map_wide_tree_.empty())
         return;
 
+    printf("Refine rough path... ");
+
     // Get ego position
-    printf("Refine rough route...\n");
     TransformStamped egoTf = getVehicleTf();
     BoostPoint ego_pos(egoTf.transform.translation.x, egoTf.transform.translation.y);
 
@@ -480,7 +463,7 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
     int near_idx = 0;
     LineString rough_section = getRoughSection(full_route, ego_pos, edge_idx, near_idx);
 
-    std::printf("Near: %i, Edge: %i\n", near_idx, edge_idx);
+    // std::printf("Near: %i, Edge: %i\n", near_idx, edge_idx);
 
     // Try to find route b/w near and edge waypoints (region from near ego to the rough region)
 
@@ -495,10 +478,7 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
     odr::RoutingGraph graph = map_->get_routing_graph();
 
     // Breadth-first search
-    printf("477\n");
-
     auto parents = bfs(near_lane.key, edge_lane.key, graph);
-    printf("480\n");
 
     odr::LaneKey dest = edge_lane.key;
 
@@ -514,8 +494,6 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
 
         auto parent_pair = *parents.find(dest);
 
-        printf("%s\n", parent_pair.second.to_string().c_str());
-
         LineString centerline = getLaneCenterline(parent_pair.second);
         nearby_centerlines.push_back(centerline);
 
@@ -523,20 +501,12 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
     } while (dest.to_string() != near_lane.key.to_string());
 
     LineString smooth_section = getReorientedRoute(nearby_centerlines);
+    LineString simplified;
 
-    std::printf("BFS returned %i pairs\n", parents.size());
+    bg::simplify(smooth_section, simplified, 1.0);
+    printf("Orig: %i, simple: %i\n", smooth_section.size(), simplified.size());
 
-    // else {
-    //     std::printf("From (%s, %i) to (%s, %i). Route to edge has %i lanes\n", lane.key.road_id.c_str(), lane.id, edge_lane.key.road_id.c_str(), edge_lane.id, route.size());
-    // }
-    // std::printf("----------------------\n");
-
-    // for (auto key : route)
-    // {
-    //     std::printf("%s, %i\n", key.road_id.c_str(), key.lane_id);
-    //     LineString centerline = getLaneCenterline(key);
-    //     bg::append(smooth_section, centerline);
-    // }
+    local_route_linestring_ = simplified;
 
     // Publish result as a Path message
     Path result;
@@ -554,6 +524,8 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
     }
 
     route_path_pub_->publish(result);
+
+    printf("Done.\n");
 }
 
 /**

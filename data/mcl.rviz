@@ -10,6 +10,7 @@ Panels:
         - /Cameras1/RGB Left1
         - /Cameras1/Semantic Left1
         - /Cameras1/Semantic Right1
+        - /Grids1
         - /Path1
         - /Pose1
         - /Pose1/Topic1
@@ -413,7 +414,7 @@ Visualization Manager:
           Class: rviz_default_plugins/Map
           Color Scheme: map
           Draw Behind: true
-          Enabled: true
+          Enabled: false
           Name: Current Occupancy
           Topic:
             Depth: 5
@@ -428,12 +429,12 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /grid/occupancy/current_updates
           Use Timestamp: false
-          Value: true
+          Value: false
         - Alpha: 0.699999988079071
           Class: rviz_default_plugins/Map
           Color Scheme: map
           Draw Behind: false
-          Enabled: false
+          Enabled: true
           Name: Route Distance
           Topic:
             Depth: 5
@@ -448,7 +449,7 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /grid/route_distance_updates
           Use Timestamp: false
-          Value: false
+          Value: true
         - Alpha: 0.699999988079071
           Class: rviz_default_plugins/Map
           Color Scheme: costmap
@@ -634,11 +635,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 5.210726261138916
+      Scale: 6.072923183441162
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
-      X: 48.650142669677734
-      Y: -181.12332153320312
+      X: 47.63742446899414
+      Y: -203.7414093017578
     Saved: ~
 Window Geometry:
   Bird's Eye:
