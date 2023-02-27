@@ -13,41 +13,14 @@
             mie_scattering_scale="0.03"/>
       </weathers>
       <waypoints>
-         <position x="983.5" y="5382.2" z="371"/>
-         <position x="824.2" y="5575.3" z="371"/>
-         <position x="605.5" y="5575.5" z="370"/>
-         <position x="497.5" y="5718.3" z="368"/>
-         <position x="516.3" y="5897.4" z="364"/>
-         <position x="355.1" y="6138.1" z="358"/>
-         <position x="285.9" y="6127.4" z="358"/>
-         <position x="213.5" y="6100.5" z="358"/>
-         <position x="-221.6" y="6100.7" z="358"/>
-         <position x="-264.6" y="6019.4" z="360"/>
-         <position x="-297.9" y="5816.4" z="366"/>
-         <position x="-421.5" y="5871.9" z="367"/>
-         <position x="-374.0" y="6012.7" z="361"/>
-         <position x="-453.1" y="6101.2" z="360"/>
-         <position x="-536.9" y="6071.1" z="363"/>
-         <position x="-537.4" y="6000.8" z="365"/>
-         <position x="-620.9" y="6001.5" z="367"/>
-         <position x="-784.0" y="6185.4" z="365"/>
-         <position x="-817.1" y="6063.3" z="369"/>
-         <position x="-817.8" y="5685.4" z="375"/>
-         <position x="-819.3" y="4835.2" z="372"/>
-         <position x="-529.7" y="4730.9" z="375"/>
-         <position x="-497.3" y="4777.9" z="375"/>
-         <position x="-497.3" y="4884.0" z="375"/>
-         <position x="-496.1" y="5014.6" z="375"/>
-         <position x="-414.4" y="5056.2" z="375"/>
-         <position x="-222.5" y="4944.1" z="374"/>
-         <position x="-223.4" y="4834.8" z="374"/>
-         <position x="-586.4" y="4834.7" z="375"/>
-         <position x="-732.7" y="4962.2" z="376"/>
-         <position x="-705.4" y="5204.9" z="376"/>
-         <position x="-269.4" y="5151.9" z="374"/>
-         <position x="-218.7" y="5271.0" z="373"/>
-         <position x="-163.9" y="5404.6" z="372"/>
-         <position x="75.0" y="5587.0" z="367.2"/>
+         <position x="20.3" y="-192.0" z="1.0"/>
+         <position x="41.6" y="-211.4" z="1.0"/>
+         <position x="58.8" y="-241.3" z="1.0"/>
+         <position x="136.5" y="-207.9" z="1.0"/>
+         <position x="167.5" y="-191.6" z="1.0"/>
+         <position x="193.0" y="-113.6" z="1.0"/>
+         <position x="91.7" y="-105.6" z="1.0"/>
+         <position x="-7.7" y="-159.1" z="1.0"/>
       </waypoints>
       <scenarios>
          <!-- No scenarios yet -->

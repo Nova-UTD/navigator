@@ -31,6 +31,8 @@ The refined section extends from the car's current position to the area immediat
 
 As the car progresses along the route, the refined section will move with it, refining more and more of the route. When the goal pose is sufficiently close, the refined section will cover the entirety of the remaining route, and the rough section will be empty.
 
+![Route sections](assets/res/routing-sections.png)
+
 ### Message
 
 ```
