@@ -146,7 +146,7 @@ def generate_launch_description():
 
         # MISC
         urdf_publisher,
-        # rviz,
+        rviz,
         # rqt,
 
         # PERCEPTION

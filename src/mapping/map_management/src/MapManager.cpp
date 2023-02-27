@@ -339,8 +339,6 @@ std::unordered_map<odr::LaneKey, odr::LaneKey> bfs(odr::LaneKey source, odr::Lan
     return parents;
 }
 
-
-
 LineString getRoughSection(LineString full_route, BoostPoint ego, int &edge_idx, int &near_idx)
 {
     float MIN_START_DISTANCE = 40.0; // meters. Start of rough section must be at least this far away.
@@ -353,7 +351,7 @@ LineString getRoughSection(LineString full_route, BoostPoint ego, int &edge_idx,
         {
             rough_section.clear();
             if (near_idx == 0 && idx > 0)
-                near_idx = idx-1;
+                near_idx = idx - 1;
         }
         else
         {
@@ -391,8 +389,40 @@ LineString MapManagementNode::getLaneCenterline(odr::LaneKey key)
 
 LineString getReorientedRoute(std::vector<LineString> centerlines)
 {
-    auto iter = centerlines.begin();
+    LineString result;
 
+    auto iter = centerlines.begin();
+    while (iter != centerlines.end() - 1)
+    {
+        // Get end of this segment and the beginning of the next one
+        // Check the distance between them.
+        // If distance is small, the orientation is correct. Continue.
+        // If distance is large, reverse order of next segment
+
+        const float MAX_ENDPOINT_GAP = 2.0; // meters
+
+        auto current_end = iter->back();
+        auto next_begin = (iter + 1)->front();
+        float dist = bg::distance(current_end, next_begin);
+
+        std::printf("Distance was %f. ", dist);
+
+        if (dist > MAX_ENDPOINT_GAP)
+        {
+            bg::reverse(*(iter + 1));
+        }
+
+        next_begin = (iter + 1)->front();
+        dist = bg::distance(current_end, next_begin);
+        std::printf("Distance is now %f.\n", dist);
+
+        bg::append(result, *iter);
+
+        iter++;
+    }
+    bg::append(result, centerlines.back());
+
+    return result;
 }
 
 /**
@@ -461,21 +491,19 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
 
     LineString smooth_section = getReorientedRoute(nearby_centerlines);
 
-
     std::printf("BFS returned %i pairs\n", parents.size());
 
+    // else {
+    //     std::printf("From (%s, %i) to (%s, %i). Route to edge has %i lanes\n", lane.key.road_id.c_str(), lane.id, edge_lane.key.road_id.c_str(), edge_lane.id, route.size());
+    // }
+    // std::printf("----------------------\n");
 
-        // else {
-        //     std::printf("From (%s, %i) to (%s, %i). Route to edge has %i lanes\n", lane.key.road_id.c_str(), lane.id, edge_lane.key.road_id.c_str(), edge_lane.id, route.size());
-        // }
-        // std::printf("----------------------\n");
-
-        // for (auto key : route)
-        // {
-        //     std::printf("%s, %i\n", key.road_id.c_str(), key.lane_id);
-        //     LineString centerline = getLaneCenterline(key);
-        //     bg::append(smooth_section, centerline);
-        // }
+    // for (auto key : route)
+    // {
+    //     std::printf("%s, %i\n", key.road_id.c_str(), key.lane_id);
+    //     LineString centerline = getLaneCenterline(key);
+    //     bg::append(smooth_section, centerline);
+    // }
 
     // Publish result as a Path message
     Path result;
