@@ -284,21 +284,104 @@ void MapManagementNode::drivableAreaGridPubTimerCb()
 }
 
 
-LineString getRoughSection(LineString full_route, BoostPoint ego)
+// CPP code for printing shortest path between
+// two vertices of unweighted graph
+#include <bits/stdc++.h>
+using namespace std;
+ 
+// utility function to form edge between two vertices
+// source and dest
+void add_edge(vector<int> adj[], int src, int dest)
+{
+    adj[src].push_back(dest);
+    adj[dest].push_back(src);
+}
+ 
+std::unordered_map<odr::LaneKey, odr::LaneKey> bfs(odr::LaneKey source, odr::LaneKey dest, odr::RoutingGraph graph)
+{
+    std::unordered_set<odr::LaneKey> visited_lanes;
+    std::unordered_map<odr::LaneKey, odr::LaneKey> parents;
+    visited_lanes.insert(source);
+    std::vector<odr::LaneKey> route;
+    std::queue<odr::LaneKey> queue;
+
+    queue.push(source);
+    while (!queue.empty())
+    {
+        odr::LaneKey v = queue.front();
+        queue.pop();
+
+        if (v.to_string() == dest.to_string())
+        {
+            std::printf("DESTINATION FOUND\n");
+            return parents;
+        }
+            
+        for (auto w : graph.get_lane_predecessors(v))
+        {
+            if (visited_lanes.find(w) == visited_lanes.end())
+            {
+                visited_lanes.insert(w);
+                parents.insert(std::make_pair(w, v));
+                queue.push(w);
+            }
+        }
+        for (auto w : graph.get_lane_successors(v))
+        {
+            if (visited_lanes.find(w) == visited_lanes.end())
+            {
+                visited_lanes.insert(w);
+                parents.insert(std::make_pair(w, v));
+                queue.push(w);
+            }
+        }
+    }
+    std::printf("Destination not found\n");
+    return parents;
+}
+
+LineString getRoughSection(LineString full_route, BoostPoint ego, int &edge_idx)
 {
     float MIN_START_DISTANCE = 40.0; // meters. Start of rough section must be at least this far away.
 
     LineString rough_section;
-
-    for (auto pt : full_route)
+    int idx = 0;
+    for (auto iter = full_route.begin(); iter != full_route.end(); iter++)
     {
-        if(bg::distance(ego, pt) < MIN_START_DISTANCE)
+        if (bg::distance(ego, *iter) < MIN_START_DISTANCE)
             rough_section.clear();
         else
-            bg::append(rough_section, pt);
+        {
+            if (edge_idx == 0)
+                edge_idx = idx;
+            bg::append(rough_section, *iter);
+        }
+        idx++;
     }
 
     return rough_section;
+}
+
+LineString MapManagementNode::getLaneCenterline(odr::LaneKey key)
+{
+    LineString centerline;
+
+    odr::Road road = map_->id_to_road.at(key.road_id);
+    odr::LaneSection lsec = road.s_to_lanesection.at(key.lanesection_s0);
+    odr::Lane lane = lsec.id_to_lane.at(key.lane_id);
+
+    odr::Line3D outer_border = road.get_lane_border_line(lane, 1.0, true);
+    odr::Line3D inner_border = road.get_lane_border_line(lane, 1.0, false);
+
+    for (int i = 0; i < outer_border.size(); i++)
+    {
+        odr::Vec3D outer_pt = outer_border[i];
+        odr::Vec3D inner_pt = inner_border[i];
+        BoostPoint center_pt((outer_pt[0] + inner_pt[0]) / 2, (outer_pt[1] + inner_pt[1]) / 2);
+        bg::append(centerline, center_pt);
+    }
+
+    return centerline;
 }
 
 /**
@@ -313,7 +396,7 @@ LineString getRoughSection(LineString full_route, BoostPoint ego)
  */
 void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
 {
-    if (this->map_ == nullptr)
+    if (this->map_ == nullptr || this->lane_polys_.empty() || this->map_wide_tree_.empty())
         return;
 
     // Get ego position
@@ -329,14 +412,79 @@ void MapManagementNode::refineRoughRoute(Path::SharedPtr msg)
         bg::append(full_route, route_pt);
     }
 
-    LineString rough_section = getRoughSection(full_route, ego_pos);
+    int edge_idx = 0;
+    LineString rough_section = getRoughSection(full_route, ego_pos, edge_idx);
+
+    std::printf("Edge idx = %i\n", edge_idx);
+
+    // Try to find route b/w ego and edge waypoint (the divider b/w rough and refined)
+
+    std::vector<odr::value> edge_query_results;
+    map_wide_tree_.query(bgi::contains(full_route[edge_idx]), std::back_inserter(edge_query_results));
+    odr::Lane edge_lane = lane_polys_[edge_query_results.front().second].first;
+
+    std::vector<odr::value> query_results;
+    map_wide_tree_.query(bgi::contains(ego_pos), std::back_inserter(query_results));
+
+    LineString smooth_section;
+    odr::RoutingGraph graph = map_->get_routing_graph();
+
+    for (auto pair : query_results)
+    {
+        odr::Lane lane = this->lane_polys_.at(pair.second).first;
+
+        auto parents = bfs(lane.key, edge_lane.key, graph);
+
+        std::printf("BFS returned %i pairs\n", parents.size());
+
+        for (auto pair : parents)
+        {
+            std::printf("(%s, %s)\n", pair.first.to_string().c_str(), pair.second.to_string().c_str());
+        }
+
+        // std::vector<odr::LaneKey> route = map_->get_routing_graph().shortest_path(lane.key, edge_lane.key);
+
+        // if (route.empty() || route.back().to_string() == lane.key.to_string())
+        // {
+        //     std::printf("Flipping start and end\n");
+        //     route = map_->get_routing_graph().shortest_path(edge_lane.key, lane.key);
+        //     std::printf("From (%s, %i) to (%s, %i). Route to edge has %i lanes\n", edge_lane.key.road_id.c_str(), edge_lane.id, lane.key.road_id.c_str(), lane.id, route.size());
+        // }
+
+        // if (route.empty() || route.front().to_string() == edge_lane.key.to_string())
+        // {
+        //     std::printf("Failed. Flipping start side.\n");
+        //     lane.key.lane_id *= -1;
+        //     route = map_->get_routing_graph().shortest_path(lane.key, edge_lane.key);
+        //     std::printf("From (%s, %i) to (%s, %i). Route to edge has %i lanes\n", lane.key.road_id.c_str(), lane.id, edge_lane.key.road_id.c_str(), edge_lane.id, route.size());
+        // }
+
+        // if (route.empty() || route.front().to_string() == edge_lane.key.to_string())
+        // {
+        //     std::printf("Failed. Flipping start and end (again).\n");
+        //     route = map_->get_routing_graph().shortest_path(edge_lane.key, lane.key);
+        //     std::printf("From (%s, %i) to (%s, %i). Route to edge has %i lanes\n", edge_lane.key.road_id.c_str(), edge_lane.id, lane.key.road_id.c_str(), lane.id, route.size());
+        // }
+
+        // else {
+        //     std::printf("From (%s, %i) to (%s, %i). Route to edge has %i lanes\n", lane.key.road_id.c_str(), lane.id, edge_lane.key.road_id.c_str(), edge_lane.id, route.size());
+        // }
+        // std::printf("----------------------\n");
+
+        // for (auto key : route)
+        // {
+        //     std::printf("%s, %i\n", key.road_id.c_str(), key.lane_id);
+        //     LineString centerline = getLaneCenterline(key);
+        //     bg::append(smooth_section, centerline);
+        // }
+    }
 
     // Publish result as a Path message
     Path result;
     result.header.stamp = clock_->clock;
     result.header.frame_id = "map";
 
-    for (auto pt : rough_section)
+    for (auto pt : smooth_section)
     {
         PoseStamped waypoint_pose;
         waypoint_pose.pose.position.x = pt.get<0>();
