@@ -131,7 +131,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         # CONTROL
-        carla_controller,
+        # carla_controller,
 
         # INTERFACE
         carla_bridge_official,

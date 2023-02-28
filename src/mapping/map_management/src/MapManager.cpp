@@ -455,7 +455,6 @@ void MapManagementNode::updateRouteWaypoints(Path::SharedPtr msg)
         // It looks like we've already processed a route and the new route as the same size.
         // If the new route's size and the current tree's size are the same,
         // we can assume that the incoming route is not new.
-        RCLCPP_INFO(get_logger(), "Rough route already received.");
         return;
     }
 
