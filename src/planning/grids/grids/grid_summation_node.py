@@ -122,6 +122,8 @@ class GridSummationNode(Node):
         # This is a temporary measure until our current occ. grid's params
         # match the rest of our stack. Basically, due to the difference in cell size,
         # 1 out of 6 cells in the array needs to be deleted.
+        plt.subplot(1, 2, 1)
+
         downsampled = np.delete(original, np.arange(0, 128, 6), axis=0)
         downsampled = np.delete(downsampled, np.arange(
             0, 128, 6), axis=1)  # 106x106 result
@@ -129,9 +131,16 @@ class GridSummationNode(Node):
         # trim the bottom columns (behind the car)
         downsampled = downsampled[:, 3:]
 
-        background = np.zeros((151, 151))
+        downsampled = np.delete(downsampled, np.arange(
+            0, downsampled.shape[0], 4), axis=0)
+        downsampled = np.delete(downsampled, np.arange(
+            0, downsampled.shape[1], 4), axis=1)  # 106x106 result
 
-        background[22:128, 0:103] = downsampled
+        print(downsampled.shape)
+
+        background = np.zeros((76, 76))
+
+        background = downsampled[:76, :76]
         return background  # Correct scale
 
     def createCostMap(self):
@@ -139,7 +148,7 @@ class GridSummationNode(Node):
         status.level = DiagnosticStatus.OK
         status.name = 'grid_summation'
 
-        result = np.zeros((151, 151))
+        result = np.zeros((76, 76))
 
         # Calculate the weighted cost map layers
 
@@ -173,7 +182,7 @@ class GridSummationNode(Node):
             msg = self.route_dist_grid
             weighted_route_dist_arr = self.getWeightedArray(
                 msg, ROUTE_DISTANCE_GRID_SCALE)
-            result += weighted_route_dist_arr
+            # result += weighted_route_dist_arr # TODO: FIX THIS ALIGNMENT
 
         # Cap this to 100
         result = np.clip(result, 0, 100)
@@ -195,11 +204,11 @@ class GridSummationNode(Node):
         for i in range(15):
             frame = result_msg
 
-            t += 0.1 # dt = 0.1 seconds
+            t += 0.1  # dt = 0.1 seconds
             print(t)
             next_stamp = current_stamp
             next_stamp.sec = int(t)
-            next_stamp.nanosec = int(t * 1e9 % 1e9) 
+            next_stamp.nanosec = int(t * 1e9 % 1e9)
 
             result_msg.header.stamp = next_stamp
             result_msg.header.frame_id = 'base_link'

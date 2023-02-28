@@ -124,13 +124,18 @@ def generate_launch_description():
         arguments=["--perspective-file=/navigator/data/rqt.perspective"]
     )
 
+    route_reader = Node(
+        package='carla_interface',
+        executable='route_reader_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         carla_controller,
 
         # INTERFACE
-        # carla_bridge_official,
-        # carla_spawner,
+        carla_bridge_official,
+        carla_spawner,
         leaderboard_liaison,
 
         # LOCALIZATION
@@ -154,8 +159,9 @@ def generate_launch_description():
         # PLANNING
         grid_summation,
         airbags,
+        route_reader,
 
         # STATE ESTIMATION
-        map_manager,
+        # map_manager,
         gnss_processor,
     ])

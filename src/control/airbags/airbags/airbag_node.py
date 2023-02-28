@@ -36,7 +36,7 @@ YELLOW_EXTENT = (5.0, 1.75)
 
 class AirbagNode(Node):
     def __init__(self):
-        super().__init__('carla_controller')
+        super().__init__('airbag_node')
 
         self.lidar_received_time = 0.0
         self.status = DiagnosticStatus()
