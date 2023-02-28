@@ -12,6 +12,7 @@ Panels:
         - /Cameras1/Semantic Right1
         - /Grids1
         - /Pose1/Topic1
+        - /Path1
       Splitter Ratio: 0.5
     Tree Height: 429
   - Class: rviz_common/Selection
@@ -530,20 +531,13 @@ Visualization Manager:
         Value: /carla/hero/rgb_right/image
       Value: false
       Visibility:
+        "": true
         Cameras:
-          Bird's Eye: true
-          RGB Left: true
-          RGB Right: true
-          Semantic Left: true
-          Semantic Right: true
+          "": true
           Value: true
         Grid: true
         Grids:
-          Cost: true
-          Current Occupancy: true
-          Drivable Area: true
-          Flat Surfaces: true
-          Route Distance: true
+          "": true
           Value: true
         LiDAR:
           "": true
@@ -588,6 +582,33 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /visuals/airbags
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 25; 255; 0
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Billboards
+      Line Width: 0.5
+      Name: Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /planning/path
       Value: true
   Enabled: true
   Global Options:
@@ -641,7 +662,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 20.12508773803711
+      Scale: 10.620650291442871
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
       X: 5.556777000427246
