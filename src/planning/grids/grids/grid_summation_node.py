@@ -138,9 +138,9 @@ class GridSummationNode(Node):
 
         print(downsampled.shape)
 
-        background = np.zeros((76, 76))
+        background = np.zeros((151, 151))
 
-        background = downsampled[:76, :76]
+        background = downsampled[:151, :151]
         return background  # Correct scale
 
     def createCostMap(self):
@@ -148,7 +148,8 @@ class GridSummationNode(Node):
         status.level = DiagnosticStatus.OK
         status.name = 'grid_summation'
 
-        result = np.zeros((76, 76))
+        result = np.zeros((self.drivable_grid.info.height,
+                           self.drivable_grid.info.width))
 
         # Calculate the weighted cost map layers
 
@@ -162,7 +163,7 @@ class GridSummationNode(Node):
                 msg, CURRENT_OCCUPANCY_SCALE)
             weighted_current_occ_arr = self.resizeOccupancyGrid(
                 weighted_current_occ_arr)
-            result += weighted_current_occ_arr
+            # result += weighted_current_occ_arr
 
         # 2. Drivable area
         stale = self.checkForStaleness(self.drivable_grid, status)
@@ -182,7 +183,7 @@ class GridSummationNode(Node):
             msg = self.route_dist_grid
             weighted_route_dist_arr = self.getWeightedArray(
                 msg, ROUTE_DISTANCE_GRID_SCALE)
-            # result += weighted_route_dist_arr # TODO: FIX THIS ALIGNMENT
+            result += weighted_route_dist_arr
 
         # Cap this to 100
         result = np.clip(result, 0, 100)

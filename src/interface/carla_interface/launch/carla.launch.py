@@ -157,11 +157,11 @@ def generate_launch_description():
         static_grid,
 
         # PLANNING
-        grid_summation,
+        # grid_summation,
         airbags,
         route_reader,
 
         # STATE ESTIMATION
-        map_manager,
+        # map_manager,
         gnss_processor,
     ])
