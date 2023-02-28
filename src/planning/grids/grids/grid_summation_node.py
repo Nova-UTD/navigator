@@ -186,6 +186,8 @@ class GridSummationNode(Node):
         # Cap this to 100
         result = np.clip(result, 0, 100)
 
+        np.save("costmap3.npy", result)
+
         # Publish as an OccupancyGrid
         result_msg = OccupancyGrid()
 
