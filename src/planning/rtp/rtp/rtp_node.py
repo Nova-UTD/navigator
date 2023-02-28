@@ -40,6 +40,7 @@ from dataclasses import dataclass
 import random
 import time
 from geometry_msgs.msg import PoseStamped
+from carla_msgs.msg import CarlaEgoVehicleControl
 
 
 from matplotlib.patches import Rectangle
@@ -84,6 +85,9 @@ class RecursiveTreePlanner(Node):
         clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)
         self.clock = Clock()
+
+        self.command_pub = self.create_publisher(
+            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 1)
 
         self.path_pub = self.create_publisher(
             Path, '/planning/path', 1)
@@ -212,9 +216,23 @@ class RecursiveTreePlanner(Node):
             # TODO: Add heading (pose[2]?)
             result_msg.poses.append(pose_msg)
 
-        self.path_pub.publish(result_msg)
+        command = CarlaEgoVehicleControl()
+        command.steer = best_path.poses[2][2] * -2  # First steering value
 
-        print(f"Done in {time.time() - start}!")
+        if int(time.time()) % 10 <= 2:
+            command.throttle = 0.0
+            command.brake = 1.0
+            print("Braking!")
+        else:
+            command.throttle = 0.4
+            command.brake = 0.0
+
+        self.command_pub.publish(command)
+
+        self.path_pub.publish(result_msg)
+        # print(best_path.poses)
+
+        # print(f"Done in {time.time() - start}!")
 
     def odomCb(self, msg: Odometry):
 
