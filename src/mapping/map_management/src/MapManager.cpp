@@ -121,7 +121,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     int area = 0;
     int height = 0;
 
-    bool goalPoseIsPublished = false;
+    BoostPoint goal_pt;
+    bool goal_is_set = false;
 
     for (float j = y_min; j <= y_max; j += res)
     {
@@ -174,9 +175,15 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             flat_surface_grid_data.push_back(cell_is_flat_surface ? 0 : 100);
 
             // Get closest route point
-            if (local_route_linestring_.size() > 0 && cell_is_drivable)
+            if (local_route_linestring_.size() > 0 && cell_is_drivable && i > 0)
             {
                 int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 2);
+
+                if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
+                {
+                    goal_is_set = true;
+                    goal_pt = BoostPoint(i, j);
+                }
 
                 // Distances > 10 are set to 100
                 if (dist > 20)
@@ -188,7 +195,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             }
             else
             {
-                route_dist_grid_data.push_back(-1);
+                route_dist_grid_data.push_back(100);
             }
 
             area += 1;
@@ -225,6 +232,13 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     drivable_grid_pub_->publish(drivable_area_grid);
     flat_surface_grid_pub_->publish(flat_surface_grid);
     route_dist_grid_pub_->publish(route_dist_grid); // Route distance grid
+
+    PoseStamped goal_pose;
+    goal_pose.pose.position.x = goal_pt.get<0>();
+    goal_pose.pose.position.y = goal_pt.get<1>();
+    goal_pose.header.frame_id = "base_link";
+    goal_pose.header.stamp = clock_->clock;
+    goal_pose_pub_->publish(goal_pose);
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
