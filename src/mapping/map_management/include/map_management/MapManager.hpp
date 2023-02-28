@@ -90,8 +90,8 @@ namespace navigator
             void clockCb(Clock::SharedPtr msg);
             TransformStamped getVehicleTf();
             void drivableAreaGridPubTimerCb();
-            void refineRoughRoute(Path::SharedPtr msg);
-            void updateRoute();
+            void updateRouteWaypoints(Path::SharedPtr msg);
+            void publishRefinedRoute();
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
             LineString getLaneCenterline(odr::LaneKey key);
@@ -124,7 +124,7 @@ namespace navigator
             bg::model::linestring<odr::point> route_linestring_;
             bg::model::linestring<odr::point> local_route_linestring_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
-            bgi::rtree<odr::value, bgi::rstar<16, 4>> route_tree_;
+            bgi::rtree<odr::value, bgi::rstar<16, 4>> rough_route_tree_;
             PolygonStamped traffic_light_points;
 
             RouteManager rm;
