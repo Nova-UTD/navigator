@@ -17,7 +17,14 @@
 
 #include <fstream>
 
-using namespace navigator::perception;
+using namespace navigator::planning;
+
+struct RoiIndices
+{
+    int start = -1;
+    int center = -1;
+    int end = -1;
+};
 
 MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
@@ -25,18 +32,16 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
     flat_surface_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/flat_surface", 10);
     route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
-    route_path_pub_ = this->create_publisher<Path>("/route/smooth_path", 10);
+    route_path_pub_ = this->create_publisher<Path>("/planning/smooth_route", 10);
     traffic_light_points_pub_ = this->create_publisher<PolygonStamped>("/traffic_light_points", 10);
     goal_pose_pub_ = this->create_publisher<PoseStamped>("/planning/goal_pose", 1);
 
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
-    rough_path_sub_ = this->create_subscription<Path>("/route/rough_path", 10, bind(&MapManagementNode::refineRoughPath, this, std::placeholders::_1));
+    rough_path_sub_ = this->create_subscription<Path>("/planning/rough_route", 10, bind(&MapManagementNode::updateRouteWaypoints, this, std::placeholders::_1));
     world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
 
     drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
-    route_distance_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::updateRoute, this));
-    traffic_light_pub_timer_ = this->create_wall_timer(TRAFFIC_LIGHT_PUBLISH_FREQUENCY, [this]()
-                                                       { this->traffic_light_points_pub_->publish(traffic_light_points); });
+    route_timer_ = this->create_wall_timer(ROUTE_PUBLISH_FREQUENCY, bind(&MapManagementNode::publishRefinedRoute, this));
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -68,6 +73,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                              "Map not yet loaded. Drivable area grid is unavailable.");
         return;
     }
+
+    // printf("Publish grids... ");
 
     // Used to calculate function runtime
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -102,7 +109,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     std::vector<odr::value> lane_shapes_in_range;
     map_wide_tree_.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
 
-    std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
+    // std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
 
     int idx = 0;
 
@@ -177,22 +184,6 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                 else
                     dist *= 5;
 
-                if (!goalPoseIsPublished && dist < 0.8)
-                {
-                    odr::point origin = odr::point(0.0, 0.0);
-                    float distToCar = bg::distance(p, origin);
-                    if (distToCar > 20)
-                    {
-                        PoseStamped goal_pose;
-                        goal_pose.header.stamp = this->clock_->clock;
-                        goal_pose.header.frame_id = "base_link";
-                        goal_pose.pose.position.x = i;
-                        goal_pose.pose.position.y = j;
-                        goal_pose_pub_->publish(goal_pose);
-                        goalPoseIsPublished = true;
-                    }
-                }
-
                 route_dist_grid_data.push_back(dist);
             }
             else
@@ -231,12 +222,12 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     route_dist_grid.info = grid_info;
 
     // Output function runtime
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
-
     drivable_grid_pub_->publish(drivable_area_grid);
     flat_surface_grid_pub_->publish(flat_surface_grid);
     route_dist_grid_pub_->publish(route_dist_grid); // Route distance grid
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    // std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
 /**
@@ -244,7 +235,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
  *
  * @param msg
  */
-void navigator::perception::MapManagementNode::clockCb(Clock::SharedPtr msg)
+void MapManagementNode::clockCb(Clock::SharedPtr msg)
 {
     this->clock_ = msg;
 }
@@ -254,7 +245,7 @@ void navigator::perception::MapManagementNode::clockCb(Clock::SharedPtr msg)
  *
  * @return TransformStamped
  */
-TransformStamped navigator::perception::MapManagementNode::getVehicleTf()
+TransformStamped MapManagementNode::getVehicleTf()
 {
     TransformStamped t;
     try
@@ -276,320 +267,328 @@ TransformStamped navigator::perception::MapManagementNode::getVehicleTf()
  * @brief Gets the drivable area OccupancyGrid and publishes it.
  *
  */
-void navigator::perception::MapManagementNode::drivableAreaGridPubTimerCb()
+void MapManagementNode::drivableAreaGridPubTimerCb()
 {
-    publishGrids(40, 20, 30, 0.4);
+    // std::printf("Publishing grids\n");
+    publishGrids(40, 20, 30, 0.8);
+}
+
+// CPP code for printing shortest path between
+// two vertices of unweighted graph
+#include <bits/stdc++.h>
+using namespace std;
+
+// utility function to form edge between two vertices
+// source and dest
+void add_edge(vector<int> adj[], int src, int dest)
+{
+    adj[src].push_back(dest);
+    adj[dest].push_back(src);
 }
 
 /**
- * @brief Refine a rough path from CARLA into a smooth, sub-meter accurate path
+ * @brief Simple breadth-first search using libOpenDRIVE's inbuilt routing graph.
+ * Undirected! See https://en.wikipedia.org/wiki/Breadth-first_search#Pseudocode
  *
- * 1. For each pose in the rough path, use an RTree to find the matching lane in the map
- * 2. Given the sequence of lanes, fill in gaps and validate using libOpenDRIVE's routing graph
- *  a. This is very, very slow, but it should guarantee a valid lane sequence.
- *  b. This accounts for junctions, where a point may belong to >1 lane.
- * 3. For each lane in the sequence, sample the centerline and add this point to a boost linestring
- *  a. This creates a continuous Cartesian curve
- * 4. Pusblish this refined curve as a Path message.
- *
- * @param msg
+ * @param source
+ * @param dest
+ * @param graph
+ * @return std::unordered_map<odr::LaneKey, odr::LaneKey>
  */
-void navigator::perception::MapManagementNode::refineRoughPath(Path::SharedPtr msg)
+std::unordered_map<odr::LaneKey, odr::LaneKey> bfs(odr::LaneKey source, odr::LaneKey dest, odr::RoutingGraph graph)
 {
-    if (this->map_ == nullptr)
-        return;
-    if (this->smoothed_path_msg_.poses.size() > 0)
+    std::unordered_set<odr::LaneKey> visited_lanes;
+    std::unordered_map<odr::LaneKey, odr::LaneKey> parents;
+    visited_lanes.insert(source);
+    std::vector<odr::LaneKey> route;
+    std::queue<odr::LaneKey> queue;
+
+    queue.push(source);
+    while (!queue.empty())
     {
-        // RCLCPP_WARN(this->get_logger(), "Lanes already calculated from rough path.");
-        // route_path_pub_->publish(smoothed_path_msg_);
-        return;
-    }
+        odr::LaneKey v = queue.front();
+        queue.pop();
 
-    std::vector<odr::Lane> lanes_in_route;
-
-    RCLCPP_INFO(this->get_logger(), "Processing rough path with %i poses", msg->poses.size());
-
-    for (auto pose : msg->poses)
-    {
-        auto position = pose.pose.position;
-        // Find the lane polygon(s) that the point falls within
-        odr::point p(position.x, position.y);
-        std::vector<odr::value> query_results;
-        std::vector<odr::Lane> lanes_containing_point;
-
-        this->map_wide_tree_.query(bgi::contains(p), std::back_inserter(query_results));
-
-        // RCLCPP_INFO(this->get_logger(), "Query returned %i results", query_results.size());
-
-        for (auto result : query_results)
+        if (v.to_string() == dest.to_string())
         {
-            /*
-            lane_polys_ is a vector of LanePairs, where a LanePair
-            has a Lane object (which contains details like the lane ID, parent road, etc),
-            and a ring (a Boost geometry that describes the outline of the lane).
+            return parents;
+        }
 
-            A "result" contains a given lane ring's bounding box (first) and
-            the index of the ring (result.second). This is the same index within
-            lane_polys_. Adding ".first" gets the Lane object.
-
-            Got that?
-            */
-
-            odr::ring ring = this->lane_polys_.at(result.second).second;
-            if (bg::within(p, ring))
+        for (auto w : graph.get_lane_predecessors(v))
+        {
+            if (visited_lanes.find(w) == visited_lanes.end())
             {
-                odr::Lane containing_lane = this->lane_polys_.at(result.second).first;
-
-                auto parent_road = this->map_->id_to_road.at(containing_lane.key.road_id);
-                if (parent_road.junction != "-1")
-                    continue; // Junction found! Skip this lane.
-
-                lanes_containing_point.push_back(containing_lane);
+                visited_lanes.insert(w);
+                parents.insert(std::make_pair(w, v));
+                queue.push(w);
             }
         }
-
-        // Does this point fall within more than one lane?
-        // If so, we've found a junction. Skip to next pose.
-        // if (lanes_containing_point.size() > 1)
-        // {
-        //     RCLCPP_INFO(this->get_logger(), "Point (%f, %f) falls within a junction. Skipping.", position.x, position.y);
-        //     continue;
-        // }
-        if (lanes_containing_point.size() < 1)
+        for (auto w : graph.get_lane_successors(v))
         {
-            RCLCPP_INFO(this->get_logger(), "Point (%f, %f) does not fall within a lane. Skipping.", position.x, position.y);
-            continue;
+            if (visited_lanes.find(w) == visited_lanes.end())
+            {
+                visited_lanes.insert(w);
+                parents.insert(std::make_pair(w, v));
+                queue.push(w);
+            }
         }
+    }
+    // RCLCPP_ERROR(get_logger(), "Destination not found");
+    return parents;
+}
 
-        // Append the matching lane to the full route
-        lanes_in_route.push_back(lanes_containing_point.front());
+LineString getSmoothSection(LineString full_route, BoostPoint ego, int &start_idx, int &end_idx)
+{
+
+    // Get closest waypoint in full_route
+    float closest_dist = 999.9;
+    int closest_idx = -1;
+
+    for (int i = 0; i < full_route.size(); i++)
+    {
+        auto wp = full_route[i];
+        float dist_to_ego = bg::distance(ego, wp);
+        if (dist_to_ego < closest_dist)
+        {
+            closest_dist = dist_to_ego;
+            closest_idx = i;
+        }
     }
 
-    this->lanes_in_route_ = lanes_in_route;
+    end_idx = closest_idx < 1 ? closest_idx : closest_idx - 1;
 
-    smoothed_path_msg_.poses.clear();
-    smoothed_path_msg_.header.frame_id = "map";
-    smoothed_path_msg_.header.stamp = this->clock_->clock;
+    LineString rough_section;
+    start_idx = closest_idx + 1;
+    float edge_distance = closest_dist;
 
-    auto routing_graph = this->map_->get_routing_graph();
-
-    std::vector<odr::LaneKey> complete_route;
-
-    int progress_counter = 0;
-    const int ITER_LIMIT = 10;
-
-    for (auto it = lanes_in_route.begin(); it < lanes_in_route.end() - 1; it++)
+    // Find the "edge" waypoint
+    // That's the divider between the smooth and rough route sections
+    // It should be > 40m from the ego
+    while (edge_distance < 40.0)
     {
-        printf("%i/%i\n", progress_counter, lanes_in_route.size());
-        progress_counter++;
+        auto wp = full_route[start_idx];
+        edge_distance = bg::distance(ego, wp);
+        start_idx++;
+    }
 
-        if (progress_counter > ITER_LIMIT)
+    return rough_section;
+}
+
+LineString MapManagementNode::getLaneCenterline(odr::LaneKey key)
+{
+    LineString centerline;
+
+    odr::Road road = map_->id_to_road.at(key.road_id);
+    odr::LaneSection lsec = road.s_to_lanesection.at(key.lanesection_s0);
+    odr::Lane lane = lsec.id_to_lane.at(key.lane_id);
+
+    odr::Line3D outer_border = road.get_lane_border_line(lane, 1.0, true);
+    odr::Line3D inner_border = road.get_lane_border_line(lane, 1.0, false);
+
+    for (int i = 0; i < outer_border.size(); i++)
+    {
+        odr::Vec3D outer_pt = outer_border[i];
+        odr::Vec3D inner_pt = inner_border[i];
+        BoostPoint center_pt((outer_pt[0] + inner_pt[0]) / 2, (outer_pt[1] + inner_pt[1]) / 2);
+        bg::append(centerline, center_pt);
+    }
+
+    return centerline;
+}
+
+LineString getReorientedRoute(std::vector<LineString> centerlines)
+{
+    LineString result;
+
+    auto iter = centerlines.begin();
+    while (iter != centerlines.end() - 1)
+    {
+        // Get end of this segment and the beginning of the next one
+        // Check the distance between them.
+        // If distance is small, the orientation is correct. Continue.
+        // If distance is large, reverse order of next segment
+
+        const float MAX_ENDPOINT_GAP = 2.0; // meters
+
+        auto current_end = iter->back();
+        auto next_begin = (iter + 1)->front();
+        float dist = bg::distance(current_end, next_begin);
+
+        // std::printf("Distance was %f. ", dist);
+
+        if (dist > MAX_ENDPOINT_GAP)
+        {
+            bg::reverse(*(iter + 1));
+        }
+
+        next_begin = (iter + 1)->front();
+        // dist = bg::distance(current_end, next_begin);
+        // std::printf("Distance is now %f.\n", dist);
+
+        bg::append(result, *iter);
+
+        iter++;
+    }
+    bg::append(result, centerlines.back());
+
+    return result;
+}
+
+void MapManagementNode::updateRouteWaypoints(Path::SharedPtr msg)
+{
+    if (rough_route_tree_.size() > 0 && rough_route_tree_.size() == msg->poses.size())
+    {
+        // It looks like we've already processed a route and the new route as the same size.
+        // If the new route's size and the current tree's size are the same,
+        // we can assume that the incoming route is not new.
+        RCLCPP_INFO(get_logger(), "Rough route already received.");
+        return;
+    }
+
+    // Let's build an RTree to efficiently represent the new waypoints.
+
+    rough_route_tree_.clear();
+    rough_route_.clear();
+
+    for (unsigned i = 0; i < msg->poses.size(); ++i)
+    {
+        PoseStamped wp_pose = msg->poses[i];
+
+        BoostPoint wp(wp_pose.pose.position.x, wp_pose.pose.position.y);
+        rough_route_tree_.insert(std::make_pair(bg::return_envelope<odr::box>(wp), i));
+        bg::append(rough_route_, wp);
+    }
+
+    RCLCPP_INFO(get_logger(), "%i waypoints added to tree", rough_route_tree_.size());
+}
+
+RoiIndices getWaypointsInROI(LineString waypoints, bgi::rtree<odr::value, bgi::rstar<16, 4>> tree, BoostPoint ego_pos)
+{
+    std::vector<odr::value> returned_values;
+    // Query our tree. "1" means get the single nearest waypoint
+    tree.query(bgi::nearest(ego_pos, 1), std::back_inserter(returned_values));
+    int nearest_idx = returned_values.front().second;
+
+    // Go backward in rough route until either
+    // a) We hit the route's start or
+    // b) we're >40m from ego
+    // Get idx of last waypoint visited
+    auto iter = waypoints.begin() + nearest_idx;
+    int start_idx = nearest_idx;
+    while (iter != waypoints.begin())
+    {
+        start_idx--;
+        iter--;
+        if (bg::distance(ego_pos, *iter) > 40.0)
             break;
+    }
 
-        if (it->key.to_string() == (it + 1)->key.to_string())
-        {
-            // printf("Keys were the same. Skipping.\n");
+    // Go forward in rough route until either
+    // a) We hit the route's end or
+    // b) we're >40m from ego
+    // Get idx of last waypoint visited
+    iter = waypoints.begin() + nearest_idx;
+    int end_idx = nearest_idx;
+    while (iter != waypoints.end())
+    {
+        end_idx++;
+        iter++;
+        if (bg::distance(ego_pos, *iter) > 40.0)
+            break;
+    }
+
+    // RCLCPP_INFO(get_logger(), "(%i, %i, %i)", start_idx, nearest_idx, end_idx);
+
+    RoiIndices result;
+    result.center = nearest_idx;
+    result.start = start_idx;
+    result.end = end_idx;
+
+    return result;
+}
+
+std::vector<odr::LaneKey> getLaneKeysFromIndices(RoiIndices indices, LineString waypoints, bgi::rtree<odr::value, bgi::rstar<16, 4>> lane_tree, std::vector<odr::LanePair> lane_polys)
+{
+    LineString waypoints_within_roi;
+    // bg::simplify(waypoints, simplified_wps, 5.0);
+
+    for (int i = indices.start; i <= indices.end; i++)
+    {
+        bg::append(waypoints_within_roi, waypoints[i]);
+    }
+    std::printf("ROI has %i waypoints\n", waypoints_within_roi.size());
+
+    // Simplification downsamples the linestring, speeding us up a bit
+    LineString simplified_wpts;
+    bg::simplify(waypoints_within_roi, simplified_wpts, 5.0);
+
+    std::vector<odr::value> query_results;
+
+    // For each wp, find it in the lane_tree
+    for (auto pt : simplified_wpts)
+    {
+        lane_tree.query(bgi::intersects(pt), std::back_inserter(query_results));
+    }
+
+    std::vector<odr::LaneKey> lane_keys;
+
+    // Move through our tree search results, extracting the lane key and
+    // adding it to our result list.
+    for (auto result : query_results)
+    {
+        odr::LanePair result_pair = lane_polys[result.second];
+        lane_keys.push_back(result_pair.first.key);
+        std::printf("%s\n", result_pair.first.key.to_string().c_str());
+    }
+
+    return lane_keys;
+}
+
+std::vector<LineString> getCenterlinesFromKeys(std::vector<odr::LaneKey> keys, odr::RoutingGraph graph)
+{
+
+    // Move from first to second-to-last key.
+    // Use VFS to find route from this key to the next one,
+    // collectively forming a route chain connecting each waypoint's parent lane
+    for (auto iter = keys.begin(); iter != keys.end() - 1; iter++)
+    {
+        odr::LaneKey from = *iter;
+        odr::LaneKey to = *(iter + 1);
+        if (from.to_string() == to.to_string()) // Keys have the same lane
             continue;
-        }
-        std::vector<odr::LaneKey> route = routing_graph.shortest_path((it + 1)->key, it->key);
-
-        // Reverse the order of the route
-        std::reverse(route.begin(), route.end());
-
-        if (route.size() < 2)
-        {
-            // RCLCPP_WARN(this->get_logger(), "Route not found. Trying other direction.");
-            route = routing_graph.shortest_path(it->key, (it + 1)->key);
-            if (route.size() < 2)
-            {
-                RCLCPP_WARN(this->get_logger(), "Route not found.");
-                continue;
-            }
-        }
-        for (auto key : route)
-        {
-            if (complete_route.size() > 0 && key.to_string() == complete_route.back().to_string())
-            {
-                continue;
-            }
-
-            complete_route.push_back(key);
-        }
-
-        if (progress_counter % 10 == 0)
-        {
-            for (auto key : complete_route)
-            {
-                printf("%s\n", key.to_string().c_str());
-            }
-        }
+        auto adjacency_pairs = bfs(from, to, graph);
+        std::printf("BFS returned %i pairs\n", adjacency_pairs.size());
     }
 
-    // For each LaneKey in Route, linear sample and append to vector
-    bg::model::linestring<odr::point> route_linestring;
-
-    odr::point latest_point;
-
-    for (auto key : complete_route)
-    {
-        // printf("%s\n", key.to_string().c_str());
-        odr::Road road = this->map_->id_to_road.at(key.road_id);
-        // printf("Road was %s\n", road.id.c_str());
-        odr::LaneSection lsec = road.get_lanesection(key.lanesection_s0);
-        // printf("Lsec was %f\n", lsec.s0);
-        // for (auto lane : lsec.get_lanes())
-        // {
-        //     printf("%i ", lane.id);
-        // }
-        printf("\n");
-        odr::Lane lane = lsec.id_to_lane.at(key.lane_id);
-        // printf("Lane was %i\n", lane.id);
-
-        odr::Line3D outer_border = road.get_lane_border_line(lane, 1.0, true);
-        odr::Line3D inner_border = road.get_lane_border_line(lane, 1.0, false);
-
-        odr::Line3D line;
-
-        for (int i = 0; i < outer_border.size(); i++)
-        {
-            odr::Vec3D center_pt;
-            auto inner_pt = inner_border[i];
-            auto outer_pt = outer_border[i];
-            // RCLCPP_INFO(get_logger(), "Inner: (%f, %f)\n", inner_pt[0], inner_pt[1]);
-            // RCLCPP_INFO(get_logger(), "Outer: (%f, %f)\n", outer_pt[0], outer_pt[1]);
-
-            center_pt[0] = (inner_pt[0] + outer_pt[0]) / 2;
-            center_pt[1] = (inner_pt[1] + outer_pt[1]) / 2;
-            line.push_back(center_pt);
-        }
-
-        // Test to see if the direction of this lane needs to be reversed
-        if (route_linestring.size() > 0)
-        {
-
-            odr::point first_pt_in_lane = odr::point(line.front()[0], line.front()[1]);
-            double dist = bg::distance(latest_point, first_pt_in_lane);
-            printf("Distance was %f\n", dist);
-
-            if (dist > 30)
-            {
-                std::reverse(line.begin(), line.end());
-                odr::point first_pt_in_lane = odr::point(line.front()[0], line.front()[1]);
-                double dist = bg::distance(latest_point, first_pt_in_lane);
-                printf("Distance is now %f\n", dist);
-            }
-        }
-        else
-        {
-            latest_point = odr::point(line.front()[0], line.front()[1]);
-        }
-
-        for (odr::Vec3D pt : line)
-        {
-            odr::point boost_point(pt[0], pt[1]);
-            bg::append(route_linestring, boost_point);
-            printf("Adding point (%f, %f)\n", pt[0], pt[1]);
-            latest_point = boost_point;
-        }
-    }
-
-    // Publish route as Path msg
-    smoothed_path_msg_.header.stamp = this->clock_->clock;
-    smoothed_path_msg_.header.frame_id = "map";
-
-    smoothed_path_msg_.poses.clear();
-    for (odr::point pt : route_linestring)
-    {
-        PoseStamped pose_msg;
-        pose_msg.pose.position.x = pt.get<0>();
-        pose_msg.pose.position.y = pt.get<1>();
-        pose_msg.header = smoothed_path_msg_.header;
-        smoothed_path_msg_.poses.push_back(pose_msg);
-    }
-
-    route_path_pub_->publish(smoothed_path_msg_);
-    this->route_linestring_ = route_linestring;
-
-    bgi::rtree<odr::value, bgi::rstar<16, 4>> rtree;
-
-    // Build the route rtree
-    for (unsigned i = 0; i < route_linestring.size(); ++i)
-    {
-        // calculate polygon bounding box
-        odr::box b = bg::return_envelope<odr::box>(route_linestring[i]);
-        // insert new value
-        rtree.insert(std::make_pair(b, i));
-        // std::printf("Inserting box (%f, %f)-(%f,%f)\n", b.min_corner().get<0>(), b.min_corner().get<1>(), b.max_corner().get<0>(), b.max_corner().get<1>());
-    }
-
-    this->route_tree_ = rtree;
-
-    RCLCPP_INFO(this->get_logger(), "Publishing path with %i poses. Started with %i poses.\n", smoothed_path_msg_.poses.size(), msg->poses.size());
+    std::vector<LineString> centerlines;
+    return centerlines;
 }
 
 /**
  * @brief Generate and publish the "distance from route" cost map layer
  *
  */
-void navigator::perception::MapManagementNode::updateRoute()
+void MapManagementNode::publishRefinedRoute()
 {
-
-    if (route_tree_.size() < 1)
+    if (rough_route_tree_.empty() || map_wide_tree_.empty())
         return;
 
-    TransformStamped vehicle_tf = getVehicleTf();
+    // Get waypoint closest to ego
+    auto ego_tf = getVehicleTf();
+    BoostPoint ego_pos(ego_tf.transform.translation.x, ego_tf.transform.translation.y);
 
-    // Get all points in front of car
-    auto vehicle_pos = vehicle_tf.transform.translation;
-    // Transform this query into the map frame
-    // First rotate, then translate. 2D rotation eq:
-    // x' = xcos(h) - ysin(h)
-    // y' = ycos(h) + xsin(h)
-    double range_plus = GRID_RANGE * 1.4; // This is a little leeway to account for map->base_link rotation
-    odr::point bounding_box_min = odr::point(vehicle_pos.x - range_plus, vehicle_pos.y - range_plus);
-    odr::point bounding_box_max = odr::point(vehicle_pos.x + range_plus, vehicle_pos.y + range_plus);
-    odr::box search_region(bounding_box_min, bounding_box_max);
+    // Get indices of waypoint ROI
+    RoiIndices waypoint_roi = getWaypointsInROI(rough_route_, rough_route_tree_, ego_pos);
+    RCLCPP_INFO(get_logger(), "(%i, %i, %i)", waypoint_roi.start, waypoint_roi.center, waypoint_roi.end);
 
-    // Find all route points within the search region
-    std::vector<odr::value> nearest_route_pt_vector;
-    odr::point current_pos = odr::point(vehicle_pos.x, vehicle_pos.y);
-    route_tree_.query(bgi::nearest(current_pos, 1), std::back_inserter(nearest_route_pt_vector));
+    // Get LaneKeys
+    std::vector<odr::LaneKey> keys = getLaneKeysFromIndices(waypoint_roi, rough_route_, map_wide_tree_, lane_polys_);
 
-    local_route_linestring_.clear();
+    // Get centerlines
+    auto centerlines = getCenterlinesFromKeys(keys, map_->get_routing_graph());
 
-    int nearest_route_pt_idx = nearest_route_pt_vector[0].second;
-
-    int length = 10; // Number of route points to include after the nearest one
-
-    for (int i = 0; i < length; i++)
-    {
-        bg::append(local_route_linestring_, route_linestring_[nearest_route_pt_idx - i]);
-    }
-
-    route_path_pub_->publish(this->smoothed_path_msg_);
-}
-
-PolygonStamped MapManagementNode::getTrafficLightCloud(std::vector<std::pair<odr::RoadObject, odr::point>> object_centers)
-{
-    int qty = 0;
-    PolygonStamped polygon;
-    polygon.header.stamp = this->clock_->clock;
-    polygon.header.frame_id = "map";
-    for (auto pair : object_centers)
-    {
-        odr::RoadObject obj = pair.first;
-        odr::point center = pair.second;
-        if (obj.name != "Signal_3Light_Post01")
-            continue;
-        qty++;
-        Point32 point;
-        point.x = center.get<0>();
-        point.y = center.get<1>();
-        point.z = 0;
-        polygon.polygon.points.push_back(point);
-    }
-    RCLCPP_INFO(this->get_logger(), "%i traffic lights", qty);
-    return polygon;
+    Path result;
+    route_path_pub_->publish(result);
 }
 
 /**
@@ -611,8 +610,6 @@ void MapManagementNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
     this->map_ = new odr::OpenDriveMap(msg->opendrive, true);
     // Get lane polygons as pairs (Lane object, ring polygon)
     this->lane_polys_ = map_->get_lane_polygons(1.0, false);
-    // Get road objects
-    this->traffic_light_points = getTrafficLightCloud(map_->get_road_object_centers());
 
     RCLCPP_INFO(this->get_logger(), "Loaded %s", msg->map_name.c_str());
 }
