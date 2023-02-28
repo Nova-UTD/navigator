@@ -136,8 +136,6 @@ class GridSummationNode(Node):
         downsampled = np.delete(downsampled, np.arange(
             0, downsampled.shape[1], 4), axis=1)  # 106x106 result
 
-        print(downsampled.shape)
-
         background = np.zeros((151, 151))
 
         background = downsampled[:151, :151]
@@ -206,7 +204,6 @@ class GridSummationNode(Node):
             frame = result_msg
 
             t += 0.1  # dt = 0.1 seconds
-            print(t)
             next_stamp = current_stamp
             next_stamp.sec = int(t)
             next_stamp.nanosec = int(t * 1e9 % 1e9)
