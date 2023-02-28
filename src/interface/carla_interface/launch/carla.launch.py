@@ -162,6 +162,6 @@ def generate_launch_description():
         route_reader,
 
         # STATE ESTIMATION
-        # map_manager,
+        map_manager,
         gnss_processor,
     ])
