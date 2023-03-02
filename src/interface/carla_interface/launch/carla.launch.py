@@ -131,7 +131,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         # CONTROL
-        carla_controller,
+        # carla_controller,
 
         # INTERFACE
         carla_bridge_official,
@@ -162,6 +162,6 @@ def generate_launch_description():
         route_reader,
 
         # STATE ESTIMATION
-        # map_manager,
+        map_manager,
         gnss_processor,
     ])

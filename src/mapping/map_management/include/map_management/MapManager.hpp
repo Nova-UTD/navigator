@@ -95,6 +95,7 @@ namespace navigator
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
 
             LineString getLaneCenterline(odr::LaneKey key);
+            std::vector<LineString> getCenterlinesFromKeys(std::vector<odr::LaneKey> keys, odr::RoutingGraph graph);
 
             rclcpp::Publisher<OccupancyGrid>::SharedPtr drivable_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr flat_surface_grid_pub_;
