@@ -97,7 +97,7 @@ class EpasNode(Node):
             current_state = self.parseIncomingMessages(msg1, msg2)
             self.current_angle = current_state.angle
 
-        self.get_logger().info(f"Target: {self.target_angle}, current: {self.current_angle}")
+        # self.get_logger().info(f"Target: {self.target_angle}, current: {self.current_angle}")
 
         self.sendCommand(self.target_angle, self.bus)
 

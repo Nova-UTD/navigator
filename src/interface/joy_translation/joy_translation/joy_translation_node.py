@@ -30,6 +30,7 @@ class joy_translation_node(Node):
         #self. = self.create_publisher(array, 'static_grid', 10)
 
     def process_joy(self, joy_msg: Joy):
+        #self.get_logger().info('bruh')
         msg = CarlaEgoVehicleControl()
         msg.header.stamp = Clock().clock
         msg.header.frame_id = 'base_link'
@@ -40,7 +41,11 @@ class joy_translation_node(Node):
             msg.throttle = 0.0
 
         msg.steer = joy_msg.axes[0]*-1
-        msg.brake = joy_msg.axes[2]*-1
+        if abs(msg.steer)<0.2:
+            msg.steer = 0.0
+        msg.brake = joy_msg.axes[2]
+        #self.get_logger().info('this is the val of brake sent in')
+        #self.get_logger().info(str(msg.brake))
         msg.hand_brake = True if joy_msg.buttons[2]==1 else False
         msg.reverse = True if joy_msg.buttons[0]==1 else False
         msg.gear = True if joy_msg.buttons[3]==1 else False
