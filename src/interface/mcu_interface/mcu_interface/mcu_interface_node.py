@@ -1,7 +1,7 @@
 '''
 Package:   mcu_interface
 Filename:  mcu_interface_node.py
-Author:    Will Heitman (w at heit.mn)
+Author:    Jai Peris 
 
 Subscribes to CarlaEgoVehicleControl messages (https://github.com/carla-simulator/ros-carla-msgs/blob/leaderboard-2.0/msg/CarlaEgoVehicleControl.msg)
 
@@ -43,12 +43,14 @@ class McuInterfaceNode(Node):
 
         self.get_logger().info("Bus now connected.")
 
+        # what is create_timer? -Jai 
         self.vehicle_command_timer = self.create_timer(0.3, self.publishCommand)
         self.throttle = 0
 
     def commandCb(self, msg: CarlaEgoVehicleControl):
         self.throttle = msg.throttle
 
+    # publishes the number (0-1) received from the subscription 
     def publishCommand(self):
         throttle = self.throttle
         if throttle < 0.1:
@@ -56,7 +58,10 @@ class McuInterfaceNode(Node):
         throttle = min(throttle, 0.3)
         self.get_logger().info(f"Throttle = {throttle}")
 
-        command = str.encode(f"$throttle,{throttle};\n")
+        # command = str.encode(f"$throttle,{throttle};\n")
+        # s stands for start and e stands for end
+        command = f"s{throttle}e".encode()
+        self.get_logger().info(f"s{throttle}e")
         self.bus.write(command)
 
         # self.sio.write(f"$throttle,{throttle};\n")
