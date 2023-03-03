@@ -57,7 +57,7 @@ class LeaderboardLiaisonNode(Node):
         self.route = None
         self.clock = Clock()
 
-        connect_to_carla = True  # TODO: Make this a param
+        connect_to_carla = False  # TODO: Make this a param
 
         if connect_to_carla is False:
             return
