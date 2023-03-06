@@ -40,19 +40,19 @@ from dataclasses import dataclass
 import random
 import time
 from geometry_msgs.msg import PoseStamped
-from carla_msgs.msg import CarlaEgoVehicleControl
+from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer
 
 
 from matplotlib.patches import Rectangle
 
-N_BRANCHES: int = 7
+N_BRANCHES: int = 9
 STEP_LEN: float = 3.0  # meters
-DEPTH: int = 3
+DEPTH: int = 2
 
 # These are vdehicle constants for the GEM e6.
 # The sim vehicle (Tesla Model 3) has similar constants.
 WHEEL_BASE: float = 3.5  # meters
-MAX_TURN_ANGLE = 0.3  # radians
+MAX_TURN_ANGLE = 0.42  # radians
 COST_CUTOFF = 90
 
 
@@ -89,10 +89,15 @@ class RecursiveTreePlanner(Node):
         self.command_pub = self.create_publisher(
             CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 1)
 
+        self.speed_sub = self.create_subscription(
+            CarlaSpeedometer, '/carla/hero/speedometer', self.speedCb, 1)
+
         self.path_pub = self.create_publisher(
             Path, '/planning/path', 1)
 
         self.ego_pose = None  # [x, y, heading]
+
+        self.speed = 0.0
 
         # Clock subscription
         # self.clock_sub = self.create_subscription(
@@ -101,6 +106,9 @@ class RecursiveTreePlanner(Node):
 
     def clockCb(self, msg: Clock):
         self.clock = msg
+
+    def speedCb(self, msg: CarlaSpeedometer):
+        self.speed = msg.speed
 
     def getSegment(self, inital_pose: np.ndarray, steering_angle, segment_length: float, res: float, costmap) -> CostedPath:
         end_pose = np.copy(inital_pose)
@@ -217,15 +225,31 @@ class RecursiveTreePlanner(Node):
             result_msg.poses.append(pose_msg)
 
         command = CarlaEgoVehicleControl()
-        command.steer = best_path.poses[2][2] * -2  # First steering value
+        command.steer = best_path.poses[2][2] * -2.5  # First steering value
 
-        if int(time.time()) % 10 <= 2:
-            command.throttle = 0.0
-            command.brake = 1.0
-            print("Braking!")
-        else:
+        if command.steer > 1.0:
+            command.steer = 1.0
+        elif command.steer < -1.0:
+            command.steer = -1.0
+
+        command.header.stamp = self.clock.clock
+
+        DESIRED_SPEED = 7 - command.steer * 5  # m/s, ~10mph
+        TOLERANCE = 0.5  # m/s
+
+        if self.speed < DESIRED_SPEED - TOLERANCE:
             command.throttle = 0.4
             command.brake = 0.0
+            print(f"Driving, steer {command.steer}")
+        elif self.speed < DESIRED_SPEED + TOLERANCE:
+            command.throttle = 0.0
+            command.brake = 0.0
+            print(f"Coasting, steer {command.steer}")
+
+        else:
+            command.throttle = 0.0
+            command.brake = 1.0
+            print(f"Braking, steer {command.steer}")
 
         self.command_pub.publish(command)
 

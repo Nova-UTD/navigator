@@ -134,8 +134,8 @@ def generate_launch_description():
         # carla_controller,
 
         # INTERFACE
-        carla_bridge_official,
-        carla_spawner,
+        # carla_bridge_official,
+        # carla_spawner,
         leaderboard_liaison,
 
         # LOCALIZATION

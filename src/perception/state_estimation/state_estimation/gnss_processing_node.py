@@ -80,7 +80,7 @@ class GnssProcessingNode(Node):
 
         self.status_timer = self.create_timer(1.0, self.updateStatus)
 
-        # self.tf_broadcaster = TransformBroadcaster(self)
+        self.tf_broadcaster = TransformBroadcaster(self)
 
         self.cached_imu = Imu()
         self.latest_timestamp = Time()
@@ -296,7 +296,7 @@ class GnssProcessingNode(Node):
         t.transform.rotation = self.wma_pose.orientation
 
         # Uncomment to enable direct map->base_link tf
-        # self.tf_broadcaster.sendTransform(t)
+        self.tf_broadcaster.sendTransform(t)
 
 
 def main(args=None):

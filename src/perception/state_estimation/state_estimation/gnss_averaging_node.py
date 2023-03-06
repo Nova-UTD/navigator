@@ -211,7 +211,7 @@ class GnssAveragingNode(Node):
             # print("Dead reckoning with dt = {:.2f}".format(dt))
 
             # Update heading by integrating heading rate
-            self.current_pose[2] += self.heading_rate * dt
+            self.current_pose[2] += self.heading_rate * dt * 1.2
             self.current_pose[2] %= 2 * np.pi
             # self.current_pose[2] = 2*math.asin(msg.pose.pose.orientation.z)
 
@@ -246,7 +246,7 @@ class GnssAveragingNode(Node):
         transl.z = 0.0  # TODO: Stop assuming flat surface
         t.transform.translation = transl
         t.transform.rotation = result_msg.pose.pose.orientation
-        self.tf_broadcaster.sendTransform(t)
+        # self.tf_broadcaster.sendTransform(t)
 
     def clock_cb(self, msg: Clock):
         if self.last_update_time is None:
