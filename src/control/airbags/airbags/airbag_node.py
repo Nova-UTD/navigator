@@ -17,6 +17,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import ColorRGBA, String
 from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
 
 from matplotlib.patches import Rectangle
 
@@ -78,6 +79,8 @@ class AirbagNode(Node):
         return slice
 
     def costCb(self, msg: OccupancyGrid):
+
+
         # Convert to np array
         data = np.asarray(msg.data, dtype=np.int8).reshape(
             msg.info.height, msg.info.width)
@@ -96,49 +99,33 @@ class AirbagNode(Node):
             YELLOW_EXTENT, res, origin_cell)]
 
         marker = Marker()
-        marker.type = Marker.CUBE
-        marker.ns = 'airbags'
+        marker.type = Marker.TEXT_VIEW_FACING
         marker.header = msg.header
-        marker.frame_locked = True
+        marker.header.stamp = self.get_clock().now().to_msg()
+        # marker.frame_locked = True
+        marker.id = 1
+        marker.scale.z = 10.0
+        marker.color.a = 1.0
+        marker.ns = 'text'
 
         status_string = String()
 
         if np.sum(red_cells) > 0:
             self.current_zone = Airbag.RED
-            print(f"Current zone: RED")
-            marker.scale.x = RED_EXTENT[0] / 2
-            marker.scale.y = RED_EXTENT[1]
-            marker.scale.z = 0.1
-            marker.pose.position.x = RED_EXTENT[0] / 2
-            marker.color.r = 1.0
-            marker.color.a = 1.0
+            self.get_logger().warn(f"Current zone: RED")
             status_string.data = "RED"
         elif np.sum(amber_cells) > 0:
             self.current_zone = Airbag.AMBER
-            print(f"Current zone: AMBER")
-            marker.scale.x = AMBER_EXTENT[0] / 2
-            marker.scale.y = AMBER_EXTENT[1]
-            marker.scale.z = 0.1
-            marker.pose.position.x = AMBER_EXTENT[0] / 2
-            marker.color.r = 0.8
-            marker.color.g = 0.3
-            marker.color.a = 1.0
+            self.get_logger().warn(f"Current zone: AMBER")
             status_string.data = "AMBER"
 
         elif np.sum(yellow_cells) > 0:
             self.current_zone = Airbag.YELLOW
-            print(f"Current zone: YELLOW")
-            marker.scale.x = YELLOW_EXTENT[0] / 2
-            marker.scale.y = RED_EXTENT[1]
-            marker.scale.z = 0.1
-            marker.pose.position.x = RED_EXTENT[0] / 2
-            marker.color.r = 0.5
-            marker.color.g = 0.5
+            self.get_logger().warn(f"Current zone: YELLOW")
             status_string.data = "YELLOW"
 
         else:
             self.current_zone = Airbag.NONE
-            print(f"Current zone: NONE")
             status_string.data = "NONE"
 
         self.marker_pub.publish(marker)
