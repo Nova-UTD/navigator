@@ -41,6 +41,7 @@ import random
 import time
 from geometry_msgs.msg import PoseStamped
 from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer
+from std_msgs.msg import String
 
 
 from matplotlib.patches import Rectangle
@@ -94,10 +95,13 @@ class RecursiveTreePlanner(Node):
 
         self.path_pub = self.create_publisher(
             Path, '/planning/path', 1)
+        
+        self.airbag_sub = self.create_subscription(String, '/planning/current_airbag', self.airbagCb, 1)
 
         self.ego_pose = None  # [x, y, heading]
 
         self.speed = 0.0
+        self.airbag = 'RED'
 
         # Clock subscription
         # self.clock_sub = self.create_subscription(
@@ -106,6 +110,9 @@ class RecursiveTreePlanner(Node):
 
     def clockCb(self, msg: Clock):
         self.clock = msg
+
+    def airbagCb(self, msg: String):
+        self.airbag = msg.data
 
     def speedCb(self, msg: CarlaSpeedometer):
         self.speed = msg.speed
@@ -235,17 +242,23 @@ class RecursiveTreePlanner(Node):
         command.header.stamp = self.clock.clock
 
         DESIRED_SPEED = 7 - command.steer * 5  # m/s, ~10mph
-        TOLERANCE = 0.5  # m/s
 
-        if self.speed < DESIRED_SPEED - TOLERANCE:
+        if self.airbag == 'RED':
+            DESIRED_SPEED = 0.0
+            print("RED")
+        elif self.airbag == 'AMBER':
+            DESIRED_SPEED = 1.0
+            print("AMBER")
+
+        elif self.airbag == 'YELLOW':
+            DESIRED_SPEED = 4.0
+            print("Yellow")
+
+
+        if self.speed < DESIRED_SPEED:
             command.throttle = 0.4
             command.brake = 0.0
             print(f"Driving, steer {command.steer}")
-        elif self.speed < DESIRED_SPEED + TOLERANCE:
-            command.throttle = 0.0
-            command.brake = 0.0
-            print(f"Coasting, steer {command.steer}")
-
         else:
             command.throttle = 0.0
             command.brake = 1.0
