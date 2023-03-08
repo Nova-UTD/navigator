@@ -39,9 +39,10 @@ from rclpy.node import Node
 from dataclasses import dataclass
 import random
 import time
-from geometry_msgs.msg import PoseStamped
-from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer
+from geometry_msgs.msg import PoseStamped, Quaternion
+from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer, CarlaEgoVehicleStatus
 from std_msgs.msg import String
+from sensor_msgs.msg import Imu
 
 
 from matplotlib.patches import Rectangle
@@ -80,6 +81,11 @@ class RecursiveTreePlanner(Node):
         cost_map_sub = self.create_subscription(
             OccupancyGrid, '/grid/cost', self.costMapCb, 1)
 
+        status_sub = self.create_subscription(
+            CarlaEgoVehicleStatus, '/carla/hero/vehicle_status', self.statusCb, 1)
+        imu_sub = self.create_subscription(
+            Imu, '/carla/hero/imu', self.imuCb, 1)
+
         odom_sub = self.create_subscription(
             Odometry, '/odometry/gnss_processed', self.odomCb, 1)
 
@@ -95,13 +101,17 @@ class RecursiveTreePlanner(Node):
 
         self.path_pub = self.create_publisher(
             Path, '/planning/path', 1)
-        
-        self.airbag_sub = self.create_subscription(String, '/planning/current_airbag', self.airbagCb, 1)
+
+        self.airbag_sub = self.create_subscription(
+            String, '/planning/current_airbag', self.airbagCb, 1)
 
         self.ego_pose = None  # [x, y, heading]
 
         self.speed = 0.0
         self.airbag = 'RED'
+        self.true_quat = Quaternion()
+
+        self.quats = []
 
         # Clock subscription
         # self.clock_sub = self.create_subscription(
@@ -110,6 +120,23 @@ class RecursiveTreePlanner(Node):
 
     def clockCb(self, msg: Clock):
         self.clock = msg
+
+    def statusCb(self, msg: CarlaEgoVehicleStatus):
+        self.true_quat = msg.orientation
+        print("Got status!")
+
+    def imuCb(self, msg: Imu):
+        imu_quat = msg.orientation
+        time = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
+        self.quats.append([time, imu_quat.x, imu_quat.y, imu_quat.z, imu_quat.w,
+                           self.true_quat.x, self.true_quat.y, self.true_quat.z, self.true_quat.w])
+
+        if len(self.quats) % 100 == 0:
+            quats = np.asarray(self.quats)
+            np.save('quats.npy', quats)
+
+        if len(self.quats) % 10 == 0:
+            print(len(self.quats))
 
     def airbagCb(self, msg: String):
         self.airbag = msg.data
@@ -233,6 +260,7 @@ class RecursiveTreePlanner(Node):
 
         command = CarlaEgoVehicleControl()
         command.steer = best_path.poses[2][2] * -2.5  # First steering value
+        # command.steer = -1.0
 
         if command.steer > 1.0:
             command.steer = 1.0
@@ -242,6 +270,8 @@ class RecursiveTreePlanner(Node):
         command.header.stamp = self.clock.clock
 
         DESIRED_SPEED = 7 - command.steer * 5  # m/s, ~10mph
+
+        # command.throttle = 0.2
 
         if self.airbag == 'RED':
             DESIRED_SPEED = 0.0
@@ -253,7 +283,6 @@ class RecursiveTreePlanner(Node):
         elif self.airbag == 'YELLOW':
             DESIRED_SPEED = 4.0
             print("Yellow")
-
 
         if self.speed < DESIRED_SPEED:
             command.throttle = 0.4

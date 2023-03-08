@@ -45,6 +45,8 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
+    std::freopen("log.txt", "w", stdout);
 }
 
 /**
@@ -123,6 +125,18 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
     BoostPoint goal_pt;
     bool goal_is_set = false;
+    auto q = vehicle_tf.transform.rotation;
+    float h;
+
+    if (q.z < 0)
+        h = abs(2 * acos(q.w) - 2 * M_PI);
+    else
+        h = 2 * acos(q.w);
+
+    if (h > M_PI)
+        h -= 2 * M_PI;
+
+    std::printf("%.2f, %.2f, %.2f, %.2f, %.2f\n", h, q.w, q.x, q.y, q.z);
 
     for (float j = y_min; j <= y_max; j += res)
     {
@@ -138,7 +152,9 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             // First rotate, then translate. 2D rotation eq:
             // x' = xcos(h) - ysin(h)
             // y' = ycos(h) + xsin(h)
-            float h = 2 * asin(vehicle_tf.transform.rotation.z); // TODO: Do not assume flat ground!
+
+            // if (h < 0)
+            //     h += 2 * M_PI;
             float i_in_map = i * cos(h) - j * sin(h) + vehicle_pos.x;
             float j_in_map = j * cos(h) + i * sin(h) + vehicle_pos.y;
 
@@ -241,7 +257,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     goal_pose_pub_->publish(goal_pose);
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+    // std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
 /**
@@ -592,7 +608,7 @@ std::vector<LineString> MapManagementNode::getCenterlinesFromKeys(std::vector<od
         }
         catch (...)
         {
-            RCLCPP_ERROR(get_logger(), "BFS could not locate route parent. Returning.");
+            // RCLCPP_ERROR(get_logger(), "BFS could not locate route parent. Returning.");
         }
 
         complete_keys.insert(complete_keys.begin(), complete_segment.begin(), complete_segment.end());
