@@ -129,13 +129,18 @@ def generate_launch_description():
         executable='route_reader_node'
     )
 
+    rtp = Node(
+        package='rtp',
+        executable='rtp_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         # carla_controller,
 
         # INTERFACE
-        # carla_bridge_official,
-        # carla_spawner,
+        carla_bridge_official,
+        carla_spawner,
         leaderboard_liaison,
 
         # LOCALIZATION
@@ -160,8 +165,9 @@ def generate_launch_description():
         grid_summation,
         airbags,
         route_reader,
+        rtp,
 
         # STATE ESTIMATION
         map_manager,
-        gnss_processor,
+        # gnss_processor,
     ])

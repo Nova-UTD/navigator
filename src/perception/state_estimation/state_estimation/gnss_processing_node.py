@@ -23,6 +23,8 @@ from sensor_msgs.msg import Imu, NavSatFix
 from tf2_ros import TransformBroadcaster
 from xml.etree import ElementTree as ET
 
+from scipy.spatial.transform import Rotation as R
+
 
 def toRadians(degrees: float):
     return degrees * math.pi / 180.0
@@ -224,10 +226,13 @@ class GnssProcessingNode(Node):
         wma_pose.position.z = wma_z
 
         # IMU orientation is buggy. See imu_cb note.
-        buggy_quat = self.cached_imu.orientation
-        heading_x = buggy_quat.x * -0.48
-        heading_y = buggy_quat.y * 0.48
-        wma_yaw = math.atan2(heading_y, heading_x)
+        q = self.cached_imu.orientation
+        heading_x = q.x * -0.48
+        heading_y = q.y * 0.48
+        wma_yaw = q
+
+        rpy = R.from_quat([q.x, q.y, q.z, q.w]).as_euler('xyz')
+        wma_yaw = rpy[1] * -np.pi/2 + np.pi
 
         # q = cos(theta/2) + sin(theta/2)(xi + yj + zk)
         # Set x, y = 0 s.t. theta = yaw
