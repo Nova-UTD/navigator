@@ -252,7 +252,7 @@ class RecursiveTreePlanner(Node):
             result_msg.poses.append(pose_msg)
 
         command = CarlaEgoVehicleControl()
-        command.steer = best_path.poses[2][2] * -1.5  # First steering value
+        command.steer = best_path.poses[2][2] * -2.5  # First steering value
         # command.steer = -1.0
 
         if command.steer > 1.0:

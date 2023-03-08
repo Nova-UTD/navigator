@@ -80,7 +80,6 @@ class AirbagNode(Node):
 
     def costCb(self, msg: OccupancyGrid):
 
-
         # Convert to np array
         data = np.asarray(msg.data, dtype=np.int8).reshape(
             msg.info.height, msg.info.width)
@@ -99,34 +98,42 @@ class AirbagNode(Node):
             YELLOW_EXTENT, res, origin_cell)]
 
         marker = Marker()
-        marker.type = Marker.TEXT_VIEW_FACING
-        marker.header = msg.header
+        marker.header.frame_id = "base_link"
         marker.header.stamp = self.get_clock().now().to_msg()
-        # marker.frame_locked = True
-        marker.id = 1
-        marker.scale.z = 10.0
-        marker.color.a = 1.0
-        marker.ns = 'text'
+        marker.ns = "ns"
+        marker.id = 0
+        marker.type = Marker.SPHERE
+        marker.action = Marker.ADD
+        marker.scale.x = 10.0
+        marker.scale.y = 10.0
+        marker.scale.z = 0.1
+        marker.color.a = 0.5
 
         status_string = String()
 
         if np.sum(red_cells) > 0:
             self.current_zone = Airbag.RED
             self.get_logger().warn(f"Current zone: RED")
+            marker.color.r = 1.0
             status_string.data = "RED"
         elif np.sum(amber_cells) > 0:
             self.current_zone = Airbag.AMBER
             self.get_logger().warn(f"Current zone: AMBER")
             status_string.data = "AMBER"
+            marker.color.r = 0.8
+            marker.color.g = 0.5
 
         elif np.sum(yellow_cells) > 0:
             self.current_zone = Airbag.YELLOW
             self.get_logger().warn(f"Current zone: YELLOW")
             status_string.data = "YELLOW"
+            marker.color.r = 0.5
+            marker.color.g = 0.5
 
         else:
             self.current_zone = Airbag.NONE
             status_string.data = "NONE"
+            marker.color.g = 1.0
 
         self.marker_pub.publish(marker)
         self.current_airbag_pub.publish(status_string)
