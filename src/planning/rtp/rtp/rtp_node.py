@@ -47,14 +47,14 @@ from sensor_msgs.msg import Imu
 
 from matplotlib.patches import Rectangle
 
-N_BRANCHES: int = 9
-STEP_LEN: float = 3.0  # meters
-DEPTH: int = 2
+N_BRANCHES: int = 17
+STEP_LEN: float = 12.0  # meters
+DEPTH: int = 3
 
 # These are vdehicle constants for the GEM e6.
 # The sim vehicle (Tesla Model 3) has similar constants.
 WHEEL_BASE: float = 3.5  # meters
-MAX_TURN_ANGLE = 0.42  # radians
+MAX_TURN_ANGLE = 0.21  # radians
 COST_CUTOFF = 90
 
 
@@ -130,13 +130,6 @@ class RecursiveTreePlanner(Node):
         time = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
         self.quats.append([time, imu_quat.x, imu_quat.y, imu_quat.z, imu_quat.w,
                            self.true_quat.x, self.true_quat.y, self.true_quat.z, self.true_quat.w])
-
-        if len(self.quats) % 100 == 0:
-            quats = np.asarray(self.quats)
-            np.save('quats.npy', quats)
-
-        if len(self.quats) % 10 == 0:
-            print(len(self.quats))
 
     def airbagCb(self, msg: String):
         self.airbag = msg.data
@@ -231,7 +224,7 @@ class RecursiveTreePlanner(Node):
         costmap = np.asarray(msg.data, dtype=np.int8).reshape(
             msg.info.height, msg.info.width)
         results = self.startGeneration(
-            costmap, depth=4, segment_length=12, branches=9)
+            costmap, depth=DEPTH, segment_length=STEP_LEN, branches=N_BRANCHES)
 
         min_cost = 100000
         best_path: CostedPath = None
@@ -259,7 +252,7 @@ class RecursiveTreePlanner(Node):
             result_msg.poses.append(pose_msg)
 
         command = CarlaEgoVehicleControl()
-        command.steer = best_path.poses[2][2] * -2.5  # First steering value
+        command.steer = best_path.poses[2][2] * -1.5  # First steering value
         # command.steer = -1.0
 
         if command.steer > 1.0:
