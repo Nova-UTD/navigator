@@ -45,8 +45,6 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
-
-    std::freopen("log.txt", "w", stdout);
 }
 
 /**
@@ -136,8 +134,6 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     if (h > M_PI)
         h -= 2 * M_PI;
 
-    std::printf("%.2f, %.2f, %.2f, %.2f, %.2f\n", h, q.w, q.x, q.y, q.z);
-
     for (float j = y_min; j <= y_max; j += res)
     {
         for (float i = x_min; i <= x_max; i += res)
@@ -193,7 +189,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             // Get closest route point
             if (local_route_linestring_.size() > 0 && cell_is_drivable && i > 0)
             {
-                int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 2);
+                int dist = static_cast<int>(bg::distance(local_route_linestring_, p) 8);
 
                 if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
                 {

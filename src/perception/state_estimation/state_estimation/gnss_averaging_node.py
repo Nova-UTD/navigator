@@ -95,7 +95,15 @@ class GnssAveragingNode(Node):
         self.diag_state = 'OK'
 
     def smoothed_gnss_cb(self, msg: Odometry):
-        self.yaw = 2*math.asin(msg.pose.pose.orientation.z)
+        q = msg.pose.pose.orientation
+
+        if q.z < 0:
+            self.yaw = abs(2*np.arccos(q.w) - 2 * np.pi)
+        else:
+            self.yaw = 2 * np.arccos(q.w)
+
+        if self.yaw > np.pi:
+            self.yaw -= 2 * np.pi
 
     def true_pose_cb(self, msg: PoseStamped):
         if self.current_pose is None:
@@ -246,7 +254,7 @@ class GnssAveragingNode(Node):
         transl.z = 0.0  # TODO: Stop assuming flat surface
         t.transform.translation = transl
         t.transform.rotation = result_msg.pose.pose.orientation
-        # self.tf_broadcaster.sendTransform(t)
+        self.tf_broadcaster.sendTransform(t)
 
     def clock_cb(self, msg: Clock):
         if self.last_update_time is None:
