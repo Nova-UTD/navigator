@@ -29,10 +29,13 @@ class Airbag:
     NONE = 4
 
 
-# Extents in meters
-RED_EXTENT = (1.0, 1.25)  # 1 meter in front, 1.25 on either side
-AMBER_EXTENT = (3.0, 1.25)
-YELLOW_EXTENT = (5.0, 1.75)
+# Extents in CELLS
+RED_EXTENT = (6, 3)
+AMBER_EXTENT = (10, 4)
+YELLOW_EXTENT = (20, 4)
+
+FRONT_BUMPER_ORIGIN = (64, 74)
+RES = 0.33  # meters/cell
 
 
 class AirbagNode(Node):
@@ -89,20 +92,21 @@ class AirbagNode(Node):
         origin_cell = np.asarray([msg.info.origin.position.x,
                                   msg.info.origin.position.y]) * -1 / msg.info.resolution
         origin_cell = np.rint(origin_cell).astype(np.int8)  # Round to int
-        plt.imshow(data, origin='lower')
-        red_cells = data[self.getSliceFromExtent(RED_EXTENT, res, origin_cell)]
+        # plt.imshow(data, origin='lower')
+        red_cells = data[FRONT_BUMPER_ORIGIN[0] - RED_EXTENT[1]:FRONT_BUMPER_ORIGIN[0] +
+                         RED_EXTENT[1], FRONT_BUMPER_ORIGIN[1]:FRONT_BUMPER_ORIGIN[1]+RED_EXTENT[0]]
 
-        amber_cells = data[self.getSliceFromExtent(
-            AMBER_EXTENT, res, origin_cell)]
-        yellow_cells = data[self.getSliceFromExtent(
-            YELLOW_EXTENT, res, origin_cell)]
+        amber_cells = data[FRONT_BUMPER_ORIGIN[0] - AMBER_EXTENT[1]:FRONT_BUMPER_ORIGIN[0] +
+                           AMBER_EXTENT[1], FRONT_BUMPER_ORIGIN[1]:FRONT_BUMPER_ORIGIN[1]+AMBER_EXTENT[0]]
+        yellow_cells = data[FRONT_BUMPER_ORIGIN[0] - YELLOW_EXTENT[1]:FRONT_BUMPER_ORIGIN[0] +
+                            YELLOW_EXTENT[1], FRONT_BUMPER_ORIGIN[1]:FRONT_BUMPER_ORIGIN[1]+YELLOW_EXTENT[0]]
 
         marker = Marker()
         marker.header.frame_id = "base_link"
         marker.header.stamp = self.get_clock().now().to_msg()
         marker.ns = "ns"
         marker.id = 0
-        marker.type = Marker.SPHERE
+        marker.type = Marker.CUBE
         marker.action = Marker.ADD
         marker.scale.x = 10.0
         marker.scale.y = 10.0
@@ -116,12 +120,19 @@ class AirbagNode(Node):
             self.get_logger().warn(f"Current zone: RED")
             marker.color.r = 1.0
             status_string.data = "RED"
+            marker.scale.x = RED_EXTENT[0]*RES
+            marker.scale.y = RED_EXTENT[1]*RES*2
+            marker.pose.position.x = RED_EXTENT[0] * RES + 1.0
         elif np.sum(amber_cells) > 0:
             self.current_zone = Airbag.AMBER
             self.get_logger().warn(f"Current zone: AMBER")
             status_string.data = "AMBER"
             marker.color.r = 0.8
             marker.color.g = 0.5
+            marker.scale.x = AMBER_EXTENT[0]/2*RES
+            marker.scale.y = AMBER_EXTENT[1]*RES*2
+            marker.pose.position.x = AMBER_EXTENT[0] / \
+                2*RES + 1.0
 
         elif np.sum(yellow_cells) > 0:
             self.current_zone = Airbag.YELLOW
@@ -129,6 +140,10 @@ class AirbagNode(Node):
             status_string.data = "YELLOW"
             marker.color.r = 0.5
             marker.color.g = 0.5
+            marker.scale.x = YELLOW_EXTENT[0]/2*RES
+            marker.scale.y = YELLOW_EXTENT[1]*RES*2
+            marker.pose.position.x = YELLOW_EXTENT[0] / \
+                2*RES + 1.0
 
         else:
             self.current_zone = Airbag.NONE

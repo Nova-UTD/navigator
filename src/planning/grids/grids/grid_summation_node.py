@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 STALENESS_TOLERANCE = 0.2  # seconds. Grids older than this will be ignored.
 
 CURRENT_OCCUPANCY_SCALE = 1.0
+FUTURE_OCCUPANCY_SCALE = 3.0
 DRIVABLE_GRID_SCALE = 1.0
 ROUTE_DISTANCE_GRID_SCALE = 1.0
 
@@ -46,6 +47,7 @@ class GridSummationNode(Node):
         super().__init__('grid_summation_node')
 
         self.current_occupancy_grid = OccupancyGrid()
+        self.future_occupancy_grid = OccupancyGrid()
         self.drivable_grid = OccupancyGrid()
         self.route_dist_grid = OccupancyGrid()
         self.status = DiagnosticStatus()
@@ -53,6 +55,9 @@ class GridSummationNode(Node):
         # Subscriptions and publishers
         self.current_occupancy_sub = self.create_subscription(
             OccupancyGrid, '/grid/occupancy/current', self.currentOccupancyCb, 1)
+
+        self.future_occupancy_sub = self.create_subscription(
+            OccupancyGrid, '/grid/predictions_combined', self.futureOccupancyCb, 1)
 
         self.drivable_grid_sub = self.create_subscription(
             OccupancyGrid, '/grid/drivable', self.drivableGridCb, 1)
@@ -81,6 +86,9 @@ class GridSummationNode(Node):
 
     def currentOccupancyCb(self, msg: OccupancyGrid):
         self.current_occupancy_grid = msg
+
+    def futureOccupancyCb(self, msg: OccupancyGrid):
+        self.future_occupancy_grid = msg
 
     def drivableGridCb(self, msg: OccupancyGrid):
         self.drivable_grid = msg
@@ -122,7 +130,6 @@ class GridSummationNode(Node):
         # This is a temporary measure until our current occ. grid's params
         # match the rest of our stack. Basically, due to the difference in cell size,
         # 1 out of 6 cells in the array needs to be deleted.
-        plt.subplot(1, 2, 1)
 
         downsampled = np.delete(original, np.arange(0, 128, 6), axis=0)
         downsampled = np.delete(downsampled, np.arange(
@@ -131,14 +138,9 @@ class GridSummationNode(Node):
         # trim the bottom columns (behind the car)
         downsampled = downsampled[:, 3:]
 
-        downsampled = np.delete(downsampled, np.arange(
-            0, downsampled.shape[0], 4), axis=0)
-        downsampled = np.delete(downsampled, np.arange(
-            0, downsampled.shape[1], 4), axis=1)  # 106x106 result
-
         background = np.zeros((151, 151))
 
-        background = downsampled[:151, :151]
+        background[22:128, 0:103] = downsampled
         return background  # Correct scale
 
     def createCostMap(self):
@@ -161,9 +163,27 @@ class GridSummationNode(Node):
                 msg, CURRENT_OCCUPANCY_SCALE)
             weighted_current_occ_arr = self.resizeOccupancyGrid(
                 weighted_current_occ_arr)
-            # result += weighted_current_occ_arr
+            result += weighted_current_occ_arr
 
-        # 2. Drivable area
+        # 2. Future occupancy
+        stale = self.checkForStaleness(self.future_occupancy_grid, status)
+        empty = len(self.future_occupancy_grid.data) == 0
+
+        if not stale and not empty:
+            msg = self.future_occupancy_grid
+            weighted_future_occ_arr = self.getWeightedArray(
+                msg, FUTURE_OCCUPANCY_SCALE)
+            weighted_future_occ_arr = self.resizeOccupancyGrid(
+                weighted_future_occ_arr)
+            result += weighted_future_occ_arr
+            self.get_logger().info("Added future occupancy!")
+
+        elif stale:
+            self.get_logger().info("Stale future occupancy!")
+        else:
+            self.get_logger().info("Empty future occupancy!")
+
+        # 3. Drivable area
         stale = self.checkForStaleness(self.drivable_grid, status)
         empty = len(self.drivable_grid.data) == 0
 
@@ -173,7 +193,7 @@ class GridSummationNode(Node):
                 msg, DRIVABLE_GRID_SCALE)
             result += weighted_drivable_arr
 
-        # 3. Route distance
+        # 4. Route distance
         stale = self.checkForStaleness(self.route_dist_grid, status)
         empty = len(self.route_dist_grid.data) == 0
 
@@ -185,6 +205,8 @@ class GridSummationNode(Node):
 
         # Cap this to 100
         result = np.clip(result, 0, 100)
+
+        # plt.show()
 
         # Publish as an OccupancyGrid
         result_msg = OccupancyGrid()
