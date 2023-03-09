@@ -68,8 +68,8 @@ class LeaderboardLiaisonNode(Node):
         self.world = self.client.get_world()
         blueprint_library = self.world.get_blueprint_library()
 
-        WALKER_COUNT = 30
-        CAR_COUNT = 30
+        WALKER_COUNT = 0
+        CAR_COUNT = 60
 
         # Wait for ego to spawn
         time.sleep(5.0)

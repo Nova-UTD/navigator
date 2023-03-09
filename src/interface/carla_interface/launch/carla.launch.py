@@ -134,6 +134,11 @@ def generate_launch_description():
         executable='rtp_node'
     )
 
+    prednet_inference = Node(
+        package='prednet_inference',
+        executable='prednet_inference_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         # carla_controller,
@@ -155,11 +160,12 @@ def generate_launch_description():
         # rqt,
 
         # PERCEPTION
-        image_segmentation,
-        semantic_projection,
+        # image_segmentation,
+        # semantic_projection,
         lidar_processor,
         ground_seg,
         static_grid,
+        # prednet_inference,
 
         # PLANNING
         grid_summation,
