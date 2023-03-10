@@ -98,7 +98,7 @@ namespace navigator
             std::vector<LineString> getCenterlinesFromKeys(std::vector<odr::LaneKey> keys, odr::RoutingGraph graph);
 
             rclcpp::Publisher<OccupancyGrid>::SharedPtr drivable_grid_pub_;
-            rclcpp::Publisher<OccupancyGrid>::SharedPtr flat_surface_grid_pub_;
+            rclcpp::Publisher<OccupancyGrid>::SharedPtr junction_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr route_dist_grid_pub_;
             rclcpp::Publisher<Path>::SharedPtr route_path_pub_;
             rclcpp::Publisher<PolygonStamped>::SharedPtr traffic_light_points_pub_;

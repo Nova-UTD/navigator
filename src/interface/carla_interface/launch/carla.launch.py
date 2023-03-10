@@ -165,7 +165,7 @@ def generate_launch_description():
         lidar_processor,
         ground_seg,
         static_grid,
-        # prednet_inference,
+        prednet_inference,
 
         # PLANNING
         grid_summation,

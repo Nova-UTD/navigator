@@ -480,6 +480,26 @@ Visualization Manager:
           Color Scheme: map
           Draw Behind: false
           Enabled: false
+          Name: Predicted Occupancy
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /grid/predictions_combined
+          Update Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /grid/predictions_combined_updates
+          Use Timestamp: false
+          Value: false
+        - Alpha: 0.699999988079071
+          Class: rviz_default_plugins/Map
+          Color Scheme: map
+          Draw Behind: false
+          Enabled: false
           Name: Route Distance
           Topic:
             Depth: 5
@@ -497,30 +517,10 @@ Visualization Manager:
           Value: false
         - Alpha: 0.699999988079071
           Class: rviz_default_plugins/Map
-          Color Scheme: costmap
-          Draw Behind: true
-          Enabled: false
-          Name: Flat Surfaces
-          Topic:
-            Depth: 5
-            Durability Policy: Volatile
-            History Policy: Keep Last
-            Reliability Policy: Reliable
-            Value: /grid/flat_surface
-          Update Topic:
-            Depth: 5
-            Durability Policy: Volatile
-            History Policy: Keep Last
-            Reliability Policy: Reliable
-            Value: /grid/flat_surface_updates
-          Use Timestamp: true
-          Value: false
-        - Alpha: 0.699999988079071
-          Class: rviz_default_plugins/Map
           Color Scheme: map
           Draw Behind: false
-          Enabled: true
-          Name: Cost
+          Enabled: false
+          Name: Steering Cost
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -533,6 +533,26 @@ Visualization Manager:
             History Policy: Keep Last
             Reliability Policy: Reliable
             Value: /grid/cost_updates
+          Use Timestamp: false
+          Value: false
+        - Alpha: 0.699999988079071
+          Class: rviz_default_plugins/Map
+          Color Scheme: map
+          Draw Behind: false
+          Enabled: true
+          Name: Speed Cost
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /grid/speed_cost
+          Update Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /grid/speed_cost_updates
           Use Timestamp: false
           Value: true
       Enabled: true
@@ -587,7 +607,6 @@ Visualization Manager:
         LiDAR:
           "": true
           Value: true
-        Map: true
         Marker: true
         Particles: true
         Path: true
@@ -657,26 +676,6 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /planning/path
       Value: true
-    - Alpha: 0.699999988079071
-      Class: rviz_default_plugins/Map
-      Color Scheme: map
-      Draw Behind: false
-      Enabled: false
-      Name: Map
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /grid/predictions_combined
-      Update Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /grid/predictions_combined_updates
-      Use Timestamp: false
-      Value: false
   Enabled: true
   Global Options:
     Background Color: 222; 255; 251
