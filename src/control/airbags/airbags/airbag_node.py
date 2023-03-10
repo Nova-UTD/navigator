@@ -7,7 +7,7 @@ Code to establish safety zones around the car where the speed is limited.
 '''
 
 from matplotlib import pyplot as plt
-from carla_msgs.msg import CarlaEgoVehicleControl
+from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
 import numpy as np
@@ -15,6 +15,7 @@ import ros2_numpy as rnp
 from rosgraph_msgs.msg import Clock
 import rclpy
 from rclpy.node import Node
+from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import ColorRGBA, String
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
@@ -22,36 +23,25 @@ from geometry_msgs.msg import Point
 from matplotlib.patches import Rectangle
 
 
-class Airbag:
-    RED = 1
-    AMBER = 2
-    YELLOW = 3
-    NONE = 4
-
-
-# Extents in CELLS
-RED_EXTENT = (6, 3)
-AMBER_EXTENT = (10, 4)
-YELLOW_EXTENT = (20, 4)
-
-FRONT_BUMPER_ORIGIN = (64, 74)
-RES = 0.33  # meters/cell
-
-
 class AirbagNode(Node):
     def __init__(self):
         super().__init__('airbag_node')
 
-        self.lidar_received_time = 0.0
-        self.status = DiagnosticStatus()
-        self.current_zone = Airbag.RED
+        self.speed_limit = 0.  # m/s
+        self.current_speed = 0.  # m/s
 
-        # Cost map subscription
-        self.cost_sub = self.create_subscription(
-            OccupancyGrid,
-            '/grid/speed_cost', self.costCb,
-            10
-        )
+        self.lidar_sub = self.create_subscription(
+            PointCloud2, '/lidar/filtered', self.lidarCb, 1)
+
+        self.command_sub = self.create_subscription(
+            CarlaEgoVehicleControl, '/control/unlimited', self.commandCb, 1)
+
+        self.speed_sub = self.create_subscription(
+            CarlaSpeedometer, '/carla/hero/speedometer', self.speedCb, 1)
+
+        # Publishes corrected, limited commands
+        self.command_pub = self.create_publisher(
+            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 1)
 
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/status/airbags', 1)
@@ -67,103 +57,59 @@ class AirbagNode(Node):
             Clock, '/clock', self.clockCb, 10)
         self._cached_clock_ = Clock()
 
-    def getSliceFromExtent(self, extent, res: float, origin_idx):
-        extent_indices = np.ceil(
-            np.asarray(extent) / res)
-        extent_to = np.copy(origin_idx)
-        extent_to[0] += extent_indices[0]
-        extent_to[1] += extent_indices[1]
+    def speedCb(self, msg: CarlaSpeedometer):
+        self.current_speed = msg.speed
 
-        extent_from = np.copy(origin_idx)
-        extent_from[1] -= extent_indices[1]
+    def distanceToSpeedLimit(self, dist: float):
+        """Map distance to max speed. This should be very conservative,
+        limiting speed as little as possible. This means that while safety
+        is considered, comfort (jerky motion) is not. The motion planner
+        would ideally never hit this speed limit outside of an emergency.
 
-        slice = np.s_[extent_from[1]:extent_to[1], extent_from[0]:extent_to[0]]
+        Args:
+            dist (float): Distance from closest point in front of the car (m)
 
-        return slice
+        Returns:
+            float: speed limit (m/s)
+        """
 
-    def costCb(self, msg: OccupancyGrid):
+        # x = 2y+2 produces:
+        # 0 m/s at <1 meter
+        # 10 m/s (~23mph) at 21 meters
 
-        # Convert to np array
-        data = np.asarray(msg.data, dtype=np.int8).reshape(
-            msg.info.height, msg.info.width)
-        res = msg.info.resolution
+        ZERO_POINT = 2  # meters. Distances at or below will cause car to stop
 
-        # Check if a point falls within each zone
-        origin_cell = np.asarray([msg.info.origin.position.x,
-                                  msg.info.origin.position.y]) * -1 / msg.info.resolution
-        origin_cell = np.rint(origin_cell).astype(np.int8)  # Round to int
-        # plt.imshow(data, origin='lower')
-        red_cells = data[FRONT_BUMPER_ORIGIN[0] - RED_EXTENT[1]:FRONT_BUMPER_ORIGIN[0] +
-                         RED_EXTENT[1], FRONT_BUMPER_ORIGIN[1]:FRONT_BUMPER_ORIGIN[1]+RED_EXTENT[0]]
+        return max((dist-2)/2, 0)
 
-        amber_cells = data[FRONT_BUMPER_ORIGIN[0] - AMBER_EXTENT[1]:FRONT_BUMPER_ORIGIN[0] +
-                           AMBER_EXTENT[1], FRONT_BUMPER_ORIGIN[1]:FRONT_BUMPER_ORIGIN[1]+AMBER_EXTENT[0]]
-        yellow_cells = data[FRONT_BUMPER_ORIGIN[0] - YELLOW_EXTENT[1]:FRONT_BUMPER_ORIGIN[0] +
-                            YELLOW_EXTENT[1], FRONT_BUMPER_ORIGIN[1]:FRONT_BUMPER_ORIGIN[1]+YELLOW_EXTENT[0]]
+    def lidarCb(self, msg: PointCloud2):
+        data = rnp.numpify(msg)
 
-        marker = Marker()
-        marker.header.frame_id = "base_link"
-        marker.header.stamp = self.get_clock().now().to_msg()
-        marker.ns = "ns"
-        marker.id = 0
-        marker.type = Marker.CUBE
-        marker.action = Marker.ADD
-        marker.scale.x = 10.0
-        marker.scale.y = 10.0
-        marker.scale.z = 0.1
-        marker.color.a = 0.5
+        # We only consider points in front of the car, not too far
+        # off to the side. Assume our car is ~2 meters wide.
+        # Filter out all other points.
+        data = data[data['y'] > -1.1]
+        data = data[data['y'] < 1.1]
+        data = data[data['x'] >= 0.0]
 
-        status_string = String()
-
-        if np.sum(red_cells) > 0:
-            self.current_zone = Airbag.RED
-            self.get_logger().warn(f"Current zone: RED")
-            marker.color.r = 1.0
-            status_string.data = "RED"
-            marker.scale.x = RED_EXTENT[0]*RES
-            marker.scale.y = RED_EXTENT[1]*RES*2
-            marker.pose.position.x = RED_EXTENT[0] * RES + 1.0
-        elif np.sum(amber_cells) > 0:
-            self.current_zone = Airbag.AMBER
-            self.get_logger().warn(f"Current zone: AMBER")
-            status_string.data = "AMBER"
-            marker.color.r = 0.8
-            marker.color.g = 0.5
-            marker.scale.x = AMBER_EXTENT[0]/2*RES
-            marker.scale.y = AMBER_EXTENT[1]*RES*2
-            marker.pose.position.x = AMBER_EXTENT[0] / \
-                2*RES + 1.0
-
-        elif np.sum(yellow_cells) > 0:
-            self.current_zone = Airbag.YELLOW
-            self.get_logger().warn(f"Current zone: YELLOW")
-            status_string.data = "YELLOW"
-            marker.color.r = 0.5
-            marker.color.g = 0.5
-            marker.scale.x = YELLOW_EXTENT[0]/2*RES
-            marker.scale.y = YELLOW_EXTENT[1]*RES*2
-            marker.pose.position.x = YELLOW_EXTENT[0] / \
-                2*RES + 1.0
-
+        # Of the remaining points, find the minimum x value.
+        if len(data) == 0:
+            closest_x = 999.9
         else:
-            self.current_zone = Airbag.NONE
-            status_string.data = "NONE"
-            marker.color.g = 1.0
+            closest_x = np.min(data['x'])
 
-        self.marker_pub.publish(marker)
-        self.current_airbag_pub.publish(status_string)
-
-        # print(origin_cell)
-        # plt.plot(origin_cell[0], origin_cell[1])
-        # print(self.getSliceFromExtent(
-        #     YELLOW_EXTENT, res, origin_cell))
-        # print(yellow_cells)
-
-        # plt.show()
+        self.speed_limit = self.distanceToSpeedLimit(closest_x)
 
     def commandCb(self, msg: CarlaEgoVehicleControl):
-        # Check if a point
-        return
+
+        if self.current_speed > self.speed_limit:
+            speed_over_limit = self.current_speed - self.speed_limit
+            self.get_logger().warning(
+                f"Speed is {speed_over_limit} m/s over limit!")
+            BRAKING_FORCE = 0.5
+            msg.throttle = 0.0
+            msg.brake = speed_over_limit * BRAKING_FORCE
+
+        self.command_pub.publish(msg)
 
     def clockCb(self, msg: Clock):
         self._cached_clock_ = msg
