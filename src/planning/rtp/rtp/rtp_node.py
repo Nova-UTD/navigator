@@ -94,7 +94,7 @@ class RecursiveTreePlanner(Node):
         self.clock = Clock()
 
         self.command_pub = self.create_publisher(
-            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 1)
+            CarlaEgoVehicleControl, '/control/unlimited', 1)
 
         self.speed_sub = self.create_subscription(
             CarlaSpeedometer, '/carla/hero/speedometer', self.speedCb, 1)
@@ -102,13 +102,9 @@ class RecursiveTreePlanner(Node):
         self.path_pub = self.create_publisher(
             Path, '/planning/path', 1)
 
-        self.airbag_sub = self.create_subscription(
-            String, '/planning/current_airbag', self.airbagCb, 1)
-
         self.ego_pose = None  # [x, y, heading]
 
         self.speed = 0.0
-        self.airbag = 'RED'
         self.true_quat = Quaternion()
 
         self.quats = []
@@ -130,9 +126,6 @@ class RecursiveTreePlanner(Node):
         time = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
         self.quats.append([time, imu_quat.x, imu_quat.y, imu_quat.z, imu_quat.w,
                            self.true_quat.x, self.true_quat.y, self.true_quat.z, self.true_quat.w])
-
-    def airbagCb(self, msg: String):
-        self.airbag = msg.data
 
     def speedCb(self, msg: CarlaSpeedometer):
         self.speed = msg.speed
@@ -221,6 +214,11 @@ class RecursiveTreePlanner(Node):
 
     def costMapCb(self, msg: OccupancyGrid):
         start = time.time()
+
+        if msg.info.height == 0 or msg.info.width == 0:
+            self.get_logger().warning("Incoming cost map dimensions were zero.")
+            return
+
         costmap = np.asarray(msg.data, dtype=np.int8).reshape(
             msg.info.height, msg.info.width)
         results = self.startGeneration(
@@ -265,17 +263,6 @@ class RecursiveTreePlanner(Node):
         DESIRED_SPEED = 7 - command.steer * 5  # m/s, ~10mph
 
         # command.throttle = 0.2
-
-        if self.airbag == 'RED':
-            DESIRED_SPEED = 0.0
-            print("RED")
-        elif self.airbag == 'AMBER':
-            DESIRED_SPEED = 1.0
-            print("AMBER")
-
-        elif self.airbag == 'YELLOW':
-            DESIRED_SPEED = 4.0
-            print("Yellow")
 
         if self.speed < DESIRED_SPEED:
             command.throttle = 0.4

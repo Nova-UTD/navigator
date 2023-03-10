@@ -602,7 +602,12 @@ Visualization Manager:
           Value: true
         Grid: true
         Grids:
-          "": true
+          Current Occupancy: true
+          Drivable Area: true
+          Predicted Occupancy: true
+          Route Distance: true
+          Speed Cost: true
+          Steering Cost: true
           Value: true
         LiDAR:
           "": true
@@ -641,7 +646,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker
       Namespaces:
-        ns: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
