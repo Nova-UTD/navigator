@@ -49,7 +49,7 @@ class AirbagNode(Node):
         # Cost map subscription
         self.cost_sub = self.create_subscription(
             OccupancyGrid,
-            '/grid/occupancy/current', self.costCb,
+            '/grid/speed_cost', self.costCb,
             10
         )
 

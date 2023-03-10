@@ -32,6 +32,7 @@ CURRENT_OCCUPANCY_SCALE = 1.0
 FUTURE_OCCUPANCY_SCALE = 3.0
 DRIVABLE_GRID_SCALE = 1.0
 ROUTE_DISTANCE_GRID_SCALE = 1.0
+JUNCTION_GRID_SCALE = 1.0
 
 
 class GridSummationNode(Node):
@@ -49,6 +50,7 @@ class GridSummationNode(Node):
         self.current_occupancy_grid = OccupancyGrid()
         self.future_occupancy_grid = OccupancyGrid()
         self.drivable_grid = OccupancyGrid()
+        self.junction_grid = OccupancyGrid()
         self.route_dist_grid = OccupancyGrid()
         self.status = DiagnosticStatus()
 
@@ -62,11 +64,17 @@ class GridSummationNode(Node):
         self.drivable_grid_sub = self.create_subscription(
             OccupancyGrid, '/grid/drivable', self.drivableGridCb, 1)
 
+        self.junction_grid_sub = self.create_subscription(
+            OccupancyGrid, '/grid/junction', self.junctionGridCb, 1)
+
         self.route_dist_grid_sub = self.create_subscription(
             OccupancyGrid, '/grid/route_distance', self.routeDistGridCb, 1)
 
-        self.combined_map_pub = self.create_publisher(
+        self.steering_cost_pub = self.create_publisher(
             OccupancyGrid, '/grid/cost', 1)
+
+        self.speed_cost_pub = self.create_publisher(
+            OccupancyGrid, '/grid/speed_cost', 1)
 
         self.combined_egma_pub = self.create_publisher(
             Egma, '/egma/cost', 1)
@@ -92,6 +100,9 @@ class GridSummationNode(Node):
 
     def drivableGridCb(self, msg: OccupancyGrid):
         self.drivable_grid = msg
+
+    def junctionGridCb(self, msg: OccupancyGrid):
+        self.junction_grid = msg
 
     def routeDistGridCb(self, msg: OccupancyGrid):
         self.route_dist_grid = msg
@@ -148,8 +159,8 @@ class GridSummationNode(Node):
         status.level = DiagnosticStatus.OK
         status.name = 'grid_summation'
 
-        result = np.zeros((self.drivable_grid.info.height,
-                           self.drivable_grid.info.width))
+        steering_cost = np.zeros((151, 151))
+        speed_cost = np.zeros((151, 151))
 
         # Calculate the weighted cost map layers
 
@@ -163,7 +174,8 @@ class GridSummationNode(Node):
                 msg, CURRENT_OCCUPANCY_SCALE)
             weighted_current_occ_arr = self.resizeOccupancyGrid(
                 weighted_current_occ_arr)
-            result += weighted_current_occ_arr
+            steering_cost += weighted_current_occ_arr
+            speed_cost += weighted_current_occ_arr
 
         # 2. Future occupancy
         stale = self.checkForStaleness(self.future_occupancy_grid, status)
@@ -175,13 +187,8 @@ class GridSummationNode(Node):
                 msg, FUTURE_OCCUPANCY_SCALE)
             weighted_future_occ_arr = self.resizeOccupancyGrid(
                 weighted_future_occ_arr)
-            result += weighted_future_occ_arr
-            self.get_logger().info("Added future occupancy!")
-
-        elif stale:
-            self.get_logger().info("Stale future occupancy!")
-        else:
-            self.get_logger().info("Empty future occupancy!")
+            steering_cost += weighted_future_occ_arr
+            speed_cost += weighted_future_occ_arr
 
         # 3. Drivable area
         stale = self.checkForStaleness(self.drivable_grid, status)
@@ -191,7 +198,8 @@ class GridSummationNode(Node):
             msg = self.drivable_grid
             weighted_drivable_arr = self.getWeightedArray(
                 msg, DRIVABLE_GRID_SCALE)
-            result += weighted_drivable_arr
+            steering_cost += weighted_drivable_arr
+            speed_cost += weighted_drivable_arr
 
         # 4. Route distance
         stale = self.checkForStaleness(self.route_dist_grid, status)
@@ -201,21 +209,35 @@ class GridSummationNode(Node):
             msg = self.route_dist_grid
             weighted_route_dist_arr = self.getWeightedArray(
                 msg, ROUTE_DISTANCE_GRID_SCALE)
-            result += weighted_route_dist_arr
+            steering_cost += weighted_route_dist_arr
+
+        # 4. Junctions
+        stale = self.checkForStaleness(self.junction_grid, status)
+        empty = len(self.junction_grid.data) == 0
+
+        if not stale and not empty:
+            msg = self.junction_grid
+            weighted_junction_arr = self.getWeightedArray(
+                msg, JUNCTION_GRID_SCALE)
+            speed_cost += weighted_junction_arr
 
         # Cap this to 100
-        result = np.clip(result, 0, 100)
+        steering_cost = np.clip(steering_cost, 0, 100)
+        speed_cost = np.clip(speed_cost, 0, 100)
 
         # plt.show()
 
         # Publish as an OccupancyGrid
         result_msg = OccupancyGrid()
 
-        result_msg.data = result.astype(np.int8).flatten().tolist()
+        result_msg.data = steering_cost.astype(np.int8).flatten().tolist()
         result_msg.info = self.drivable_grid.info
         result_msg.header = self.drivable_grid.header
 
-        self.combined_map_pub.publish(result_msg)
+        self.steering_cost_pub.publish(result_msg)
+
+        result_msg.data = speed_cost.astype(np.int8).flatten().tolist()
+        self.speed_cost_pub.publish(result_msg)
 
         egma_msg = Egma()
         egma_msg.header = result_msg.header
