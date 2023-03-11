@@ -121,7 +121,7 @@ class PredNetNode(Node):
     
     # Adds masses to history
     def masses_callback(self, mass):
-        
+        self.get_logger().info(self.clock)
         # Sets the grid size to the given grid size
         self.sizeX = mass.width
         self.sizeY = mass.height
