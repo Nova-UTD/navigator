@@ -123,13 +123,13 @@ class GnssAveragingNode(Node):
             status.message = f"Localization last updated {dt} seconds ago."
 
         last_refresh_gap = current_time - self.last_refresh_time
-        if last_refresh_gap > 15.0:
+        if last_refresh_gap > 15.0 and not self.is_stationary:
             # It's been 15 seconds since our car was last stationary
             # and our pose was reset from averaged GNSS data
             status.level = DiagnosticStatus.WARN
             status.message = f"Localization last refreshed {last_refresh_gap} seconds ago. Result likely inaccurate."
 
-        elif last_refresh_gap > 30.0:
+        elif last_refresh_gap > 30.0 and not self.is_stationary:
             # It's been 30 seconds since our car was last stationary
             # and our pose was reset from averaged GNSS data. We need to stop to refresh.
             status.level = DiagnosticStatus.ERROR
@@ -176,6 +176,9 @@ class GnssAveragingNode(Node):
             if len(self.cached_gnss_poses) > 10:
                 cached_poses = np.array(self.cached_gnss_poses)
                 self.current_pose = np.mean(cached_poses, axis=0)
+
+            # if len(self.cached_gnss_poses) > 50:
+            #     self.cached_gnss_poses = self.cached_gnss_poses[:-50]
 
         elif self.is_stationary:
             # We're over the stationary speed, so update our state

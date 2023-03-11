@@ -48,12 +48,17 @@ def generate_launch_description():
         arguments=[path.join("/navigator/data", "carla.urdf")]
     )
 
+    airbags = Node(
+        package='airbags',
+        executable='airbag_node'
+    )
+
     carla_bridge_official = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([get_package_share_directory(
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
         launch_arguments={
             'host': 'localhost',
-            'port': "2016",
+            'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
             'synchronous_mode': 'True',
             'town': 'Town02',
             'register_all_sensors': 'False',
@@ -84,9 +89,7 @@ def generate_launch_description():
 
     rviz = Node(
         package='rviz2',
-        namespace='',
         executable='rviz2',
-        name='rviz2',
         arguments=['-d' + '/navigator/data/mcl.rviz']
     )
 
@@ -105,9 +108,30 @@ def generate_launch_description():
         executable='image_projection_node'
     )
 
+    static_grid = Node(
+        package='occupancy_cpp',
+        executable='static_grid_exe'
+    )
+
+    grid_summation = Node(
+        package='grids',
+        executable='grid_summation_node'
+    )
+
+    rqt = Node(
+        package='rqt_gui',
+        executable='rqt_gui',
+        arguments=["--perspective-file=/navigator/data/rqt.perspective"]
+    )
+
+    route_reader = Node(
+        package='carla_interface',
+        executable='route_reader_node'
+    )
+
     return LaunchDescription([
         # CONTROL
-        carla_controller,
+        # carla_controller,
 
         # INTERFACE
         carla_bridge_official,
@@ -116,19 +140,26 @@ def generate_launch_description():
 
         # LOCALIZATION
         gnss_averager,
+        # mcl,
 
         # MAPPING
 
         # MISC
         urdf_publisher,
         rviz,
-        rviz,
+        # rqt,
 
         # PERCEPTION
         image_segmentation,
         semantic_projection,
         lidar_processor,
         ground_seg,
+        static_grid,
+
+        # PLANNING
+        grid_summation,
+        airbags,
+        route_reader,
 
         # STATE ESTIMATION
         map_manager,
