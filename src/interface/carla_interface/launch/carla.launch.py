@@ -169,7 +169,7 @@ def generate_launch_description():
 
         # PLANNING
         grid_summation,
-        # airbags,
+        airbags,
         route_reader,
         rtp,
 
