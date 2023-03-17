@@ -171,7 +171,7 @@ def generate_launch_description():
         grid_summation,
         airbags,
         route_reader,
-        rtp,
+        # rtp,
 
         # STATE ESTIMATION
         map_manager,

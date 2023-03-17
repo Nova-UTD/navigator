@@ -44,6 +44,8 @@ from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer, CarlaEgoVeh
 from std_msgs.msg import String
 from sensor_msgs.msg import Imu
 
+from skimage.draw import line
+
 
 from matplotlib.patches import Rectangle
 
@@ -78,8 +80,13 @@ class RecursiveTreePlanner(Node):
     def __init__(self):
         super().__init__('rrt_node')
 
+        self.speed_costmap = np.zeros((151, 151))
+
         cost_map_sub = self.create_subscription(
             OccupancyGrid, '/grid/cost', self.costMapCb, 1)
+
+        speed_cost_map_sub = self.create_subscription(
+            OccupancyGrid, '/grid/speed_cost', self.speedCostMapCb, 1)
 
         status_sub = self.create_subscription(
             CarlaEgoVehicleStatus, '/carla/hero/vehicle_status', self.statusCb, 1)
@@ -114,6 +121,10 @@ class RecursiveTreePlanner(Node):
         #     Clock, '/clock', self.clockCb, 10)
         # self._cached_clock_ = Clock()
 
+    def speedCostMapCb(self, msg: OccupancyGrid):
+        self.speed_costmap = np.asarray(msg.data, dtype=np.int8).reshape(
+            msg.info.height, msg.info.width)
+
     def clockCb(self, msg: Clock):
         self.clock = msg
 
@@ -129,6 +140,50 @@ class RecursiveTreePlanner(Node):
 
     def speedCb(self, msg: CarlaSpeedometer):
         self.speed = msg.speed
+
+    def getBarrierIndex(self, path: CostedPath, map: np.ndarray) -> int:
+        """Given a path, perform a basic collision check and return the pose index
+        for the first pose that fails the check (such as the pose that hits a vehicle,
+        goes offroad, enters an intersection, etc).
+
+        Args:
+            path (CostedPath): Path to be checked
+            map (np.ndarray): Cost map to use for the check
+
+        Returns:
+            int: The index of the first pose that fails the check, where the "barrier" lies
+        """
+
+        WIDTH_METERS = 3.0
+        GRID_RES = 0.4  # meters per cell
+
+        # This is the number of cells to extend to either side of the path
+        # It's the full width (in cells) divided by two, rounded up
+        REACH_CELLS = np.ceil(WIDTH_METERS / GRID_RES / 2)  # = 3
+
+        for i, pose in enumerate(path.poses):
+            theta = pose[2] + np.pi/2
+
+            ptA = np.asarray([np.cos(theta) * REACH_CELLS + pose[0],
+                              np.sin(theta) * REACH_CELLS + pose[1]]).astype(np.int8)
+            ptB = np.asarray([np.cos(theta) * REACH_CELLS * -1 + pose[0],
+                              np.sin(theta) * REACH_CELLS * -1 + pose[1]]).astype(np.int8)
+
+            rr, cc = line(ptA[1], ptA[0], ptB[1], ptB[0])
+
+            max_cost = np.max(map[rr, cc])
+
+            if max_cost > 90:
+                # map[rr, cc] = 50
+                # plt.xlim(40, 110)
+                # plt.ylim(50, 100)
+                # plt.imshow(map)
+                # plt.show()
+                return i
+
+            print(theta)
+
+        return len(path.poses) - 1
 
     def getSegment(self, inital_pose: np.ndarray, steering_angle, segment_length: float, res: float, costmap) -> CostedPath:
         end_pose = np.copy(inital_pose)
@@ -240,6 +295,8 @@ class RecursiveTreePlanner(Node):
             self.get_logger().error("No valid path was found!")
             return
 
+        barrier_idx = self.getBarrierIndex(best_path, self.speed_costmap)
+
         for pose in best_path.poses:
             pose_msg = PoseStamped()
             pose_msg.header.frame_id = "base_link"
@@ -264,14 +321,14 @@ class RecursiveTreePlanner(Node):
 
         # command.throttle = 0.2
 
-        if self.speed < DESIRED_SPEED:
-            command.throttle = 0.4
-            command.brake = 0.0
-            print(f"Driving, steer {command.steer}")
-        else:
-            command.throttle = 0.0
-            command.brake = 1.0
-            print(f"Braking, steer {command.steer}")
+        # if self.speed < DESIRED_SPEED:
+        #     command.throttle = 0.4
+        #     command.brake = 0.0
+        #     print(f"Driving, steer {command.steer}")
+        # else:
+        #     command.throttle = 0.0
+        #     command.brake = 1.0
+        #     print(f"Braking, steer {command.steer}")
 
         self.command_pub.publish(command)
 
