@@ -163,16 +163,15 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             {
                 for (auto pair : local_tree_query_results)
                 {
+                    // auto pair = local_tree_query_results.front();
                     odr::ring ring = this->lane_polys_.at(pair.second).second;
                     odr::Lane lane = this->lane_polys_.at(pair.second).first;
-                    odr::Road road = this->map_->id_to_road.at(lane.key.road_id);
+                    // odr::Road road = this->map_->id_to_road.at(lane.key.road_id);
                     bool point_is_within_shape = bg::within(p, ring);
                     if (point_is_within_shape)
                     {
-                        if (road.junction != "-1")
-                        {
-                            cell_is_in_junction = true;
-                        }
+
+                        cell_is_in_junction = this->road_in_junction_map_[lane.key];
                         if (lane.type == "driving")
                         {
                             cell_is_drivable = true;
@@ -675,6 +674,22 @@ void MapManagementNode::publishRefinedRoute()
     route_path_pub_->publish(result);
 }
 
+std::map<odr::LaneKey, bool> MapManagementNode::getJunctionMap(std::vector<odr::LanePair> lane_polys)
+{
+    std::map<odr::LaneKey, bool> map;
+    for (auto pair : lane_polys)
+    {
+        odr::Lane lane = pair.first;
+        odr::Road road = this->map_->id_to_road.at(lane.key.road_id);
+        if (road.junction == "-1")
+            map[lane.key] = false;
+        else
+            map[lane.key] = true;
+    }
+
+    return map;
+}
+
 /**
  * @brief When map data is received from a CarlaWorldInfo message, load and process it
  *
@@ -694,6 +709,8 @@ void MapManagementNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
     this->map_ = new odr::OpenDriveMap(msg->opendrive, true);
     // Get lane polygons as pairs (Lane object, ring polygon)
     this->lane_polys_ = map_->get_lane_polygons(1.0, false);
+
+    this->road_in_junction_map_ = this->getJunctionMap(this->lane_polys_);
 
     RCLCPP_INFO(this->get_logger(), "Loaded %s", msg->map_name.c_str());
 }
