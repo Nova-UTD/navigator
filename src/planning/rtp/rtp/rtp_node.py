@@ -41,8 +41,10 @@ import random
 import time
 from geometry_msgs.msg import PoseStamped, Quaternion
 from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer, CarlaEgoVehicleStatus
-from std_msgs.msg import String
+from std_msgs.msg import String, ColorRGBA
 from sensor_msgs.msg import Imu
+
+from visualization_msgs.msg import Marker
 
 from skimage.draw import line
 
@@ -108,6 +110,9 @@ class RecursiveTreePlanner(Node):
 
         self.path_pub = self.create_publisher(
             Path, '/planning/path', 1)
+
+        self.barrier_marker_pub = self.create_publisher(
+            Marker, '/planning/barrier_marker', 1)
 
         self.ego_pose = None  # [x, y, heading]
 
@@ -267,6 +272,31 @@ class RecursiveTreePlanner(Node):
         # plt.ylim((60,90))
         return results
 
+    def publishBarrierMarker(self, pose):
+        marker = Marker()
+        marker.header.frame_id = 'base_link'
+        marker.header.stamp = self.clock.clock
+        marker.ns = 'barrier'
+        marker.id = 0
+        marker.type = Marker.CUBE
+        marker.action = Marker.ADD
+        marker.pose.position.x = pose[0] * 0.4 - 20
+        marker.pose.position.y = pose[1] * 0.4 - 30
+        marker.pose.position.z = 1.0
+
+        marker.pose.orientation.z = np.sin(pose[2]/2)
+        marker.pose.orientation.w = np.cos(pose[2]/2)
+        marker.scale.x = 0.2
+        marker.scale.y = 6.0
+        marker.scale.z = 2.0
+
+        color = ColorRGBA()
+        color.a = 0.8
+        color.r = 1.0
+        marker.color = color
+
+        self.barrier_marker_pub.publish(marker)
+
     def costMapCb(self, msg: OccupancyGrid):
         start = time.time()
 
@@ -296,6 +326,9 @@ class RecursiveTreePlanner(Node):
             return
 
         barrier_idx = self.getBarrierIndex(best_path, self.speed_costmap)
+        barrier_pose = best_path.poses[barrier_idx]
+
+        self.publishBarrierMarker(barrier_pose)
 
         for pose in best_path.poses:
             pose_msg = PoseStamped()
