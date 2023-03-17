@@ -90,11 +90,6 @@ class RecursiveTreePlanner(Node):
         speed_cost_map_sub = self.create_subscription(
             OccupancyGrid, '/grid/speed_cost', self.speedCostMapCb, 1)
 
-        status_sub = self.create_subscription(
-            CarlaEgoVehicleStatus, '/carla/hero/vehicle_status', self.statusCb, 1)
-        imu_sub = self.create_subscription(
-            Imu, '/carla/hero/imu', self.imuCb, 1)
-
         odom_sub = self.create_subscription(
             Odometry, '/odometry/gnss_processed', self.odomCb, 1)
 
@@ -117,9 +112,6 @@ class RecursiveTreePlanner(Node):
         self.ego_pose = None  # [x, y, heading]
 
         self.speed = 0.0
-        self.true_quat = Quaternion()
-
-        self.quats = []
 
         # Clock subscription
         # self.clock_sub = self.create_subscription(
@@ -132,16 +124,6 @@ class RecursiveTreePlanner(Node):
 
     def clockCb(self, msg: Clock):
         self.clock = msg
-
-    def statusCb(self, msg: CarlaEgoVehicleStatus):
-        self.true_quat = msg.orientation
-        print("Got status!")
-
-    def imuCb(self, msg: Imu):
-        imu_quat = msg.orientation
-        time = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
-        self.quats.append([time, imu_quat.x, imu_quat.y, imu_quat.z, imu_quat.w,
-                           self.true_quat.x, self.true_quat.y, self.true_quat.z, self.true_quat.w])
 
     def speedCb(self, msg: CarlaSpeedometer):
         self.speed = msg.speed
@@ -185,8 +167,6 @@ class RecursiveTreePlanner(Node):
                 # plt.imshow(map)
                 # plt.show()
                 return i
-
-            print(theta)
 
         return len(path.poses) - 1
 
@@ -328,6 +308,9 @@ class RecursiveTreePlanner(Node):
         barrier_idx = self.getBarrierIndex(best_path, self.speed_costmap)
         barrier_pose = best_path.poses[barrier_idx]
 
+        distance_from_barrier = np.linalg.norm(
+            [barrier_pose[0] * 0.4 - 20, barrier_pose[1] * 0.4 - 30])
+
         self.publishBarrierMarker(barrier_pose)
 
         for pose in best_path.poses:
@@ -350,18 +333,19 @@ class RecursiveTreePlanner(Node):
 
         command.header.stamp = self.clock.clock
 
-        DESIRED_SPEED = 7 - command.steer * 5  # m/s, ~10mph
+        MAX_SPEED = np.min([7.0, (distance_from_barrier - 2)/2])
+        DESIRED_SPEED = MAX_SPEED - command.steer * 5  # m/s, ~10mph
 
         # command.throttle = 0.2
 
-        # if self.speed < DESIRED_SPEED:
-        #     command.throttle = 0.4
-        #     command.brake = 0.0
-        #     print(f"Driving, steer {command.steer}")
-        # else:
-        #     command.throttle = 0.0
-        #     command.brake = 1.0
-        #     print(f"Braking, steer {command.steer}")
+        if self.speed < DESIRED_SPEED:
+            command.throttle = 0.4
+            command.brake = 0.0
+            print(f"Driving, steer {command.steer}")
+        else:
+            command.throttle = 0.0
+            command.brake = 0.8
+            print(f"Braking, steer {command.steer}")
 
         self.command_pub.publish(command)
 
