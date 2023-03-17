@@ -93,6 +93,7 @@ namespace navigator
             void updateRouteWaypoints(Path::SharedPtr msg);
             void publishRefinedRoute();
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
+            std::map<odr::LaneKey, bool> getJunctionMap(std::vector<odr::LanePair> lane_polys);
 
             LineString getLaneCenterline(odr::LaneKey key);
             std::vector<LineString> getCenterlinesFromKeys(std::vector<odr::LaneKey> keys, odr::RoutingGraph graph);
@@ -119,6 +120,7 @@ namespace navigator
             odr::OpenDriveMap *map_ = nullptr;
             std::vector<odr::LanePair> lane_polys_;
             std::vector<odr::Lane> lanes_in_route_;
+            std::map<odr::LaneKey, bool> road_in_junction_map_;
             Path smoothed_route_msg_;
             LineString rough_route_;
             Path rough_route_msg_;
