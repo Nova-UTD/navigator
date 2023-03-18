@@ -17,12 +17,15 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
 # Message definitions
+from carla_msgs.msg import CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
 from nova_msgs.msg import Egma
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Float32
+
+from skimage.morphology import erosion
 
 import matplotlib.pyplot as plt
 
@@ -70,6 +73,12 @@ class GridSummationNode(Node):
         self.route_dist_grid_sub = self.create_subscription(
             OccupancyGrid, '/grid/route_distance', self.routeDistGridCb, 1)
 
+        self.junction_occupancy_pub = self.create_publisher(
+            OccupancyGrid, '/grid/junction_occupancy', 1)
+
+        self.speed_sub = self.create_subscription(
+            CarlaSpeedometer, '/carla/hero/speedometer', self.speedometerCb, 1)
+
         self.steering_cost_pub = self.create_publisher(
             OccupancyGrid, '/grid/cost', 1)
 
@@ -88,6 +97,25 @@ class GridSummationNode(Node):
             Clock, '/clock', self.clockCb, 1)
 
         self.clock = Clock()
+
+        self.speed = 0.0
+        self.ego_has_stopped = False
+        self.last_stop_time = time.time()
+
+    def speedometerCb(self, msg: CarlaSpeedometer):
+        self.speed = msg.speed
+
+        # seconds. If the ego has stopped less than ten seconds ago, we still say that the ego has stopped
+        STOP_COOLDOWN = 5.0
+
+        if time.time() - self.last_stop_time < STOP_COOLDOWN:
+            self.ego_has_stopped = True
+        elif self.speed < 0.1:
+            self.last_stop_time = time.time()
+            self.ego_has_stopped = True
+        else:
+            self.ego_has_stopped = False
+            print("Ego has NOT stopped")
 
     def clockCb(self, msg: Clock):
         self.clock = msg
@@ -168,6 +196,8 @@ class GridSummationNode(Node):
         stale = self.checkForStaleness(self.current_occupancy_grid, status)
         empty = len(self.current_occupancy_grid.data) == 0
 
+        weighted_current_occ_arr = None
+
         if not stale and not empty:
             msg = self.current_occupancy_grid
             weighted_current_occ_arr = self.getWeightedArray(
@@ -199,7 +229,7 @@ class GridSummationNode(Node):
             weighted_drivable_arr = self.getWeightedArray(
                 msg, DRIVABLE_GRID_SCALE)
             steering_cost += weighted_drivable_arr
-            speed_cost += weighted_drivable_arr
+            # speed_cost += weighted_drivable_arr
 
         # 4. Route distance
         stale = self.checkForStaleness(self.route_dist_grid, status)
@@ -211,15 +241,46 @@ class GridSummationNode(Node):
                 msg, ROUTE_DISTANCE_GRID_SCALE)
             steering_cost += weighted_route_dist_arr
 
-        # 4. Junctions
+        # 5. Junctions
         stale = self.checkForStaleness(self.junction_grid, status)
         empty = len(self.junction_grid.data) == 0
 
-        if not stale and not empty:
+        if not stale and not empty and weighted_current_occ_arr is not None:
             msg = self.junction_grid
             weighted_junction_arr = self.getWeightedArray(
                 msg, JUNCTION_GRID_SCALE)
-            speed_cost += weighted_junction_arr
+
+            binary_occupancy = weighted_current_occ_arr > 90
+            binary_junction = weighted_junction_arr == 100
+
+            binary_junction = erosion(binary_junction, np.ones((9, 9)))
+
+            nearby_junction_occupancy = (
+                binary_junction * binary_occupancy)
+
+            junction_occ_msg = rnp.msgify(
+                OccupancyGrid, (nearby_junction_occupancy * 100).astype(np.int8))
+            junction_occ_msg: OccupancyGrid
+            junction_occ_msg.header.stamp = self.clock.clock
+            junction_occ_msg.header.frame_id = 'base_link'
+            junction_occ_msg.info.resolution = 0.4
+            junction_occ_msg.info.origin.position.x = -20.0
+            junction_occ_msg.info.origin.position.y = -30.0
+
+            self.junction_occupancy_pub.publish(junction_occ_msg)
+
+            junction_is_occupied = np.sum(nearby_junction_occupancy) > 0
+
+            # Is our car currently within a junction?
+            ego_in_junction = binary_junction[75, 50]
+
+            if junction_is_occupied and not ego_in_junction:
+                speed_cost += weighted_junction_arr
+            if not self.ego_has_stopped and not ego_in_junction:
+                speed_cost += weighted_junction_arr
+
+            # plt.imshow(nearby_junction_occupancy)
+            # plt.show()
 
         # Cap this to 100
         steering_cost = np.clip(steering_cost, 0, 100)
