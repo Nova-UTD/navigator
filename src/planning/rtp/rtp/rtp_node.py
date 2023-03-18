@@ -51,7 +51,7 @@ from skimage.draw import line
 
 from matplotlib.patches import Rectangle
 
-N_BRANCHES: int = 17
+N_BRANCHES: int = 23
 STEP_LEN: float = 12.0  # meters
 DEPTH: int = 3
 
@@ -119,8 +119,13 @@ class RecursiveTreePlanner(Node):
         # self._cached_clock_ = Clock()
 
     def speedCostMapCb(self, msg: OccupancyGrid):
-        self.speed_costmap = np.asarray(msg.data, dtype=np.int8).reshape(
-            msg.info.height, msg.info.width)
+        if msg.info.height == 0:
+            self.speed_costmap = np.asarray(msg.data, dtype=np.int8).reshape(
+                int(np.sqrt(len(msg.data))), -1)
+
+        else:
+            self.speed_costmap = np.asarray(msg.data, dtype=np.int8).reshape(
+                msg.info.height, msg.info.width)
 
     def clockCb(self, msg: Clock):
         self.clock = msg
@@ -141,7 +146,7 @@ class RecursiveTreePlanner(Node):
             int: The index of the first pose that fails the check, where the "barrier" lies
         """
 
-        WIDTH_METERS = 3.0
+        WIDTH_METERS = 1.8
         GRID_RES = 0.4  # meters per cell
 
         # This is the number of cells to extend to either side of the path
@@ -156,6 +161,7 @@ class RecursiveTreePlanner(Node):
             ptB = np.asarray([np.cos(theta) * REACH_CELLS * -1 + pose[0],
                               np.sin(theta) * REACH_CELLS * -1 + pose[1]]).astype(np.int8)
 
+            # https://scikit-image.org/docs/stable/api/skimage.draw.html#skimage.draw.line
             rr, cc = line(ptA[1], ptA[0], ptB[1], ptB[0])
 
             max_cost = np.max(map[rr, cc])
@@ -259,6 +265,7 @@ class RecursiveTreePlanner(Node):
         marker.ns = 'barrier'
         marker.id = 0
         marker.type = Marker.CUBE
+
         marker.action = Marker.ADD
         marker.pose.position.x = pose[0] * 0.4 - 20
         marker.pose.position.y = pose[1] * 0.4 - 30
@@ -267,8 +274,8 @@ class RecursiveTreePlanner(Node):
         marker.pose.orientation.z = np.sin(pose[2]/2)
         marker.pose.orientation.w = np.cos(pose[2]/2)
         marker.scale.x = 0.2
-        marker.scale.y = 6.0
-        marker.scale.z = 2.0
+        marker.scale.y = 2.0
+        marker.scale.z = 0.2
 
         color = ColorRGBA()
         color.a = 0.8
@@ -333,8 +340,8 @@ class RecursiveTreePlanner(Node):
 
         command.header.stamp = self.clock.clock
 
-        MAX_SPEED = np.min([7.0, (distance_from_barrier - 2)/2])
-        DESIRED_SPEED = MAX_SPEED - command.steer * 5  # m/s, ~10mph
+        MAX_SPEED = np.min([10.0, (distance_from_barrier - 3)/2])
+        DESIRED_SPEED = MAX_SPEED - command.steer * 3.5  # m/s, ~10mph
 
         # command.throttle = 0.2
 

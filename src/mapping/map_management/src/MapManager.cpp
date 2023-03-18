@@ -681,10 +681,10 @@ std::map<odr::LaneKey, bool> MapManagementNode::getJunctionMap(std::vector<odr::
     {
         odr::Lane lane = pair.first;
         odr::Road road = this->map_->id_to_road.at(lane.key.road_id);
-        if (road.junction == "-1")
-            map[lane.key] = false;
-        else
+        if (road.junction != "-1" && lane.type == "driving")
             map[lane.key] = true;
+        else
+            map[lane.key] = false;
     }
 
     return map;
