@@ -254,7 +254,7 @@ class GnssAveragingNode(Node):
         transl.z = 0.0  # TODO: Stop assuming flat surface
         t.transform.translation = transl
         t.transform.rotation = result_msg.pose.pose.orientation
-        self.tf_broadcaster.sendTransform(t)
+        # self.tf_broadcaster.sendTransform(t)
 
     def clock_cb(self, msg: Clock):
         if self.last_update_time is None:

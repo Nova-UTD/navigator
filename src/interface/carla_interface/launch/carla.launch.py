@@ -63,7 +63,8 @@ def generate_launch_description():
             'town': 'Town02',
             'register_all_sensors': 'False',
             'ego_vehicle_role_name': 'hero',
-            'timeout': '30'
+            'timeout': '30',
+            'fixed_delta_seconds': '0.1'
         }.items(),
     )
 
@@ -175,5 +176,5 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         map_manager,
-        # gnss_processor,
+        gnss_processor,
     ])
