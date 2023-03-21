@@ -35,6 +35,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     route_path_pub_ = this->create_publisher<Path>("/planning/smooth_route", 10);
     traffic_light_points_pub_ = this->create_publisher<PolygonStamped>("/traffic_light_points", 10);
     goal_pose_pub_ = this->create_publisher<PoseStamped>("/planning/goal_pose", 1);
+    route_progress_pub_ = this->create_publisher<std_msgs::msg::Float32>("/route_progress", 1);
 
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
     rough_path_sub_ = this->create_subscription<Path>("/planning/rough_route", 10, bind(&MapManagementNode::updateRouteWaypoints, this, std::placeholders::_1));
@@ -492,6 +493,8 @@ RoiIndices getWaypointsInROI(LineString waypoints, bgi::rtree<odr::value, bgi::r
     tree.query(bgi::nearest(ego_pos, 1), std::back_inserter(returned_values));
     int nearest_idx = returned_values.front().second;
 
+
+
     // Go backward in rough route until either
     // a) We hit the route's start or
     // b) we're >40m from ego
@@ -646,6 +649,12 @@ void MapManagementNode::publishRefinedRoute()
 
     // Get indices of waypoint ROI
     RoiIndices waypoint_roi = getWaypointsInROI(rough_route_, rough_route_tree_, ego_pos);
+
+    // Let's take a moment to publish our route progress using this info
+    float route_progress = static_cast<float>(waypoint_roi.center) / rough_route_.size();
+    std_msgs::msg::Float32 progress_msg;
+    progress_msg.data = route_progress;
+    route_progress_pub_->publish(progress_msg);
 
     // Get LaneKeys
     std::vector<odr::LaneKey> keys = getLaneKeysFromIndices(waypoint_roi, rough_route_, map_wide_tree_, lane_polys_);

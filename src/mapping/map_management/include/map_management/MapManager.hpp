@@ -47,6 +47,7 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
+#include "std_msgs/msg/float32.hpp"
 
 #include "map_management/RouteManager.hpp"
 
@@ -102,6 +103,7 @@ namespace navigator
             rclcpp::Publisher<OccupancyGrid>::SharedPtr junction_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr route_dist_grid_pub_;
             rclcpp::Publisher<Path>::SharedPtr route_path_pub_;
+            rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr route_progress_pub_;
             rclcpp::Publisher<PolygonStamped>::SharedPtr traffic_light_points_pub_;
             rclcpp::Publisher<PoseStamped>::SharedPtr goal_pose_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
