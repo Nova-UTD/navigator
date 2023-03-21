@@ -243,7 +243,14 @@ class RecursiveTreePlanner(Node):
         costs = []
 
         res = 1.0
-        for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, branches):
+
+        # The below loop creates the ROOT of our recursive tree
+        # As a special case for the ROOT only, we multiply the number of branches
+        # generated in this step by a constant, allowings us to boost the resolution
+        # of the path when we're close to the front of the car.
+        # The closer we are to the front of the car, the more important a smooth path is!
+
+        for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, branches*3):
             self.generatePaths(depth-1, path, angle, segment_length,
                                res, branches, results, costs, costmap)
 
@@ -298,11 +305,12 @@ class RecursiveTreePlanner(Node):
         barrier_idxs = []
 
         for result in results:
-            barrier_idx = self.getBarrierIndex(result, self.speed_costmap)
 
             # ADD BARRIER PROXIMITY COST
             # (only if car is stopped)
-            if (self.speed < 0.5):
+            if (self.speed < 2.0):
+                barrier_idx = self.getBarrierIndex(
+                    result, self.speed_costmap)
                 MAX_IDX = 36
                 result.cost += (MAX_IDX-barrier_idx)*50
 
