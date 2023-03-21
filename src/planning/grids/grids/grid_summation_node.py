@@ -253,10 +253,8 @@ class GridSummationNode(Node):
             binary_occupancy = weighted_current_occ_arr > 90
             binary_junction = weighted_junction_arr == 100
 
-            binary_junction = erosion(binary_junction, np.ones((9, 9)))
-
             nearby_junction_occupancy = (
-                binary_junction * binary_occupancy)
+                erosion(binary_junction, np.ones((9, 9))) * binary_occupancy)
 
             junction_occ_msg = rnp.msgify(
                 OccupancyGrid, (nearby_junction_occupancy * 100).astype(np.int8))
