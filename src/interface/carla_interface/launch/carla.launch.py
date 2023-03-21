@@ -140,6 +140,11 @@ def generate_launch_description():
         executable='prednet_inference_node'
     )
 
+    web_bridge = Node(
+        package='rosbridge_server',
+        executable='rosbridge_websocket'
+    )
+
     return LaunchDescription([
         # CONTROL
         # carla_controller,
@@ -148,6 +153,7 @@ def generate_launch_description():
         carla_bridge_official,
         carla_spawner,
         leaderboard_liaison,
+        web_bridge,
 
         # LOCALIZATION
         gnss_averager,
@@ -172,7 +178,7 @@ def generate_launch_description():
         grid_summation,
         airbags,
         route_reader,
-        rtp,
+        # rtp,
 
         # STATE ESTIMATION
         map_manager,

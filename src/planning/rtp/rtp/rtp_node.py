@@ -51,14 +51,14 @@ from skimage.draw import line
 
 from matplotlib.patches import Rectangle
 
-N_BRANCHES: int = 23
+N_BRANCHES: int = 17
 STEP_LEN: float = 12.0  # meters
 DEPTH: int = 3
 
 # These are vdehicle constants for the GEM e6.
 # The sim vehicle (Tesla Model 3) has similar constants.
 WHEEL_BASE: float = 3.5  # meters
-MAX_TURN_ANGLE = 0.21  # radians
+MAX_TURN_ANGLE = 0.30  # radians
 COST_CUTOFF = 90
 
 
@@ -113,11 +113,6 @@ class RecursiveTreePlanner(Node):
 
         self.speed = 0.0
 
-        # Clock subscription
-        # self.clock_sub = self.create_subscription(
-        #     Clock, '/clock', self.clockCb, 10)
-        # self._cached_clock_ = Clock()
-
     def speedCostMapCb(self, msg: OccupancyGrid):
         if msg.info.height == 0:
             self.speed_costmap = np.asarray(msg.data, dtype=np.int8).reshape(
@@ -133,7 +128,7 @@ class RecursiveTreePlanner(Node):
     def speedCb(self, msg: CarlaSpeedometer):
         self.speed = msg.speed
 
-    def getBarrierIndex(self, path: CostedPath, map: np.ndarray) -> int:
+    def getBarrierIndex(self, path: CostedPath, map: np.ndarray, width_meters=1.8) -> int:
         """Given a path, perform a basic collision check and return the pose index
         for the first pose that fails the check (such as the pose that hits a vehicle,
         goes offroad, enters an intersection, etc).
@@ -145,13 +140,11 @@ class RecursiveTreePlanner(Node):
         Returns:
             int: The index of the first pose that fails the check, where the "barrier" lies
         """
-
-        WIDTH_METERS = 1.8
         GRID_RES = 0.4  # meters per cell
 
         # This is the number of cells to extend to either side of the path
         # It's the full width (in cells) divided by two, rounded up
-        REACH_CELLS = np.ceil(WIDTH_METERS / GRID_RES / 2)  # = 3
+        REACH_CELLS = np.ceil(width_meters / GRID_RES / 2)  # = 3
 
         for i, pose in enumerate(path.poses):
             theta = pose[2] + np.pi/2
@@ -230,6 +223,9 @@ class RecursiveTreePlanner(Node):
                 # plt.plot(poses_np[:, 0], poses_np[:, 1])
             return
 
+        if depth == 1:
+            num_branches = (num_branches*2)+1
+
         for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, num_branches):
             self.generatePaths(depth-1, new_path, angle, segment_length,
                                res, num_branches, results, result_costs, costmap)
@@ -299,10 +295,24 @@ class RecursiveTreePlanner(Node):
         min_cost = 100000
         best_path: CostedPath = None
 
+        barrier_idxs = []
+
         for result in results:
+            barrier_idx = self.getBarrierIndex(result, self.speed_costmap)
+
+            # ADD BARRIER PROXIMITY COST
+            # (only if car is stopped)
+            if (self.speed < 0.5):
+                MAX_IDX = 36
+                result.cost += (MAX_IDX-barrier_idx)*50
+
+            barrier_idxs.append(result.cost)
             if result.cost < min_cost:
                 min_cost = result.cost
                 best_path = result
+
+        # plt.hist(barrier_idxs)
+        # plt.show()
 
         result_msg = Path()
         result_msg.header.frame_id = "base_link"
@@ -340,7 +350,7 @@ class RecursiveTreePlanner(Node):
 
         command.header.stamp = self.clock.clock
 
-        MAX_SPEED = np.min([10.0, (distance_from_barrier - 3)/2])
+        MAX_SPEED = np.min([10.0, (distance_from_barrier - 5)/2])
         DESIRED_SPEED = MAX_SPEED - command.steer * 3.5  # m/s, ~10mph
 
         # command.throttle = 0.2

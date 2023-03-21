@@ -9,7 +9,7 @@
         {
             "type": "vehicle.tesla.model3",
             "id": "hero",
-            "spawn_point": {"x": 21.7, "y": -191.9, "z": 1.0, "roll": 0.0, "pitch": 0.0, "yaw": 0.0},
+            "spawn_point": {"x": 121.4, "y": -105.5, "z": 1.0, "roll": 0.0, "pitch": 0.0, "yaw": 180.0},
             "sensors": 
             [
                 {
