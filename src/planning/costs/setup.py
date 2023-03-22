@@ -2,7 +2,7 @@ from setuptools import setup
 from glob import glob
 import os
 
-package_name = 'grids'
+package_name = 'costs'
 
 setup(
     name=package_name,
@@ -18,12 +18,12 @@ setup(
     zip_safe=True,
     maintainer='main',
     maintainer_email='will.heitman@utdallas.edu',
-    description='Package to process, combine, and publish grids, including cost maps',
+    description='Package to process, combine, and publish cost maps',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'grid_summation_node = grids.grid_summation_node:main',
+            'grid_summation_node = costs.grid_summation_node:main',
         ],
     },
 )

@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>grids</name>
+  <name>costs</name>
   <version>1.0.0</version>
-  <description>Package to process, combine, and publish grids, including cost maps</description>
+  <description>Package to process, combine, and publish cost maps (grids)</description>
   <maintainer email="project.nova@utdallas.edu">Will Heitman</maintainer>
   <license>MIT</license>
 

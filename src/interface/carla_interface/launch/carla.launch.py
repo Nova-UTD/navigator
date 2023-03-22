@@ -115,7 +115,7 @@ def generate_launch_description():
     )
 
     grid_summation = Node(
-        package='grids',
+        package='costs',
         executable='grid_summation_node'
     )
 
