@@ -119,6 +119,11 @@ def generate_launch_description():
         executable='grid_summation_node'
     )
 
+    junction_manager = Node(
+        package='costs',
+        executable='junction_manager'
+    )
+
     rqt = Node(
         package='rqt_gui',
         executable='rqt_gui',
@@ -178,6 +183,7 @@ def generate_launch_description():
         grid_summation,
         airbags,
         route_reader,
+        junction_manager,
         rtp,
 
         # STATE ESTIMATION

@@ -68,7 +68,7 @@ class GridSummationNode(Node):
             OccupancyGrid, '/grid/drivable', self.drivableGridCb, 1)
 
         self.junction_grid_sub = self.create_subscription(
-            OccupancyGrid, '/grid/junction', self.junctionGridCb, 1)
+            OccupancyGrid, '/grid/stateful_junction', self.junctionGridCb, 1)
 
         self.route_dist_grid_sub = self.create_subscription(
             OccupancyGrid, '/grid/route_distance', self.routeDistGridCb, 1)
@@ -250,35 +250,7 @@ class GridSummationNode(Node):
             weighted_junction_arr = self.getWeightedArray(
                 msg, JUNCTION_GRID_SCALE)
 
-            binary_occupancy = weighted_current_occ_arr > 90
-            binary_junction = weighted_junction_arr == 100
-
-            nearby_junction_occupancy = (
-                erosion(binary_junction, np.ones((9, 9))) * binary_occupancy)
-
-            junction_occ_msg = rnp.msgify(
-                OccupancyGrid, (nearby_junction_occupancy * 100).astype(np.int8))
-            junction_occ_msg: OccupancyGrid
-            junction_occ_msg.header.stamp = self.clock.clock
-            junction_occ_msg.header.frame_id = 'base_link'
-            junction_occ_msg.info.resolution = 0.4
-            junction_occ_msg.info.origin.position.x = -20.0
-            junction_occ_msg.info.origin.position.y = -30.0
-
-            self.junction_occupancy_pub.publish(junction_occ_msg)
-
-            junction_is_occupied = np.sum(nearby_junction_occupancy) > 0
-
-            # Is our car currently within a junction?
-            ego_in_junction = binary_junction[75, 50]
-
-            if junction_is_occupied and not ego_in_junction:
-                speed_cost += weighted_junction_arr
-            if not self.ego_has_stopped and not ego_in_junction:
-                speed_cost += weighted_junction_arr
-
-            # plt.imshow(nearby_junction_occupancy)
-            # plt.show()
+            speed_cost += weighted_junction_arr
 
         # Cap this to 100
         steering_cost = np.clip(steering_cost, 0, 100)
