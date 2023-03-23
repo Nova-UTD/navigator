@@ -38,6 +38,27 @@ class guardian_node(Node):
     def __init__(self):
         super().__init__('guardian_node')
 
+        self.srv = self.create_service(
+            ChangeMode, 'add_two_ints', self.add_two_ints_callback)
+
+    def add_two_ints_callback(self, request, response):
+        response.success = True
+        self.get_logger().info(f"Received: {request}")
+
+        return response
+
+    def changeModeCb(self, request: ChangeMode.Request, response: ChangeMode.Response):
+        self.get_logger().info(
+            f"Received request to change mode to {request.mode}")
+
+        response.success = True
+        response.message = "Done"  # Empty string if successful
+
+        self.get_logger().info(
+            f"Exiting service call with response {response}")
+
+        return response
+
 
 def main(args=None):
     rclpy.init(args=args)
