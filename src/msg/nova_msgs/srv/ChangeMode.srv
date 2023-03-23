@@ -1,8 +1,0 @@
-uint8 DISABLED=0
-uint8 MANUAL=0
-uint8 AUTO=0
-
-uint8 mode
----
-bool success
-string message

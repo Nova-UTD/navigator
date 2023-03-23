@@ -165,6 +165,11 @@ def generate_launch_description():
         executable='rosbridge_websocket'
     )
 
+    guardian = Node(
+        package='guardian',
+        executable='guardian_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         # carla_controller,
@@ -199,10 +204,13 @@ def generate_launch_description():
 
         # PLANNING
         grid_summation,
-        airbags,
         route_reader,
         junction_manager,
         rtp,
+
+        # SAFETY
+        airbags,
+        guardian,
 
         # STATE ESTIMATION
         map_manager,

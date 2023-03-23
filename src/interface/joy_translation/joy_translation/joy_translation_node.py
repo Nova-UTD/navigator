@@ -44,17 +44,13 @@ Publishes to:
 
 import numpy as np
 from rosgraph_msgs.msg import Clock
+import time
 
 from carla_msgs.msg import CarlaEgoVehicleControl
+from nova_msgs.msg import Mode
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Joy
-
-
-class Mode:
-    DISABLED = 0
-    MANUAL = 1
-    AUTO = 2
 
 
 class joy_translation_node(Node):
@@ -66,6 +62,9 @@ class joy_translation_node(Node):
             Joy, '/joy', self.joyCb, 10)
         self.command_pub = self.create_publisher(
             CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
+
+        self.requested_mode_pub = self.create_publisher(
+            Mode, '/requested_mode', 1)
 
     def joyCb(self, msg: Joy):
         command_msg = CarlaEgoVehicleControl()
@@ -80,16 +79,13 @@ class joy_translation_node(Node):
         command_msg.steer = msg.axes[0]*-1
         command_msg.brake = msg.axes[2]*-1
 
-        previous_mode = self.current_mode
+        requested_mode = Mode()
         if msg.buttons[2] == 1:
-            self.current_mode = Mode.MANUAL
+            requested_mode.mode = Mode.MANUAL
         elif msg.buttons[0] == 1:
-            self.current_mode = Mode.AUTO
+            requested_mode.mode = Mode.AUTO
         else:
-            self.current_mode = Mode.DISABLED
-
-        if self.current_mode != previous_mode:
-            print(f"Mode changed! Is now {self.current_mode}")
+            requested_mode.mode = Mode.DISABLED
 
         # Let's leave these out for now, as Navigator does not support them.
         # msg.hand_brake = True if joy_msg.buttons[2] == 1 else False
@@ -98,12 +94,13 @@ class joy_translation_node(Node):
         # msg.manual_gear_shift = True if joy_msg.buttons[1] == 1 else False
 
         self.command_pub.publish(command_msg)
+        self.requested_mode_pub.publish(requested_mode)
 
 
 def main(args=None):
     rclpy.init(args=args)
-    JOYNODE = joy_translation_node()
-    rclpy.spin(JOYNODE)
-    # self.get_logger().info('#####################################################################################')
+    joy_translator = joy_translation_node()
+    rclpy.spin(joy_translator)
+
     joy_translation_node.destroy_node()
     rclpy.shutdown()
