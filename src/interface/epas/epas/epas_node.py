@@ -1,31 +1,28 @@
+# #!/usr/bin/env python
+
 import can
-import math
-from rosgraph_msgs.msg import Clock
-
-
 from carla_msgs.msg import CarlaEgoVehicleControl
+# import inputs
+import math
+import numpy as np
+# from inputs import get_gamepad
 import rclpy
 from rclpy.node import Node
-from dataclasses import dataclass
 
 
-@dataclass
-class EpasState():
-    duty: int
-    current: int
-    supply_voltage_mv: int
-    temperature: int
-    angle: int
-    errors: int
+class Controller(Node):
 
-
-class EpasNode(Node):
-
-    def __init__(self):
+    def __init__(self, channel):
         super().__init__('epas_node')
+        self.cached_msg1 = None
+        self.bus = can.interface.Bus(bustype='slcan', channel=channel, bitrate=500000, receive_own_messages=True)
+        can_timer = self.create_timer(0.01, self.step)
 
-        self.limit_left:int = 19
-        self.limit_right: int = 230
+        angle_sub = self.create_subscription(CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.setAngle, 1)
+        self.target_angle = 0.0
+
+        self.errors = []
+
 
         self.bus = can.interface.Bus(bustype='slcan', channel='/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00', bitrate=500000, receive_own_messages=True)
         self.command_sub = self.create_subscription(
@@ -57,11 +54,20 @@ class EpasNode(Node):
         dio_bitfield = msg2_data[5]
         status_bitfield = msg2_data[6]
         limit_bitfield = msg2_data[7]
+        self.current_angle = angle
+        print(angle)
+        # print(selected_map)
+        return f"{torque},{duty},{current},{supply_voltage/10},{switch_pos},{temp},{torque_a},{torque_b},{angle},{analog_c1},{analog_c2},{selected_map},{errors},{dio_bitfield},{status_bitfield},{limit_bitfield}\n"
+        # return f"{torque_a}, {torque_b}\n"
 
-        current_state = EpasState(
-            duty, current, supply_voltage, temp, angle, errors)
+    def send_command(self, bus):
+        current_angle_normalized = (
+            (self.current_angle-self.limit_left)/(self.limit_right-self.limit_left)*2)-1
 
-        return current_state
+        print(f"{self.current_angle, self.limit_left, self.limit_right}")
+
+        print(current_angle_normalized)
+
 
     def sendCommand(self, target, bus):
         current_angle_normalized = ((self.current_angle-self.limit_left)/(self.limit_right-self.limit_left)*2)-1
@@ -74,19 +80,25 @@ class EpasNode(Node):
 
         Kp = 1
 
-        power = e * Kp # Power is an abstract value from [-1., 1.], where -1 is hard push left.
 
-        torqueA: int = min(255,max(0, math.ceil((power+1) * (255/2))))
+        errors = np.asarray(self.errors)
+        integral = np.sum(errors)
+
+        # Power is an abstract value from [-1., 1.], where -1 is hard push left.
+        power = Kp * e + Ki * integral
+
+        torqueA: int = min(255, max(0, math.ceil((power+1) * (255/2))))
         torqueB: int = 255-torqueA
 
         print (f"{torqueA}")
         #self.get_logger().info(str(torqueA))
 
         data = [0x03, torqueA, torqueB, 0x00, 0x00, 0x00, 0x00, 0x00]
-        message = can.Message(arbitration_id=0x296, data=data, check=True, is_extended_id=False)
+        message = can.Message(arbitration_id=0x296, data=data,
+                              check=True, is_extended_id=False)
         bus.send(message, timeout=0.2)
 
-        print (f"{torqueA}")
+        # print (f"{torqueA}")
         # print(e)
 
     def vehicleControlCb(self):
@@ -136,7 +148,18 @@ class EpasNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    epas_node = EpasNode()
-    rclpy.spin(epas_node)
-    epas_node.destroy_node()
+
+    lidar_processor = Controller('/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00')
+    # lidar_processor.run()
+
+    rclpy.spin(lidar_processor)
+
+    # Destroy the node explicitly
+    # (optional - otherwise it will be done automatically
+    # when the garbage collector destroys the node object)
+    lidar_processor.destroy_node()
     rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

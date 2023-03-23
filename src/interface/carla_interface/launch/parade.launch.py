@@ -45,7 +45,7 @@ def generate_launch_description():
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        arguments=[path.join("/navigator/data", "carla.urdf")]
+        arguments=[path.join("/navigator/data", "hail_bopp.urdf")]
     )
 
     # carla_bridge_official = IncludeLaunchDescription(
@@ -119,19 +119,49 @@ def generate_launch_description():
         package='epas',
         executable='epas_node'
     )
-    linear_actuator = Node(
-        package='linear_actuator',
-        executable='linear_actuator_node'
+
+    controller = Node(
+        package="parade_controller",
+        executable="parade_controller_node"
+    )
+
+    left_lidar_driver = Node(
+        package = 'velodyne_driver',
+        executable = 'velodyne_driver_node',
+        parameters = ["/navigator/param/perception/lidar_driver_left.param.yaml"]
+    )
+
+    right_lidar_driver = Node(
+        package = 'velodyne_driver',
+        executable = 'velodyne_driver_node',
+        parameters = ["/navigator/param/perception/lidar_driver_right.param.yaml"]
+    )
+
+    left_lidar_pointcloud = Node(
+        package = 'velodyne_pointcloud',
+        executable = 'velodyne_convert_node',
+        parameters = ["/navigator/param/perception/lidar_pointcloud_left.param.yaml"]
+    )
+
+    right_lidar_pointcloud = Node(
+        package = 'velodyne_pointcloud',
+        executable = 'velodyne_convert_node',
+        parameters = ["/navigator/param/perception/lidar_pointcloud_right.param.yaml"]
     )
     
 
     return LaunchDescription([
+        # CONTROL
+        controller,
         # INTERFACE
-        joy,
-        joy_translator,
-        epas,
-        mcu_interface,
-        linear_actuator,
+        # joy,
+        # joy_translator,
+        # epas,
+        # mcu_interface,
+        # left_lidar_driver,
+        # left_lidar_pointcloud,
+        right_lidar_driver,
+        right_lidar_pointcloud,
 
         # MISC
         urdf_publisher,

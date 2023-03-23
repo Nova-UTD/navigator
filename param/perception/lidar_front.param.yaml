@@ -4,6 +4,6 @@
     port: 2369
     cloud_size:  55000
     topic: "points_raw"  # UdpDriverNode strictly expects to get the topic via `declare_parameter`.
-    frame_id: "lidar_front"
+    frame_id: "lidar_right"
     timeout_ms: 10
     rpm:        600
