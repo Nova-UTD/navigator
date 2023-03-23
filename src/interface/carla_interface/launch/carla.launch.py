@@ -53,6 +53,11 @@ def generate_launch_description():
         executable='airbag_node'
     )
 
+    camera_streamer = Node(
+        package='web_video_server',
+        executable='web_video_server'
+    )
+
     carla_bridge_official = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([get_package_share_directory(
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
@@ -170,6 +175,7 @@ def generate_launch_description():
         urdf_publisher,
         rviz,
         # rqt,
+        camera_streamer,
 
         # PERCEPTION
         # image_segmentation,
