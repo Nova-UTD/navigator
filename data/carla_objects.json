@@ -19,27 +19,27 @@
                 },
                 {
                     "type": "sensor.camera.rgb",
-                    "id": "birds_eye",
-                    "spawn_point": {"x": 0.85, "y": 0.0, "z": 25.0, "roll": 0.0, "pitch": 90.0, "yaw": 0.0},
-                    "image_size_x": 1024,
-                    "image_size_y": 512,
-                    "fov": 120.0
+                    "id": "rgb_left",
+                    "spawn_point": {"x": 0.7, "y": 0.15, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": 70.0},
+                    "image_size_x": 800,
+                    "image_size_y": 600,
+                    "fov": 70.0
                 },
                 {
                     "type": "sensor.camera.rgb",
-                    "id": "rgb_left",
-                    "spawn_point": {"x": 0.7, "y": 0.15, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": 60.0},
-                    "image_size_x": 1024,
-                    "image_size_y": 512,
-                    "fov": 120.0
+                    "id": "rgb_center",
+                    "spawn_point": {"x": 0.7, "y": -0.15, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": 0.0},
+                    "image_size_x": 800,
+                    "image_size_y": 600,
+                    "fov": 70.0
                 },
                 {
                     "type": "sensor.camera.rgb",
                     "id": "rgb_right",
-                    "spawn_point": {"x": 0.7, "y": -0.15, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": -60.0},
-                    "image_size_x": 1024,
-                    "image_size_y": 512,
-                    "fov": 120.0
+                    "spawn_point": {"x": 0.7, "y": -0.15, "z": 1.88, "roll": 0.0, "pitch": 0.0, "yaw": -70.0},
+                    "image_size_x": 800,
+                    "image_size_y": 600,
+                    "fov": 70.0
                 },
                 {
                     "type": "sensor.lidar.ray_cast",
