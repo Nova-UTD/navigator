@@ -44,11 +44,12 @@ class McuInterfaceNode(Node):
         self.get_logger().info("Bus now connected.")
 
         # what is create_timer? -Jai 
-        self.vehicle_command_timer = self.create_timer(0.3, self.publishCommand)
+        self.vehicle_command_timer = self.create_timer(.5, self.publishCommand)
         self.throttle = 0
 
     def commandCb(self, msg: CarlaEgoVehicleControl):
         self.throttle = msg.throttle
+        print(f"Joystick Throttle: {self.throttle}\n")
 
     # publishes the number (0-1) received from the subscription 
     def publishCommand(self):
@@ -60,8 +61,8 @@ class McuInterfaceNode(Node):
 
         # command = str.encode(f"$throttle,{throttle};\n")
         # s stands for start and e stands for end
-        command = f"s{throttle}e".encode()
-        self.get_logger().info(f"s{throttle}e")
+        command = f"s{throttle}e\r".encode()
+        self.get_logger().info(f"Command: s{throttle}e")
         self.bus.write(command)
 
         # self.sio.write(f"$throttle,{throttle};\n")

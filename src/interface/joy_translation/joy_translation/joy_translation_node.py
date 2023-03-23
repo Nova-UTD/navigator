@@ -41,9 +41,12 @@ class joy_translation_node(Node):
             msg.throttle = 0.0
 
         msg.steer = joy_msg.axes[0]*-1
+        
         if abs(msg.steer)<0.2:
             msg.steer = 0.0
+        #self.get_logger().info(str(msg.steer))
         msg.brake = joy_msg.axes[2]
+        
         #self.get_logger().info('this is the val of brake sent in')
         #self.get_logger().info(str(msg.brake))
         msg.hand_brake = True if joy_msg.buttons[2]==1 else False
