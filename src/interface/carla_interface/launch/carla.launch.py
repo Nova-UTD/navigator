@@ -48,6 +48,11 @@ def generate_launch_description():
         arguments=[path.join("/navigator/data", "carla.urdf")]
     )
 
+    airbags = Node(
+        package='airbags',
+        executable='airbag_node'
+    )
+
     carla_bridge_official = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([get_package_share_directory(
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
@@ -119,9 +124,14 @@ def generate_launch_description():
         arguments=["--perspective-file=/navigator/data/rqt.perspective"]
     )
 
+    route_reader = Node(
+        package='carla_interface',
+        executable='route_reader_node'
+    )
+
     return LaunchDescription([
         # CONTROL
-        carla_controller,
+        # carla_controller,
 
         # INTERFACE
         carla_bridge_official,
@@ -148,8 +158,10 @@ def generate_launch_description():
 
         # PLANNING
         grid_summation,
+        airbags,
+        route_reader,
 
         # STATE ESTIMATION
-        # map_manager,
+        map_manager,
         gnss_processor,
     ])

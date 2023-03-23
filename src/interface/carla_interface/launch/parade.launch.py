@@ -14,11 +14,11 @@ from ament_index_python import get_package_share_directory
 
 def generate_launch_description():
 
-    leaderboard_liaison = Node(
-        package='carla_interface',
-        executable='liaison_node',
-        parameters=[]
-    )
+    # leaderboard_liaison = Node(
+    #     package='carla_interface',
+    #     executable='liaison_node',
+    #     parameters=[]
+    # )
 
     lidar_processor = Node(
         package='sensor_processing',
@@ -30,17 +30,17 @@ def generate_launch_description():
         executable='mcl_node'
     )
 
-    carla_spawner = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([get_package_share_directory(
-            'carla_spawn_objects'), '/carla_spawn_objects.launch.py']),
-        launch_arguments={
-            'objects_definition_file': '/navigator/data/carla_objects.json'}.items(),
-    )
+    # carla_spawner = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource([get_package_share_directory(
+    #         'carla_spawn_objects'), '/carla_spawn_objects.launch.py']),
+    #     launch_arguments={
+    #         'objects_definition_file': '/navigator/data/carla_objects.json'}.items(),
+    # )
 
-    carla_controller = Node(
-        package='carla_controller',
-        executable='controller'
-    )
+    # carla_controller = Node(
+    #     package='carla_controller',
+    #     executable='controller'
+    # )
 
     urdf_publisher = Node(
         package='robot_state_publisher',
@@ -48,19 +48,19 @@ def generate_launch_description():
         arguments=[path.join("/navigator/data", "hail_bopp.urdf")]
     )
 
-    carla_bridge_official = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([get_package_share_directory(
-            'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
-        launch_arguments={
-            'host': 'localhost',
-            'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
-            'synchronous_mode': 'True',
-            'town': 'Town02',
-            'register_all_sensors': 'False',
-            'ego_vehicle_role_name': 'hero',
-            'timeout': '30'
-        }.items(),
-    )
+    # carla_bridge_official = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource([get_package_share_directory(
+    #         'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
+    #     launch_arguments={
+    #         'host': 'localhost',
+    #         'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
+    #         'synchronous_mode': 'True',
+    #         'town': 'Town02',
+    #         'register_all_sensors': 'False',
+    #         'ego_vehicle_role_name': 'hero',
+    #         'timeout': '30'
+    #     }.items(),
+    # )
 
     gnss_processor = Node(
         package='state_estimation',

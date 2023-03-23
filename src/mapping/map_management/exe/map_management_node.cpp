@@ -14,7 +14,7 @@
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<navigator::perception::MapManagementNode>());
+  rclcpp::spin(std::make_shared<navigator::planning::MapManagementNode>());
   rclcpp::shutdown();
   return 0;
 }
