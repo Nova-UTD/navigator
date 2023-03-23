@@ -24,15 +24,19 @@ class Controller(Node):
         self.errors = []
 
 
-    limit_left: int = 17
-    limit_right: int = 230
-    # from [0,255], theoretically. Actual limit is calibrated per-vehicle.
-    current_angle = 0.0
+        self.bus = can.interface.Bus(bustype='slcan', channel='/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00', bitrate=500000, receive_own_messages=True)
+        self.command_sub = self.create_subscription(
+            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.first_sub, 1)
+        self.cmd_msg = None
+        self.cmd_timer = self.create_timer(.01,self.vehicleControlCb)
+        self.current_angle = 0.0
+        self.target_angle = 0.0
+        self.cached_msg1 = None
 
-    def setAngle(self, msg: CarlaEgoVehicleControl):
-        self.target_angle = msg.steer
+    def first_sub(self,msg: CarlaEgoVehicleControl):
+        self.cmd_msg = msg
 
-    def parse_msgs(self, msg1_data: bytearray, msg2_data: bytearray) -> str:
+    def parseIncomingMessages(self, msg1_data: bytearray, msg2_data: bytearray) -> EpasState:
         torque = msg1_data[0]
         duty = msg1_data[1]
         current = msg1_data[2]
@@ -65,17 +69,17 @@ class Controller(Node):
         print(current_angle_normalized)
 
 
-        e = self.target_angle - current_angle_normalized  # Error = target - current
-
-        self.errors.append(e)
-        if len(self.errors) > 10:
-            self.errors.pop(0)
+    def sendCommand(self, target, bus):
+        current_angle_normalized = ((self.current_angle-self.limit_left)/(self.limit_right-self.limit_left)*2)-1
+        #self.get_logger().info('current angle'+str(current_angle_normalized))
+        e = target - current_angle_normalized # Error = target - current
+        self.get_logger().info('current_angle_normalized: '+str(current_angle_normalized))
+        self.get_logger().info('target: '+str(target))
 
         # We need to map [-1.0, 1.0] to [0, 255]
 
-        Kp = 1.0
+        Kp = 1
 
-        Ki = 0.1
 
         errors = np.asarray(self.errors)
         integral = np.sum(errors)
@@ -86,7 +90,8 @@ class Controller(Node):
         torqueA: int = min(255, max(0, math.ceil((power+1) * (255/2))))
         torqueB: int = 255-torqueA
 
-        # print (f"{torqueA}")
+        print (f"{torqueA}")
+        #self.get_logger().info(str(torqueA))
 
         data = [0x03, torqueA, torqueB, 0x00, 0x00, 0x00, 0x00, 0x00]
         message = can.Message(arbitration_id=0x296, data=data,
@@ -96,20 +101,26 @@ class Controller(Node):
         # print (f"{torqueA}")
         # print(e)
 
-    def step(self):
+    def vehicleControlCb(self):
+        if self.cmd_msg!=None:
+            self.target_angle = self.cmd_msg.steer
+        #self.get_logger().info(str(msg.steer))
+        
 
-        bus = self.bus
-
-        # bus.send(message, timeout=0.2)
-        # print(f"Sending {message}")
-        msg = bus.recv(0.2)
-        if (msg is None):
-            print("Skipping")
-        elif (msg.arbitration_id == 0x290):
-            self.cached_msg1 = msg.data
-        elif (msg.arbitration_id == 0x292):
-            if (self.cached_msg1 is not None):
-                self.parse_msgs(self.cached_msg1, msg.data)
+        response_msg = self.bus.recv(0.1)
+        if (response_msg is None):
+            print("No message received")
+        elif (response_msg.arbitration_id == 0x290):
+            self.cached_msg1 = response_msg.data
+        elif (response_msg.arbitration_id == 0x292):
+            if (self.cached_msg1 is None):
+                return
+            msg1 = self.cached_msg1
+            msg2 = response_msg.data
+            current_state = self.parseIncomingMessages(msg1, msg2)
+            self.current_angle = current_state.angle
+            
+            #self.get_logger().info(str(self.current_angle))
 
         # self.get_logger().info(f"Target: {self.target_angle}, current: {self.current_angle}")
 
