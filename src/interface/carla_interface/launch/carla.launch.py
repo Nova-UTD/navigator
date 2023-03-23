@@ -58,6 +58,16 @@ def generate_launch_description():
         executable='web_video_server'
     )
 
+    joy_linux = Node(
+        package="joy_linux",
+        executable="joy_linux_node"
+    )
+
+    joy_translation = Node(
+        package="joy_translation",
+        executable="joy_translation_node"
+    )
+
     carla_bridge_official = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([get_package_share_directory(
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
@@ -164,6 +174,8 @@ def generate_launch_description():
         carla_spawner,
         leaderboard_liaison,
         web_bridge,
+        joy_linux,
+        # joy_translation,
 
         # LOCALIZATION
         gnss_averager,

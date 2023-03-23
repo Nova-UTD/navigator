@@ -51,9 +51,14 @@ from rclpy.node import Node
 from sensor_msgs.msg import Joy
 
 
+class Mode:
+    DISABLED = 0
+    MANUAL = 1
+    AUTO = 2
+
+
 class joy_translation_node(Node):
-    joy_sub = 0.0
-    command_pub = None
+    current_mode = Mode.DISABLED
 
     def __init__(self):
         super().__init__('joy_translation_node')
@@ -62,18 +67,29 @@ class joy_translation_node(Node):
         self.command_pub = self.create_publisher(
             CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
 
-    def joyCb(self, joy_msg: Joy):
-        msg = CarlaEgoVehicleControl()
-        msg.header.stamp = Clock().clock
-        msg.header.frame_id = 'base_link'
-        msg.throttle = ((joy_msg.axes[5]*-1)+1)/2
+    def joyCb(self, msg: Joy):
+        command_msg = CarlaEgoVehicleControl()
+        command_msg.header.stamp = Clock().clock
+        command_msg.header.frame_id = 'base_link'
+        command_msg.throttle = ((msg.axes[5]*-1)+1)/2
 
         # TODO: Fix this jank.
-        if msg.throttle == 0.5:
-            msg.throttle = 0.0
+        if command_msg.throttle == 0.5:
+            command_msg.throttle = 0.0
 
-        msg.steer = joy_msg.axes[0]*-1
-        msg.brake = joy_msg.axes[2]*-1
+        command_msg.steer = msg.axes[0]*-1
+        command_msg.brake = msg.axes[2]*-1
+
+        previous_mode = self.current_mode
+        if msg.buttons[2] == 1:
+            self.current_mode = Mode.MANUAL
+        elif msg.buttons[0] == 1:
+            self.current_mode = Mode.AUTO
+        else:
+            self.current_mode = Mode.DISABLED
+
+        if self.current_mode != previous_mode:
+            print(f"Mode changed! Is now {self.current_mode}")
 
         # Let's leave these out for now, as Navigator does not support them.
         # msg.hand_brake = True if joy_msg.buttons[2] == 1 else False
@@ -81,7 +97,7 @@ class joy_translation_node(Node):
         # msg.gear = True if joy_msg.buttons[3] == 1 else False
         # msg.manual_gear_shift = True if joy_msg.buttons[1] == 1 else False
 
-        self.command_pub.publish(msg)
+        self.command_pub.publish(command_msg)
 
 
 def main(args=None):
