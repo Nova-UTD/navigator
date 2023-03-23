@@ -111,12 +111,27 @@ class Controller(Node):
             if (self.cached_msg1 is not None):
                 self.parse_msgs(self.cached_msg1, msg.data)
 
-        # events = get_gamepad()
-        # for event in events:
-        #     if str(event.code) == "ABS_X":
-        #         self.joystick_pos = event.state / 32800 # Divide by joystick-specific max value
-        self.send_command(bus)
-            
+        # self.get_logger().info(f"Target: {self.target_angle}, current: {self.current_angle}")
+
+        self.sendCommand(self.target_angle, self.bus)
+
+        # current_angle_norm = (
+        #     (self.current_angle-self.limit_left)/(self.limit_right-self.limit_left)*2)-1
+        # self.error = self.target_angle-current_angle_norm
+        # self.torque_a = int(
+        #     min(255, max(0, math.ceil((self.error+1) * (255/2)))))
+        # self.torque_b = 255-self.torque_a
+
+        # data = [0x03, self.torque_a, self.torque_b,
+        #         0x00, 0x00, 0x00, 0x00, 0x00]
+        # message = can.Message(arbitration_id=0x296, data=data,
+        #                       check=True, is_extended_id=False)
+        # self.bus.send(message, timeout=0.2)
+
+        # The EPAS sends response info in two halves, each its own
+        # kind of CAN message. Combining the two gives us a complete state
+        # of the EPAS. Let's combine the two now.
+        
 
 
 

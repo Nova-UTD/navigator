@@ -122,6 +122,8 @@ class GridSummationNode(Node):
         # This is a temporary measure until our current occ. grid's params
         # match the rest of our stack. Basically, due to the difference in cell size,
         # 1 out of 6 cells in the array needs to be deleted.
+        plt.subplot(1, 2, 1)
+
         downsampled = np.delete(original, np.arange(0, 128, 6), axis=0)
         downsampled = np.delete(downsampled, np.arange(
             0, 128, 6), axis=1)  # 106x106 result
@@ -129,9 +131,14 @@ class GridSummationNode(Node):
         # trim the bottom columns (behind the car)
         downsampled = downsampled[:, 3:]
 
+        downsampled = np.delete(downsampled, np.arange(
+            0, downsampled.shape[0], 4), axis=0)
+        downsampled = np.delete(downsampled, np.arange(
+            0, downsampled.shape[1], 4), axis=1)  # 106x106 result
+
         background = np.zeros((151, 151))
 
-        background[22:128, 0:103] = downsampled
+        background = downsampled[:151, :151]
         return background  # Correct scale
 
     def createCostMap(self):
@@ -139,7 +146,8 @@ class GridSummationNode(Node):
         status.level = DiagnosticStatus.OK
         status.name = 'grid_summation'
 
-        result = np.zeros((151, 151))
+        result = np.zeros((self.drivable_grid.info.height,
+                           self.drivable_grid.info.width))
 
         # Calculate the weighted cost map layers
 
@@ -153,7 +161,7 @@ class GridSummationNode(Node):
                 msg, CURRENT_OCCUPANCY_SCALE)
             weighted_current_occ_arr = self.resizeOccupancyGrid(
                 weighted_current_occ_arr)
-            result += weighted_current_occ_arr
+            # result += weighted_current_occ_arr
 
         # 2. Drivable area
         stale = self.checkForStaleness(self.drivable_grid, status)
@@ -195,11 +203,10 @@ class GridSummationNode(Node):
         for i in range(15):
             frame = result_msg
 
-            t += 0.1 # dt = 0.1 seconds
-            print(t)
+            t += 0.1  # dt = 0.1 seconds
             next_stamp = current_stamp
             next_stamp.sec = int(t)
-            next_stamp.nanosec = int(t * 1e9 % 1e9) 
+            next_stamp.nanosec = int(t * 1e9 % 1e9)
 
             result_msg.header.stamp = next_stamp
             result_msg.header.frame_id = 'base_link'

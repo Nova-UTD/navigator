@@ -1,7 +1,7 @@
 '''
 Package:   mcu_interface
 Filename:  mcu_interface_node.py
-Author:    Will Heitman (w at heit.mn)
+Author:    Jai Peris 
 
 Subscribes to CarlaEgoVehicleControl messages (https://github.com/carla-simulator/ros-carla-msgs/blob/leaderboard-2.0/msg/CarlaEgoVehicleControl.msg)
 
@@ -52,6 +52,7 @@ class McuInterfaceNode(Node):
         self.throttle = msg.throttle
         self.last_command_rcv_time = time.time()
 
+    # publishes the number (0-1) received from the subscription 
     def publishCommand(self):
         if self.last_command_rcv_time is None:
             return
@@ -65,7 +66,10 @@ class McuInterfaceNode(Node):
         throttle = min(throttle, 0.3)
         self.get_logger().info(f"Throttle = {throttle}")
 
-        command = str.encode(f"{throttle}\r\n")
+        # command = str.encode(f"$throttle,{throttle};\n")
+        # s stands for start and e stands for end
+        command = f"s{throttle}e".encode()
+        self.get_logger().info(f"s{throttle}e")
         self.bus.write(command)
         # self.bus.write(b"0.7\r\n")
 
