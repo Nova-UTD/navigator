@@ -120,6 +120,11 @@ def generate_launch_description():
         executable='epas_node'
     )
 
+    linear_actuator = Node(
+        package='linear_actuator'
+        executable='linear_actuator_node'
+    )
+
     controller = Node(
         package="parade_controller",
         executable="parade_controller_node"
@@ -148,16 +153,21 @@ def generate_launch_description():
         executable = 'velodyne_convert_node',
         parameters = ["/navigator/param/perception/lidar_pointcloud_right.param.yaml"]
     )
+
+
     
 
     return LaunchDescription([
         # CONTROL
-        controller,
+        # controller,
+
         # INTERFACE
-        # joy,
-        # joy_translator,
-        # epas,
-        # mcu_interface,
+        joy,
+        joy_translator,
+        epas,
+        mcu_interface,
+        linear_actuator,
+
         # left_lidar_driver,
         # left_lidar_pointcloud,
         right_lidar_driver,
