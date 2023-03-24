@@ -89,7 +89,7 @@ class GridSummationNode(Node):
             Egma, '/egma/cost', 1)
 
         self.status_pub = self.create_publisher(
-            DiagnosticStatus, '/status/grid_summation', 1)
+            DiagnosticStatus, '/node_status', 1)
 
         self.combine_timer = self.create_timer(0.2, self.createCostMap)
 

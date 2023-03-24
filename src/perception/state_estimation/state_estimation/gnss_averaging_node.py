@@ -43,7 +43,7 @@ from sensor_msgs.msg import Imu
 class GnssAveragingNode(Node):
 
     def __init__(self):
-        super().__init__('gnss_estimation_node')
+        super().__init__('gnss_averaging_node')
 
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 1)
@@ -69,7 +69,7 @@ class GnssAveragingNode(Node):
             Odometry, '/odometry/processed', 1)
 
         self.diagnostic_pub = self.create_publisher(
-            DiagnosticStatus, '/status', 1)
+            DiagnosticStatus, '/node_statuses', 1)
 
         self.tf_broadcaster = TransformBroadcaster(self)
 

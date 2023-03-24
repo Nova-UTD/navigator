@@ -81,7 +81,7 @@ class CostedPath:
 
 class RecursiveTreePlanner(Node):
     def __init__(self):
-        super().__init__('rrt_node')
+        super().__init__('rtp_node')
 
         self.speed_costmap = np.zeros((151, 151))
 
@@ -356,6 +356,7 @@ class RecursiveTreePlanner(Node):
             status.level = DiagnosticStatus.ERROR
             status.message = "Could not find viable path. Likely too far off course."
             self.get_logger().error("Could not find viable path")
+            self.status_pub.publish(status)
             return
 
         barrier_idx = self.getBarrierIndex(best_path, self.speed_costmap)
@@ -406,6 +407,8 @@ class RecursiveTreePlanner(Node):
             command.throttle = 0.0
             command.brake = 0.3
         else:
+            status.level = DiagnosticStatus.WARN
+            status.message = f"{int(abs(pid_error))} m/s over limit"
             command.throttle = 0.0
             command.brake = 0.8
 
