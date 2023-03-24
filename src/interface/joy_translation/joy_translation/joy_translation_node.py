@@ -60,15 +60,32 @@ class joy_translation_node(Node):
         super().__init__('joy_translation_node')
         self.joy_sub = self.create_subscription(
             Joy, '/joy', self.joyCb, 10)
+
+        self.clock = Clock().clock
+
+        self.clock_sub = self.create_subscription(
+            Clock, '/clock', self.clockCb, 10)
+
         self.command_pub = self.create_publisher(
             CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
 
         self.requested_mode_pub = self.create_publisher(
             Mode, '/requested_mode', 1)
 
+        self.current_mode = Mode.DISABLED
+        self.current_mode_sub = self.create_subscription(
+            Mode, '/guardian/mode', self.currentModeCb, 1)
+
+    def currentModeCb(self, msg: Mode):
+        self.current_mode = msg.mode
+
+    def clockCb(self, msg: Clock):
+        self.clock = msg.clock
+
     def joyCb(self, msg: Joy):
         command_msg = CarlaEgoVehicleControl()
-        command_msg.header.stamp = Clock().clock
+
+        command_msg.header.stamp = self.clock
         command_msg.header.frame_id = 'base_link'
         command_msg.throttle = ((msg.axes[5]*-1)+1)/2
 
@@ -77,7 +94,7 @@ class joy_translation_node(Node):
             command_msg.throttle = 0.0
 
         command_msg.steer = msg.axes[0]*-1
-        command_msg.brake = msg.axes[2]*-1
+        command_msg.brake = 1-(msg.axes[2]+1)/2
 
         requested_mode = Mode()
         if msg.buttons[2] == 1:
@@ -93,7 +110,9 @@ class joy_translation_node(Node):
         # msg.gear = True if joy_msg.buttons[3] == 1 else False
         # msg.manual_gear_shift = True if joy_msg.buttons[1] == 1 else False
 
-        self.command_pub.publish(command_msg)
+        if self.current_mode == Mode.MANUAL:
+            self.command_pub.publish(command_msg)
+            self.get_logger().info("Publishing manual command!")
         self.requested_mode_pub.publish(requested_mode)
 
 

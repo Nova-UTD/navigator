@@ -29,8 +29,9 @@ Minimum update rate: 2 Hz, ideally 5 Hz
 '''
 
 from matplotlib import pyplot as plt
-from diagnostic_msgs.msg import DiagnosticStatus
+from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from nav_msgs.msg import OccupancyGrid, Odometry, Path
+from nova_msgs.msg import Mode
 import numpy as np
 import ros2_numpy as rnp
 from rosgraph_msgs.msg import Clock
@@ -90,12 +91,18 @@ class RecursiveTreePlanner(Node):
         speed_cost_map_sub = self.create_subscription(
             OccupancyGrid, '/grid/speed_cost', self.speedCostMapCb, 1)
 
+        self.status_pub = self.create_publisher(
+            DiagnosticStatus, '/node_statuses', 1)
+
         odom_sub = self.create_subscription(
             Odometry, '/odometry/gnss_processed', self.odomCb, 1)
 
+        current_mode_sub = self.create_subscription(
+            Mode, '/guardian/mode', self.currentModeCb, 1)
+
         clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)
-        self.clock = Clock()
+        self.clock = Clock().clock
 
         self.command_pub = self.create_publisher(
             CarlaEgoVehicleControl, '/control/unlimited', 1)
@@ -113,6 +120,11 @@ class RecursiveTreePlanner(Node):
 
         self.speed = 0.0
 
+        self.current_mode = Mode.DISABLED
+
+    def currentModeCb(self, msg: Mode):
+        self.current_mode = msg.mode
+
     def speedCostMapCb(self, msg: OccupancyGrid):
         if msg.info.height == 0:
             self.speed_costmap = np.asarray(msg.data, dtype=np.int8).reshape(
@@ -123,7 +135,7 @@ class RecursiveTreePlanner(Node):
                 msg.info.height, msg.info.width)
 
     def clockCb(self, msg: Clock):
-        self.clock = msg
+        self.clock = msg.clock
 
     def speedCb(self, msg: CarlaSpeedometer):
         self.speed = msg.speed
@@ -264,7 +276,7 @@ class RecursiveTreePlanner(Node):
     def publishBarrierMarker(self, pose):
         marker = Marker()
         marker.header.frame_id = 'base_link'
-        marker.header.stamp = self.clock.clock
+        marker.header.stamp = self.clock
         marker.ns = 'barrier'
         marker.id = 0
         marker.type = Marker.CUBE
@@ -287,8 +299,22 @@ class RecursiveTreePlanner(Node):
 
         self.barrier_marker_pub.publish(marker)
 
+    def initStatusMsg(self) -> DiagnosticStatus:
+        status = DiagnosticStatus()
+        status.name = self.get_name()
+
+        stamp = KeyValue()
+        stamp.key = 'stamp'
+        stamp.value = str(self.clock.sec+self.clock.nanosec*1e-9)
+
+        status.values.append(stamp)
+
+        return status
+
     def costMapCb(self, msg: OccupancyGrid):
         start = time.time()
+
+        status = self.initStatusMsg()
 
         if msg.info.height == 0 or msg.info.width == 0:
             self.get_logger().warning("Incoming cost map dimensions were zero.")
@@ -324,10 +350,12 @@ class RecursiveTreePlanner(Node):
 
         result_msg = Path()
         result_msg.header.frame_id = "base_link"
-        result_msg.header.stamp = self.clock.clock
+        result_msg.header.stamp = self.clock
 
         if best_path is None:
-            self.get_logger().error("No valid path was found!")
+            status.level = DiagnosticStatus.ERROR
+            status.message = "Could not find viable path. Likely too far off course."
+            self.get_logger().error("Could not find viable path")
             return
 
         barrier_idx = self.getBarrierIndex(best_path, self.speed_costmap)
@@ -341,7 +369,7 @@ class RecursiveTreePlanner(Node):
         for pose in best_path.poses:
             pose_msg = PoseStamped()
             pose_msg.header.frame_id = "base_link"
-            pose_msg.header.stamp = self.clock.clock
+            pose_msg.header.stamp = self.clock
             pose_msg.pose.position.x = pose[0] * 0.4 - 20
             pose_msg.pose.position.y = pose[1] * 0.4 - 30
             # TODO: Add heading (pose[2]?)
@@ -356,26 +384,37 @@ class RecursiveTreePlanner(Node):
         elif command.steer < -1.0:
             command.steer = -1.0
 
-        command.header.stamp = self.clock.clock
+        command.header.stamp = self.clock
 
         MAX_SPEED = np.min([10.0, (distance_from_barrier - 5)/2])
-        DESIRED_SPEED = MAX_SPEED - command.steer * 3.5  # m/s, ~10mph
+        target_speed = MAX_SPEED - command.steer * 3.5  # m/s, ~10mph
 
-        # command.throttle = 0.2
+        pid_error = target_speed - self.speed
 
-        if self.speed < DESIRED_SPEED:
-            command.throttle = 0.4
+        if pid_error > 3.0:
+            command.throttle = 0.6
             command.brake = 0.0
-            print(f"Driving, steer {command.steer}")
+        elif pid_error > 0.5:
+            command.throttle = 0.3
+            command.brake = 0.0
+        elif pid_error > -1.0:
+            # Coast if speeding by ~2 mph
+            command.throttle = 0.0
+            command.brake = 0.0
+        elif pid_error > -2.0:
+            # Brake slightly if speeding by ~5 mph
+            command.throttle = 0.0
+            command.brake = 0.3
         else:
             command.throttle = 0.0
             command.brake = 0.8
-            print(f"Braking, steer {command.steer}")
 
-        self.command_pub.publish(command)
+        if self.current_mode == Mode.AUTO:
+            self.command_pub.publish(command)
 
         self.path_pub.publish(result_msg)
-        # print(best_path.poses)
+
+        self.status_pub.publish(status)
 
         # print(f"Done in {time.time() - start}!")
 

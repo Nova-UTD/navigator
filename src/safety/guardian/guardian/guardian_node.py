@@ -19,15 +19,9 @@ import numpy as np
 from rosgraph_msgs.msg import Clock
 
 from carla_msgs.msg import CarlaEgoVehicleControl
-from nova_msgs.srv import ChangeMode
+from nova_msgs.msg import Mode
 import rclpy
 from rclpy.node import Node
-
-
-class Mode:
-    DISABLED = 0
-    MANUAL = 1
-    AUTO = 2
 
 
 class guardian_node(Node):
@@ -38,26 +32,20 @@ class guardian_node(Node):
     def __init__(self):
         super().__init__('guardian_node')
 
-        self.srv = self.create_service(
-            ChangeMode, 'add_two_ints', self.add_two_ints_callback)
+        self.mode_request_sub = self.create_subscription(
+            Mode, '/requested_mode', self.modeRequestCb, 1)
 
-    def add_two_ints_callback(self, request, response):
-        response.success = True
-        self.get_logger().info(f"Received: {request}")
+        self.current_mode_pub = self.create_publisher(
+            Mode, '/guardian/mode', 1)
 
-        return response
+    def modeRequestCb(self, msg: Mode):
+        self.current_mode = msg.mode
 
-    def changeModeCb(self, request: ChangeMode.Request, response: ChangeMode.Response):
-        self.get_logger().info(
-            f"Received request to change mode to {request.mode}")
+        # Here we can choose to accept or deny the requested mode.
 
-        response.success = True
-        response.message = "Done"  # Empty string if successful
-
-        self.get_logger().info(
-            f"Exiting service call with response {response}")
-
-        return response
+        mode_msg = Mode()
+        mode_msg.mode = self.current_mode
+        self.current_mode_pub.publish(mode_msg)
 
 
 def main(args=None):
