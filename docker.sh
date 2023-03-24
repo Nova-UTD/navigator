@@ -41,10 +41,10 @@ else # With GPUs
 docker run \
     -it \
     --rm \
-    --gpus all \
     -v $PWD:/navigator \
     -v /home/share/carla:/workspace \
     -v /dev:/dev \
+    --gpus all \
     --net=host \
     --privileged \
     -v $HOME/.Xauthority:/root/.Xauthority \

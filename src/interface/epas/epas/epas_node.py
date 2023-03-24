@@ -25,14 +25,19 @@ class EpasNode(Node):
         super().__init__('epas_node')
 
         self.limit_left:int = 19
-        self.limit_right: int = 230
+        self.limit_right:int = 230
 
         self.bus = can.interface.Bus(bustype='slcan', channel='/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00', bitrate=500000, receive_own_messages=True)
         self.command_sub = self.create_subscription(
-            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.vehicleControlCb, 1)
-
+            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.first_sub, 1)
+        self.cmd_msg = None
+        self.cmd_timer = self.create_timer(.01,self.vehicleControlCb)
         self.current_angle = 0.0
+        self.target_angle = 0.0
         self.cached_msg1 = None
+
+    def first_sub(self,msg: CarlaEgoVehicleControl):
+        self.cmd_msg = msg
 
     def parseIncomingMessages(self, msg1_data: bytearray, msg2_data: bytearray) -> EpasState:
         torque = msg1_data[0]
@@ -60,18 +65,22 @@ class EpasNode(Node):
 
     def sendCommand(self, target, bus):
         current_angle_normalized = ((self.current_angle-self.limit_left)/(self.limit_right-self.limit_left)*2)-1
+        #self.get_logger().info('current angle'+str(current_angle_normalized))
         e = target - current_angle_normalized # Error = target - current
+        self.get_logger().info('current_angle_normalized: '+str(current_angle_normalized))
+        self.get_logger().info('target: '+str(target))
 
         # We need to map [-1.0, 1.0] to [0, 255]
 
-        Kp = 0.5
+        Kp = 1
 
-        power = e * Kp # Power is an abstract value from [-1., 1.], where -1 is hard push left.
+        power = e * Kp # Power is an abstract value from [-1., 1.], where -1 is hard push left
 
-        torqueA: int = min(255,max(0, math.ceil((power+1) * (255/2))))
+        torqueA: int = min(255, max(0, math.ceil((power+1) * (255/2))))
         torqueB: int = 255-torqueA
 
         print (f"{torqueA}")
+        #self.get_logger().info(str(torqueA))
 
         data = [0x03, torqueA, torqueB, 0x00, 0x00, 0x00, 0x00, 0x00]
         message = can.Message(arbitration_id=0x296, data=data, check=True, is_extended_id=False)
@@ -80,9 +89,11 @@ class EpasNode(Node):
         print (f"{torqueA}")
         # print(e)
 
-    def vehicleControlCb(self, msg: CarlaEgoVehicleControl):
-
-        self.target_angle = msg.steer
+    def vehicleControlCb(self):
+        if self.cmd_msg!=None:
+            self.target_angle = self.cmd_msg.steer
+        #self.get_logger().info(str(msg.steer))
+        
 
         response_msg = self.bus.recv(0.1)
         if (response_msg is None):
@@ -96,8 +107,10 @@ class EpasNode(Node):
             msg2 = response_msg.data
             current_state = self.parseIncomingMessages(msg1, msg2)
             self.current_angle = current_state.angle
+            
+            #self.get_logger().info(str(self.current_angle))
 
-        self.get_logger().info(f"Target: {self.target_angle}, current: {self.current_angle}")
+        # self.get_logger().info(f"Target: {self.target_angle}, current: {self.current_angle}")
 
         self.sendCommand(self.target_angle, self.bus)
 
