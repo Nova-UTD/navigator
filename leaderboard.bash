@@ -9,7 +9,7 @@ echo "This may take some time. Sit tight!"
 # For description of flags, see:
 # https://leaderboard.carla.org/get_started/#22-understanding-the-leaderboard-components
 python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
---port=2014 \
+--port=2005 \
 --routes=/navigator/data/routes_town02.xml \
 --routes-subset="0" \
 --repetitions=1 \

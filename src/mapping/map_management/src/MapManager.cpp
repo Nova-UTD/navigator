@@ -30,11 +30,12 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
-    flat_surface_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/flat_surface", 10);
+    junction_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/junction", 10);
     route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
     route_path_pub_ = this->create_publisher<Path>("/planning/smooth_route", 10);
     traffic_light_points_pub_ = this->create_publisher<PolygonStamped>("/traffic_light_points", 10);
     goal_pose_pub_ = this->create_publisher<PoseStamped>("/planning/goal_pose", 1);
+    route_progress_pub_ = this->create_publisher<std_msgs::msg::Float32>("/route_progress", 1);
 
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
     rough_path_sub_ = this->create_subscription<Path>("/planning/rough_route", 10, bind(&MapManagementNode::updateRouteWaypoints, this, std::placeholders::_1));
@@ -80,11 +81,11 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     OccupancyGrid drivable_area_grid;
-    OccupancyGrid flat_surface_grid;
+    OccupancyGrid junction_grid;
     OccupancyGrid route_dist_grid;
     MapMetaData grid_info;
     std::vector<int8_t> drivable_grid_data;
-    std::vector<int8_t> flat_surface_grid_data;
+    std::vector<int8_t> junction_grid_data;
     std::vector<int8_t> route_dist_grid_data;
 
     float y_min = side_dist * -1;
@@ -123,6 +124,16 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
     BoostPoint goal_pt;
     bool goal_is_set = false;
+    auto q = vehicle_tf.transform.rotation;
+    float h;
+
+    if (q.z < 0)
+        h = abs(2 * acos(q.w) - 2 * M_PI);
+    else
+        h = 2 * acos(q.w);
+
+    if (h > M_PI)
+        h -= 2 * M_PI;
 
     for (float j = y_min; j <= y_max; j += res)
     {
@@ -132,13 +143,15 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             i = static_cast<float>(i);
             j = static_cast<float>(j);
             bool cell_is_drivable = false;
-            bool cell_is_flat_surface = false;
+            bool cell_is_in_junction = false;
 
             // Transform this query into the map frame
             // First rotate, then translate. 2D rotation eq:
             // x' = xcos(h) - ysin(h)
             // y' = ycos(h) + xsin(h)
-            float h = 2 * asin(vehicle_tf.transform.rotation.z); // TODO: Do not assume flat ground!
+
+            // if (h < 0)
+            //     h += 2 * M_PI;
             float i_in_map = i * cos(h) - j * sin(h) + vehicle_pos.x;
             float j_in_map = j * cos(h) + i * sin(h) + vehicle_pos.y;
 
@@ -151,20 +164,18 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             {
                 for (auto pair : local_tree_query_results)
                 {
+                    // auto pair = local_tree_query_results.front();
                     odr::ring ring = this->lane_polys_.at(pair.second).second;
                     odr::Lane lane = this->lane_polys_.at(pair.second).first;
+                    // odr::Road road = this->map_->id_to_road.at(lane.key.road_id);
                     bool point_is_within_shape = bg::within(p, ring);
                     if (point_is_within_shape)
                     {
+
+                        cell_is_in_junction = this->road_in_junction_map_[lane.key];
                         if (lane.type == "driving")
                         {
                             cell_is_drivable = true;
-                            cell_is_flat_surface = true;
-                            break;
-                        }
-                        else if (lane.type == "shoulder" || lane.type == "sidewalk" || lane.type == "parking" || lane.type == "curb")
-                        {
-                            cell_is_flat_surface = true;
                             break;
                         }
                     }
@@ -172,12 +183,12 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             }
 
             drivable_grid_data.push_back(cell_is_drivable ? 0 : 100);
-            flat_surface_grid_data.push_back(cell_is_flat_surface ? 0 : 100);
+            junction_grid_data.push_back(cell_is_in_junction ? 100 : 0);
 
             // Get closest route point
             if (local_route_linestring_.size() > 0 && cell_is_drivable && i > 0)
             {
-                int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 2);
+                int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 8);
 
                 if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
                 {
@@ -208,9 +219,9 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     drivable_area_grid.header.frame_id = "base_link";
     drivable_area_grid.header.stamp = clock;
 
-    flat_surface_grid.data = flat_surface_grid_data;
-    flat_surface_grid.header.frame_id = "base_link";
-    flat_surface_grid.header.stamp = clock;
+    junction_grid.data = junction_grid_data;
+    junction_grid.header.frame_id = "base_link";
+    junction_grid.header.stamp = clock;
 
     route_dist_grid.data = route_dist_grid_data;
     route_dist_grid.header.frame_id = "base_link";
@@ -225,12 +236,12 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
     // Set the grids' metadata
     drivable_area_grid.info = grid_info;
-    flat_surface_grid.info = grid_info;
+    junction_grid.info = grid_info;
     route_dist_grid.info = grid_info;
 
     // Output function runtime
     drivable_grid_pub_->publish(drivable_area_grid);
-    flat_surface_grid_pub_->publish(flat_surface_grid);
+    junction_grid_pub_->publish(junction_grid);
     route_dist_grid_pub_->publish(route_dist_grid); // Route distance grid
 
     PoseStamped goal_pose;
@@ -241,7 +252,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     goal_pose_pub_->publish(goal_pose);
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+    // std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
 /**
@@ -482,6 +493,8 @@ RoiIndices getWaypointsInROI(LineString waypoints, bgi::rtree<odr::value, bgi::r
     tree.query(bgi::nearest(ego_pos, 1), std::back_inserter(returned_values));
     int nearest_idx = returned_values.front().second;
 
+
+
     // Go backward in rough route until either
     // a) We hit the route's start or
     // b) we're >40m from ego
@@ -592,7 +605,7 @@ std::vector<LineString> MapManagementNode::getCenterlinesFromKeys(std::vector<od
         }
         catch (...)
         {
-            RCLCPP_ERROR(get_logger(), "BFS could not locate route parent. Returning.");
+            // RCLCPP_ERROR(get_logger(), "BFS could not locate route parent. Returning.");
         }
 
         complete_keys.insert(complete_keys.begin(), complete_segment.begin(), complete_segment.end());
@@ -637,6 +650,12 @@ void MapManagementNode::publishRefinedRoute()
     // Get indices of waypoint ROI
     RoiIndices waypoint_roi = getWaypointsInROI(rough_route_, rough_route_tree_, ego_pos);
 
+    // Let's take a moment to publish our route progress using this info
+    float route_progress = static_cast<float>(waypoint_roi.center) / rough_route_.size();
+    std_msgs::msg::Float32 progress_msg;
+    progress_msg.data = route_progress;
+    route_progress_pub_->publish(progress_msg);
+
     // Get LaneKeys
     std::vector<odr::LaneKey> keys = getLaneKeysFromIndices(waypoint_roi, rough_route_, map_wide_tree_, lane_polys_);
 
@@ -664,6 +683,22 @@ void MapManagementNode::publishRefinedRoute()
     route_path_pub_->publish(result);
 }
 
+std::map<odr::LaneKey, bool> MapManagementNode::getJunctionMap(std::vector<odr::LanePair> lane_polys)
+{
+    std::map<odr::LaneKey, bool> map;
+    for (auto pair : lane_polys)
+    {
+        odr::Lane lane = pair.first;
+        odr::Road road = this->map_->id_to_road.at(lane.key.road_id);
+        if (road.junction != "-1" && lane.type == "driving")
+            map[lane.key] = true;
+        else
+            map[lane.key] = false;
+    }
+
+    return map;
+}
+
 /**
  * @brief When map data is received from a CarlaWorldInfo message, load and process it
  *
@@ -683,6 +718,8 @@ void MapManagementNode::worldInfoCb(CarlaWorldInfo::SharedPtr msg)
     this->map_ = new odr::OpenDriveMap(msg->opendrive, true);
     // Get lane polygons as pairs (Lane object, ring polygon)
     this->lane_polys_ = map_->get_lane_polygons(1.0, false);
+
+    this->road_in_junction_map_ = this->getJunctionMap(this->lane_polys_);
 
     RCLCPP_INFO(this->get_logger(), "Loaded %s", msg->map_name.c_str());
 }

@@ -47,6 +47,7 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
+#include "std_msgs/msg/float32.hpp"
 
 #include "map_management/RouteManager.hpp"
 
@@ -93,14 +94,16 @@ namespace navigator
             void updateRouteWaypoints(Path::SharedPtr msg);
             void publishRefinedRoute();
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
+            std::map<odr::LaneKey, bool> getJunctionMap(std::vector<odr::LanePair> lane_polys);
 
             LineString getLaneCenterline(odr::LaneKey key);
             std::vector<LineString> getCenterlinesFromKeys(std::vector<odr::LaneKey> keys, odr::RoutingGraph graph);
 
             rclcpp::Publisher<OccupancyGrid>::SharedPtr drivable_grid_pub_;
-            rclcpp::Publisher<OccupancyGrid>::SharedPtr flat_surface_grid_pub_;
+            rclcpp::Publisher<OccupancyGrid>::SharedPtr junction_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr route_dist_grid_pub_;
             rclcpp::Publisher<Path>::SharedPtr route_path_pub_;
+            rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr route_progress_pub_;
             rclcpp::Publisher<PolygonStamped>::SharedPtr traffic_light_points_pub_;
             rclcpp::Publisher<PoseStamped>::SharedPtr goal_pose_pub_;
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
@@ -119,6 +122,7 @@ namespace navigator
             odr::OpenDriveMap *map_ = nullptr;
             std::vector<odr::LanePair> lane_polys_;
             std::vector<odr::Lane> lanes_in_route_;
+            std::map<odr::LaneKey, bool> road_in_junction_map_;
             Path smoothed_route_msg_;
             LineString rough_route_;
             Path rough_route_msg_;

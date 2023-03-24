@@ -1,6 +1,6 @@
 '''
 Package: map_management
-   File: gnss_estimation_node.py
+   File: gnss_processing_node.py
  Author: Will Heitman (w at heit dot mn)
 
 Very simple node to convert raw GNSS odometry into a map->base_link transform.
@@ -22,6 +22,8 @@ from sensor_msgs.msg import Imu, NavSatFix
 
 from tf2_ros import TransformBroadcaster
 from xml.etree import ElementTree as ET
+
+from scipy.spatial.transform import Rotation as R
 
 
 def toRadians(degrees: float):
@@ -46,7 +48,7 @@ EARTH_RADIUS_EQUA = 6378137.0
 class GnssProcessingNode(Node):
 
     def __init__(self):
-        super().__init__('gnss_estimation_node')
+        super().__init__('gnss_processing_node')
 
         self.odom_sub = self.create_subscription(
             Odometry, '/odometry/gnss_raw', self.raw_odom_cb, 10
@@ -75,12 +77,12 @@ class GnssProcessingNode(Node):
         )
 
         self.status_pub = self.create_publisher(
-            DiagnosticStatus, '/status', 1
+            DiagnosticStatus, '/node_statuses', 1
         )
 
         self.status_timer = self.create_timer(1.0, self.updateStatus)
 
-        # self.tf_broadcaster = TransformBroadcaster(self)
+        self.tf_broadcaster = TransformBroadcaster(self)
 
         self.cached_imu = Imu()
         self.latest_timestamp = Time()
@@ -224,10 +226,13 @@ class GnssProcessingNode(Node):
         wma_pose.position.z = wma_z
 
         # IMU orientation is buggy. See imu_cb note.
-        buggy_quat = self.cached_imu.orientation
-        heading_x = buggy_quat.x * -0.48
-        heading_y = buggy_quat.y * 0.48
-        wma_yaw = math.atan2(heading_y, heading_x)
+        q = self.cached_imu.orientation
+        heading_x = q.x * -0.48
+        heading_y = q.y * 0.48
+        wma_yaw = q
+
+        rpy = R.from_quat([q.x, q.y, q.z, q.w]).as_euler('xyz')
+        wma_yaw = rpy[1] * -np.pi/2 + np.pi
 
         # q = cos(theta/2) + sin(theta/2)(xi + yj + zk)
         # Set x, y = 0 s.t. theta = yaw
