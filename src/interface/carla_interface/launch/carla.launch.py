@@ -53,6 +53,21 @@ def generate_launch_description():
         executable='airbag_node'
     )
 
+    camera_streamer = Node(
+        package='web_video_server',
+        executable='web_video_server'
+    )
+
+    joy_linux = Node(
+        package="joy_linux",
+        executable="joy_linux_node"
+    )
+
+    joy_translation = Node(
+        package="joy_translation",
+        executable="joy_translation_node"
+    )
+
     carla_bridge_official = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([get_package_share_directory(
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
@@ -63,7 +78,8 @@ def generate_launch_description():
             'town': 'Town02',
             'register_all_sensors': 'False',
             'ego_vehicle_role_name': 'hero',
-            'timeout': '30'
+            'timeout': '30',
+            'fixed_delta_seconds': '0.1'
         }.items(),
     )
 
@@ -114,8 +130,13 @@ def generate_launch_description():
     )
 
     grid_summation = Node(
-        package='grids',
+        package='costs',
         executable='grid_summation_node'
+    )
+
+    junction_manager = Node(
+        package='costs',
+        executable='junction_manager'
     )
 
     rqt = Node(
@@ -129,6 +150,26 @@ def generate_launch_description():
         executable='route_reader_node'
     )
 
+    rtp = Node(
+        package='rtp',
+        executable='rtp_node'
+    )
+
+    prednet_inference = Node(
+        package='prednet_inference',
+        executable='prednet_inference_node'
+    )
+
+    web_bridge = Node(
+        package='rosbridge_server',
+        executable='rosbridge_websocket'
+    )
+
+    guardian = Node(
+        package='guardian',
+        executable='guardian_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         # carla_controller,
@@ -137,31 +178,41 @@ def generate_launch_description():
         carla_bridge_official,
         carla_spawner,
         leaderboard_liaison,
+        web_bridge,
+        joy_linux,
+        joy_translation,
 
         # LOCALIZATION
-        gnss_averager,
+        # gnss_averager,
         # mcl,
 
         # MAPPING
 
         # MISC
         urdf_publisher,
-        rviz,
+        # rviz,
         # rqt,
+        camera_streamer,
 
         # PERCEPTION
-        image_segmentation,
-        semantic_projection,
+        # image_segmentation,
+        # semantic_projection,
         lidar_processor,
         ground_seg,
         static_grid,
+        # prednet_inference,
 
         # PLANNING
         grid_summation,
-        airbags,
         route_reader,
+        junction_manager,
+        rtp,
+
+        # SAFETY
+        airbags,
+        # guardian,
 
         # STATE ESTIMATION
         map_manager,
-        gnss_processor,
+        # gnss_processor,
     ])
