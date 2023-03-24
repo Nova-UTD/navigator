@@ -1,6 +1,6 @@
 '''
 Package: map_management
-   File: gnss_estimation_node.py
+   File: gnss_processing_node.py
  Author: Will Heitman (w at heit dot mn)
 
 Very simple node to convert raw GNSS odometry into a map->base_link transform.
@@ -48,7 +48,7 @@ EARTH_RADIUS_EQUA = 6378137.0
 class GnssProcessingNode(Node):
 
     def __init__(self):
-        super().__init__('gnss_estimation_node')
+        super().__init__('gnss_processing_node')
 
         self.odom_sub = self.create_subscription(
             Odometry, '/odometry/gnss_raw', self.raw_odom_cb, 10
@@ -77,7 +77,7 @@ class GnssProcessingNode(Node):
         )
 
         self.status_pub = self.create_publisher(
-            DiagnosticStatus, '/status', 1
+            DiagnosticStatus, '/node_statuses', 1
         )
 
         self.status_timer = self.create_timer(1.0, self.updateStatus)

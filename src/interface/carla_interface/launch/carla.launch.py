@@ -183,7 +183,7 @@ def generate_launch_description():
         joy_translation,
 
         # LOCALIZATION
-        gnss_averager,
+        # gnss_averager,
         # mcl,
 
         # MAPPING
@@ -210,9 +210,9 @@ def generate_launch_description():
 
         # SAFETY
         airbags,
-        guardian,
+        # guardian,
 
         # STATE ESTIMATION
         map_manager,
-        gnss_processor,
+        # gnss_processor,
     ])

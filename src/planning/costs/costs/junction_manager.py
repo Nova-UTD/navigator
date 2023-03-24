@@ -69,7 +69,7 @@ class JunctionManager(Node):
             OccupancyGrid, '/grid/stateful_junction', 1)
 
         self.status_pub = self.create_publisher(
-            DiagnosticStatus, '/status', 1)
+            DiagnosticStatus, '/node_statuses', 1)
 
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)
