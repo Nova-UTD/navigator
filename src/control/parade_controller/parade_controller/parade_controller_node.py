@@ -54,9 +54,7 @@ class ParadeController(Node):
 
         pcd: np.array = rnp.numpify(msg)
 
-        # pcd['x'] += 1.8748
-        # pcd['y'] += -0.7366
-        # pcd['z'] += -0.6096
+
 
         # Removes all points below the intensity threshold
 
@@ -133,7 +131,6 @@ class ParadeController(Node):
         throttle_msg.throttle = (1. if throttle > 1. else throttle)
         throttle_msg.steer = -1.*steer
 
-        
 
         self.get_logger().info("Distance X: " + str(distance_x))
         self.get_logger().info("Distance Y: " + str(distance_y))
