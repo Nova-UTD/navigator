@@ -180,7 +180,7 @@ def generate_launch_description():
         leaderboard_liaison,
         web_bridge,
         joy_linux,
-        # joy_translation,
+        joy_translation,
 
         # LOCALIZATION
         gnss_averager,
@@ -190,7 +190,7 @@ def generate_launch_description():
 
         # MISC
         urdf_publisher,
-        rviz,
+        # rviz,
         # rqt,
         camera_streamer,
 
