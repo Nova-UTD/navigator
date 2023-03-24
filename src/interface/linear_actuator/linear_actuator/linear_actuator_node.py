@@ -18,41 +18,52 @@ from carla_msgs.msg import CarlaEgoVehicleControl
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 
-bus = None
+#bus = None
 COMMAND_ID = 0xFF0000
 REPORT_ID = 0xFF0001
 
 
-class LinearActuatorNode(Node):
-
+class linear_actuator_node(Node):
+    vehicle_command_sub = None
+    brake = None
     def __init__(self):
         super().__init__('linear_actuator_node')
 
-        self.vehicle_command_sub = self.create_subscription(
-            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.commandCb, 1)
+        self.vehicle_command_sub = self.create_subscription(CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.sendBrakeControl, 10)
+        #self.get_logger().info(str(vehicle_command_sub))
+        #self.brake = 0.0  # 0.0 is released, 1.0 is fully pressed
+        self.get_logger().info("Bus now connected.")
 
-        self.brake = 0.0  # 0.0 is released, 1.0 is fully pressed
+        channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
+        bitrate = 250000
+        self.bus = can.interface.Bus(bustype='slcan', channel=channel, bitrate=bitrate, receive_own_messages=True)
 
-        while bus is None:
+        while self.bus is None:
             self.get_logger().warn("Bus not yet set. Waiting...")
             time.sleep(1.0)
 
         self.get_logger().info("Bus now connected.")
-
-        response = self.enableClutch()
+        response = self.enableClutch(self.bus)
         self.get_logger().debug(f"Clutch enabled with response {response}")
 
-        self.brake_control_timer = self.create_timer(
-            0.1, self.sendBrakeControl)
+        #self.brake_control_timer = self.create_timer(
+            #0.1, self.sendBrakeControl(self.bus))
 
     def commandCb(self, msg: CarlaEgoVehicleControl):
         self.brake = msg.brake
+        self.get_logger().info('this is the val of the brake currently')
+        self.get_logger().info(str(self.brake))
 
-    def sendBrakeControl(self):
-        if bus is None:
+    def sendBrakeControl(self, msg: CarlaEgoVehicleControl):
+        #self.get_logger().info('Printing self.brake in sendBrakeControl')
+        #self.get_logger().info(str(msg.brake))
+        if self.bus is None:
             self.get_logger().warn("Bus not yet set. Skipping command")
-
-        response = self.sendToPosition(self.brake, bus)
+        if msg.brake < 0.0:
+            msg.brake = 0.0
+        elif msg.brake == 0.0:
+            msg.brake = 1.0
+        response = self.sendToPosition(msg.brake, self.bus)
         print(response)
 
     def enableClutch(self, bus: can.Bus):
@@ -71,6 +82,8 @@ class LinearActuatorNode(Node):
         return msg
 
     def sendToPosition(self, pos: float, bus: can.Bus):
+
+        #self.get_logger().info('hey im in the sendtoposition function')
         """Given position, send appropriate CAN messages to LA
 
         Args:
@@ -252,14 +265,10 @@ class LinearActuatorNode(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    linear_actuator_node = LinearActuatorNode()
+    LAN = linear_actuator_node()
 
-    channel = '/dev/ttyACM0'
-    bitrate = 25000
-    bus = can.interface.Bus(
-        bustype='slcan', channel=channel, bitrate=bitrate, receive_own_messages=True)
 
-    rclpy.spin(linear_actuator_node)
+    rclpy.spin(LAN)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically

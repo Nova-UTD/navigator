@@ -1,12 +1,18 @@
 '''
-Package: prednet_inference
-   File: prednet_inference_node.py
- Author: Jesse Musa
+Package: sensor_processing
+   File: lidar_processing_node.py
+ Author: Will Heitman (w at heit dot mn)
 
-Node that makes inferences (prediction) on occupied regions around the vehicle,
-provided a static occupancy grid
+Node to filter and process raw LiDAR pointclouds
 
+This node specifically deals with quirks with the
+CARLA simulator. Namely, synching issues mean that
+raw LiDAR streams "flicker" from left-sided PCDs
+to right-sided ones. This node first merges
+these left- and right-sided PCDs into a complete
+cloud before cutting out points near the car.
 '''
+# https://1drv.ms/v/s!An_6l1bJUIotjlN-qg-uqKdIORgC?e=s5RDv6
 
 import rclpy
 import ros2_numpy as rnp
@@ -67,6 +73,11 @@ class PredNetNode(Node):
         # Amount of grids that have been made
         self.time = 0
 
+        self.frameRate = 10
+
+        # Time for when to accept the next grid
+        self.lastAccepted = 0
+        
         # Size of the grids
         self.sizeX = None
         self.sizeY = None
@@ -96,9 +107,8 @@ class PredNetNode(Node):
 
         # Loads the prednet model
         try:
-            self.prednet_model = torch.jit.load(
-                modelDir, map_location=torch.device(self.device))
-        except:
+            self.prednet_model = torch.jit.load(modelDir, map_location=torch.device(self.device))
+        except: 
             raise Exception("Couldn't load prednet model")
 
         # Makes sures the model is on the GPU
@@ -119,7 +129,11 @@ class PredNetNode(Node):
 
     # Adds masses to history
     def masses_callback(self, mass):
+        if self.clock.sec + 1e-9 * self.clock.nanosec - self.lastAccepted < 1. / self.frameRate  - 0.01:
+            return
+        
 
+        # self.get_logger().info(str(self.clock.sec + 1e-9 * self.clock.nanosec))
         # Sets the grid size to the given grid size
         self.sizeX = mass.width
         self.sizeY = mass.height
@@ -139,7 +153,12 @@ class PredNetNode(Node):
 
             # All the requrired data to make a prediction
             self.data_acquired = True
-
+        
+        #Updates last accepted time
+        self.lastAccepted = self.clock.sec + 1e-9 * self.clock.nanosec
+        
+                
+    
     def makePrediction(self):
         # 0.09s average prediction time
 
