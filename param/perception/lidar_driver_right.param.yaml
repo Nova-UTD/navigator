@@ -1,0 +1,14 @@
+# param/perception/lidar_driver_right.param.yaml
+# See: https://github.com/ros-drivers/velodyne/tree/foxy-devel/velodyne_driver
+/**:
+  ros__parameters:
+    device_ip: "192.168.1.202" # The IP address that the Velodyne is on. From the factory, this is 192.168.1.201.
+    gps_time: false # Whether to use data capture time from a GPS, or from the local time. Should only be set to True if a GPS is attached to the Velodyne. False by default.
+    time_offset: 0.0 # An arbitrary "skew", in seconds, to add to the acquisition timestamp. Defaults to 0.0.
+    enabled: true # Whether the device should start-up enabled or not. Defaults to True.
+    frame_id: "lidar_right" # The frame_id to use when constructing the header for the packet to be published. Defaults to "velodyne".
+    model: "VLP16" #  The model number of the Velodyne attached. This should be one of 64E, 64E_S2, 64E_S2.1, 64E_S3, 32E, 32C, or VLP16. Defaults to 64E.
+    rpm: 600.0 # The RPM that the Velodyne is configured for. Note that this is descriptive, not prescriptive, so this should be set to match the value configured through the Velodyne web interface.
+    cut_angle: 6.283185307179586 # The azimuth angle at which to declare a single rotation complete. If this is less than 0, then a fixed number of packets (device-dependent) is used per rotation. This mostly works, but can vary because of variations in the hardware. If a positive number <= 2Pi, a rotation will be declared "complete" when the azimuth reported by the device reaches that value. Defaults to 2Pi.
+    port: 2369
+    

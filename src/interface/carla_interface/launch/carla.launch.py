@@ -48,6 +48,26 @@ def generate_launch_description():
         arguments=[path.join("/navigator/data", "carla.urdf")]
     )
 
+    airbags = Node(
+        package='airbags',
+        executable='airbag_node'
+    )
+
+    camera_streamer = Node(
+        package='web_video_server',
+        executable='web_video_server'
+    )
+
+    joy_linux = Node(
+        package="joy_linux",
+        executable="joy_linux_node"
+    )
+
+    joy_translation = Node(
+        package="joy_translation",
+        executable="joy_translation_node"
+    )
+
     carla_bridge_official = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([get_package_share_directory(
             'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
@@ -58,13 +78,24 @@ def generate_launch_description():
             'town': 'Town02',
             'register_all_sensors': 'False',
             'ego_vehicle_role_name': 'hero',
-            'timeout': '30'
+            'timeout': '30',
+            'fixed_delta_seconds': '0.1'
         }.items(),
     )
 
-    state_estimation = Node(
+    gnss_processor = Node(
         package='state_estimation',
         executable='gnss_processing_node'
+    )
+
+    gnss_averager = Node(
+        package='state_estimation',
+        executable='gnss_averaging_node'
+    )
+
+    mcl = Node(
+        package='state_estimation',
+        executable='mcl_node'
     )
 
     map_manager = Node(
@@ -74,9 +105,7 @@ def generate_launch_description():
 
     rviz = Node(
         package='rviz2',
-        namespace='',
         executable='rviz2',
-        name='rviz2',
         arguments=['-d' + '/navigator/data/mcl.rviz']
     )
 
@@ -90,30 +119,100 @@ def generate_launch_description():
         executable='image_segmentation_node'
     )
 
+    semantic_projection = Node(
+        package='segmentation',
+        executable='image_projection_node'
+    )
+
+    static_grid = Node(
+        package='occupancy_cpp',
+        executable='static_grid_exe'
+    )
+
+    grid_summation = Node(
+        package='costs',
+        executable='grid_summation_node'
+    )
+
+    junction_manager = Node(
+        package='costs',
+        executable='junction_manager'
+    )
+
+    rqt = Node(
+        package='rqt_gui',
+        executable='rqt_gui',
+        arguments=["--perspective-file=/navigator/data/rqt.perspective"]
+    )
+
+    route_reader = Node(
+        package='carla_interface',
+        executable='route_reader_node'
+    )
+
+    rtp = Node(
+        package='rtp',
+        executable='rtp_node'
+    )
+
+    prednet_inference = Node(
+        package='prednet_inference',
+        executable='prednet_inference_node'
+    )
+
+    web_bridge = Node(
+        package='rosbridge_server',
+        executable='rosbridge_websocket'
+    )
+
+    guardian = Node(
+        package='guardian',
+        executable='guardian_node'
+    )
+
     return LaunchDescription([
         # CONTROL
-        carla_controller,
+        # carla_controller,
 
         # INTERFACE
-        # carla_bridge_official,
-        # carla_spawner,
+        carla_bridge_official,
+        carla_spawner,
         leaderboard_liaison,
+        web_bridge,
+        joy_linux,
+        joy_translation,
 
         # LOCALIZATION
-        # mcl
+        # gnss_averager,
+        # mcl,
 
         # MAPPING
 
         # MISC
         urdf_publisher,
-        rviz,
+        # rviz,
+        # rqt,
+        camera_streamer,
 
         # PERCEPTION
-        image_segmentation,
+        # image_segmentation,
+        # semantic_projection,
         lidar_processor,
         ground_seg,
+        static_grid,
+        # prednet_inference,
+
+        # PLANNING
+        grid_summation,
+        route_reader,
+        junction_manager,
+        rtp,
+
+        # SAFETY
+        airbags,
+        # guardian,
 
         # STATE ESTIMATION
-        # map_manager,
-        state_estimation,
+        map_manager,
+        # gnss_processor,
     ])

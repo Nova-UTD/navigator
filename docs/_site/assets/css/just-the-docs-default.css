@@ -135,6 +135,46 @@
 
 .highlight .il { color: #2aa198; }
 
+.swatch { padding: 0.5rem; vertical-align: middle; display: inline-block; box-sizing: border-box; margin-right: 0.25rem; }
+
+.bg-road { background-color: #804080; }
+
+.bg-building { background-color: #464646; }
+
+.bg-sidewalk { background-color: #f423e8; }
+
+.bg-person { background-color: crimson; }
+
+.bg-car { background-color: #00008e; }
+
+.bg-fence { background-color: #642828; }
+
+.bg-pole { background-color: #999999; }
+
+.bg-traffic-sign { background-color: #dcdc00; }
+
+.bg-traffic-light { background-color: #faaa1e; }
+
+.bg-vegetation { background-color: olivedrab; }
+
+.bg-terrain { background-color: #91aa64; }
+
+.bg-sky { background-color: steelblue; }
+
+.bg-wall { background-color: #66669c; }
+
+.bg-rider { background-color: red; }
+
+.bg-truck { background-color: #000046; }
+
+.bg-bus { background-color: #003c64; }
+
+.bg-train { background-color: #005064; }
+
+.bg-motorcycle { background-color: #0000e6; }
+
+.bg-bicycle { background-color: #770b20; }
+
 /*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */
 /* Document ========================================================================== */
 /** 1. Correct the line height in all browsers. 2. Prevent adjustments of font size after orientation changes in iOS. */
@@ -596,6 +636,10 @@ figure.highlight pre, figure.highlight :not(pre) > code { overflow-x: auto; padd
 .code-example + .highlighter-rouge, .code-example + .sectionbody .listingblock, .code-example + .content, .code-example + figure.highlight, .listingblock > .title + .highlighter-rouge, .listingblock > .title + .sectionbody .listingblock, .listingblock > .title + .content, .listingblock > .title + figure.highlight { position: relative; margin-top: -1rem; border-right: 1px solid #eeebee; border-bottom: 1px solid #eeebee; border-left: 1px solid #eeebee; border-top-left-radius: 0; border-top-right-radius: 0; }
 
 code.language-mermaid { padding: 0; background-color: inherit; border: 0; }
+
+.highlight, pre.highlight { background: #f5f6fa; color: #5c5962; }
+
+.highlight pre { background: #f5f6fa; }
 
 .text-grey-dk-000 { color: #959396 !important; }
 
@@ -2268,3 +2312,33 @@ a.skip-to-main { left: -999px; position: absolute; top: auto; width: 1px; height
 a.skip-to-main:focus, a.skip-to-main:active { color: #F08700; background-color: #fff; left: auto; top: auto; width: 30%; height: auto; overflow: auto; margin: 10px 35%; padding: 5px; border-radius: 15px; border: 4px solid #F08700; text-align: center; font-size: 1.2em; z-index: 999; }
 
 div.opaque { background-color: #fff; }
+
+p.warning, blockquote.warning { background: rgba(247, 126, 126, 0.2); border-left: 4px solid #dd2e2e; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 3px 10px rgba(0, 0, 0, 0.08); padding: .8rem; }
+p.warning::before, blockquote.warning::before { color: #dd2e2e; content: "Warning"; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+p.warning > .warning-title, blockquote.warning > .warning-title { color: #dd2e2e; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+
+p.warning-title, blockquote.warning-title { background: rgba(247, 126, 126, 0.2); border-left: 4px solid #dd2e2e; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 3px 10px rgba(0, 0, 0, 0.08); padding: .8rem; }
+p.warning-title > p:first-child, blockquote.warning-title > p:first-child { margin-top: 0; margin-bottom: 0; color: #dd2e2e; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+
+blockquote.warning { margin-left: 0; margin-right: 0; }
+blockquote.warning > p:first-child { margin-top: 0; }
+blockquote.warning > p:last-child { margin-bottom: 0; }
+
+blockquote.warning-title { margin-left: 0; margin-right: 0; }
+blockquote.warning-title > p:nth-child(2) { margin-top: 0; }
+blockquote.warning-title > p:last-child { margin-bottom: 0; }
+
+p.example, blockquote.example { background: rgba(65, 214, 147, 0.2); border-left: 4px solid #026e57; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 3px 10px rgba(0, 0, 0, 0.08); padding: .8rem; }
+p.example::before, blockquote.example::before { color: #026e57; content: "Example"; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+p.example > .example-title, blockquote.example > .example-title { color: #026e57; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+
+p.example-title, blockquote.example-title { background: rgba(65, 214, 147, 0.2); border-left: 4px solid #026e57; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 3px 10px rgba(0, 0, 0, 0.08); padding: .8rem; }
+p.example-title > p:first-child, blockquote.example-title > p:first-child { margin-top: 0; margin-bottom: 0; color: #026e57; display: block; font-weight: bold; text-transform: uppercase; font-size: .75em; padding-bottom: .125rem; }
+
+blockquote.example { margin-left: 0; margin-right: 0; }
+blockquote.example > p:first-child { margin-top: 0; }
+blockquote.example > p:last-child { margin-bottom: 0; }
+
+blockquote.example-title { margin-left: 0; margin-right: 0; }
+blockquote.example-title > p:nth-child(2) { margin-top: 0; }
+blockquote.example-title > p:last-child { margin-bottom: 0; }

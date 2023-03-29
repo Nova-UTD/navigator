@@ -8,9 +8,12 @@ CARLA Leaderboard. This includes publishing to /carla/hero/status,
 but more functionality will be added in the future.
 '''
 
+import os
 import rclpy
+import random
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
+import time
 
 from carla_msgs.msg import CarlaRoute, CarlaWorldInfo
 from geometry_msgs.msg import Pose, PoseStamped
@@ -38,31 +41,101 @@ class LeaderboardLiaisonNode(Node):
         self.wp_marker_pub = self.create_publisher(
             MarkerArray, '/viz/wayppoints', 10)
 
-        self.world_info_sub = self.create_subscription(CarlaWorldInfo, '/carla/world_info', self.world_info_cb, 10)
-        self.world_info_pub = self.create_publisher(CarlaWorldInfo, '/carla/world_info', 10)
+        self.world_info_sub = self.create_subscription(
+            CarlaWorldInfo, '/carla/world_info', self.world_info_cb, 10)
+        self.world_info_pub = self.create_publisher(
+            CarlaWorldInfo, '/carla/world_info', 10)
 
-        self.route_path_pub = self.create_publisher(Path, '/route/rough_path', 10)
+        self.route_path_pub = self.create_publisher(
+            Path, '/route/rough_path', 10)
         self.route_repub_timer = self.create_timer(1.0, self.publish_route)
 
         self.world_info_cached = None
-        self.world_info_repub_timer = self.create_timer(5.0, self.repub_world_info)
-        
-        # self.client = carla.Client('localhost', 2005)
-        # self.client.set_timeout(60)
-        # self.world = self.client.get_world()
-
-        # settings = self.world.get_settings()
-        # settings.fixed_delta_seconds = 1.0 / 20
-        # settings.synchronous_mode = True
-        # settings.tile_stream_distance = 650
-        # settings.actor_active_distance = 650
-
-        # self.world.apply_settings(settings)
-
-        # self.get_logger().info("Settings applied!")
+        self.world_info_repub_timer = self.create_timer(
+            5.0, self.repub_world_info)
 
         self.route = None
         self.clock = Clock()
+
+        connect_to_carla = True  # TODO: Make this a param
+
+        if connect_to_carla is False:
+            return
+
+        self.client = carla.Client(
+            'localhost', 2000 + int(os.environ['ROS_DOMAIN_ID']))
+        self.client.set_timeout(60)
+        self.world = self.client.get_world()
+        blueprint_library = self.world.get_blueprint_library()
+
+        WALKER_COUNT = 0
+        CAR_COUNT = 60
+
+        # Wait for ego to spawn
+        time.sleep(5.0)
+
+        # Find ego vehicle
+        actor_list = self.world.get_actors()
+        self.ego = actor_list.filter("vehicle.tesla.model3")[0]
+        self.get_logger().info(str(self.ego))
+
+        self.actor_true_pose_timer = self.create_timer(
+            0.1, self.publish_true_pose)
+        self.true_pose_pub = self.create_publisher(
+            PoseStamped, '/true_pose', 10)
+
+        # Spawn some cars
+        car_count = 0
+        car_spawns = self.world.get_map().get_spawn_points()
+        for spawn in car_spawns:
+            if car_count > CAR_COUNT:
+                continue
+            vehicle_bp = random.choice(blueprint_library.filter('vehicle.*.*'))
+            actor = self.world.try_spawn_actor(vehicle_bp, spawn)
+            if actor is not None:
+                actor.set_autopilot(True)
+                car_count += 1
+
+        self.get_logger().info(f"Spawned {car_count} cars!")
+
+        # Spawn some walkers (pedestrians)
+        walker_ai_bp = blueprint_library.filter('controller.ai.walker')[0]
+        walker_count = 0
+        while walker_count < WALKER_COUNT:
+            if walker_count > 30:
+                continue
+            walker_bp = random.choice(blueprint_library.filter('walker.*.*'))
+            spawn_point = carla.Transform()
+            spawn_point.location = self.world.get_random_location_from_navigation()
+            actor = self.world.try_spawn_actor(
+                walker_bp, spawn_point)
+            if actor is not None:
+                ai_controller = self.world.try_spawn_actor(
+                    walker_ai_bp, spawn_point, attach_to=actor)
+                if ai_controller is not None:
+                    ai_controller.go_to_location(
+                        self.world.get_random_location_from_navigation())
+                walker_count += 1
+
+    def publish_true_pose(self):
+        carla_tf = self.ego.get_transform()
+        carla_pos = carla_tf.location
+        msg = PoseStamped()
+        msg.pose.position.x = carla_pos.x
+        msg.pose.position.y = carla_pos.y
+        msg.pose.position.z = carla_pos.z
+        msg.header.frame_id = 'map'
+        msg.header.stamp = self.clock.clock
+
+        self.true_pose_pub.publish(msg)
+
+    def set_all_lights_to_green(self):
+        actors = self.world.get_actors()
+        print(actors)
+        for actor in actors:
+            if actor.type_id == 'traffic.traffic_light':
+                actor.set_red_time(1.0)
+                actor.set_yellow_time(0.5)
 
     def world_info_cb(self, msg: CarlaWorldInfo):
         if msg.opendrive == "":
@@ -73,7 +146,6 @@ class LeaderboardLiaisonNode(Node):
         if self.world_info_cached is None:
             return
         self.world_info_pub.publish(self.world_info_cached)
-
 
     def clock_cb(self, msg: Clock):
         self.clock = msg
@@ -91,7 +163,7 @@ class LeaderboardLiaisonNode(Node):
 
         for pose in self.route.poses:
             pose: Pose
-            pose.position.z = 0.0 # Ignore height. TODO: Support z != 0.
+            pose.position.z = 0.0  # Ignore height. TODO: Support z != 0.
             pose_stamped = PoseStamped()
             pose_stamped.pose = pose
             pose_stamped.header.frame_id = 'map'

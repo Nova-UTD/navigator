@@ -48,6 +48,14 @@ nav_external_links:
     url: https://nova-utd.github.io
     hide_icon: false # set to true to hide the external link icon - defaults to false
 
+callouts:
+  warning:
+    title: Warning
+    color: red
+  example:
+    title: Example
+    color: green
+
 # Exclude from processing.
 # The following items will not be processed, by default.
 # Any item listed under the `exclude:` key here will be automatically added to

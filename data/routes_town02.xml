@@ -1,0 +1,26 @@
+<routes>
+   <route id="0" town="Town02">
+      <weathers>
+         <weather route_percentage="0" cloudiness="5.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="10.0" sun_azimuth_angle="-1.0" sun_altitude_angle="90.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0" mie_scattering_scale="0.03"/>
+         <weather route_percentage="100" cloudiness="5.0" precipitation="0.0" precipitation_deposits="0.0" wetness="0.0" wind_intensity="10.0" sun_azimuth_angle="-1.0" sun_altitude_angle="15.0" fog_density="2.0" fog_distance="0.75" fog_falloff="0.1" scattering_intensity="1.0" mie_scattering_scale="0.03"/>
+      </weathers>
+      <waypoints>
+         <position x="20.3" y="-192.0" z="1.0"/>
+         <position x="41.6" y="-211.4" z="1.0"/>
+         <position x="58.8" y="-241.3" z="1.0"/>
+         <position x="136.5" y="-207.9" z="1.0"/>
+         <position x="167.5" y="-191.6" z="1.0"/>
+         <position x="193.0" y="-113.6" z="1.0"/>
+         <position x="91.7" y="-105.6" z="1.0"/>
+         <position x="-7.7" y="-159.1" z="1.0"/>
+         <position x="-7.7" y="-240.1" z="1.0"/>
+         <position x="16.9" y="-307.1" z="1.0"/>
+         <position x="44.9" y="-273.7" z="1.0"/>
+         <position x="75.7" y="-241.2" z="1.0"/>
+         <position x="163.9" y="-241.4" z="1.0"/>
+      </waypoints>
+      <scenarios>
+         <!-- No scenarios yet -->
+      </scenarios>
+   </route>
+</routes>

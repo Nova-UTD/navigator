@@ -18,7 +18,7 @@ The particles (poses) gradually converge.
 A particle is an np.array: [x, y, heading, weight]
 
 ACKNOWLEDGEMENT:
-This code is adapted from Roger Labbe's work: 
+This code is adapted from Roger Labbe's work:
 https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/12-Particle-Filters.ipynb
 
 For a detailed explanation of how the filter works, visit the above link.
@@ -33,6 +33,16 @@ import scipy
 import scipy.stats
 import time
 import matplotlib.pyplot as plt
+
+ROAD_ID = 4286595200
+TRAFFIC_LIGHT_ID = 4294617630
+POLE_ID = 4288256409
+
+GRID_ORIGIN_METERS = [-20., -30.]
+GRID_ORIGIN_METERS = np.array(GRID_ORIGIN_METERS)
+CELL_SIZE = 0.4  # meters/cell
+
+DO_PLOT_ALIGNMENT = False
 
 
 class MCL:
@@ -56,25 +66,64 @@ class MCL:
 
         return particles
 
-    def predict(self, particles: np.array, delta: np.array, std: np.array) -> None:
-        """Move each particle based on a noisy motion prediction
-
-        Args:
-            particles (np.array): array of particles
-            delta (np.array): [dx, dy, dtheta]
-            std (np.array): standard deviation of delta
-        """
+    def predictMotion(self, particles, u, std, dt, new_heading=None):
+        """ move according to control input u (heading rate, speed)
+        with noise Q (std heading change, std velocity)`"""
 
         N = len(particles)
-        # print(particles)
-        # print(delta)
-        particles[:] += delta  # + (randn(N) * std)
-        particles += (randn(N, 3) * std)
+        # update heading
 
-        # Wrap heading to [0, 2*pi]
-        particles[:, 2] %= 2 * np.pi
+        if new_heading is None:
+            particles[:, 2] += u[0] * dt + (randn(N) * std[0])
+            particles[:, 2] %= 2 * np.pi
+        else:
+            particles[:, 2] = new_heading
 
-    def update_orig(self, particles: np.array, weights: np.array, z: np.array, R: np.array, landmarks: np.array) -> None:
+        # move in the (noisy) commanded direction
+        dist = (self.previous_speed * dt) + (randn(N) * std[1])
+        particles[:, 0] += np.cos(particles[:, 2]) * dist
+        particles[:, 1] += np.sin(particles[:, 2]) * dist
+
+        self.previous_speed = u[1]
+
+    def updateOriginal(self, particles: np.array, weights: np.array, z: np.array, R: np.array, landmarks: np.array) -> None:
+        """Update the weights of each particle based on our current observation
+        using Sequential Importance Sampling (SIS)
+
+        Args:
+            particles (np.array): particles to update
+            weights (np.array): weights of our particles
+            z (np.array): Distances to nearby landmarks
+            R (np.array): sensor error standard deviation
+            landmarks (np.array): landmark positions [x,y]
+        """
+
+        if len(landmarks) < 1:
+            return
+        if len(z) < 1:
+            return
+
+        # Consider only the nearest landmark
+        landmark = landmarks[np.argmin(
+            np.linalg.norm(landmarks-self.mu[:2], axis=1))]
+        print(f"Nearest lm: {landmark}")
+
+        particle_distances = np.linalg.norm(particles[:, :2]-landmark, axis=1)
+        print(f"Particle dists: {particle_distances}")
+        print(f"Observed dists: {z}")
+
+        # pdf() gives the likelihood that the observed distance z
+        # matches the particle's distance. Higher likelihoods
+        # mean relatively higher weights.
+        weights *= scipy.stats.norm(particle_distances, R).pdf(z[0])
+
+        plt.scatter(particles[:, 0], particles[:, 1], c=weights)
+        plt.show()
+
+        weights += 1.e-300      # avoid round-off to zero
+        weights /= sum(weights)  # normalize
+
+    def updateWeights(self, particles, weights, cloud: np.array, grid: np.array, gnss_pose):
         """Update the weights of each particle based on our current observation
         using Sequential Importance Sampling (SIS)
 
@@ -85,75 +134,105 @@ class MCL:
             R (np.array): sensor error standard deviation
             landmarks (np.array): landmark positions [x,y]
         """
-        for i, landmark in enumerate(landmarks):
-            distance = np.linalg.norm(particles[:, 0:2] - landmark, axis=1)
-            weights *= scipy.stats.norm(distance, R).pdf(z[i])
 
-        weights += 1.e-300      # avoid round-off to zero
-        weights /= sum(weights)  # normalize
+        # Crop cloud to nearby
+        nearby_cloud = cloud[np.linalg.norm(cloud[:, 0:2], axis=1) < 14]
 
-    def update_weights(self, particles, weights, cloud: np.array, cells: np.array, gnss_pose):
-        """Update weights by checking each particle's alignment in the occupancy grid.
+        # Transform cloud to grid
+        # 1. Translate to grid origin
+        cloud_on_grid = np.copy(nearby_cloud)
 
-        Args:
-            particles (_type_): _description_
-            weights (_type_): _description_
-            cloud (np.array): [[x,y], [x,y], ...]
-            cells (np.array): n rows (x) from map_origin to origin+height_meters, m columns (y)
-            from map_origin to origin+width_meters.
-        """
+        cloud_on_grid[:, 0:2] -= GRID_ORIGIN_METERS
+        # 2. Scale to cell size
+        cloud_on_grid[:, 0:2] /= CELL_SIZE
 
-        # The cloud is given in the vehicle frame.
-        # We need it in the map frame
         alignments = []
-        # for idx, cell in np.ndenumerate(cells[::10, ::10]):
-        #     if cell == 100:
-        #         plt.scatter(idx[1]*10, idx[0]*10, c='k')
+
+        plt.imshow(grid, origin='lower')
+        # plt.scatter(cloud_on_grid[:, 0], cloud_on_grid[:, 1], c='red', s=1.0)
+
+        particles_on_grid = []
 
         for particle in particles:
+            # particle_on_grid = np.copy(particle)
 
-            # First rotate
-            theta = particle[2]
-            r = np.array([[np.cos(theta), -1*np.sin(theta)],
-                          [np.sin(theta), np.cos(theta)]])
+            # Transform particle to grid s.t. x/y are grid indices
+            particle_on_grid = particle - self.mu
+            particle_on_grid[0:2] -= GRID_ORIGIN_METERS
+            particle_on_grid[0:2] /= CELL_SIZE
+            particle_on_grid = particle_on_grid.astype(int)
 
-            transformed_cloud = np.dot(cloud, r.T)
+            # Rotate cloud to particle frame
 
-            # Then translate
-            transformed_cloud[:] += particle[0:2]
+            cloud_on_particle = np.copy(cloud_on_grid)
+            cloud_on_particle[:, 0:2] += GRID_ORIGIN_METERS/CELL_SIZE
+            d_theta = particle_on_grid[2]
+            r = np.array([[np.cos(d_theta), -1*np.sin(d_theta)],
+                          [np.sin(d_theta), np.cos(d_theta)]])
+            cloud_on_particle[:, 0:2] = np.dot(
+                cloud_on_particle[:, 0:2], r.T)  # Apply rotation matrix
+            # cloud_on_grid[:, 0:2] -= GRID_ORIGIN_METERS/CELL_SIZE
 
-            # Translate relative to map origin
-            transformed_cloud = np.subtract(transformed_cloud, self.map_origin)
-
-            # Scale to cells
-            transformed_cloud /= self.grid_resolution
-
-            # # Round each point in the cloud down to an int
-            # # Now each point represents an index in cells. Convenient!
-            grid_indices = transformed_cloud.astype(int)
-
-            start = time.time()
+            # Translate cloud to complete transform
+            cloud_on_particle[:, 0:2] += particle_on_grid[0:2]
+            cloud_on_particle = cloud_on_particle.astype(int)
 
             hits = 0
-
-            for index in grid_indices[::100]:
-                if index[0] >= cells.shape[0] or index[1] >= cells.shape[1]:
+            good_points = []
+            bad_points = []
+            for pt in cloud_on_particle:
+                if pt[0] >= grid.shape[0] or pt[1] >= grid.shape[1] or pt[0] < 0 or pt[1] < 0:
                     continue
-                if cells[index[1], index[0]] == 100:
+                if grid[pt[1]][pt[0]] == 100 and pt[2] == ROAD_ID:
                     hits += 1
+                    good_points.append(pt)
+                elif grid[pt[1]][pt[0]] == 100 and (pt[2] == POLE_ID or pt[2] == TRAFFIC_LIGHT_ID):
+                    # Pole and traffic light misalignment penalty
+                    # Poles and traffic lights should not fall into roads, so penalize particles that present this
+                    hits -= 5
+                else:
+                    bad_points.append(pt)
+            alignments.append(hits / len(cloud_on_particle))
 
-            alignments.append(hits)
+            bad_points = np.array(bad_points)
+            good_points = np.array(good_points)
+            # plt.scatter(particle_on_grid[0], particle_on_grid[1], c='blue')
+            # # # print(cloud_on_particle)
 
-        alignments = np.array(alignments)
+            particles_on_grid.append(particle_on_grid)
 
-        particles[:, 2] = gnss_pose[2]
+            if not DO_PLOT_ALIGNMENT:
+                continue  # Skip to next loop if plotting not enabled
 
-        weights *= alignments
-        dists = np.linalg.norm(particles[:, 0:2] - gnss_pose[0:2], axis=1)
-        weights[dists > 4.0] *= 0.1  # Penalize particles too far from the GNSS
+            if len(bad_points) > 1:
+                plt.scatter(bad_points[:, 0],
+                            bad_points[:, 1], s=1.0, c='red')
+            if len(good_points) > 1:
+                plt.scatter(good_points[:, 0],
+                            good_points[:, 1], s=1.0, c='green')
+
+        particles_on_grid = np.array(particles_on_grid)
+
+        if DO_PLOT_ALIGNMENT:
+            print(np.max(alignments) / len(cloud))
+            plt.scatter(particles_on_grid[:, 0],
+                        particles_on_grid[:, 1], c=alignments)
+
+            plt.colorbar()
+            plt.show()
+
+        # alignments = np.array(alignments) / len(particles)
+
+        # # if np.max(alignments) > 0.5:
+        # #     weights *= alignments
+        # # else:
+        # #     print(f"Max alignment was only {np.max(alignments)}")
+        # weights *= alignments
 
         weights += 1.e-300      # avoid round-off to zero
         weights /= sum(weights)  # normalize
+
+        return alignments
 
     def estimate(self, particles: np.array, weights) -> tuple:
         """Return mean and variance of particles
@@ -196,42 +275,183 @@ class MCL:
         particles[:, 2] %= 2 * np.pi
         return particles
 
-    def __init__(self, grid: np.array, grid_resolution: float, initial_pose=np.array([0.0, 0.0, 0.0]), map_origin=np.array([0.0, 0.0]), N=100):
+    def __init__(self, clock, grid_resolution: float, initial_pose=np.array([0.0, 0.0, 0.0]), map_origin=np.array([0.0, 0.0]), N=30):
         self.particles = self.create_gaussian_particles(
             mean=initial_pose, std=(2, 2, np.pi/8), N=N)
 
         self.weights = np.ones(N) / N
+        self.alignment_history = None
+        self.mu = initial_pose
 
-        self.grid = grid
         self.map_origin = map_origin
         self.grid_resolution = grid_resolution
 
-    def reset(self, initial_pose=np.array([0.0, 0.0, 0.0]), N=100):
+        self.mus = []
+        self.gnss_poses = []
+        self.last_update_time = clock
+        self.previous_speed = 0.0
+
+    def reset(self, initial_pose, N):
         self.particles = self.create_gaussian_particles(
             mean=initial_pose, std=(2, 2, np.pi/8), N=N)
 
         self.weights = np.ones(N) / N
 
-    def step(self, delta: np.array, cloud: np.array, gnss_pose: np.array) -> tuple:
+    def addNoise(self, particles, std, N):
+        threshold = 1/N
 
-        self.predict(self.particles, delta, std=np.array([0.0, 0.0, 0.0]))
+        low_particles = particles[self.weights < threshold]
+        low_N = len(low_particles)
 
-        self.update_weights(self.particles, self.weights,
-                            cloud, self.grid, gnss_pose)
+        print(f"Adding noise to {low_N} particles")
+        particles[self.weights < threshold][:, 0] += (randn(low_N) * std[0])
+        particles[self.weights < threshold][:, 1] += (randn(low_N) * std[1])
+        particles[self.weights < threshold][:, 2] += (randn(low_N) * std[2])
+        particles[self.weights < threshold][:, 2] %= 2 * np.pi
 
-        # Determine if a resample is necessary
-        # N/2 is a good threshold
-        N = len(self.particles)
-        if self.neff(self.weights) < N/2:
-            indexes = self.systematic_resample(self.weights)
-            self.resample_from_index(self.particles, self.weights, indexes)
-            assert np.allclose(self.weights, 1/N)
+    def sense(self, cloud, noise):
+
+        MAX_LANDMARK_DIST = 10.0  # meters
+
+        traffic_light_pts = cloud[cloud[:, 2] == TRAFFIC_LIGHT_ID][:, 0:2]
+
+        # Filter out faraway pts
+        traffic_light_pts = traffic_light_pts[np.linalg.norm(
+            traffic_light_pts, axis=1) < MAX_LANDMARK_DIST]
+
+        downsampled_pts = []
+
+        # Only include points not super close to other ones
+        MIN_DISTANCE = 1.0  # Points closer than this will be simplified to one pt
+        for pt_a in traffic_light_pts:
+            too_close = False
+            for pt_b in downsampled_pts:
+                if np.linalg.norm(pt_a - pt_b) < MIN_DISTANCE:
+                    too_close = True
+                    break
+            if not too_close:
+                downsampled_pts.append(pt_a)
+
+        downsampled_pts = np.array(downsampled_pts)
+
+        print("Traffic light points:")
+        print(downsampled_pts)
+
+        downsampled_pts = downsampled_pts.reshape((-1, 2))
+
+        distances = np.linalg.norm(
+            downsampled_pts, axis=1) + randn(downsampled_pts.shape[0]) * noise
+
+        return distances
+
+    def getLandmarks(self, grid, mu):
+        # plt.imshow(grid, origin='lower')
+        # plt.show()
+        landmarks_on_grid = np.flip(
+            np.transpose((grid == 13).nonzero()), axis=1)
+
+        if landmarks_on_grid.shape[0] == 0:
+            return landmarks_on_grid  # If empty, send it out
+
+        print(landmarks_on_grid)
+        # landmarks_on_grid = landmarks_on_grid[landmarks_on_grid[:, 0] > 70]
+        # landmarks_on_grid = landmarks_on_grid[landmarks_on_grid[:, 0] < 85]
+        # landmarks_on_grid = landmarks_on_grid[landmarks_on_grid[:, 1] < 70]
+        # landmarks_on_grid = landmarks_on_grid[landmarks_on_grid[:, 1] > 60]
+
+        landmarks_on_map = landmarks_on_grid * CELL_SIZE
+        landmarks_on_map += GRID_ORIGIN_METERS
+
+        # Rotate to map
+        d_theta = -1 * mu[2]  # Invert to get base_link->map rotation
+        r = np.array([[np.cos(d_theta), -1*np.sin(d_theta)],
+                      [np.sin(d_theta), np.cos(d_theta)]])
+        landmarks_on_map[:, 0:2] = np.dot(
+            landmarks_on_map[:, 0:2], r.T)  # Apply rotation matrix
+
+        # Now translate
+        landmarks_on_map += mu[0:2]
+
+        print(landmarks_on_map)
+
+        # plt.scatter(landmarks_on_map[:, 0], landmarks_on_map[:, 1])
+        # plt.scatter(mu[0], mu[1], c='r')
+        # plt.show()
+
+        return landmarks_on_map
+
+    def resample(self, particles, alignments, gnss_pose):
+
+        alignments = np.array(alignments).reshape((-1, 1))
+
+        # Kill off particles further than 5m from GNSS
+        dists = gnss_difference = np.linalg.norm(
+            particles[:, 0:2] - gnss_pose[0:2], axis=1)
+        alignments[dists > 5] = 0.
+
+        # Form a combined particle-alignment array
+        combined_array = np.hstack((particles, alignments))
+        # Sort by third column (alignments)
+        combined_array = combined_array[combined_array[:, 3].argsort()]
+
+        # Determine the number of particles to be replaced
+        replacement_qty = int(len(particles)/10)
+
+        # Perform replacement
+        print(f"Replacing bottom {replacement_qty} particles")
+        combined_array[0:replacement_qty] = combined_array[-
+                                                           1*replacement_qty-1:-1]
+
+        # Add a little noise
+        print(randn(replacement_qty).T)
+        print(combined_array[0: replacement_qty, 0])
+        combined_array[0: replacement_qty,
+                       0] += randn(replacement_qty).T * 0.1
+        combined_array[0: replacement_qty,
+                       1] += randn(replacement_qty).T * 0.1
+
+        print(combined_array)
+
+        # Return only the particles, not the alignments
+        return combined_array[:, 0: 3]
+
+    def step(self, u, clock, cloud: np.array, gnss_pose: np.array, grid: np.array) -> tuple:
+        """Takes new data, runs it through the filter, and generates a result pose.
+
+        ✅ 1. Predict the motion of all particles using the latest speedometer and angular velocity data.
+        ✅ 2. Assign a likelihood score to each particle using the latest classified cloud and grid.
+        ❌ 3. Select and replace the bottom X percent of particles with copies of the top X percent
+        ✅ 4. Take the weighted mean and covariance of the particles, return them
+        ✅ 5. Repeat 1-4.
+
+        Returns:
+            (mean, covariance)
+        """
+
+        self.predictMotion(self.particles, u, std=[
+                           0.3, 0.05], dt=clock - self.last_update_time, new_heading=gnss_pose[2])
+        self.last_update_time = clock
+
+        alignments = self.updateWeights(self.particles, self.weights,
+                                        cloud, grid, gnss_pose)
+
+        self.particles = self.resample(self.particles, alignments, gnss_pose)
+
         mu, var = self.estimate(self.particles, self.weights)
 
         gnss_difference = np.linalg.norm(mu - gnss_pose)
+        if gnss_difference > 3:
+            print("KIDNAPPED! Reseting.")
+            self.reset(gnss_pose, N=len(self.particles))
 
-        if gnss_difference > 5:
-            self.reset(gnss_pose, N=100)
+        self.mu = mu
+
+        self.mus.append(mu)
+        self.gnss_poses.append(gnss_pose)
+
+        # plt.plot(self.mus)
+        # plt.plot(self.gnss_poses)
+        # plt.show()
 
         return mu, var
 

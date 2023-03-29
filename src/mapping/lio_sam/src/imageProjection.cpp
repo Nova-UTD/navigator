@@ -5,29 +5,26 @@
 struct VelodynePointXYZIRT
 {
     PCL_ADD_POINT4D // Adds XYZ and padding https://pointclouds.org/documentation/tutorials/adding_custom_ptype.html#id6
-    PCL_ADD_INTENSITY;
+        PCL_ADD_INTENSITY;
     uint16_t ring;
     float time;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 } EIGEN_ALIGN16;
-POINT_CLOUD_REGISTER_POINT_STRUCT (VelodynePointXYZIRT,
-    (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity)
-    (uint16_t, ring, ring) (float, time, time)
-)
+POINT_CLOUD_REGISTER_POINT_STRUCT(VelodynePointXYZIRT,
+                                  (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(uint16_t, ring, ring)(float, time, time))
 
 struct RinglessVelodynePointXYZIT
 {
     PCL_ADD_POINT4D // Adds XYZ and padding https://pointclouds.org/documentation/tutorials/adding_custom_ptype.html#id6
-    PCL_ADD_INTENSITY;
+        PCL_ADD_INTENSITY;
     float timestamp; // "timestamp" is what SVL calls it
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 } EIGEN_ALIGN16;
-POINT_CLOUD_REGISTER_POINT_STRUCT (RinglessVelodynePointXYZIT,
-    (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity)
-    (float, timestamp, timestamp)
-)
+POINT_CLOUD_REGISTER_POINT_STRUCT(RinglessVelodynePointXYZIT,
+                                  (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(float, timestamp, timestamp))
 
-struct OusterPointXYZIRT {
+struct OusterPointXYZIRT
+{
     PCL_ADD_POINT4D;
     float intensity;
     uint32_t t;
@@ -38,10 +35,7 @@ struct OusterPointXYZIRT {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 } EIGEN_ALIGN16;
 POINT_CLOUD_REGISTER_POINT_STRUCT(OusterPointXYZIRT,
-    (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity)
-    (uint32_t, t, t) (uint16_t, reflectivity, reflectivity)
-    (uint8_t, ring, ring) (uint16_t, noise, noise) (uint32_t, range, range)
-)
+                                  (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(uint32_t, t, t)(uint16_t, reflectivity, reflectivity)(uint8_t, ring, ring)(uint16_t, noise, noise)(uint32_t, range, range))
 
 // Use the Velodyne point format as a common representation
 using PointXYZIRT = VelodynePointXYZIRT;
@@ -51,7 +45,6 @@ const int queueLength = 2000; // !!! This is big
 class ImageProjection : public ParamServer
 {
 private:
-
     std::mutex imuLock;
     std::mutex odoLock;
 
@@ -85,8 +78,8 @@ private:
     pcl::PointCloud<PointXYZIRT>::Ptr laserCloudIn;
     pcl::PointCloud<OusterPointXYZIRT>::Ptr tmpOusterCloudIn;
     pcl::PointCloud<RinglessVelodynePointXYZIT>::Ptr inputCloud;
-    pcl::PointCloud<PointType>::Ptr   fullCloud;
-    pcl::PointCloud<PointType>::Ptr   extractedCloud;
+    pcl::PointCloud<PointType>::Ptr fullCloud;
+    pcl::PointCloud<PointType>::Ptr extractedCloud;
 
     int deskewFlag;
     cv::Mat rangeMat;
@@ -101,10 +94,8 @@ private:
     double timeScanEnd;
     std_msgs::msg::Header cloudHeader;
 
-
 public:
-    ImageProjection(const rclcpp::NodeOptions & options) :
-            ParamServer("lio_sam_imageProjection", options), deskewFlag(0)
+    ImageProjection(const rclcpp::NodeOptions &options) : ParamServer("lio_sam_imageProjection", options), deskewFlag(0)
     {
         callbackGroupLidar = create_callback_group(
             rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -128,7 +119,7 @@ public:
             "/gps/odom", qos_imu,
             std::bind(&ImageProjection::odometryHandler, this, std::placeholders::_1),
             odomOpt);
-        subLaserCloud = create_subscription<sensor_msgs::msg::PointCloud2>( // /lidar_front/points_raw
+        subLaserCloud = create_subscription<sensor_msgs::msg::PointCloud2>( // /lidar_right/points_raw
             pointCloudTopic, qos_lidar,
             std::bind(&ImageProjection::cloudHandler, this, std::placeholders::_1),
             lidarOpt);
@@ -152,13 +143,13 @@ public:
         fullCloud.reset(new pcl::PointCloud<PointType>());
         extractedCloud.reset(new pcl::PointCloud<PointType>());
 
-        fullCloud->points.resize(N_SCAN*Horizon_SCAN);
+        fullCloud->points.resize(N_SCAN * Horizon_SCAN);
 
         cloudInfo.start_ring_index.assign(N_SCAN, 0);
         cloudInfo.end_ring_index.assign(N_SCAN, 0);
 
-        cloudInfo.point_col_ind.assign(N_SCAN*Horizon_SCAN, 0);
-        cloudInfo.point_range.assign(N_SCAN*Horizon_SCAN, 0);
+        cloudInfo.point_col_ind.assign(N_SCAN * Horizon_SCAN, 0);
+        cloudInfo.point_range.assign(N_SCAN * Horizon_SCAN, 0);
 
         resetParameters();
     }
@@ -183,7 +174,7 @@ public:
         }
     }
 
-    ~ImageProjection(){}
+    ~ImageProjection() {}
 
     void imuHandler(const sensor_msgs::msg::Imu::SharedPtr imuMsg)
     {
@@ -191,21 +182,25 @@ public:
 
         const int MAX_ACCEL = 10;
 
-        if (thisImu.linear_acceleration.x > MAX_ACCEL) {
-            RCLCPP_WARN_STREAM(get_logger(), "x linear accel out of bounds! Was "<<thisImu.linear_acceleration.x);
+        if (thisImu.linear_acceleration.x > MAX_ACCEL)
+        {
+            RCLCPP_WARN_STREAM(get_logger(), "x linear accel out of bounds! Was " << thisImu.linear_acceleration.x);
             thisImu.linear_acceleration.x = MAX_ACCEL;
         }
-        if (thisImu.linear_acceleration.x < MAX_ACCEL*-1) {
-            RCLCPP_WARN_STREAM(get_logger(), "x linear accel out of bounds! Was "<<thisImu.linear_acceleration.x);
-            thisImu.linear_acceleration.x = MAX_ACCEL*-1;
+        if (thisImu.linear_acceleration.x < MAX_ACCEL * -1)
+        {
+            RCLCPP_WARN_STREAM(get_logger(), "x linear accel out of bounds! Was " << thisImu.linear_acceleration.x);
+            thisImu.linear_acceleration.x = MAX_ACCEL * -1;
         }
-        if (thisImu.linear_acceleration.y > MAX_ACCEL) {
-            RCLCPP_WARN_STREAM(get_logger(), "y linear accel out of bounds! Was "<<thisImu.linear_acceleration.y);
+        if (thisImu.linear_acceleration.y > MAX_ACCEL)
+        {
+            RCLCPP_WARN_STREAM(get_logger(), "y linear accel out of bounds! Was " << thisImu.linear_acceleration.y);
             thisImu.linear_acceleration.y = MAX_ACCEL;
         }
-        if (thisImu.linear_acceleration.y < MAX_ACCEL*-1) {
-            RCLCPP_WARN_STREAM(get_logger(), "y linear accel out of bounds! Was "<<thisImu.linear_acceleration.y);
-            thisImu.linear_acceleration.y = MAX_ACCEL*-1;
+        if (thisImu.linear_acceleration.y < MAX_ACCEL * -1)
+        {
+            RCLCPP_WARN_STREAM(get_logger(), "y linear accel out of bounds! Was " << thisImu.linear_acceleration.y);
+            thisImu.linear_acceleration.y = MAX_ACCEL * -1;
         }
         // if (thisImu.linear_acceleration.z > MAX_ACCEL) {
         //     RCLCPP_WARN_STREAM(get_logger(), "z linear accel out of bounds! Was "<<thisImu.linear_acceleration.z);
@@ -226,7 +221,6 @@ public:
         //     double avg_angular_v_x, avg_angular_v_y, avg_angular_v_z = 0;
         //     double avg_linear_a_x, avg_linear_a_y,avg_linear_a_z = 0;
 
-            
         //     for (int i = 0; i < imuSmoothSize-1; i++) {
         //         avg_angular_v_x += imuQueue[i].angular_velocity.x;
         //         avg_angular_v_y += imuQueue[i].angular_velocity.y;
@@ -251,12 +245,12 @@ public:
         // debug IMU data
         // cout << std::setprecision(6);
         // cout << "IMU acc: " << endl;
-        // cout << "x: " << thisImu.linear_acceleration.x << 
-        //       ", y: " << thisImu.linear_acceleration.y << 
+        // cout << "x: " << thisImu.linear_acceleration.x <<
+        //       ", y: " << thisImu.linear_acceleration.y <<
         //       ", z: " << thisImu.linear_acceleration.z << endl;
         // cout << "IMU gyro: " << endl;
-        // cout << "x: " << thisImu.angular_velocity.x << 
-        //       ", y: " << thisImu.angular_velocity.y << 
+        // cout << "x: " << thisImu.angular_velocity.x <<
+        //       ", y: " << thisImu.angular_velocity.y <<
         //       ", z: " << thisImu.angular_velocity.z << endl;
         // double imuRoll, imuPitch, imuYaw;
         // tf2::Quaternion orientation;
@@ -269,12 +263,12 @@ public:
     void odometryHandler(const nav_msgs::msg::Odometry::SharedPtr odometryMsg)
     {
         std::lock_guard<std::mutex> lock2(odoLock);
-        odomQueue.push_back(*odometryMsg); // Add 
+        odomQueue.push_back(*odometryMsg); // Add
     }
 
     void cloudHandler(const sensor_msgs::msg::PointCloud2::SharedPtr laserCloudMsg)
     {
-        // Fails if cloudqueue is <= 2 or 
+        // Fails if cloudqueue is <= 2 or
         if (!cachePointCloud(laserCloudMsg))
             return;
 
@@ -291,7 +285,7 @@ public:
         resetParameters();
     }
 
-    bool cachePointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr& laserCloudMsg)
+    bool cachePointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr &laserCloudMsg)
     {
         // cache point cloud
         cloudQueue.push_back(*laserCloudMsg);
@@ -300,7 +294,7 @@ public:
 
         // convert cloud
         currentCloudMsg = std::move(cloudQueue.front()); // Take cloud from front
-        cloudQueue.pop_front(); // Delete front
+        cloudQueue.pop_front();                          // Delete front
         if (sensor == SensorType::VELODYNE)
         {
             pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn); // Convert from ROS PointCloud2 to pcl::PointCloud<PointXYZIRT>::Ptr
@@ -327,7 +321,8 @@ public:
         // }
 
         // Here we cover for a lack of ring data by adding some fake (manually calculated) values
-        else if (sensor == SensorType::RINGLESS_VLP_16) {
+        else if (sensor == SensorType::RINGLESS_VLP_16)
+        {
             // pcl::PointCloud<RinglessVelodynePointXYZIT>::Ptr inputCloud;
             // RCLCPP_INFO(get_logger(),"A");
             pcl::moveFromROSMsg(currentCloudMsg, *inputCloud);
@@ -347,21 +342,22 @@ public:
                 dst.y = src.y;
                 dst.z = src.z;
                 dst.intensity = src.intensity;
-                
+
                 dst.time = src.timestamp;
                 // Fake a ring value
                 // Ring value is from 0 to 15, with 0 being lowest and 15 being highest
-                
+
                 // Find pitch of point relative to sensor height, = atan(x/sqrt(x^2+y^2))
-                double pitch_degrees = atan2(src.z, sqrt(pow(src.x,2)+pow(src.y,2))) * 180/3.14159265;
+                double pitch_degrees = atan2(src.z, sqrt(pow(src.x, 2) + pow(src.y, 2))) * 180 / 3.14159265;
                 // Find pitch of point from bottom of FOV
-                double pitch_from_bottom = pitch_degrees+fov_below_middle_deg;
+                double pitch_from_bottom = pitch_degrees + fov_below_middle_deg;
                 // RCLCPP_DEBUG_STREAM(get_logger(), "Center ("<<point.x<<","<<point.y<<","<<point.z<<") is "<<pitch_degrees<<"; "<<pitch_from_bottom);
                 // Map this from [0,FOV]->[0,15]
-                int ring_number = round((pitch_from_bottom/fov_deg)*16); // This will always round DOWN. 
+                int ring_number = round((pitch_from_bottom / fov_deg) * 16); // This will always round DOWN.
                 // int ring_number = floor(pitch_from_bottom * (ring_count) / fov_deg);
                 // RCLCPP_INFO_STREAM(get_logger(), "("<<src.x<<","<<src.y<<","<<src.z<<")-> atan("<<src.z<<"/"<<sqrt(pow(src.x,2)+pow(src.y,2))<<"+bot="<<pitch_from_bottom<<" "<<ring_number);
-                if(ring_number>=(ring_count-1)) {
+                if (ring_number >= (ring_count - 1))
+                {
                     // RCLCPP_ERROR_STREAM(get_logger(), "Ring number "<<ring_number<<" is above "<<(ring_count-1)<<". Rounding down.");
                     ring_number = 15;
                 }
@@ -374,7 +370,7 @@ public:
             // for (size_t i = 0; i < laserCloudIn->size(); i++)
             // {
             //     auto &dst = laserCloudIn->points[i];
-                // RCLCPP_INFO_STREAM(get_logger(), "("<<dst.x<<","<<dst.y<<","<<dst.z<<","<<dst.intensity<<","<<dst.ring<<","<<dst.time<<")");
+            // RCLCPP_INFO_STREAM(get_logger(), "("<<dst.x<<","<<dst.y<<","<<dst.z<<","<<dst.intensity<<","<<dst.ring<<","<<dst.time<<")");
             // }
         }
         else
@@ -487,7 +483,8 @@ public:
                 break;
 
             // Reset our queues  for IMU (X, Y, Z, time) and prepare our IMU offset estimate
-            if (imuPointerCur == 0){
+            if (imuPointerCur == 0)
+            {
                 imuRotX[0] = 0;
                 imuRotY[0] = 0;
                 imuRotZ[0] = 0;
@@ -501,10 +498,10 @@ public:
             imuAngular2rosAngular(&thisImuMsg, &angular_x, &angular_y, &angular_z); // Should this be outside of LIO-SAM?
 
             // "integrate" rotation from previous IMU queue elem to now, then set current elem accordingly
-            double timeDiff = currentImuTime - imuTime[imuPointerCur-1];
-            imuRotX[imuPointerCur] = imuRotX[imuPointerCur-1] + angular_x * timeDiff;
-            imuRotY[imuPointerCur] = imuRotY[imuPointerCur-1] + angular_y * timeDiff;
-            imuRotZ[imuPointerCur] = imuRotZ[imuPointerCur-1] + angular_z * timeDiff;
+            double timeDiff = currentImuTime - imuTime[imuPointerCur - 1];
+            imuRotX[imuPointerCur] = imuRotX[imuPointerCur - 1] + angular_x * timeDiff;
+            imuRotY[imuPointerCur] = imuRotY[imuPointerCur - 1] + angular_y * timeDiff;
+            imuRotZ[imuPointerCur] = imuRotZ[imuPointerCur - 1] + angular_z * timeDiff;
             imuTime[imuPointerCur] = currentImuTime;
             ++imuPointerCur;
         }
@@ -601,7 +598,9 @@ public:
 
     void findRotation(double pointTime, float *rotXCur, float *rotYCur, float *rotZCur)
     {
-        *rotXCur = 0; *rotYCur = 0; *rotZCur = 0;
+        *rotXCur = 0;
+        *rotYCur = 0;
+        *rotZCur = 0;
 
         int imuPointerFront = 0;
         while (imuPointerFront < imuPointerCur)
@@ -616,7 +615,9 @@ public:
             *rotXCur = imuRotX[imuPointerFront];
             *rotYCur = imuRotY[imuPointerFront];
             *rotZCur = imuRotZ[imuPointerFront];
-        } else {
+        }
+        else
+        {
             int imuPointerBack = imuPointerFront - 1;
             double ratioFront = (pointTime - imuTime[imuPointerBack]) / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
             double ratioBack = (imuTime[imuPointerFront] - pointTime) / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
@@ -628,7 +629,9 @@ public:
 
     void findPosition(double relTime, float *posXCur, float *posYCur, float *posZCur)
     {
-        *posXCur = 0; *posYCur = 0; *posZCur = 0;
+        *posXCur = 0;
+        *posYCur = 0;
+        *posZCur = 0;
 
         // If the sensor moves relatively slow, like walking speed, positional deskew seems to have little benefits. Thus code below is commented.
 
@@ -666,9 +669,9 @@ public:
         Eigen::Affine3f transBt = transStartInverse * transFinal;
 
         PointType newPoint;
-        newPoint.x = transBt(0,0) * point->x + transBt(0,1) * point->y + transBt(0,2) * point->z + transBt(0,3);
-        newPoint.y = transBt(1,0) * point->x + transBt(1,1) * point->y + transBt(1,2) * point->z + transBt(1,3);
-        newPoint.z = transBt(2,0) * point->x + transBt(2,1) * point->y + transBt(2,2) * point->z + transBt(2,3);
+        newPoint.x = transBt(0, 0) * point->x + transBt(0, 1) * point->y + transBt(0, 2) * point->z + transBt(0, 3);
+        newPoint.y = transBt(1, 0) * point->x + transBt(1, 1) * point->y + transBt(1, 2) * point->z + transBt(1, 3);
+        newPoint.z = transBt(2, 0) * point->x + transBt(2, 1) * point->y + transBt(2, 2) * point->z + transBt(2, 3);
         newPoint.intensity = point->intensity;
 
         return newPoint;
@@ -699,8 +702,8 @@ public:
 
             float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
 
-            static float ang_res_x = 360.0/float(Horizon_SCAN);
-            int columnIdn = -round((horizonAngle-90.0)/ang_res_x) + Horizon_SCAN/2;
+            static float ang_res_x = 360.0 / float(Horizon_SCAN);
+            int columnIdn = -round((horizonAngle - 90.0) / ang_res_x) + Horizon_SCAN / 2;
             if (columnIdn >= Horizon_SCAN)
                 columnIdn -= Horizon_SCAN;
 
@@ -728,31 +731,31 @@ public:
             cloudInfo.start_ring_index[i] = count - 1 + 5;
             for (int j = 0; j < Horizon_SCAN; ++j)
             {
-                if (rangeMat.at<float>(i,j) != FLT_MAX)
+                if (rangeMat.at<float>(i, j) != FLT_MAX)
                 {
                     // mark the points' column index for marking occlusion later
                     cloudInfo.point_col_ind[count] = j;
                     // save range info
-                    cloudInfo.point_range[count] = rangeMat.at<float>(i,j);
+                    cloudInfo.point_range[count] = rangeMat.at<float>(i, j);
                     // save extracted cloud
-                    extractedCloud->push_back(fullCloud->points[j + i*Horizon_SCAN]);
+                    extractedCloud->push_back(fullCloud->points[j + i * Horizon_SCAN]);
                     // size of extracted cloud
                     ++count;
                 }
             }
-            cloudInfo.end_ring_index[i] = count -1 - 5;
+            cloudInfo.end_ring_index[i] = count - 1 - 5;
         }
     }
-    
+
     void publishClouds()
     {
         cloudInfo.header = cloudHeader;
-        cloudInfo.cloud_deskewed  = publishCloud(pubExtractedCloud, extractedCloud, cloudHeader.stamp, lidarFrame);
+        cloudInfo.cloud_deskewed = publishCloud(pubExtractedCloud, extractedCloud, cloudHeader.stamp, lidarFrame);
         pubLaserCloudInfo->publish(cloudInfo);
     }
 };
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
 
