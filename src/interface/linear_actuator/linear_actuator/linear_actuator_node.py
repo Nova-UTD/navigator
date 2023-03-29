@@ -6,6 +6,8 @@ Author:    Will Heitman (w at heit.mn)
 Subscribes to CarlaEgoVehicleControl messages (https://github.com/carla-simulator/ros-carla-msgs/blob/leaderboard-2.0/msg/CarlaEgoVehicleControl.msg)
 
 Sends the appropriate brake data to the LA
+
+✨ Documentation available: nova-utd.github.io/interface/linear-actuators
 '''
 
 import os
@@ -29,9 +31,7 @@ class linear_actuator_node(Node):
     def __init__(self):
         super().__init__('linear_actuator_node')
 
-        self.vehicle_command_sub = self.create_subscription(CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.sendBrakeControl, 10)
-        #self.get_logger().info(str(vehicle_command_sub))
-        #self.brake = 0.0  # 0.0 is released, 1.0 is fully pressed
+        self.vehicle_command_sub = self.create_subscription(CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.sendLAControl, 10)
         self.get_logger().info("Bus now connected.")
 
         channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
@@ -46,17 +46,12 @@ class linear_actuator_node(Node):
         response = self.enableClutch(self.bus)
         self.get_logger().debug(f"Clutch enabled with response {response}")
 
-        #self.brake_control_timer = self.create_timer(
-            #0.1, self.sendBrakeControl(self.bus))
-
     def commandCb(self, msg: CarlaEgoVehicleControl):
         self.brake = msg.brake
         self.get_logger().info('this is the val of the brake currently')
         self.get_logger().info(str(self.brake))
 
-    def sendBrakeControl(self, msg: CarlaEgoVehicleControl):
-        #self.get_logger().info('Printing self.brake in sendBrakeControl')
-        #self.get_logger().info(str(msg.brake))
+    def sendLAControl(self, msg: CarlaEgoVehicleControl):
         if self.bus is None:
             self.get_logger().warn("Bus not yet set. Skipping command")
         if msg.brake < 0.0:
