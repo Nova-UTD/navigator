@@ -37,7 +37,7 @@ $ ./docker.sh
 ```
 which gives:
 ```
-wheitman@justingpu:~/navigator$ ./docker.sh 
+[username]@justingpu:~/navigator$ ./docker.sh 
 =====================================================================
 ▀█▄   ▀█▀                   ██                    ▄                   
  █▀█   █   ▄▄▄▄   ▄▄▄▄ ▄▄▄ ▄▄▄    ▄▄▄ ▄  ▄▄▄▄   ▄██▄    ▄▄▄   ▄▄▄ ▄▄  
@@ -89,3 +89,8 @@ $ ./docker.sh
 ...
 root@yourhost:/navigator# rviz2
 ```
+
+## Real-world use
+To run in the real-world, you'll need to provide your own LiDAR stream, map data, and throttle/brake/steering interface. We provide our own interface, for use with our specific hardware, as an example.
+
+To use, run `./docker.sh` to enter the container, then source Navigator with `. install/setup.bash`, and finally launch the real-world script with `ros2 launch main.launch.py`. If you haven't built the workspace yet, run `colcon build --symlink-install` after sourcing.
