@@ -121,7 +121,7 @@ def generate_launch_description():
     )
 
     linear_actuator = Node(
-        package='linear_actuator'
+        package='linear_actuator',
         executable='linear_actuator_node'
     )
 
@@ -133,27 +133,41 @@ def generate_launch_description():
     left_lidar_driver = Node(
         package = 'velodyne_driver',
         executable = 'velodyne_driver_node',
-        parameters = ["/navigator/param/perception/lidar_driver_left.param.yaml"]
+        parameters = ["/navigator/param/perception/lidar_driver_left.param.yaml"],
+        namespace='velo_left'
     )
 
     right_lidar_driver = Node(
         package = 'velodyne_driver',
         executable = 'velodyne_driver_node',
-        parameters = ["/navigator/param/perception/lidar_driver_right.param.yaml"]
+        parameters = ["/navigator/param/perception/lidar_driver_right.param.yaml"],
+        namespace='velo_right'
+
     )
 
     left_lidar_pointcloud = Node(
         package = 'velodyne_pointcloud',
         executable = 'velodyne_convert_node',
-        parameters = ["/navigator/param/perception/lidar_pointcloud_left.param.yaml"]
+        parameters = ["/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
+        namespace='velo_left'
     )
 
     right_lidar_pointcloud = Node(
         package = 'velodyne_pointcloud',
         executable = 'velodyne_convert_node',
-        parameters = ["/navigator/param/perception/lidar_pointcloud_right.param.yaml"]
+        parameters = ["/navigator/param/perception/lidar_pointcloud_right.param.yaml"],
+        namespace='velo_right'
     )
 
+    camera = Node(
+        package = 'camera',
+        executable = 'camera_node'
+    )
+
+    gps_node = Node(
+        package = 'nmea_navsat_driver',
+        executable = 'nmea_serial_driver'
+    )
 
     
 
@@ -162,16 +176,20 @@ def generate_launch_description():
         # controller,
 
         # INTERFACE
-        joy,
-        joy_translator,
-        epas,
-        mcu_interface,
-        linear_actuator,
+        #joy,
+        #joy_translator,
+        #epas,
+        #mcu_interface,
+        #linear_actuator,
 
-        # left_lidar_driver,
-        # left_lidar_pointcloud,
+        left_lidar_driver,
+        left_lidar_pointcloud,
         right_lidar_driver,
         right_lidar_pointcloud,
+
+        camera,
+
+        gps_node,
 
         # MISC
         urdf_publisher,
