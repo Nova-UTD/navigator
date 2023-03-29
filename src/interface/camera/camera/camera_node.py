@@ -64,7 +64,7 @@ class camera_node(Node):
             msg = self.bridge.cv2_to_imgmsg(frame, encoding="passthrough")
             self.camera_publishers[idx].publish(msg)
 
-    def list_ports(self) -> tuple[list,list,list]:
+    def list_ports(self) -> tuple:
         """
         Test the ports and returns a tuple with the available ports and the ones that are working.
 
