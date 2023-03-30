@@ -30,6 +30,11 @@ def generate_launch_description():
         executable='mcl_node'
     )
 
+    camera_streamer = Node(
+        package='web_video_server',
+        executable='web_video_server'
+    )
+
     # carla_spawner = IncludeLaunchDescription(
     #     PythonLaunchDescriptionSource([get_package_share_directory(
     #         'carla_spawn_objects'), '/carla_spawn_objects.launch.py']),
@@ -48,19 +53,10 @@ def generate_launch_description():
         arguments=[path.join("/navigator/data", "hail_bopp.urdf")]
     )
 
-    # carla_bridge_official = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource([get_package_share_directory(
-    #         'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
-    #     launch_arguments={
-    #         'host': 'localhost',
-    #         'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
-    #         'synchronous_mode': 'True',
-    #         'town': 'Town02',
-    #         'register_all_sensors': 'False',
-    #         'ego_vehicle_role_name': 'hero',
-    #         'timeout': '30'
-    #     }.items(),
-    # )
+    guardian = Node(
+        package='guardian',
+        executable='guardian_node'
+    )
 
     gnss_processor = Node(
         package='state_estimation',
@@ -107,7 +103,9 @@ def generate_launch_description():
 
     joy = Node(
         package='joy_linux',
-        executable='joy_linux_node'
+        executable='joy_linux_node',
+        parameters=[(
+        )]
     )
 
     joy_translator = Node(
@@ -169,29 +167,37 @@ def generate_launch_description():
         executable = 'nmea_serial_driver'
     )
 
-    
+    web_bridge = Node(
+        package='rosbridge_server',
+        executable='rosbridge_websocket'
+    )
 
     return LaunchDescription([
         # CONTROL
         # controller,
 
         # INTERFACE
-        #joy,
-        #joy_translator,
+        camera_streamer,
+        joy,
+        joy_translator,
         #epas,
         #mcu_interface,
         #linear_actuator,
+        web_bridge,
 
-        left_lidar_driver,
-        left_lidar_pointcloud,
-        right_lidar_driver,
-        right_lidar_pointcloud,
+        # left_lidar_driver,
+        # left_lidar_pointcloud,
+        # right_lidar_driver,
+        # right_lidar_pointcloud,
 
-        camera,
+        # camera,
 
-        gps_node,
+        # gps_node,
 
         # MISC
         urdf_publisher,
         # rviz,
+
+        # SAFETY
+        # guardian
     ])

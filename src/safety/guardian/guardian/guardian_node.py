@@ -31,10 +31,12 @@ class Sensitivity:
     PREVENTS_MANUAL = 1
     PREVENTS_NOTHING = 2
 
+NOT_RECEIVED = b'\xff'
+
 
 @dataclass
 class StatusEntry:
-    level: DiagnosticStatus.level
+    level: DiagnosticStatus.level = NOT_RECEIVED
     message: str = ""
 
 
@@ -62,9 +64,8 @@ class guardian_node(Node):
 
         clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1)
 
-        self.watchlist = {
-            "rtp_node": ""
-        }
+        self.manual_nodes={"joy_translation":StatusEntry()}
+        self.auto_nodes=[]
 
         status_timer = self.create_timer(0.5, self.publishStatusArray)
 
@@ -86,10 +87,11 @@ class guardian_node(Node):
         array_msg = DiagnosticArray()
         array_msg.header.stamp = self.clock
 
-        for entry in self.watchlist:
+        for entry in self.manual_nodes:
             status_msg = DiagnosticStatus()
             status_msg.name = entry
-            value: StatusEntry = self.watchlist[entry]
+            value: StatusEntry = self.manual_nodes[entry]
+            print(value)
             status_msg.level = value.level
 
             if value.level == DiagnosticStatus.ERROR:
@@ -107,11 +109,16 @@ class guardian_node(Node):
         self.status_array_pub.publish(array_msg)
 
     def statusCb(self, msg: DiagnosticStatus):
-        if not msg.name in self.watchlist:
+        print(msg)
+        if msg.name in self.auto_nodes:
+            print(f"{msg.name} was in AUTO")
+            self.auto_nodes[msg.name] = StatusEntry(msg.level, msg.message)
+        elif msg.name in self.manual_nodes:
+            print(f"{msg.name} was in MANUAL")
+        else:
             self.get_logger().warning(
                 f"Received status from node outside watchlist: {msg.name}")
             return
-        self.watchlist[msg.name] = StatusEntry(msg.level, msg.message)
 
         # print(self.watchlist[msg.name])
 

@@ -47,6 +47,7 @@ from rosgraph_msgs.msg import Clock
 import time
 
 from carla_msgs.msg import CarlaEgoVehicleControl
+from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from nova_msgs.msg import Mode
 import rclpy
 from rclpy.node import Node
@@ -62,7 +63,6 @@ class joy_translation_node(Node):
             Joy, '/joy', self.joyCb, 10)
 
         self.clock = Clock().clock
-
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 10)
 
@@ -71,6 +71,9 @@ class joy_translation_node(Node):
 
         self.requested_mode_pub = self.create_publisher(
             Mode, '/requested_mode', 1)
+        
+        self.status = DiagnosticStatus()
+        self.status_pub = self.create_publisher(DiagnosticStatus, '/node_statuses', 1)
 
         self.current_mode = Mode.DISABLED
         self.current_mode_sub = self.create_subscription(
@@ -82,8 +85,24 @@ class joy_translation_node(Node):
     def clockCb(self, msg: Clock):
         self.clock = msg.clock
 
+    def initStatusMsg(self) -> DiagnosticStatus:
+        status = DiagnosticStatus()
+
+        status.name = self.get_name()
+
+        stamp = KeyValue()
+        stamp.key = 'stamp'
+        stamp.value = str(self.clock.sec+self.clock.nanosec*1e-9)
+        status.values.append(stamp)
+
+        status.level = DiagnosticStatus.OK
+
+        return status
+
     def joyCb(self, msg: Joy):
         command_msg = CarlaEgoVehicleControl()
+
+        self.status = self.initStatusMsg()
 
         command_msg.header.stamp = self.clock
         command_msg.header.frame_id = 'base_link'
@@ -114,6 +133,12 @@ class joy_translation_node(Node):
             self.command_pub.publish(command_msg)
             self.get_logger().info("Publishing manual command!")
         self.requested_mode_pub.publish(requested_mode)
+
+        requested_mode_keyval = KeyValue()
+        requested_mode_keyval.key = 'requested_mode'
+        requested_mode_keyval.value = str(requested_mode)
+        self.status.values.append(requested_mode_keyval)
+        self.status_pub.publish(self.status)
 
 
 def main(args=None):
