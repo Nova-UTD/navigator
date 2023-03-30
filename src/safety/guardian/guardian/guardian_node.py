@@ -61,8 +61,11 @@ class guardian_node(Node):
 
         clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1)
 
-        self.manual_nodes={"joy_translation_node":StatusEntry()}
-        self.auto_nodes=[]
+        self.manual_nodes={
+            "joy_translation_node": StatusEntry(),
+            "epas_node": StatusEntry()
+            }
+        self.auto_nodes={}
 
         status_timer = self.create_timer(0.2, self.publishStatusArray)
 
@@ -82,6 +85,7 @@ class guardian_node(Node):
         return status
     
     def isStale(self, status: StatusEntry) -> bool:
+
         return (self.clock - status.stamp) > STALENESS_TOLERANCE
 
     def publishStatusArray(self):
@@ -178,7 +182,6 @@ class guardian_node(Node):
         elif msg.name in self.manual_nodes:
             # print(f"{msg.name} was in MANUAL")
             stamp = self.getStamp(msg)
-            print(stamp)
             self.manual_nodes[msg.name] = StatusEntry(msg.level, msg.message, stamp)
         else:
             self.get_logger().warning(
@@ -188,12 +191,14 @@ class guardian_node(Node):
     def modeRequestCb(self, msg: Mode):
         # Here we can choose to accept or deny the requested mode.
 
-        if self.manual_disabled:
-            self.current_mode = Mode.DISABLED
-        elif self.auto_disabled and msg.mode == Mode.AUTO:
-            self.current_mode = Mode.DISABLED
-        else:
-            self.current_mode = msg.mode
+        # if self.manual_disabled:
+        #     self.current_mode = Mode.DISABLED
+        # elif self.auto_disabled and msg.mode == Mode.AUTO:
+        #     self.current_mode = Mode.DISABLED
+        # else:
+        #     self.current_mode = msg.mode
+
+        self.current_mode = msg.mode
 
 
         mode_msg = Mode()

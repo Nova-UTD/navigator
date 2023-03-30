@@ -45,8 +45,7 @@ class McuInterfaceNode(Node):
 
         self.get_logger().info("Bus now connected.")
 
-        # what is create_timer? -Jai 
-        self.vehicle_command_timer = self.create_timer(.5, self.publishCommand)
+        self.vehicle_command_timer = self.create_timer(.3, self.publishCommand)
         self.throttle = 0
 
     def commandCb(self, msg: CarlaEgoVehicleControl):

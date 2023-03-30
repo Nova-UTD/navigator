@@ -131,7 +131,7 @@ class joy_translation_node(Node):
 
         if self.current_mode == Mode.MANUAL:
             self.command_pub.publish(command_msg)
-            self.get_logger().info("Publishing manual command!")
+            # self.get_logger().info("Publishing manual command!")
         self.requested_mode_pub.publish(requested_mode)
 
         requested_mode_keyval = KeyValue()
@@ -139,7 +139,6 @@ class joy_translation_node(Node):
         requested_mode_keyval.value = str(requested_mode)
         self.status.values.append(requested_mode_keyval)
         self.status_pub.publish(self.status)
-        self.get_logger().error("PUB")
 
 
 def main(args=None):

@@ -185,8 +185,8 @@ def generate_launch_description():
         camera_streamer,
         joy,
         joy_translator,
-        #epas,
-        #mcu_interface,
+        epas,
+        mcu_interface,
         #linear_actuator,
         web_bridge,
 
