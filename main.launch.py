@@ -172,6 +172,11 @@ def generate_launch_description():
         executable='rosbridge_websocket'
     )
 
+    clock = Node(
+        package='clock',
+        executable='clock_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         # controller,
@@ -195,6 +200,7 @@ def generate_launch_description():
         # gps_node,
 
         # MISC
+        clock,
         urdf_publisher,
         # rviz,
 

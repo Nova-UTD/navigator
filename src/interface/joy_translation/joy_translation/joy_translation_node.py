@@ -139,6 +139,7 @@ class joy_translation_node(Node):
         requested_mode_keyval.value = str(requested_mode)
         self.status.values.append(requested_mode_keyval)
         self.status_pub.publish(self.status)
+        self.get_logger().error("PUB")
 
 
 def main(args=None):
