@@ -118,11 +118,6 @@ class linear_actuator_node(Node):
     def currentModeCb(self, msg: Mode):
         self.current_mode = msg.mode
 
-    def commandCb(self, msg: CarlaEgoVehicleControl):
-        self.brake = msg.brake
-        self.get_logger().info('this is the val of the brake currently')
-        self.get_logger().info(str(self.brake))
-
     def sendBrakeControl(self, msg: CarlaEgoVehicleControl):
         # self.get_logger().info('Printing self.brake in sendBrakeControl')
         # self.get_logger().info(str(msg.brake))
@@ -134,7 +129,7 @@ class linear_actuator_node(Node):
 
         position = max((1-msg.brake) / 2 - 0.1, 0.0)
 
-        self.get_logger().info(f"{msg.brake} => {position}")
+        # self.get_logger().info(f"{msg.brake} => {position}")
         response = self.sendToPosition(position, self.bus)
         # self.get_logger().info(f"Got response: {response}")
 

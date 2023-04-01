@@ -7,32 +7,25 @@ import pyproj
 import rclpy
 import serial
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
+from geometry_msgs.msg import Quaternion, TransformStamped, Vector3
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import NavSatFix
+from tf2_ros import TransformBroadcaster
 
-EARTH_RADIUS_EQUA = 6378137.0
-
-def toRadians(degrees: float):
-    return degrees * math.pi / 180.0
-
-
-def latToScale(lat: float) -> float:
-    """Return UTM projection scale
-
-    Args:
-        lat (float): degrees latitude
-
-    Returns:
-        float: projection scale
-    """
-    return math.cos(toRadians(lat))
 
 class GnssInterfaceNode(Node):
 
     def __init__(self):
         super().__init__('gnss_interface_node')
+
+        self.sio = None
+        self.orientation = Quaternion()
+        self.heading = 0.0
+        self.cached_odom = None
+
+        self.tf_broadcaster = TransformBroadcaster(self)
 
         self.clock = Clock().clock
         self.clock_sub = self.create_subscription(
@@ -57,6 +50,92 @@ class GnssInterfaceNode(Node):
         utm_zone = 14
         self.proj = pyproj.Proj(proj='utm', zone=utm_zone, ellipsis='WGS84', preserve_units=True)
 
+        self.speed = 0.0
+
+        self.read_timer = self.create_timer(0.05, self.getData)
+        self.tf_timer = self.create_timer(0.05, self.publishTf)
+
+    def publishTf(self):
+        if self.cached_odom is None:
+            return
+
+        # Publish our map->base_link tf
+        t = TransformStamped()
+        t.header = self.cached_odom.header
+        t.child_frame_id = self.cached_odom.child_frame_id
+        transl = Vector3()
+        transl.x = self.cached_odom.pose.pose.position.x
+        transl.y = self.cached_odom.pose.pose.position.y
+        transl.z = self.cached_odom.pose.pose.position.z
+        t.transform.translation = transl
+        t.transform.rotation = self.cached_odom.pose.pose.orientation
+        self.tf_broadcaster.sendTransform(t)
+
+    def getData(self):
+
+        if self.sio is None:
+            return
+        
+        # Try to read the next 30 lines from the serial port
+        for i in range(30):
+            try:
+                line = self.sio.readline()
+                msg = pynmea2.parse(line)
+
+
+                if msg.sentence_type == "GGA":
+                    navsat_msg = NavSatFix()
+                    navsat_msg.header.frame_id = 'base_link'
+                    navsat_msg.header.stamp = self.clock
+                    navsat_msg.latitude = msg.latitude
+                    navsat_msg.longitude = msg.longitude
+                    try:
+                        navsat_msg.altitude = msg.altitude
+                    except AssertionError as e:
+                        self.get_logger().error(str(e))
+
+                    self.navsat_pub.publish(navsat_msg)
+
+                    odom_msg = self.getOdomMsg(msg.latitude, msg.longitude)
+                    odom_msg.header = navsat_msg.header
+                    odom_msg.header.frame_id = 'map'
+                    odom_msg.child_frame_id = 'base_link'
+
+
+                    self.odom_pub.publish(odom_msg)
+                    self.cached_odom = odom_msg
+                    # print(f"{msg.latitude}, {msg.longitude}")
+
+                elif msg.sentence_type == "VTG":
+                    if msg.spd_over_grnd_kmph is None:
+                        return
+                    self.speed = msg.spd_over_grnd_kmph * 0.277778
+                    if msg.true_track is not None and self.speed > 1.0:
+
+                        hdg_degrees = 90. - msg.true_track
+
+                        if hdg_degrees < 0.:
+                            hdg_degrees += 360.
+                        elif hdg_degrees >= 360.:
+                            hdg_degrees -= 360.
+
+                        q = Quaternion()
+                        hdg_radians = hdg_degrees * math.pi / 180.0
+
+                        try:
+                            q.w = math.cos(hdg_radians / 2)
+                            q.z = math.sin(hdg_radians / 2)
+                        except ValueError as e:
+                            self.get_logger().error(f"{hdg_radians} was out of bounds!")
+                        self.orientation = q
+                        self.heading = hdg_radians
+            except serial.SerialException as e:
+                print('Device error: {}'.format(e))
+                return
+            except pynmea2.ParseError as e:
+                # print('Parse error: {}'.format(e))
+                return
+
     def getOdomMsg(self, lat: float, lon: float) -> Odometry:
         x0, y0 = self.proj(latitude=self.lat0, longitude=self.lon0)
 
@@ -69,6 +148,11 @@ class GnssInterfaceNode(Node):
         msg.pose.pose.position.x = position_x
         msg.pose.pose.position.y = position_y
 
+        msg.pose.pose.orientation = self.orientation
+
+        msg.twist.twist.linear.x = math.cos(self.heading) * self.speed
+        msg.twist.twist.linear.y = math.sin(self.heading) * self.speed
+
         return msg
 
 
@@ -76,38 +160,7 @@ class GnssInterfaceNode(Node):
         # TODO: Stabilize this device path somehow
         self.bus = serial.Serial('/dev/serial/by-path/pci-0000:00:14.0-usb-0:6.4.4.3.1:1.0', 115200, timeout=0.05)
         self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus,self.bus))
-
-        while True:
-            try:
-                line = self.sio.readline()
-                msg = pynmea2.parse(line)
-
-
-                if msg.sentence_type == "GGA":
-                    navsat_msg = NavSatFix()
-                    navsat_msg.header.frame_id = 'gnss'
-                    navsat_msg.header.stamp = self.clock
-                    navsat_msg.latitude = msg.latitude
-                    navsat_msg.longitude = msg.longitude
-                    navsat_msg.altitude = msg.altitude
-
-                    self.navsat_pub.publish(navsat_msg)
-
-                    odom_msg = self.getOdomMsg(msg.latitude, msg.longitude)
-                    odom_msg.header = navsat_msg.header
-
-
-                    self.odom_pub.publish(odom_msg)
-                    print(f"{msg.latitude}, {msg.longitude}")
-                # else:
-                    # print(msg.sentence_type)
-                # print(repr(msg))
-            except serial.SerialException as e:
-                print('Device error: {}'.format(e))
-                break
-            except pynmea2.ParseError as e:
-                # print('Parse error: {}'.format(e))
-                continue
+                
         return
 
     def initStatusMsg(self) -> DiagnosticStatus:
