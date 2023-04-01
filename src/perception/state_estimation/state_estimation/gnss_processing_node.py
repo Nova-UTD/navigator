@@ -150,7 +150,6 @@ class GnssProcessingNode(Node):
         x0, y0 = self.latlonToMercator(
             self.lat0, self.lon0, latToScale(self.lat0))
 
-        # TODO: Should scale here be from self.lat0?
         x, y = self.latlonToMercator(
             msg.latitude, msg.longitude, latToScale(msg.latitude))
 
