@@ -182,12 +182,12 @@ def generate_launch_description():
         # controller,
 
         # INTERFACE
-        camera_streamer,
+        # camera_streamer,
         joy,
         joy_translator,
         epas,
         mcu_interface,
-        #linear_actuator,
+        linear_actuator,
         web_bridge,
 
         # left_lidar_driver,
@@ -205,5 +205,5 @@ def generate_launch_description():
         # rviz,
 
         # SAFETY
-        # guardian
+        guardian
     ])

@@ -3,125 +3,263 @@ Package:   linear_actuator
 Filename:  linear_actuator_node.py
 Author:    Will Heitman (w at heit.mn)
 
-Converts Joy messages to vehicle control commands
-
-Xbox One controller axes:
-[0]: LS, X
-[1]: LS, Y
-[2]: LT
-[3]: LS, X
-[4]: LS, Y
-[5]: RT
-[6]: Dpad X
-[7]: Dpad Y
-
-Xbox One controller buttons:
-[0]: A
-[1]: B
-[2]: X
-[3]: Y
-[4]: LB
-[5]: RB
-[6]: Select (left)
-[7]: Start (right)
-[8]: Xbox
-[9]: LSB
-[10]: RSB
-
-Controls:
-A: Auto enable (hold)
-X: Manual enable (hold, takes precedence over A)
-LS: Steering position
-LT: Brake
-RT: Throttle
-
 Subscribes to:
- /joy (sensor_msgs/Joy)
+- /carla/hero/vehicle_control_cmd (CarlaEgoVehicleControl)
+- /guardian/mode (nova_msgs/msg/Mode)
 
-Publishes to:
-/carla/hero/vehicle_control_cmd (CarlaEgoVehicleControl)
-
-✨ Documentation available: nova-utd.github.io/interface/linear-actuators
+Sends the appropriate brake data to the LA
 '''
 
-import numpy as np
-from rosgraph_msgs.msg import Clock
+import os
+import random
 import time
 
-from carla_msgs.msg import CarlaEgoVehicleControl
-from nova_msgs.msg import Mode
+import can
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Joy
+from rclpy.qos import DurabilityPolicy, QoSProfile
+
+# Message definitions
+from carla_msgs.msg import CarlaEgoVehicleControl
+from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
+from nova_msgs.msg import Mode
+from rosgraph_msgs.msg import Clock
 
 
-class joy_translation_node(Node):
-    current_mode = Mode.DISABLED
+# bus = None
+COMMAND_ID = 0xFF0000
+REPORT_ID = 0xFF0001
+
+
+class linear_actuator_node(Node):
+    vehicle_command_sub = None
+    brake = None
 
     def __init__(self):
-        super().__init__('joy_translation_node')
-        self.joy_sub = self.create_subscription(
-            Joy, '/joy', self.joyCb, 10)
+        super().__init__('linear_actuator_node')
+
+        self.bus = None
+
+        self.vehicle_command_sub = self.create_subscription(
+            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.sendBrakeControl, 10)
+
+        self.status = DiagnosticStatus()
+        self.status_pub = self.create_publisher(
+            DiagnosticStatus, '/node_statuses', 1)
 
         self.clock = Clock().clock
-
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 10)
-
-        self.command_pub = self.create_publisher(
-            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
-
-        self.requested_mode_pub = self.create_publisher(
-            Mode, '/requested_mode', 1)
 
         self.current_mode = Mode.DISABLED
         self.current_mode_sub = self.create_subscription(
             Mode, '/guardian/mode', self.currentModeCb, 1)
 
-    def currentModeCb(self, msg: Mode):
-        self.current_mode = msg.mode
+        self.retry_connection_timer = self.create_timer(1.0, self.connectToBus)
+
+        self.current_mode = Mode.DISABLED
+        self.current_mode_sub = self.create_subscription(
+            Mode, '/guardian/mode', self.currentModeCb, 1)
+        
+        # channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
+        # bitrate = 250000
+        # self.bus = can.interface.Bus(bustype='slcan', channel=channel, bitrate=bitrate, receive_own_messages=True)
+
+        # while self.bus is None:
+        #     self.get_logger().warn("Bus not yet set. Waiting...")
+        #     time.sleep(1.0)
+        # self.get_logger().warn("Bus SET.")
+        
+
+        # self.brake_control_timer = self.create_timer(
+        # 0.1, self.sendBrakeControl(self.bus))
 
     def clockCb(self, msg: Clock):
         self.clock = msg.clock
 
-    def joyCb(self, msg: Joy):
-        command_msg = CarlaEgoVehicleControl()
+    def initStatusMsg(self) -> DiagnosticStatus:
+        status = DiagnosticStatus()
 
-        command_msg.header.stamp = self.clock
-        command_msg.header.frame_id = 'base_link'
-        command_msg.throttle = ((msg.axes[5]*-1)+1)/2
+        status.name = self.get_name()
 
-        # TODO: Fix this jank.
-        if command_msg.throttle == 0.5:
-            command_msg.throttle = 0.0
+        stamp = KeyValue()
+        stamp.key = 'stamp'
+        stamp.value = str(self.clock.sec+self.clock.nanosec*1e-9)
+        status.values.append(stamp)
 
-        command_msg.steer = msg.axes[0]*-1
-        command_msg.brake = 1-(msg.axes[2]+1)/2
+        status.level = DiagnosticStatus.OK
 
-        requested_mode = Mode()
-        if msg.buttons[2] == 1:
-            requested_mode.mode = Mode.MANUAL
-        elif msg.buttons[0] == 1:
-            requested_mode.mode = Mode.AUTO
-        else:
-            requested_mode.mode = Mode.DISABLED
+        return status
 
-        # Let's leave these out for now, as Navigator does not support them.
-        # msg.hand_brake = True if joy_msg.buttons[2] == 1 else False
-        # msg.reverse = True if joy_msg.buttons[0] == 1 else False
-        # msg.gear = True if joy_msg.buttons[3] == 1 else False
-        # msg.manual_gear_shift = True if joy_msg.buttons[1] == 1 else False
+    def connectToBus(self):
+        self.bus: can.interface.Bus
+        if self.bus is not None and self.bus.state == can.bus.BusState.ACTIVE:
+            return
+        try:
+            self.status = self.initStatusMsg()
+            self.status.level = DiagnosticStatus.ERROR
+            self.status.message = "Connecting to LA."
+            channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
+            bitrate = 250000
+            self.bus = can.interface.Bus(
+                bustype='slcan', channel=channel, bitrate=bitrate, )
+            self.get_logger().warning("CONNECTED")
+            response = self.enableClutch(self.bus)
+            self.get_logger().warning(f"Clutch enabled with response {response}")
 
-        if self.current_mode == Mode.MANUAL:
-            self.command_pub.publish(command_msg)
-            self.get_logger().info("Publishing manual command!")
-        self.requested_mode_pub.publish(requested_mode)
+        except can.exceptions.CanInitializationError as e:
+            self.status.level = DiagnosticStatus.ERROR
+            self.status.message = f"EPAS failed to connect to bus: {e}."
+            self.status_pub.publish(self.status)
+        return
 
+    def currentModeCb(self, msg: Mode):
+        self.current_mode = msg.mode
+
+    def commandCb(self, msg: CarlaEgoVehicleControl):
+        self.brake = msg.brake
+        self.get_logger().info('this is the val of the brake currently')
+        self.get_logger().info(str(self.brake))
+
+    def sendBrakeControl(self, msg: CarlaEgoVehicleControl):
+        # self.get_logger().info('Printing self.brake in sendBrakeControl')
+        # self.get_logger().info(str(msg.brake))
+        if self.bus is None:
+            self.get_logger().warn("Bus not yet set. Skipping command")
+        if msg.brake < 0.1:
+            # We don't bother with small brake signals
+            return
+
+        position = max((1-msg.brake) / 2 - 0.1, 0.0)
+
+        self.get_logger().info(f"{msg.brake} => {position}")
+        response = self.sendToPosition(position, self.bus)
+        # self.get_logger().info(f"Got response: {response}")
+
+    def enableClutch(self, bus: can.Bus):
+        clutch_enable = True
+        motor_enable = False
+        clutch_enable_byte = clutch_enable * 0x80
+        motor_enable_byte = motor_enable * 0x40
+        byte3 = clutch_enable_byte + motor_enable_byte
+
+        data = [0x0F, 0x4A, 0, byte3, 0, 0, 0]
+
+        message = can.Message(
+            arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
+        
+        bus.send(message)
+
+        msg = bus.recv(0.1)
+        return msg
+    
+    def disableClutch(self):
+        """Turn off the motor, then the clutch.
+
+        Args:
+            bus (can.Bus): Bus to interact with
+
+        Returns:
+            _type_: _description_
+        """        
+
+        bus = self.bus
+
+        # Disable motor
+        clutch_enable = True
+        motor_enable = False
+        clutch_enable_byte = clutch_enable * 0x80
+        motor_enable_byte = motor_enable * 0x40
+        byte3 = clutch_enable_byte + motor_enable_byte
+
+        data = [0x0F, 0x4A, 0, byte3, 0, 0, 0]
+
+        message = can.Message(
+            arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
+        
+        bus.send(message)
+
+        time.sleep(0.1) # Give motor time to stop
+
+        # Disable clutch
+        clutch_enable = False
+        motor_enable = False
+        clutch_enable_byte = clutch_enable * 0x80
+        motor_enable_byte = motor_enable * 0x40
+        byte3 = clutch_enable_byte + motor_enable_byte
+
+        data = [0x0F, 0x4A, 0, byte3, 0, 0, 0]
+
+        message = can.Message(
+            arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
+        
+        bus.send(message)
+
+        msg = bus.recv(0.1)
+        return msg
+
+
+    def sendToPosition(self, pos: float, bus: can.Bus):
+
+        # self.get_logger().info('hey im in the sendtoposition function')
+        """Given position, send appropriate CAN messages to LA
+
+        Args:
+            pos (float): Position from 0.0 (fully extended) to 1.0 (fully retracted)
+
+        Position command format:
+        [0x0F 0x4A  DPOS_LOW Byte3 0 0 0 0]
+
+        Byte 3:
+        [ClutchEnable MotorEnable POS7 POS6 POS5 POS4 POS3]
+        """
+
+        if self.bus is None:
+            self.get_logger().warn("Bus not yet set.")
+            return
+
+        POSITION_MAX = 3.45
+        POSITION_MIN = 0.80
+        range = POSITION_MAX - POSITION_MIN
+        pos_inches = pos * range + POSITION_MIN
+
+        # Account for 0.5 inch offset
+        pos_value = int(pos_inches * 1000) + 500
+
+        dpos_hi = int(pos_value / 0x100)
+        dpos_low = pos_value % 0x100
+
+        clutch_enable = True
+        motor_enable = True
+        clutch_enable_byte = clutch_enable * 0x80
+        motor_enable_byte = motor_enable * 0x40
+        byte3 = sum([dpos_hi, clutch_enable_byte, motor_enable_byte])
+
+        data = [0x0F, 0x4A, dpos_low, byte3, 0, 0, 0]
+
+        message = can.Message(
+            arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
+
+        bus.send(message)
+
+        msg = bus.recv(0.1)
+
+        return msg
 
 def main(args=None):
     rclpy.init(args=args)
-    joy_translator = joy_translation_node()
-    rclpy.spin(joy_translator)
 
-    joy_translation_node.destroy_node()
+    LAN = linear_actuator_node()
+
+    rclpy.spin(LAN)
+
+    # Destroy the node explicitly
+    # (optional - otherwise it will be done automatically
+    # when the garbage collector destroys the node object)
+    linear_actuator_node.disableClutch()
+    linear_actuator_node.destroy_node()
     rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

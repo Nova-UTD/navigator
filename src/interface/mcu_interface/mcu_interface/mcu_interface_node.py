@@ -45,7 +45,7 @@ class McuInterfaceNode(Node):
 
         self.get_logger().info("Bus now connected.")
 
-        self.vehicle_command_timer = self.create_timer(.3, self.publishCommand)
+        self.vehicle_command_timer = self.create_timer(0.1, self.publishCommand)
         self.throttle = 0
 
     def commandCb(self, msg: CarlaEgoVehicleControl):
@@ -55,10 +55,13 @@ class McuInterfaceNode(Node):
     # publishes the number (0-1) received from the subscription 
     def publishCommand(self):
         throttle = self.throttle
-        if throttle < 0.1:
-            return
-        throttle = min(throttle, 0.3)
-        self.get_logger().info(f"Throttle = {throttle}")
+        # if throttle < 0.1:
+        #     return
+        # throttle = min(throttle, 0.3)
+
+        throttle *= 0.125
+        throttle = min(throttle, 0.2)
+        self.get_logger().info(f"Throttle {self.throttle } => {throttle}")
 
         # command = str.encode(f"$throttle,{throttle};\n")
         # s stands for start and e stands for end

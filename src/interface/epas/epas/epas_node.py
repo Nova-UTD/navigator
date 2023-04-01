@@ -158,11 +158,11 @@ class EpasNode(Node):
             # self.status.message = "CAN bus was in error state."
             # self.status_pub.publish(self.status)
             return
-        # elif self.cmd_msg == None:
-        #     self.status.level = DiagnosticStatus.ERROR
-        #     self.status.message = "EPAS command message not received."
-        #     self.status_pub.publish(self.status)
-        #     return
+        elif self.cmd_msg == None:
+            self.status.level = DiagnosticStatus.WARN
+            self.status.message = "EPAS command message not received."
+            self.status_pub.publish(self.status)
+            return
 
         if self.cmd_msg != None:
             self.target_angle = self.cmd_msg.steer

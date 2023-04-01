@@ -104,16 +104,23 @@ class joy_translation_node(Node):
 
         self.status = self.initStatusMsg()
 
+        left_trigger = msg.axes[2]
+        # if left_trigger == 0.:
+        #     left_trigger = -1.
+        right_trigger = msg.axes[5]
+        if right_trigger == 0.:
+            right_trigger = -1.
+
         command_msg.header.stamp = self.clock
         command_msg.header.frame_id = 'base_link'
-        command_msg.throttle = ((msg.axes[5]*-1)+1)/2
-
-        # TODO: Fix this jank.
-        if command_msg.throttle == 0.5:
-            command_msg.throttle = 0.0
-
+        command_msg.throttle = ((right_trigger*-1)+1)/2
         command_msg.steer = msg.axes[0]*-1
-        command_msg.brake = 1-(msg.axes[2]+1)/2
+
+        if left_trigger == 0.:
+            command_msg.brake = 0.
+        else:
+            command_msg.brake = 1-(left_trigger+1)/2
+
 
         requested_mode = Mode()
         if msg.buttons[2] == 1:
