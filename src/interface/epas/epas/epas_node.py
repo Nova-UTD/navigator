@@ -38,7 +38,7 @@ class EpasNode(Node):
 
        
         self.command_sub = self.create_subscription(
-            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.first_sub, 1)
+            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.commandCb, 1)
         self.cmd_msg = None
         self.cmd_timer = self.create_timer(.01, self.vehicleControlCb)
         self.current_angle = 0.0
@@ -97,7 +97,7 @@ class EpasNode(Node):
     def clockCb(self, msg: Clock):
         self.clock = msg.clock
 
-    def first_sub(self, msg: CarlaEgoVehicleControl):
+    def commandCb(self, msg: CarlaEgoVehicleControl):
         self.cmd_msg = msg
 
     def parseIncomingMessages(self, msg1_data: bytearray, msg2_data: bytearray) -> EpasState:
