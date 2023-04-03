@@ -3,8 +3,7 @@ from os import name, path, environ
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import IncludeLaunchDescription
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.actions import ExecuteProcess
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, Shutdown
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -68,19 +67,21 @@ def generate_launch_description():
         executable="joy_translation_node"
     )
 
-    carla_bridge_official = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([get_package_share_directory(
-            'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
-        launch_arguments={
-            'host': 'localhost',
-            'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
-            'synchronous_mode': 'True',
-            'town': 'Town02',
-            'register_all_sensors': 'False',
-            'ego_vehicle_role_name': 'hero',
-            'timeout': '30',
-            'fixed_delta_seconds': '0.1'
-        }.items(),
+    carla_bridge_official = Node(
+        package='carla_ros_bridge',
+        executable='bridge',
+        name='carla_ros_bridge',
+        on_exit=Shutdown(),
+        parameters=[
+            {'host': 'localhost'},
+            {'port': 2000 + int(environ['ROS_DOMAIN_ID'])},
+            {'synchronous_mode': True},
+            {'town': 'Town02'},
+            {'register_all_sensors': False},
+            {'ego_vehicle_role_name': 'hero'},
+            {'timeout': 30.0},
+            {'fixed_delta_seconds': 0.1}
+        ]
     )
 
     gnss_processor = Node(
