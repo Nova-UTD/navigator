@@ -81,6 +81,10 @@ def generate_launch_description():
             {'ego_vehicle_role_name': 'hero'},
             {'timeout': 30.0},
             {'fixed_delta_seconds': 0.1}
+        ],
+        remappings=[
+            ('/carla/hero/lidar', '/lidar/fused'),
+            ('/carla/hero/rgb_center/image', 'camera/stitched')
         ]
     )
 
