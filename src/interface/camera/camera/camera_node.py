@@ -57,6 +57,9 @@ class camera_node(Node):
                 self.get_logger().warn("Camera could not be opened")
             ret, frame = camera.read()
 
+            if frame is None:
+                return
+
             # Crop to left frame only. ZEDs return both camera in stereo by default.
             original_width = frame.shape[1]
             frame = frame[:,0:int(original_width/2),:]

@@ -22,7 +22,7 @@ def generate_launch_description():
 
     lidar_processor = Node(
         package='sensor_processing',
-        executable='lidar_processing_node'
+        executable='dual_lidar_processing_node'
     )
 
     mcl = Node(
@@ -177,6 +177,11 @@ def generate_launch_description():
         executable='clock_node'
     )
 
+    static_grid = Node(
+        package='occupancy_cpp',
+        executable='static_grid_exe'
+    )
+
     return LaunchDescription([
         # CONTROL
         # controller,
@@ -202,6 +207,11 @@ def generate_launch_description():
         clock,
         urdf_publisher,
         rviz,
+
+        # PERCEPTION
+        ground_seg,
+        lidar_processor,
+        static_grid,
 
         # SAFETY
         guardian

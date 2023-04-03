@@ -95,6 +95,7 @@ RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10
 RUN apt update && apt install -y ros-foxy-joy-linux ros-foxy-pcl-ros minicom ros-foxy-rosbridge-server ros-foxy-image-transport ros-foxy-async-web-server-cpp
 
 RUN pip3 install scikit-image pynmea2 pyproj
+RUN apt update && apt install -y ros-foxy-rmw-fastrtps-cpp
 #################
 #  END CLEANUP  #
 #################

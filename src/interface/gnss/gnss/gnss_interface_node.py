@@ -69,12 +69,14 @@ class GnssInterfaceNode(Node):
         transl.z = self.cached_odom.pose.pose.position.z
         t.transform.translation = transl
         t.transform.rotation = self.cached_odom.pose.pose.orientation
-        self.tf_broadcaster.sendTransform(t)
+        # self.tf_broadcaster.sendTransform(t)
 
     def getData(self):
 
         if self.sio is None:
             return
+        
+        self.status = self.initStatusMsg()
         
         # Try to read the next 30 lines from the serial port
         for i in range(30):
@@ -92,7 +94,8 @@ class GnssInterfaceNode(Node):
                     try:
                         navsat_msg.altitude = msg.altitude
                     except AssertionError as e:
-                        self.get_logger().error(str(e))
+                        self.status.message = f"{e}. Alt was {msg.altitude}"
+                        self.status.level = DiagnosticStatus.WARN
 
                     self.navsat_pub.publish(navsat_msg)
 
@@ -129,8 +132,11 @@ class GnssInterfaceNode(Node):
                             self.get_logger().error(f"{hdg_radians} was out of bounds!")
                         self.orientation = q
                         self.heading = hdg_radians
+
+                self.status_pub.publish(self.status)
             except serial.SerialException as e:
-                print('Device error: {}'.format(e))
+                self.status.message = 'Device error: {}'.format(e)
+                self.status.level = DiagnosticStatus.ERROR
                 return
             except pynmea2.ParseError as e:
                 # print('Parse error: {}'.format(e))
@@ -158,7 +164,7 @@ class GnssInterfaceNode(Node):
 
     def connectToPort(self):
         # TODO: Stabilize this device path somehow
-        self.bus = serial.Serial('/dev/serial/by-path/pci-0000:00:14.0-usb-0:6.4.4.3.1:1.0', 115200, timeout=0.05)
+        self.bus = serial.Serial('/dev/serial/by-path/pci-0000:00:14.0-usb-0:6.4.4.4.4.1:1.0', 115200, timeout=0.05)
         self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus,self.bus))
                 
         return

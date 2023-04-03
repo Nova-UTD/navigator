@@ -211,6 +211,8 @@ class linear_actuator_node(Node):
         [ClutchEnable MotorEnable POS7 POS6 POS5 POS4 POS3]
         """
 
+        self.status = self.initStatusMsg()
+
         if self.bus is None:
             self.get_logger().warn("Bus not yet set.")
             return
@@ -237,9 +239,16 @@ class linear_actuator_node(Node):
         message = can.Message(
             arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
 
-        bus.send(message)
+        try:
+            bus.send(message)
+            print("Sending message!")
+            msg = bus.recv(0.1)
+            print(f"Got response {msg}")
+        except can.exceptions.CanError as e:
+            self.status.level = DiagnosticStatus.ERROR
+            self.status.message = "LA failed to send command: {e}."
 
-        msg = bus.recv(0.1)
+        self.status_pub.publish(self.status)
 
         return msg
 

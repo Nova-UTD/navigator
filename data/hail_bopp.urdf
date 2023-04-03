@@ -25,7 +25,7 @@
     <joint name="model_joint" type="fixed">
         <parent link="base_link" />
         <child link="model_link" />
-        <origin xyz="-1.7 -2.3 -0.7" rpy="0 0 -1.570796" />
+        <origin xyz="-1.2 -2.75 -0.7" rpy="0 0 -1.570796" />
     </joint>
 
 
