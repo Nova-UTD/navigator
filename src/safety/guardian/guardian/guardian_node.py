@@ -197,7 +197,7 @@ class guardian_node(Node):
                 global_status.message = status.message
                 manual_error_description += status.message + '; '
             elif status.level == NOT_RECEIVED:
-                global_status.level = DiagnosticStatus.ERROR
+                global_status.level = DiagnosticStatus.WARN
 
                 if dict_entry == "joy_translation_node":
                     global_status.message = f"{dict_entry} not received. Is the joystick connected?"
