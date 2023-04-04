@@ -71,7 +71,6 @@ def generate_launch_description():
         package='carla_ros_bridge',
         executable='bridge',
         name='carla_ros_bridge',
-        on_exit=Shutdown(),
         parameters=[
             {'host': 'localhost'},
             {'port': 2000 + int(environ['ROS_DOMAIN_ID'])},
@@ -84,7 +83,7 @@ def generate_launch_description():
         ],
         remappings=[
             ('/carla/hero/lidar', '/lidar/fused'),
-            ('/carla/hero/rgb_center/image', 'camera/stitched')
+            ('/carla/hero/rgb_center/image', '/cameras/stitched')
         ]
     )
 
@@ -219,5 +218,5 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         map_manager,
-        # gnss_processor,
+        gnss_processor,
     ])

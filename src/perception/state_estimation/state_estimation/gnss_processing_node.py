@@ -51,7 +51,7 @@ class GnssProcessingNode(Node):
         super().__init__('gnss_processing_node')
 
         self.odom_sub = self.create_subscription(
-            Odometry, '/odometry/gnss_raw', self.raw_odom_cb, 10
+            Odometry, '/gnss/odometry_raw', self.raw_odom_cb, 10
         )
         self.gnss_sub = self.create_subscription(
             NavSatFix, '/carla/hero/gnss', self.gnssCb, 10
@@ -69,11 +69,11 @@ class GnssProcessingNode(Node):
         )
 
         self.odom_pub = self.create_publisher(
-            Odometry, '/odometry/gnss_processed', 10
+            Odometry, '/gnss/odometry_processed', 10
         )
 
         self.raw_odom_pub = self.create_publisher(
-            Odometry, '/odometry/gnss_raw', 10
+            Odometry, '/gnss/odometry_raw', 10
         )
 
         self.status_pub = self.create_publisher(

@@ -82,7 +82,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /odometry/gnss_processed
+        Value: /gnss/odometry_processed
       Value: false
     - Alpha: 0.30000001192092896
       Class: rviz_default_plugins/RobotModel
@@ -158,33 +158,22 @@ Visualization Manager:
       Tree:
         hero:
           base_link:
-            model_link:
-              {}
-          hero/gnss:
-            {}
-          hero/imu:
-            {}
-          hero/lidar:
-            {}
-          hero/rgb_center:
-            {}
-          hero/rgb_left:
-            {}
-          hero/rgb_right:
-            {}
-          hero/semantic_lidar:
-            {}
-          hero/true_gnss:
-            {}
-        map:
-          {}
+            model_link: {}
+          hero/gnss: {}
+          hero/imu: {}
+          hero/lidar: {}
+          hero/rgb_center: {}
+          hero/rgb_left: {}
+          hero/rgb_right: {}
+          hero/semantic_lidar: {}
+          hero/true_gnss: {}
+        map: {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Marker
       Enabled: true
       Name: Marker
-      Namespaces:
-        {}
+      Namespaces: {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -710,8 +699,7 @@ Visualization Manager:
     - Class: rviz_default_plugins/Marker
       Enabled: true
       Name: Marker
-      Namespaces:
-        {}
+      Namespaces: {}
       Topic:
         Depth: 5
         Durability Policy: Volatile

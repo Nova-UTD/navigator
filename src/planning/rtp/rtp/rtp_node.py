@@ -20,7 +20,7 @@ Publish this least-cost path.
 
 Subscribes to:
 ✅ /grid/cost (OccupancyGrid)
-✅ /odometry/gnss_processed (Odometry)
+✅ /gnss/odometry_processed (Odometry)
 
 Publishes:
 ✅ /planning/path (Path) in map frame
@@ -95,7 +95,7 @@ class RecursiveTreePlanner(Node):
             DiagnosticStatus, '/node_statuses', 1)
 
         odom_sub = self.create_subscription(
-            Odometry, '/odometry/gnss_processed', self.odomCb, 1)
+            Odometry, '/gnss/odometry_processed', self.odomCb, 1)
 
         current_mode_sub = self.create_subscription(
             Mode, '/guardian/mode', self.currentModeCb, 1)
