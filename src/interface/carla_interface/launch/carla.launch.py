@@ -214,7 +214,7 @@ def generate_launch_description():
 
         # SAFETY
         airbags,
-        # guardian,
+        guardian,
 
         # STATE ESTIMATION
         map_manager,

@@ -472,72 +472,12 @@ class player(Node):
 
         return total_mem_usage
 
-    def writeToFile(self):
-        total_occupancy_frames = np.asarray(self.occupancy_frames)
-        total_odom_frames = np.asarray(self.odom_frames)
-        total_image_frames = np.asarray(self.camera_frames)
-        stamps = np.asarray(self.stamps)
-
-        now = datetime.now()
-        date_string = now.strftime('%Y-%m-%d_%H-%M-%S')
-
-        self.get_logger().info(
-            f"Writing {int(self.getMemUsage() / 1e6)} MB to {self.directory}/{date_string}")
-
-        # https://numpy.org/doc/stable/reference/generated/numpy.savez
-        np.savez(
-            f'{self.directory}/{date_string}',
-            cam=total_image_frames,
-            occ=total_occupancy_frames,
-            odom=total_odom_frames,
-            time=stamps
-        )
-
-        # Free up RAM
-        self.camera_frames.clear()
-        self.occupancy_frames.clear()
-        self.odom_frames.clear()
-        self.stamps.clear()
-
-    def camCb(self, msg: Image):
-        """Caches the latest message, to be used by addToRecording()
-
-        Args:
-            msg (Image)
-        """
-        self.current_cam_msg = msg
-
-    def clockCb(self, msg: Clock):
-        """Caches the latest message, to be used by addToRecording()
-
-        Args:
-            msg (Clock)
-        """
-        self.current_time = msg.clock.sec + msg.clock.nanosec * 1e-9
-
-    def currentOccCb(self, msg: OccupancyGrid):
-        """Caches the latest message, to be used by addToRecording()
-
-        Args:
-            msg (OccupancyGrid)
-        """
-        self.current_occ_msg = msg
-
-    def odomCb(self, msg: Odometry):
-        """Caches the latest message, to be used by addToRecording()
-
-        Args:
-            msg (Odometry)
-        """
-        self.current_odom_msg = msg
-
     def close(self):
-        self.writeToFile()
 
-        msg = DiagnosticStatus()
-        msg.name = 'recording'
-        msg.message = f"Recording stopped"
-        msg.level = DiagnosticStatus.OK
+        status_msg = DiagnosticStatus()
+        status_msg.name = 'recording'
+        status_msg.message = f"Playing stopped"
+        status_msg.level = DiagnosticStatus.OK
 
         # stamp = KeyValue()
         # stamp.key = 'stamp'
@@ -547,9 +487,9 @@ class player(Node):
         state_kv = KeyValue()
         state_kv.key = 'state'
         state_kv.value = f"idle"
-        msg.values.append(state_kv)
+        status_msg.values.append(state_kv)
 
-        return msg
+        self.status_pub.publish(status_msg)
 
 
 def main(args=None):

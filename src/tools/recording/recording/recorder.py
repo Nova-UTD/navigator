@@ -21,6 +21,9 @@ from datetime import datetime
 import numpy as np
 import os
 import rclpy
+
+# Message definitions
+from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
@@ -133,21 +136,47 @@ class recorder(Node):
         self.odom_frames = []
         self.current_odom_msg = None
         self.stamps = []
+        self.total_disk_usage = 0  # Bytes
 
         self.setUpDirectory()
 
         current_occ_grid_sub = self.create_subscription(
             OccupancyGrid, '/grid/occupancy/current', self.currentOccCb, 10)
 
-        cameraSub = self.create_subscription(
+        camera_sub = self.create_subscription(
             Image, '/cameras/stitched', self.camCb, 10)
 
-        odomSub = self.create_subscription(
+        odom_sub = self.create_subscription(
             Odometry, '/gnss/odometry', self.odomCb, 10)
 
-        clockSub = self.create_subscription(Clock, '/clock', self.clockCb, 1)
+        clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1)
 
-        appendTimer = self.create_timer((1.0/FRAME_RATE), self.addToRecording)
+        append_timer = self.create_timer((1.0/FRAME_RATE), self.addToRecording)
+
+        self.status_pub = self.create_publisher(
+            DiagnosticStatus, '/node_statuses', 1)
+
+    def getStatus(self):
+        msg = DiagnosticStatus()
+        msg.name = 'recording'
+        msg.level = DiagnosticStatus.OK
+
+        stamp = KeyValue()
+        stamp.key = 'stamp'
+        stamp.value = str(self.current_time)
+        msg.values.append(stamp)
+
+        state_kv = KeyValue()
+        state_kv.key = 'state'
+        state_kv.value = f"recording"
+        msg.values.append(state_kv)
+
+        disk_usage_kv = KeyValue()
+        disk_usage_kv.key = 'disk_usage'
+        disk_usage_kv.value = f"{self.total_disk_usage}"
+        msg.values.append(disk_usage_kv)
+
+        return msg
 
     def setUpDirectory(self):
         """On start, creates a directory to hold our recordings.
@@ -202,6 +231,10 @@ class recorder(Node):
         if total_mem_usage > RAM_LIMIT:
             self.writeToFile()
 
+        # Publish status
+        status_msg = self.getStatus()
+        self.status_pub.publish(status_msg)
+
     def getMemUsage(self) -> int:
         occ_mem_usage = self.occupancy_frames[0].nbytes * \
             len(self.occupancy_frames)
@@ -227,6 +260,8 @@ class recorder(Node):
 
         self.get_logger().info(
             f"Writing {int(self.getMemUsage() / 1e6)} MB to {self.directory}/{date_string}")
+
+        self.total_disk_usage += self.getMemUsage()
 
         # https://numpy.org/doc/stable/reference/generated/numpy.savez
         np.savez(
@@ -275,6 +310,26 @@ class recorder(Node):
         """
         self.current_odom_msg = msg
 
+    def close(self):
+        self.writeToFile()
+
+        status_msg = DiagnosticStatus()
+        status_msg.name = 'recording'
+        status_msg.message = f"Playing stopped"
+        status_msg.level = DiagnosticStatus.OK
+
+        stamp = KeyValue()
+        stamp.key = 'stamp'
+        stamp.value = str(0.0)
+        status_msg.values.append(stamp)
+
+        state_kv = KeyValue()
+        state_kv.key = 'state'
+        state_kv.value = f"idle"
+        status_msg.values.append(state_kv)
+
+        self.status_pub.publish(status_msg)
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -283,6 +338,6 @@ def main(args=None):
         rclpy.spin(node)
     finally:
         # Write any remaining data to the file before closing.
-        node.writeToFile()
+        node.close()
     recorder.destroy_node()
     rclpy.shutdown()
