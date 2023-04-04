@@ -164,8 +164,15 @@ class GnssInterfaceNode(Node):
 
     def connectToPort(self):
         # TODO: Stabilize this device path somehow
-        self.bus = serial.Serial('/dev/serial/by-path/pci-0000:00:14.0-usb-0:6.4.4.4.4.1:1.0', 115200, timeout=0.05)
-        self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus,self.bus))
+        try:
+            self.bus = serial.Serial('/dev/serial/by-path/pci-0000:00:14.0-usb-0:6.4.4.4.4.1:1.0', 115200, timeout=0.05)
+            self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus,self.bus))
+        except serial.SerialException as e:
+            self.get_logger().error(str(e))
+            status_msg = self.initStatusMsg()
+            status_msg.level = DiagnosticStatus.ERROR
+            status_msg.message = "Error connecting to GNSS. {e}"
+            self.status_pub.publish(status_msg)
                 
         return
 
