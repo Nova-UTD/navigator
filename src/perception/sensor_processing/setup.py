@@ -24,6 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'lidar_processing_node = sensor_processing.lidar_processing_node:main',
+            'dual_lidar_processing_node = sensor_processing.dual_lidar_processing_node:main',
         ],
     },
 )
