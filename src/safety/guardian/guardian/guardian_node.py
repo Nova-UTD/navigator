@@ -26,15 +26,16 @@ from rclpy.node import Node
 from dataclasses import dataclass
 
 
-STALENESS_TOLERANCE = 0.6 # sec. Statuses staler than this will be marked as stale
+STALENESS_TOLERANCE = 0.6  # sec. Statuses staler than this will be marked as stale
 NOT_RECEIVED = b'\xff'
 
 
 @dataclass
 class StatusEntry:
+    values: any
     level: DiagnosticStatus.level = NOT_RECEIVED
     message: str = ""
-    stamp: float =  -1.
+    stamp: float = -1.
 
 
 class guardian_node(Node):
@@ -61,13 +62,17 @@ class guardian_node(Node):
 
         clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1)
 
-        self.manual_nodes={
-            "joy_translation_node": StatusEntry(),
-            "epas_node": StatusEntry(),
-            "linear_actuator_node": StatusEntry()
-            }
-        self.auto_nodes={
-            "gnss_interface_node": StatusEntry()
+        self.manual_nodes = {
+            "joy_translation_node": StatusEntry([]),
+            "epas_node": StatusEntry([]),
+            "linear_actuator_node": StatusEntry([])
+        }
+        self.auto_nodes = {
+            "gnss_interface_node": StatusEntry([])
+        }
+
+        self.other_nodes = {
+            "recording": StatusEntry([])
         }
 
         status_timer = self.create_timer(0.2, self.publishStatusArray)
@@ -86,7 +91,7 @@ class guardian_node(Node):
         stamp.value = str(self.clock)
         status.values.append(stamp)
         return status
-    
+
     def isStale(self, status: StatusEntry) -> bool:
 
         return (self.clock - status.stamp) > STALENESS_TOLERANCE
@@ -100,17 +105,16 @@ class guardian_node(Node):
             "error", disable manual AND auto driving.
         - Add all entries from both lists to a DiagnosticStatusArray,
             including a global status that reflects the Guardian's state
-        """        
+        """
 
         global_status = self.initStatusMsg('global')
         array_msg = DiagnosticArray()
         array_msg.header.stamp = self.get_clock().now().to_msg()
 
-        # self.auto_disabled = False
+        self.auto_disabled = False
         auto_error_description = ""
         self.manual_disabled = False
         manual_error_description = ""
-
 
         for dict_entry in self.manual_nodes:
             status_msg = DiagnosticStatus()
@@ -118,6 +122,7 @@ class guardian_node(Node):
             status: StatusEntry = self.manual_nodes[dict_entry]
             # print(value)
             status_msg.level = status.level
+            status_msg.values = status.values
 
             if status.level == DiagnosticStatus.ERROR:
                 global_status.level = DiagnosticStatus.ERROR
@@ -130,7 +135,7 @@ class guardian_node(Node):
                 if dict_entry == "joy_translation_node":
                     global_status.message = f"{dict_entry} not received. Is the joystick connected?"
                 else:
-                    global_status.message = f"{dict_entry} not received"
+                    global_status.message = f"{dict_entry} not received."
 
                 self.manual_disabled = True
             elif self.isStale(status):
@@ -142,6 +147,69 @@ class guardian_node(Node):
                 global_status.level = DiagnosticStatus.WARN
                 global_status.message += status.message + '; '
 
+            status_msg.message = status.message
+            array_msg.status.append(status_msg)
+
+        for dict_entry in self.auto_nodes:
+            status_msg = DiagnosticStatus()
+            status_msg.name = dict_entry
+            status: StatusEntry = self.auto_nodes[dict_entry]
+            # print(value)
+            status_msg.level = status.level
+            status_msg.values = status.values
+
+            if status.level == DiagnosticStatus.ERROR:
+                global_status.level = DiagnosticStatus.ERROR
+                global_status.message = status.message
+                self.auto_disabled = True
+                manual_error_description += status.message + '; '
+            elif status.level == NOT_RECEIVED:
+                global_status.level = DiagnosticStatus.ERROR
+
+                if dict_entry == "joy_translation_node":
+                    global_status.message = f"{dict_entry} not received. Is the joystick connected?"
+                else:
+                    global_status.message = f"{dict_entry} not received."
+
+                self.auto_disabled = True
+            elif self.isStale(status):
+                global_status.level = DiagnosticStatus.ERROR
+                global_status.message = f"{dict_entry} was stale"
+                self.auto_disabled = True
+                manual_error_description += f"{dict_entry} was stale; "
+            elif status.level == DiagnosticStatus.WARN and global_status.level != DiagnosticStatus.ERROR:
+                global_status.level = DiagnosticStatus.WARN
+                global_status.message += status.message + '; '
+
+            status_msg.message = status.message
+            array_msg.status.append(status_msg)
+
+        for dict_entry in self.other_nodes:
+            status_msg = DiagnosticStatus()
+            status_msg.name = dict_entry
+            status: StatusEntry = self.other_nodes[dict_entry]
+            # print(value)
+            status_msg.level = status.level
+            status_msg.values = status.values
+
+            if status.level == DiagnosticStatus.ERROR:
+                global_status.level = DiagnosticStatus.ERROR
+                global_status.message = status.message
+                manual_error_description += status.message + '; '
+            elif status.level == NOT_RECEIVED:
+                global_status.level = DiagnosticStatus.ERROR
+
+                if dict_entry == "joy_translation_node":
+                    global_status.message = f"{dict_entry} not received. Is the joystick connected?"
+                else:
+                    global_status.message = f"{dict_entry} not received."
+            elif self.isStale(status):
+                global_status.level = DiagnosticStatus.ERROR
+                global_status.message = f"{dict_entry} was stale"
+                manual_error_description += f"{dict_entry} was stale; "
+            elif status.level == DiagnosticStatus.WARN and global_status.level != DiagnosticStatus.ERROR:
+                global_status.level = DiagnosticStatus.WARN
+                global_status.message += status.message + '; '
 
             status_msg.message = status.message
             array_msg.status.append(status_msg)
@@ -171,21 +239,27 @@ class guardian_node(Node):
 
         Returns:
             float: timestamp (seconds)
-        """        
+        """
         for val in msg.values:
             val: KeyValue
             if val.key == 'stamp':
                 return float(val.value)
-            
+
         self.get_logger().warning(f"Status {msg.name} was unstamped.")
 
     def statusCb(self, msg: DiagnosticStatus):
         stamp = self.getStamp(msg)
         if msg.name in self.auto_nodes:
-            self.auto_nodes[msg.name] = StatusEntry(msg.level, msg.message, stamp)
+            self.auto_nodes[msg.name] = StatusEntry(msg.values,
+                                                    msg.level, msg.message, stamp)
         elif msg.name in self.manual_nodes:
             # print(f"{msg.name} was in MANUAL")
-            self.manual_nodes[msg.name] = StatusEntry(msg.level, msg.message, stamp)
+            self.manual_nodes[msg.name] = StatusEntry(msg.values,
+                                                      msg.level, msg.message, stamp)
+        elif msg.name in self.other_nodes:
+            # print(f"{msg.name} was in MANUAL")
+            self.other_nodes[msg.name] = StatusEntry(msg.values,
+                                                     msg.level, msg.message, stamp)
         else:
             self.get_logger().warning(
                 f"Received status from node outside watchlist: {msg.name}")
@@ -202,7 +276,6 @@ class guardian_node(Node):
         #     self.current_mode = msg.mode
 
         self.current_mode = msg.mode
-
 
         mode_msg = Mode()
         mode_msg.mode = self.current_mode

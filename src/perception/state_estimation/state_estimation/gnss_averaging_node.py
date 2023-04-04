@@ -55,14 +55,14 @@ class GnssAveragingNode(Node):
             CarlaSpeedometer, '/carla/hero/speedometer', self.speedometer_cb, 1)
 
         self.raw_gnss_sub = self.create_subscription(
-            Odometry, '/odometry/gnss_raw', self.raw_gnss_cb, 10
+            Odometry, '/gnss/odometry_raw', self.raw_gnss_cb, 10
         )
 
         self.true_pose_sub = self.create_subscription(
             PoseStamped, '/true_pose', self.true_pose_cb, 1)
 
         self.smoothed_gnss_sub = self.create_subscription(
-            Odometry, '/odometry/gnss_processed', self.smoothed_gnss_cb, 10
+            Odometry, '/gnss/odometry_processed', self.smoothed_gnss_cb, 10
         )
 
         self.result_pub = self.create_publisher(

@@ -2,6 +2,7 @@ __pycache__
 /core
 build
 install
+/recordings
 log
 docs/_site
 .vscode
