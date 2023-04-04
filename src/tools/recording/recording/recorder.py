@@ -4,10 +4,16 @@ Filename:  recorder.py
 Author:    Will Heitman (w at heit.mn)
 
 Subscribes to:
-/grid/occupancy/current (nav_msgs/OccupancyGrid)
 /cameras/stitched (sensor_msgs/Image)
+/gnss/odometry (nav_msgs/Odometry)
+/grid/occupancy/current (nav_msgs/OccupancyGrid)
 
-Converts these to numpy arrays and saves them to a file
+Converts these to numpy arrays and saves them to a .npz file
+
+See https://numpy.org/doc/stable/reference/generated/numpy.savez.html#numpy.savez
+
+Note that we do not use compression (np.savez_compressed). It just takes too long,
+and our data likely can't be compressed very much.
 '''
 
 from datetime import datetime
@@ -75,10 +81,23 @@ name_to_dtypes = {
 }
 
 # Larger = fewer writes, but they take longer.
-PREFERRED_MEMORY_USAGE = 1e9  # bytes.
+RAM_LIMIT = 1e8  # bytes.
+
+FRAME_RATE = 5  # FPS. Messages will be recorded at this rate.
 
 
 def imageToNumpy(msg: Image):
+    """Turn an Image message into a Numpy array
+
+    Args:
+        msg (Image): Image message
+
+    Raises:
+        TypeError: Unsupported encoding
+
+    Returns:
+        np.ndarray: Converted np array
+    """
     # https://github.com/Box-Robotics/ros2_numpy/blob/foxy-devel/ros2_numpy/image.py
     if not msg.encoding in name_to_dtypes:
         raise TypeError('Unrecognized encoding {}'.format(msg.encoding))
@@ -105,16 +124,14 @@ class recorder(Node):
     def __init__(self):
         super().__init__('recorder')
 
+        # Objects to store data in memory
         self.current_time = 0.0
         self.occupancy_frames = []
         self.current_occ_msg = None
-
         self.camera_frames = []
         self.current_cam_msg = None
-
         self.odom_frames = []
         self.current_odom_msg = None
-
         self.stamps = []
 
         self.setUpDirectory()
@@ -130,16 +147,22 @@ class recorder(Node):
 
         clockSub = self.create_subscription(Clock, '/clock', self.clockCb, 1)
 
-        appendTimer = self.create_timer(0.2, self.addToRecording)
+        appendTimer = self.create_timer((1.0/FRAME_RATE), self.addToRecording)
 
     def setUpDirectory(self):
+        """On start, creates a directory to hold our recordings.
+        """
         now = datetime.now()
-        date_string = now.strftime('%Y-%m-%d_%H-%M-%S')
+        date_string = now.strftime('%y-%m-%d_%H-%M-%S')
 
         self.directory = f'/navigator/recordings/{date_string}'
         os.mkdir(self.directory)
 
     def addToRecording(self):
+        """
+        Add the latest received data to RAM.
+        Once RAM is full (RAM_LIMIT), calls writeToFile().
+        """
 
         if self.current_cam_msg is None:
             self.get_logger().warning("Cam not received")
@@ -152,73 +175,105 @@ class recorder(Node):
             self.get_logger().warning("Odom not received")
             return
 
-        # Convert occupancy to a numpy array
+        # Process OccupancyGrid
         occ_array = np.asarray(self.current_occ_msg.data, dtype=np.int8).reshape(
             self.current_occ_msg.info.height, self.current_occ_msg.info.width)
         self.occupancy_frames.append(occ_array)
 
-        # Convert image to a numpy array
+        # Process Image
         image_array = imageToNumpy(self.current_cam_msg)
         self.camera_frames.append(image_array)
+
+        # Process Odometry
+        self.current_odom_msg: Odometry
+        pos = self.current_odom_msg.pose.pose.position
+        quat = self.current_odom_msg.pose.pose.orientation
+        yaw = 2*np.arccos(quat.w)
+        vel = self.current_odom_msg.twist.twist.linear
+        odom_array = np.asarray([pos.x, pos.y, yaw, vel.x, vel.y])
+        self.odom_frames.append(odom_array)
 
         # Add a timestamp
         self.stamps.append(self.current_time)
 
         # Is our data large enough to be written to disk?
+        total_mem_usage = self.getMemUsage()
+
+        if total_mem_usage > RAM_LIMIT:
+            self.writeToFile()
+
+    def getMemUsage(self) -> int:
         occ_mem_usage = self.occupancy_frames[0].nbytes * \
             len(self.occupancy_frames)
 
         image_mem_usage = self.camera_frames[0].nbytes * \
             len(self.camera_frames)
 
-        total_mem_usage = occ_mem_usage + image_mem_usage
+        odom_mem_usage = self.odom_frames[0].nbytes * \
+            len(self.odom_frames)
 
-        print(f"{int(total_mem_usage/1e6)} MB used ")
+        total_mem_usage = occ_mem_usage + image_mem_usage + odom_mem_usage
 
-        if total_mem_usage > PREFERRED_MEMORY_USAGE:
-            self.writeToFile()
-
-        return
-
-    def camCb(self, msg: Image):
-        self.current_cam_msg = msg
+        return total_mem_usage
 
     def writeToFile(self):
         total_occupancy_frames = np.asarray(self.occupancy_frames)
+        total_odom_frames = np.asarray(self.odom_frames)
         total_image_frames = np.asarray(self.camera_frames)
         stamps = np.asarray(self.stamps)
 
         now = datetime.now()
-        self.get_logger().info("Writing to file!")
-        date_string = now.strftime('%Y-%m-%d_%H-%M-%S')
+        date_string = now.strftime('%y-%m-%d_%H-%M-%S')
 
+        self.get_logger().info(
+            f"Writing {int(self.getMemUsage() / 1e6)} MB to {self.directory}/{date_string}")
+
+        # https://numpy.org/doc/stable/reference/generated/numpy.savez
         np.savez(
             f'{self.directory}/{date_string}',
             cam=total_image_frames,
             occ=total_occupancy_frames,
+            odom=total_odom_frames,
             time=stamps
         )
 
+        # Free up RAM
         self.camera_frames.clear()
         self.occupancy_frames.clear()
+        self.odom_frames.clear()
         self.stamps.clear()
 
     def camCb(self, msg: Image):
+        """Caches the latest message, to be used by addToRecording()
+
+        Args:
+            msg (Image)
+        """
         self.current_cam_msg = msg
-        # self.get_logger().info('Got cam!')
-        return
 
     def clockCb(self, msg: Clock):
+        """Caches the latest message, to be used by addToRecording()
+
+        Args:
+            msg (Clock)
+        """
         self.current_time = msg.clock.sec + msg.clock.nanosec * 1e-9
 
     def currentOccCb(self, msg: OccupancyGrid):
+        """Caches the latest message, to be used by addToRecording()
+
+        Args:
+            msg (OccupancyGrid)
+        """
         self.current_occ_msg = msg
 
-        # self.get_logger().info('Got occ!')
-        return
-
     def odomCb(self, msg: Odometry):
-        self.odom_msg = msg
+        """Caches the latest message, to be used by addToRecording()
+
+        Args:
+            msg (Odometry)
+        """
+        self.current_odom_msg = msg
 
 
 def main(args=None):
@@ -227,6 +282,7 @@ def main(args=None):
     try:
         rclpy.spin(node)
     finally:
+        # Write any remaining data to the file before closing.
         node.writeToFile()
     recorder.destroy_node()
     rclpy.shutdown()

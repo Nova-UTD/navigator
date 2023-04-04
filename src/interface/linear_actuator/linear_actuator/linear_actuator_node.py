@@ -62,7 +62,7 @@ class linear_actuator_node(Node):
         self.current_mode = Mode.DISABLED
         self.current_mode_sub = self.create_subscription(
             Mode, '/guardian/mode', self.currentModeCb, 1)
-        
+
         # channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
         # bitrate = 250000
         # self.bus = can.interface.Bus(bustype='slcan', channel=channel, bitrate=bitrate, receive_own_messages=True)
@@ -71,7 +71,6 @@ class linear_actuator_node(Node):
         #     self.get_logger().warn("Bus not yet set. Waiting...")
         #     time.sleep(1.0)
         # self.get_logger().warn("Bus SET.")
-        
 
         # self.brake_control_timer = self.create_timer(
         # 0.1, self.sendBrakeControl(self.bus))
@@ -107,11 +106,12 @@ class linear_actuator_node(Node):
                 bustype='slcan', channel=channel, bitrate=bitrate, )
             self.get_logger().warning("CONNECTED")
             response = self.enableClutch(self.bus)
-            self.get_logger().warning(f"Clutch enabled with response {response}")
+            self.get_logger().warning(
+                f"Clutch enabled with response {response}")
 
         except can.exceptions.CanInitializationError as e:
             self.status.level = DiagnosticStatus.ERROR
-            self.status.message = f"EPAS failed to connect to bus: {e}."
+            self.status.message = f"LA failed to connect to bus. {e}."
             self.status_pub.publish(self.status)
         return
 
@@ -144,12 +144,12 @@ class linear_actuator_node(Node):
 
         message = can.Message(
             arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
-        
+
         bus.send(message)
 
         msg = bus.recv(0.1)
         return msg
-    
+
     def disableClutch(self):
         """Turn off the motor, then the clutch.
 
@@ -158,7 +158,7 @@ class linear_actuator_node(Node):
 
         Returns:
             _type_: _description_
-        """        
+        """
 
         bus = self.bus
 
@@ -173,10 +173,10 @@ class linear_actuator_node(Node):
 
         message = can.Message(
             arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
-        
+
         bus.send(message)
 
-        time.sleep(0.1) # Give motor time to stop
+        time.sleep(0.1)  # Give motor time to stop
 
         # Disable clutch
         clutch_enable = False
@@ -189,12 +189,11 @@ class linear_actuator_node(Node):
 
         message = can.Message(
             arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
-        
+
         bus.send(message)
 
         msg = bus.recv(0.1)
         return msg
-
 
     def sendToPosition(self, pos: float, bus: can.Bus):
 
@@ -251,6 +250,7 @@ class linear_actuator_node(Node):
         self.status_pub.publish(self.status)
 
         return msg
+
 
 def main(args=None):
     rclpy.init(args=args)

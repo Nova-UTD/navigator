@@ -69,7 +69,7 @@ class GnssProcessingNode(Node):
         )
 
         self.odom_pub = self.create_publisher(
-            Odometry, '/gnss/odometry_processed', 10
+            Odometry, '/gnss/odometry', 10
         )
 
         self.raw_odom_pub = self.create_publisher(

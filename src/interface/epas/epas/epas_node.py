@@ -36,13 +36,12 @@ class EpasNode(Node):
         #         bustype='slcan', channel='/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00', bitrate=500000, receive_own_messages=True)
         # except can.exceptions.CanInitializationError:
 
-       
         self.command_sub = self.create_subscription(
             CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.commandCb, 1)
         self.cmd_msg = None
         self.cmd_timer = self.create_timer(.01, self.vehicleControlCb)
         self.current_angle = 0.0
-        
+
         self.clock = Clock().clock
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 10)
@@ -52,7 +51,7 @@ class EpasNode(Node):
         self.status = DiagnosticStatus()
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/node_statuses', 1)
-        
+
         self.clock = Clock().clock
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 10)
@@ -60,7 +59,7 @@ class EpasNode(Node):
         self.current_mode = Mode.DISABLED
         self.current_mode_sub = self.create_subscription(
             Mode, '/guardian/mode', self.currentModeCb, 1)
-        
+
         self.retry_connection_timer = self.create_timer(1.0, self.connectToBus)
 
     def connectToBus(self):
@@ -72,14 +71,13 @@ class EpasNode(Node):
                 bustype='slcan', channel='/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00', bitrate=500000, receive_own_messages=True)
         except can.exceptions.CanInitializationError as e:
             self.status.level = DiagnosticStatus.ERROR
-            self.status.message = f"EPAS failed to connect to bus: {e}"
+            self.status.message = f"EPAS failed to connect to bus. {e}"
             self.status_pub.publish(self.status)
         return
 
-        
     def currentModeCb(self, msg: Mode):
         self.current_mode = msg.mode
-        
+
     def initStatusMsg(self) -> DiagnosticStatus:
         status = DiagnosticStatus()
 
@@ -93,7 +91,7 @@ class EpasNode(Node):
         status.level = DiagnosticStatus.OK
 
         return status
-    
+
     def clockCb(self, msg: Clock):
         self.clock = msg.clock
 
@@ -181,7 +179,7 @@ class EpasNode(Node):
             self.current_angle = current_state.angle
 
         if self.current_mode == Mode.MANUAL or \
-            self.current_mode == Mode.AUTO:
+                self.current_mode == Mode.AUTO:
             self.sendCommand(self.target_angle, self.bus)
         self.status_pub.publish(self.status)
 
