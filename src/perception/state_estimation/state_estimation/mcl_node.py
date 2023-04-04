@@ -62,7 +62,7 @@ class MCLNode(Node):
             PointCloud2, '/lidar/semantic', self.cloud_cb, 10)
 
         self.gnss_sub = self.create_subscription(
-            Odometry, '/odometry/gnss_processed', self.gnss_cb, 10)
+            Odometry, '/gnss/odometry_processed', self.gnss_cb, 10)
 
         self.imu_sub = self.create_subscription(
             Imu, '/carla/hero/imu', self.imu_cb, 10)

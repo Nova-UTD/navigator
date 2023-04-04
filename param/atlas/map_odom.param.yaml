@@ -6,7 +6,7 @@
     world_frame: "map"
     two_d_mode: true
 
-    odom0: "/odometry/gnss_raw" # xyz and yaw
+    odom0: "/gnss/odometry_raw" # xyz and yaw
     odom0_config:
       [
         true,
