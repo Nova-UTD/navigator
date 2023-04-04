@@ -1,0 +1,1 @@
+ros2 bag record /gnss/odometry /gnss/fix /grid/occupancy/current /camera/camera0

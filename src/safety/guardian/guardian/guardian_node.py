@@ -63,9 +63,12 @@ class guardian_node(Node):
 
         self.manual_nodes={
             "joy_translation_node": StatusEntry(),
-            "epas_node": StatusEntry()
+            "epas_node": StatusEntry(),
+            "linear_actuator_node": StatusEntry()
             }
-        self.auto_nodes={}
+        self.auto_nodes={
+            "gnss_interface_node": StatusEntry()
+        }
 
         status_timer = self.create_timer(0.2, self.publishStatusArray)
 
@@ -177,11 +180,11 @@ class guardian_node(Node):
         self.get_logger().warning(f"Status {msg.name} was unstamped.")
 
     def statusCb(self, msg: DiagnosticStatus):
+        stamp = self.getStamp(msg)
         if msg.name in self.auto_nodes:
-            self.auto_nodes[msg.name] = StatusEntry(msg.level, msg.message, msg.values['stamp'])
+            self.auto_nodes[msg.name] = StatusEntry(msg.level, msg.message, stamp)
         elif msg.name in self.manual_nodes:
             # print(f"{msg.name} was in MANUAL")
-            stamp = self.getStamp(msg)
             self.manual_nodes[msg.name] = StatusEntry(msg.level, msg.message, stamp)
         else:
             self.get_logger().warning(

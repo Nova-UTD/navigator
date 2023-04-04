@@ -22,7 +22,7 @@ def generate_launch_description():
 
     lidar_processor = Node(
         package='sensor_processing',
-        executable='lidar_processing_node'
+        executable='dual_lidar_processing_node'
     )
 
     mcl = Node(
@@ -58,9 +58,9 @@ def generate_launch_description():
         executable='guardian_node'
     )
 
-    gnss_processor = Node(
-        package='state_estimation',
-        executable='gnss_processing_node'
+    gnss = Node(
+        package='gnss',
+        executable='gnss_interface_node'
     )
 
     mcl = Node(
@@ -78,7 +78,7 @@ def generate_launch_description():
         namespace='',
         executable='rviz2',
         name='rviz2',
-        arguments=['-d' + '/navigator/data/mcl.rviz']
+        arguments=['-d' + '/navigator/data/real_world.rviz']
     )
 
     ground_seg = Node(
@@ -177,32 +177,41 @@ def generate_launch_description():
         executable='clock_node'
     )
 
+    static_grid = Node(
+        package='occupancy_cpp',
+        executable='static_grid_exe'
+    )
+
     return LaunchDescription([
         # CONTROL
         # controller,
 
         # INTERFACE
-        # camera_streamer,
+        camera_streamer,
         joy,
         joy_translator,
         epas,
         mcu_interface,
         linear_actuator,
         web_bridge,
-
-        # left_lidar_driver,
-        # left_lidar_pointcloud,
-        # right_lidar_driver,
-        # right_lidar_pointcloud,
-
-        # camera,
+        gnss,
+        left_lidar_driver,
+        left_lidar_pointcloud,
+        right_lidar_driver,
+        right_lidar_pointcloud,
+        camera,
 
         # gps_node,
 
         # MISC
         clock,
         urdf_publisher,
-        # rviz,
+        rviz,
+
+        # PERCEPTION
+        ground_seg,
+        lidar_processor,
+        static_grid,
 
         # SAFETY
         guardian
