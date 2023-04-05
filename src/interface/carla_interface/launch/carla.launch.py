@@ -171,7 +171,10 @@ def generate_launch_description():
 
     guardian = Node(
         package='guardian',
-        executable='guardian_node'
+        executable='guardian_node',
+        parameters=[
+            {'simulated': True}
+        ]
     )
 
     return LaunchDescription([
