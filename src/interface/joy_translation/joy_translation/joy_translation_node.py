@@ -149,15 +149,15 @@ class joy_translation_node(Node):
 
         command_msg.header.stamp = self.clock
         command_msg.header.frame_id = 'base_link'
-        # command_msg.throttle = ((right_trigger*-1)+1)/2
-        command_msg.throttle = 0.0
+        command_msg.throttle = ((right_trigger*-1)+1)/2
+        # command_msg.throttle = 0.0
         command_msg.steer = self.getSpeedAdjustedSteering(msg.axes[0]*-1)
 
         if left_trigger == 0.:
             command_msg.brake = 0.
         else:
             command_msg.brake = 1-(left_trigger+1)/2
-        command_msg.brake = 1.0
+        # command_msg.brake = 1.0
 
         requested_mode = Mode()
         if msg.buttons[2] == 1:
