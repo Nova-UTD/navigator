@@ -27,6 +27,7 @@ class GnssInterfaceNode(Node):
         self.orientation = Quaternion()
         self.heading = 0.0
         self.cached_odom = None
+        self.bus = None
 
         self.tf_broadcaster = TransformBroadcaster(self)
 
@@ -71,27 +72,34 @@ class GnssInterfaceNode(Node):
         transl.z = self.cached_odom.pose.pose.position.z
         t.transform.translation = transl
         t.transform.rotation = self.cached_odom.pose.pose.orientation
-        # self.tf_broadcaster.sendTransform(t)
+        self.tf_broadcaster.sendTransform(t)
 
     def getData(self):
 
         if self.sio is None:
+            self.get_logger().warn("SIO object was none. Skipping data read.")
             return
 
         self.status = self.initStatusMsg()
 
         # Try to read the next 30 lines from the serial port
+
         for i in range(30):
             try:
                 line = self.sio.readline()
                 msg = pynmea2.parse(line)
 
                 if msg.sentence_type == "GGA":
+                    # self.get_logger().warning("GGA!")
                     navsat_msg = NavSatFix()
                     navsat_msg.header.frame_id = 'base_link'
                     navsat_msg.header.stamp = self.clock
                     navsat_msg.latitude = msg.latitude
                     navsat_msg.longitude = msg.longitude
+
+                    if msg.latitude == 0.0:
+                        self.get_logger().warning("Message latitude was zero. Signal invalid.")
+
                     try:
                         navsat_msg.altitude = msg.altitude
                     except AssertionError as e:
@@ -110,6 +118,8 @@ class GnssInterfaceNode(Node):
                     # print(f"{msg.latitude}, {msg.longitude}")
 
                 elif msg.sentence_type == "VTG":
+                    # self.get_logger().warning("VTG!")
+
                     # Speed
                     if msg.spd_over_grnd_kmph is None:
                         return
@@ -146,7 +156,7 @@ class GnssInterfaceNode(Node):
                 self.status.level = DiagnosticStatus.ERROR
                 return
             except pynmea2.ParseError as e:
-                # print('Parse error: {}'.format(e))
+                print('Parse error: {}'.format(e))
                 return
 
     def getOdomMsg(self, lat: float, lon: float) -> Odometry:
@@ -170,10 +180,14 @@ class GnssInterfaceNode(Node):
 
     def connectToPort(self):
         # TODO: Stabilize this device path somehow
+
+        if self.bus is not None and self.bus.is_open:
+            return
         try:
             self.bus = serial.Serial(
                 '/dev/serial/by-path/pci-0000:00:14.0-usb-0:6.4.4.4.4.1:1.0', 115200, timeout=0.05)
             self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus, self.bus))
+            self.get_logger().info("Connected to GNSS")
         except serial.SerialException as e:
             self.get_logger().error(str(e))
             status_msg = self.initStatusMsg()
