@@ -14,7 +14,7 @@ from rclpy.node import Node
 from builtin_interfaces.msg import Time
 
 from carla_msgs.msg import CarlaSpeedometer, CarlaWorldInfo
-from diagnostic_msgs.msg import DiagnosticStatus
+from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import Pose, Point, Quaternion, TransformStamped, Vector3
 from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
@@ -196,6 +196,12 @@ class GnssProcessingNode(Node):
         else:
             status.level = DiagnosticStatus.OK
             # No message necessary if OK.
+
+        stamp = KeyValue()
+        stamp.key = 'stamp'
+        stamp.value = str(self.clock.clock.sec+self.clock.clock.nanosec*1e-9)
+        status.values.append(stamp)
+
         self.status_pub.publish(status)
 
     def _update_odom_weighted_moving_average_(self, current_pos: Point):

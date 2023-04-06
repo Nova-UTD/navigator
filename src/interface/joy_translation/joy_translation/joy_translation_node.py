@@ -46,7 +46,7 @@ import numpy as np
 from rosgraph_msgs.msg import Clock
 import time
 
-from carla_msgs.msg import CarlaEgoVehicleControl
+from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from nova_msgs.msg import Mode
 import rclpy
@@ -59,11 +59,14 @@ class joy_translation_node(Node):
 
     def __init__(self):
         super().__init__('joy_translation_node')
-        self.joy_sub = self.create_subscription(
+
+        self.current_speed = 0.0  # m/s
+
+        joy_sub = self.create_subscription(
             Joy, '/joy', self.joyCb, 10)
 
         self.clock = Clock().clock
-        self.clock_sub = self.create_subscription(
+        clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 10)
 
         self.command_pub = self.create_publisher(
@@ -71,13 +74,20 @@ class joy_translation_node(Node):
 
         self.requested_mode_pub = self.create_publisher(
             Mode, '/requested_mode', 1)
-        
+
+        speed_sub = self.create_subscription(
+            CarlaSpeedometer, '/speed', self.speedCb, 1)
+
         self.status = DiagnosticStatus()
-        self.status_pub = self.create_publisher(DiagnosticStatus, '/node_statuses', 1)
+        self.status_pub = self.create_publisher(
+            DiagnosticStatus, '/node_statuses', 1)
 
         self.current_mode = Mode.DISABLED
         self.current_mode_sub = self.create_subscription(
             Mode, '/guardian/mode', self.currentModeCb, 1)
+
+    def speedCb(self, msg: CarlaSpeedometer):
+        self.current_speed = msg.speed
 
     def currentModeCb(self, msg: Mode):
         self.current_mode = msg.mode
@@ -99,6 +109,32 @@ class joy_translation_node(Node):
 
         return status
 
+    def getSpeedAdjustedSteering(self, joystick_pos: float) -> float:
+        """When the car is moving, we want to increase the steering sensitity of our
+        joystick by tightening its bounds, reducing the maximum steering in either direction.
+
+        Args:
+            joystick_pos (float): _description_
+
+        Returns:
+            float: _description_
+        """
+        # We should never reduce steering more than this.
+        # Dampening is proportional to this
+        MIN_STEERING_LIMIT = 0.5
+        MAX_SPEED = 10  # m/s. Descriptive, not prescriptive.
+
+        # Just an unconstrained, parabolic map.
+        parabolic_steer = joystick_pos**2
+        if joystick_pos < 0:
+            parabolic_steer *= -1
+
+        # "Squish" this curve vertically based on current speed
+        tightener = -0.05 * self.current_speed + 1
+        steer = parabolic_steer * tightener
+
+        return steer
+
     def joyCb(self, msg: Joy):
         command_msg = CarlaEgoVehicleControl()
 
@@ -113,14 +149,15 @@ class joy_translation_node(Node):
 
         command_msg.header.stamp = self.clock
         command_msg.header.frame_id = 'base_link'
-        command_msg.throttle = ((right_trigger*-1)+1)/2
-        command_msg.steer = msg.axes[0]*-1
+        # command_msg.throttle = ((right_trigger*-1)+1)/2
+        command_msg.throttle = 0.0
+        command_msg.steer = self.getSpeedAdjustedSteering(msg.axes[0]*-1)
 
         if left_trigger == 0.:
             command_msg.brake = 0.
         else:
             command_msg.brake = 1-(left_trigger+1)/2
-
+        command_msg.brake = 1.0
 
         requested_mode = Mode()
         if msg.buttons[2] == 1:
