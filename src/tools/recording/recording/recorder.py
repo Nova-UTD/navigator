@@ -144,7 +144,7 @@ class recorder(Node):
             OccupancyGrid, '/grid/occupancy/current', self.currentOccCb, 10)
 
         camera_sub = self.create_subscription(
-            Image, '/cameras/stitched', self.camCb, 10)
+            Image, '/cameras/camera0', self.camCb, 10)
 
         odom_sub = self.create_subscription(
             Odometry, '/gnss/odometry', self.odomCb, 10)
