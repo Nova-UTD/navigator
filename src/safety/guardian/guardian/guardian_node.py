@@ -17,9 +17,11 @@ Publishes to:
 
 import numpy as np
 from rosgraph_msgs.msg import Clock
+import time
 
 from carla_msgs.msg import CarlaEgoVehicleControl
 from diagnostic_msgs.msg import DiagnosticStatus, DiagnosticArray, KeyValue
+from nav_msgs.msg import Path
 from nova_msgs.msg import Mode
 import rclpy
 from rclpy.node import Node
@@ -47,6 +49,7 @@ class guardian_node(Node):
         super().__init__('guardian_node')
 
         self.clock = 0.0
+        self.path_receive_time = time.time()
 
         simulated = self.declare_parameter(
             'simulated', False)
@@ -62,6 +65,9 @@ class guardian_node(Node):
 
         self.current_mode_pub = self.create_publisher(
             Mode, '/guardian/mode', 1)
+
+        self.path_sub = self.create_subscription(
+            Path, '/planning/path', self.pathCb, 1)
 
         clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1)
 
@@ -82,8 +88,8 @@ class guardian_node(Node):
 
         if not is_in_simulation:
             self.manual_nodes["gnss_interface_node"] = StatusEntry([])
-        else:
-            self.manual_nodes["gnss_processing_node"] = StatusEntry([])
+        # else:
+        #     self.manual_nodes["gnss_processing_node"] = StatusEntry([])
 
         self.other_nodes = {
             "recording": StatusEntry([])
@@ -93,6 +99,15 @@ class guardian_node(Node):
 
         self.auto_disabled = True
         self.manual_disabled = True
+
+    def pathCb(self, msg: Path):
+        """Here we simply note the time that the message was received.
+        Used to ensure that the path planner is alive.
+
+        Args:
+            msg (Path)
+        """
+        self.path_receive_time = time.time()
 
     def clockCb(self, msg: Clock):
         self.clock = msg.clock.sec + msg.clock.nanosec*1e-9
@@ -106,7 +121,10 @@ class guardian_node(Node):
         status.values.append(stamp)
         return status
 
-    def isStale(self, status: StatusEntry) -> bool:
+    def isStale(self, status: StatusEntry, node_name: str) -> bool:
+
+        if node_name == 'rtp_node':
+            return (time.time() - self.path_receive_time) > STALENESS_TOLERANCE
 
         return (self.clock - status.stamp) > STALENESS_TOLERANCE
 
@@ -152,7 +170,7 @@ class guardian_node(Node):
                     global_status.message += f"{dict_entry} not received."
 
                 self.manual_disabled = True
-            elif self.isStale(status):
+            elif self.isStale(status, dict_entry):
                 global_status.level = DiagnosticStatus.ERROR
                 global_status.message = f"{dict_entry} was stale."
                 self.manual_disabled = True
@@ -186,7 +204,7 @@ class guardian_node(Node):
                     global_status.message += f"{dict_entry} not received."
 
                 self.auto_disabled = True
-            elif self.isStale(status):
+            elif self.isStale(status, dict_entry):
                 global_status.level = DiagnosticStatus.ERROR
                 global_status.message += f"{dict_entry} was stale. "
                 self.auto_disabled = True
@@ -217,7 +235,7 @@ class guardian_node(Node):
                     global_status.message += f"{dict_entry} not received. Is the joystick connected?"
                 else:
                     global_status.message += f"{dict_entry} not received."
-            elif self.isStale(status):
+            elif self.isStale(status, dict_entry):
                 global_status.level = DiagnosticStatus.ERROR
                 global_status.message = f"{dict_entry} was stale. "
                 manual_error_description += f"{dict_entry} was stale. "
@@ -282,14 +300,14 @@ class guardian_node(Node):
     def modeRequestCb(self, msg: Mode):
         # Here we can choose to accept or deny the requested mode.
 
-        # if self.manual_disabled:
-        #     self.current_mode = Mode.DISABLED
-        # elif self.auto_disabled and msg.mode == Mode.AUTO:
-        #     self.current_mode = Mode.DISABLED
-        # else:
-        #     self.current_mode = msg.mode
+        if self.manual_disabled:
+            self.current_mode = Mode.DISABLED
+        elif self.auto_disabled and msg.mode == Mode.AUTO:
+            self.current_mode = Mode.DISABLED
+        else:
+            self.current_mode = msg.mode
 
-        self.current_mode = msg.mode
+        # self.current_mode = msg.mode
 
         mode_msg = Mode()
         mode_msg.mode = self.current_mode

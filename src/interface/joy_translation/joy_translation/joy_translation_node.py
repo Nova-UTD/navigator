@@ -145,11 +145,12 @@ class joy_translation_node(Node):
         #     left_trigger = -1.
         right_trigger = msg.axes[5]
         if right_trigger == 0.:
-            right_trigger = -1.
+            right_trigger = 1.
 
         command_msg.header.stamp = self.clock
         command_msg.header.frame_id = 'base_link'
         command_msg.throttle = ((right_trigger*-1)+1)/2
+        # self.get_logger().info(str(command_msg.throttle))
         # command_msg.throttle = 0.0
         command_msg.steer = self.getSpeedAdjustedSteering(msg.axes[0]*-1)
 

@@ -418,6 +418,7 @@ class RecursiveTreePlanner(Node):
         self.path_pub.publish(result_msg)
 
         self.status_pub.publish(status)
+        self.last_status_time = time.time()
 
         # print(f"Done in {time.time() - start}!")
 

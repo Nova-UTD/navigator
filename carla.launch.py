@@ -79,7 +79,7 @@ def generate_launch_description():
             {'register_all_sensors': False},
             {'ego_vehicle_role_name': 'hero'},
             {'timeout': 30.0},
-            {'fixed_delta_seconds': 0.1}
+            {'fixed_delta_seconds': 0.2}
         ],
         remappings=[
             ('/carla/hero/lidar', '/lidar/fused'),
@@ -177,6 +177,11 @@ def generate_launch_description():
         ]
     )
 
+    recorder = Node(
+        package='recording',
+        executable='recorder'
+    )
+
     return LaunchDescription([
         # CONTROL
         # carla_controller,
@@ -196,6 +201,7 @@ def generate_launch_description():
         # MAPPING
 
         # MISC
+        recorder,
         urdf_publisher,
         # rviz,
         # rqt,
@@ -221,5 +227,5 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         map_manager,
-        gnss_processor,
+        # gnss_processor,
     ])

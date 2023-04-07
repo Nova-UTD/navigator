@@ -15,9 +15,10 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 import time
 
-from carla_msgs.msg import CarlaRoute, CarlaWorldInfo
+from carla_msgs.msg import CarlaRoute, CarlaWorldInfo, CarlaEgoVehicleStatus
 from geometry_msgs.msg import Pose, PoseStamped
 from nav_msgs.msg import Path
+from nova_msgs.msg import PedalPosition, SteeringPosition
 from rosgraph_msgs.msg import Clock
 from std_msgs.msg import Bool, ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
@@ -53,6 +54,15 @@ class LeaderboardLiaisonNode(Node):
         self.world_info_cached = None
         self.world_info_repub_timer = self.create_timer(
             5.0, self.repub_world_info)
+
+        vehicle_status_sub = self.create_subscription(
+            CarlaEgoVehicleStatus, '/carla/hero/vehicle_status', self.vehicleStatusCb, 1)
+        self.steering_pos_pub = self.create_publisher(
+            SteeringPosition, '/steering_pos', 1)
+        self.throttle_pos_pub = self.create_publisher(
+            PedalPosition, '/throttle_pos', 1)
+        self.brake_pos_pub = self.create_publisher(
+            PedalPosition, '/brake_pos', 1)
 
         self.route = None
         self.clock = Clock()
@@ -116,6 +126,25 @@ class LeaderboardLiaisonNode(Node):
                     ai_controller.go_to_location(
                         self.world.get_random_location_from_navigation())
                 walker_count += 1
+
+    def vehicleStatusCb(self, msg: CarlaEgoVehicleStatus):
+
+        steering_pos = msg.control.steer
+        throttle_pos = msg.control.throttle
+        brake_pos = msg.control.brake
+
+        throttle_msg = PedalPosition()
+        throttle_msg.data = throttle_pos
+
+        brake_msg = PedalPosition()
+        brake_msg.data = brake_pos
+
+        steering_msg = SteeringPosition()
+        steering_msg.data = steering_pos
+
+        self.throttle_pos_pub.publish(throttle_msg)
+        self.brake_pos_pub.publish(brake_msg)
+        self.steering_pos_pub.publish(steering_msg)
 
     def publish_true_pose(self):
         carla_tf = self.ego.get_transform()
