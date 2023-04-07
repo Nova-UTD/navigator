@@ -26,7 +26,7 @@ from rclpy.node import Node
 from dataclasses import dataclass
 
 
-STALENESS_TOLERANCE = 0.6  # sec. Statuses staler than this will be marked as stale
+STALENESS_TOLERANCE = 0.8  # sec. Statuses staler than this will be marked as stale
 NOT_RECEIVED = b'\xff'
 
 
@@ -48,6 +48,9 @@ class guardian_node(Node):
 
         self.clock = 0.0
 
+        simulated = self.declare_parameter(
+            'simulated', False)
+
         mode_request_sub = self.create_subscription(
             Mode, '/requested_mode', self.modeRequestCb, 1)
 
@@ -64,12 +67,23 @@ class guardian_node(Node):
 
         self.manual_nodes = {
             "joy_translation_node": StatusEntry([]),
-            "epas_node": StatusEntry([]),
-            "linear_actuator_node": StatusEntry([])
         }
+
+        is_in_simulation = simulated.get_parameter_value().bool_value
+        self.get_logger().error(str(simulated.get_parameter_value()))
+
+        if not is_in_simulation:
+            self.manual_nodes["epas_node"] = StatusEntry([])
+            self.manual_nodes["linear_actuator_node"] = StatusEntry([])
+
         self.auto_nodes = {
-            "gnss_interface_node": StatusEntry([])
+            "rtp_node": StatusEntry([]),
         }
+
+        if not is_in_simulation:
+            self.manual_nodes["gnss_interface_node"] = StatusEntry([])
+        else:
+            self.manual_nodes["gnss_processing_node"] = StatusEntry([])
 
         self.other_nodes = {
             "recording": StatusEntry([])
@@ -133,16 +147,16 @@ class guardian_node(Node):
                 global_status.level = DiagnosticStatus.ERROR
 
                 if dict_entry == "joy_translation_node":
-                    global_status.message = f"{dict_entry} not received. Is the joystick connected?"
+                    global_status.message += f"{dict_entry} not received. Is the joystick connected?"
                 else:
-                    global_status.message = f"{dict_entry} not received."
+                    global_status.message += f"{dict_entry} not received."
 
                 self.manual_disabled = True
             elif self.isStale(status):
                 global_status.level = DiagnosticStatus.ERROR
-                global_status.message = f"{dict_entry} was stale"
+                global_status.message = f"{dict_entry} was stale."
                 self.manual_disabled = True
-                manual_error_description += f"{dict_entry} was stale; "
+                manual_error_description += f"{dict_entry} was stale. "
             elif status.level == DiagnosticStatus.WARN and global_status.level != DiagnosticStatus.ERROR:
                 global_status.level = DiagnosticStatus.WARN
                 global_status.message += status.message + '; '
@@ -167,16 +181,16 @@ class guardian_node(Node):
                 global_status.level = DiagnosticStatus.ERROR
 
                 if dict_entry == "joy_translation_node":
-                    global_status.message = f"{dict_entry} not received. Is the joystick connected?"
+                    global_status.message += f"{dict_entry} not received. Is the joystick connected?"
                 else:
-                    global_status.message = f"{dict_entry} not received."
+                    global_status.message += f"{dict_entry} not received."
 
                 self.auto_disabled = True
             elif self.isStale(status):
                 global_status.level = DiagnosticStatus.ERROR
-                global_status.message = f"{dict_entry} was stale"
+                global_status.message += f"{dict_entry} was stale. "
                 self.auto_disabled = True
-                manual_error_description += f"{dict_entry} was stale; "
+                manual_error_description += f"{dict_entry} was stale. "
             elif status.level == DiagnosticStatus.WARN and global_status.level != DiagnosticStatus.ERROR:
                 global_status.level = DiagnosticStatus.WARN
                 global_status.message += status.message + '; '
@@ -197,16 +211,16 @@ class guardian_node(Node):
                 global_status.message = status.message
                 manual_error_description += status.message + '; '
             elif status.level == NOT_RECEIVED:
-                global_status.level = DiagnosticStatus.ERROR
+                global_status.level = DiagnosticStatus.WARN
 
                 if dict_entry == "joy_translation_node":
-                    global_status.message = f"{dict_entry} not received. Is the joystick connected?"
+                    global_status.message += f"{dict_entry} not received. Is the joystick connected?"
                 else:
-                    global_status.message = f"{dict_entry} not received."
+                    global_status.message += f"{dict_entry} not received."
             elif self.isStale(status):
                 global_status.level = DiagnosticStatus.ERROR
-                global_status.message = f"{dict_entry} was stale"
-                manual_error_description += f"{dict_entry} was stale; "
+                global_status.message = f"{dict_entry} was stale. "
+                manual_error_description += f"{dict_entry} was stale. "
             elif status.level == DiagnosticStatus.WARN and global_status.level != DiagnosticStatus.ERROR:
                 global_status.level = DiagnosticStatus.WARN
                 global_status.message += status.message + '; '

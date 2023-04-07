@@ -41,7 +41,7 @@ class camera_node(Node):
                     camera = cv2.VideoCapture(port)
                     self.cameras.append(camera)
                     
-                    camera_pub = self.create_publisher(Image, f'/camera/camera{len(self.camera_publishers)}', 1)
+                    camera_pub = self.create_publisher(Image, f'/cameras/camera{len(self.camera_publishers)}', 1)
                     self.camera_publishers.append(camera_pub)
 
         # Call publishFrames very frequently.

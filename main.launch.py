@@ -78,7 +78,8 @@ def generate_launch_description():
         namespace='',
         executable='rviz2',
         name='rviz2',
-        arguments=['-d' + '/navigator/data/real_world.rviz']
+        arguments=['-d' + '/navigator/data/real_world.rviz'],
+        respawn=True
     )
 
     ground_seg = Node(
@@ -182,6 +183,11 @@ def generate_launch_description():
         executable='static_grid_exe'
     )
 
+    recorder =Node(
+        package='recording',
+        executable='recorder'
+    )
+
     return LaunchDescription([
         # CONTROL
         # controller,
@@ -191,7 +197,7 @@ def generate_launch_description():
         joy,
         joy_translator,
         epas,
-        mcu_interface,
+        # mcu_interface,
         linear_actuator,
         web_bridge,
         gnss,
@@ -201,10 +207,9 @@ def generate_launch_description():
         right_lidar_pointcloud,
         camera,
 
-        # gps_node,
-
         # MISC
         clock,
+        # recorder,
         urdf_publisher,
         rviz,
 
@@ -214,5 +219,5 @@ def generate_launch_description():
         static_grid,
 
         # SAFETY
-        guardian
+        guardian,
     ])
