@@ -59,8 +59,8 @@ class McuInterfaceNode(Node):
         #     return
         # throttle = min(throttle, 0.3)
 
-        throttle *= 0.125
-        throttle = min(throttle, 0.2)
+        throttle *= 1.0
+        throttle = min(throttle, 0.8)
         self.get_logger().info(f"Throttle {self.throttle } => {throttle}")
 
         # command = str.encode(f"$throttle,{throttle};\n")
@@ -80,7 +80,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     # Try ls /dev/seria/by-id
-    channel = '/dev/serial/by-id/usb-Adafruit_Industries_LLC_Grand_Central_M4_Express_BA3E99D033533853202020350D3B12FF-if00'
+    channel = '/dev/serial/by-id/usb-Adafruit_Grand_Central_M4_D0993EBA5338533335202020FF123B0D-if00'
     bitrate = 115200
 
     bus = None

@@ -6,6 +6,9 @@ import pynmea2
 import pyproj
 import rclpy
 import serial
+
+# Message definitions
+from carla_msgs.msg import CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import Quaternion, TransformStamped, Vector3
 from nav_msgs.msg import Odometry
@@ -24,31 +27,31 @@ class GnssInterfaceNode(Node):
         self.orientation = Quaternion()
         self.heading = 0.0
         self.cached_odom = None
+        self.bus = None
 
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.clock = Clock().clock
-        self.clock_sub = self.create_subscription(
+        clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 10)
+
+        self.speed_pub = self.create_publisher(CarlaSpeedometer, '/speed', 1)
 
         self.status = DiagnosticStatus()
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/node_statuses', 1)
 
-        self.clock = Clock().clock
-        self.clock_sub = self.create_subscription(
-            Clock, '/clock', self.clockCb, 10)
-
         self.retry_connection_timer = self.create_timer(
             1.0, self.connectToPort)
-        
+
         self.odom_pub = self.create_publisher(Odometry, '/gnss/odometry', 1)
         self.navsat_pub = self.create_publisher(NavSatFix, '/gnss/fix', 1)
 
-        self.lat0 = 32.989488 # TODO: Get this foom the map manager
+        self.lat0 = 32.989488  # TODO: Get this foom the map manager
         self.lon0 = -96.750437
         utm_zone = 14
-        self.proj = pyproj.Proj(proj='utm', zone=utm_zone, ellipsis='WGS84', preserve_units=True)
+        self.proj = pyproj.Proj(proj='utm', zone=utm_zone,
+                                ellipsis='WGS84', preserve_units=True)
 
         self.speed = 0.0
 
@@ -69,28 +72,34 @@ class GnssInterfaceNode(Node):
         transl.z = self.cached_odom.pose.pose.position.z
         t.transform.translation = transl
         t.transform.rotation = self.cached_odom.pose.pose.orientation
-        # self.tf_broadcaster.sendTransform(t)
+        self.tf_broadcaster.sendTransform(t)
 
     def getData(self):
 
         if self.sio is None:
+            self.get_logger().warn("SIO object was none. Skipping data read.")
             return
-        
+
         self.status = self.initStatusMsg()
-        
+
         # Try to read the next 30 lines from the serial port
+
         for i in range(30):
             try:
                 line = self.sio.readline()
                 msg = pynmea2.parse(line)
 
-
                 if msg.sentence_type == "GGA":
+                    # self.get_logger().warning("GGA!")
                     navsat_msg = NavSatFix()
                     navsat_msg.header.frame_id = 'base_link'
                     navsat_msg.header.stamp = self.clock
                     navsat_msg.latitude = msg.latitude
                     navsat_msg.longitude = msg.longitude
+
+                    if msg.latitude == 0.0:
+                        self.get_logger().warning("Message latitude was zero. Signal invalid.")
+
                     try:
                         navsat_msg.altitude = msg.altitude
                     except AssertionError as e:
@@ -104,15 +113,22 @@ class GnssInterfaceNode(Node):
                     odom_msg.header.frame_id = 'map'
                     odom_msg.child_frame_id = 'base_link'
 
-
                     self.odom_pub.publish(odom_msg)
                     self.cached_odom = odom_msg
                     # print(f"{msg.latitude}, {msg.longitude}")
 
                 elif msg.sentence_type == "VTG":
+                    # self.get_logger().warning("VTG!")
+
+                    # Speed
                     if msg.spd_over_grnd_kmph is None:
                         return
                     self.speed = msg.spd_over_grnd_kmph * 0.277778
+                    speed_msg = CarlaSpeedometer()
+                    speed_msg.speed = self.speed
+                    self.speed_pub.publish(speed_msg)
+
+                    # Heading
                     if msg.true_track is not None and self.speed > 1.0:
 
                         hdg_degrees = 90. - msg.true_track
@@ -129,7 +145,8 @@ class GnssInterfaceNode(Node):
                             q.w = math.cos(hdg_radians / 2)
                             q.z = math.sin(hdg_radians / 2)
                         except ValueError as e:
-                            self.get_logger().error(f"{hdg_radians} was out of bounds!")
+                            self.get_logger().error(
+                                f"{hdg_radians} was out of bounds!")
                         self.orientation = q
                         self.heading = hdg_radians
 
@@ -139,7 +156,7 @@ class GnssInterfaceNode(Node):
                 self.status.level = DiagnosticStatus.ERROR
                 return
             except pynmea2.ParseError as e:
-                # print('Parse error: {}'.format(e))
+                print('Parse error: {}'.format(e))
                 return
 
     def getOdomMsg(self, lat: float, lon: float) -> Odometry:
@@ -161,12 +178,23 @@ class GnssInterfaceNode(Node):
 
         return msg
 
-
     def connectToPort(self):
         # TODO: Stabilize this device path somehow
-        self.bus = serial.Serial('/dev/serial/by-path/pci-0000:00:14.0-usb-0:6.4.4.4.4.1:1.0', 115200, timeout=0.05)
-        self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus,self.bus))
-                
+
+        if self.bus is not None and self.bus.is_open:
+            return
+        try:
+            self.bus = serial.Serial(
+                '/dev/serial/by-path/pci-0000:00:14.0-usb-0:6.4.4.4.4.1:1.0', 115200, timeout=0.05)
+            self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus, self.bus))
+            self.get_logger().info("Connected to GNSS")
+        except serial.SerialException as e:
+            self.get_logger().error(str(e))
+            status_msg = self.initStatusMsg()
+            status_msg.level = DiagnosticStatus.ERROR
+            status_msg.message = "Error connecting to GNSS. {e}"
+            self.status_pub.publish(status_msg)
+
         return
 
     def initStatusMsg(self) -> DiagnosticStatus:
