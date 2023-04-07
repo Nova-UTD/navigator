@@ -70,7 +70,10 @@ def generate_launch_description():
 
     map_manager = Node(
         package='map_management',
-        executable='map_management_node'
+        executable='map_management_node',
+        parameters=[
+            {'from_file': True}
+        ]
     )
 
     rviz = Node(
@@ -130,42 +133,46 @@ def generate_launch_description():
     )
 
     left_lidar_driver = Node(
-        package = 'velodyne_driver',
-        executable = 'velodyne_driver_node',
-        parameters = ["/navigator/param/perception/lidar_driver_left.param.yaml"],
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        parameters=[
+            "/navigator/param/perception/lidar_driver_left.param.yaml"],
         namespace='velo_left'
     )
 
     right_lidar_driver = Node(
-        package = 'velodyne_driver',
-        executable = 'velodyne_driver_node',
-        parameters = ["/navigator/param/perception/lidar_driver_right.param.yaml"],
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        parameters=[
+            "/navigator/param/perception/lidar_driver_right.param.yaml"],
         namespace='velo_right'
 
     )
 
     left_lidar_pointcloud = Node(
-        package = 'velodyne_pointcloud',
-        executable = 'velodyne_convert_node',
-        parameters = ["/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
+        package='velodyne_pointcloud',
+        executable='velodyne_convert_node',
+        parameters=[
+            "/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
         namespace='velo_left'
     )
 
     right_lidar_pointcloud = Node(
-        package = 'velodyne_pointcloud',
-        executable = 'velodyne_convert_node',
-        parameters = ["/navigator/param/perception/lidar_pointcloud_right.param.yaml"],
+        package='velodyne_pointcloud',
+        executable='velodyne_convert_node',
+        parameters=[
+            "/navigator/param/perception/lidar_pointcloud_right.param.yaml"],
         namespace='velo_right'
     )
 
     camera = Node(
-        package = 'camera',
-        executable = 'camera_node'
+        package='camera',
+        executable='camera_node'
     )
 
     gps_node = Node(
-        package = 'nmea_navsat_driver',
-        executable = 'nmea_serial_driver'
+        package='nmea_navsat_driver',
+        executable='nmea_serial_driver'
     )
 
     web_bridge = Node(
@@ -183,7 +190,7 @@ def generate_launch_description():
         executable='static_grid_exe'
     )
 
-    recorder =Node(
+    recorder = Node(
         package='recording',
         executable='recorder'
     )
@@ -217,6 +224,9 @@ def generate_launch_description():
         ground_seg,
         lidar_processor,
         static_grid,
+
+        # PLANNING
+        map_manager,
 
         # SAFETY
         guardian,

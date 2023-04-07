@@ -28,6 +28,25 @@ struct RoiIndices
 
 MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
+    // Params
+    this->declare_parameter("from_file", true);
+
+    // Load map from file if from_file is true
+    bool do_load_from_file = this->get_parameter("from_file").as_bool();
+
+    std::string xodr_path = "/navigator/data/maps/campus.xodr";
+
+    if (do_load_from_file)
+    {
+        RCLCPP_INFO(get_logger(), "Loading map from %s", xodr_path.c_str());
+        this->map_ = new odr::OpenDriveMap(xodr_path, false);
+        RCLCPP_INFO(get_logger(), "Map loaded with %i roads", map_->get_roads().size());
+    }
+    else
+    {
+        world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
+    }
+
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
     junction_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/junction", 10);
@@ -39,10 +58,9 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
     rough_path_sub_ = this->create_subscription<Path>("/planning/rough_route", 10, bind(&MapManagementNode::updateRouteWaypoints, this, std::placeholders::_1));
-    world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
 
     drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
-    route_timer_ = this->create_wall_timer(ROUTE_PUBLISH_FREQUENCY, bind(&MapManagementNode::publishRefinedRoute, this));
+    // route_timer_ = this->create_wall_timer(ROUTE_PUBLISH_FREQUENCY, bind(&MapManagementNode::publishRefinedRoute, this));
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -110,7 +128,13 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     std::vector<odr::value> lane_shapes_in_range;
     map_wide_tree_.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
 
-    // std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
+    if (lane_shapes_in_range.size() < 1)
+    {
+        RCLCPP_WARN(get_logger(), "There are no lane shapes nearby. Pausing grid generation.");
+        return;
+    }
+
+    std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
 
     int idx = 0;
 
@@ -252,7 +276,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     goal_pose_pub_->publish(goal_pose);
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    // std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+    std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
 /**
@@ -492,8 +516,6 @@ RoiIndices getWaypointsInROI(LineString waypoints, bgi::rtree<odr::value, bgi::r
     // Query our tree. "1" means get the single nearest waypoint
     tree.query(bgi::nearest(ego_pos, 1), std::back_inserter(returned_values));
     int nearest_idx = returned_values.front().second;
-
-
 
     // Go backward in rough route until either
     // a) We hit the route's start or
