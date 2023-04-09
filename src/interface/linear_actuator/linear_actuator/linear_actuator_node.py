@@ -242,6 +242,7 @@ class linear_actuator_node(Node):
             bus.send(message)
             print("Sending message!")
             msg = bus.recv(0.1)
+            return msg
             print(f"Got response {msg}")
         except can.exceptions.CanError as e:
             self.status.level = DiagnosticStatus.ERROR
@@ -249,7 +250,6 @@ class linear_actuator_node(Node):
 
         self.status_pub.publish(self.status)
 
-        return msg
 
 
 def main(args=None):

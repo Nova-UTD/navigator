@@ -169,7 +169,7 @@ class guardian_node(Node):
                 else:
                     global_status.message += f"{dict_entry} not received."
 
-                self.manual_disabled = True
+                # self.manual_disabled = True
             elif self.isStale(status, dict_entry):
                 global_status.level = DiagnosticStatus.ERROR
                 global_status.message = f"{dict_entry} was stale."

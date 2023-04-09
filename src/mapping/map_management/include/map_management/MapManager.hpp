@@ -91,8 +91,9 @@ namespace navigator
             void clockCb(Clock::SharedPtr msg);
             TransformStamped getVehicleTf();
             void drivableAreaGridPubTimerCb();
-            void updateRouteWaypoints(Path::SharedPtr msg);
             void publishRefinedRoute();
+            void updateRouteWaypoints(Path::SharedPtr msg);
+            void updateRouteGivenDestination(odr::point destination);
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
             std::map<odr::LaneKey, bool> getJunctionMap(std::vector<odr::LanePair> lane_polys);
 

@@ -293,7 +293,7 @@ class player(Node):
                 time_nsec = int((times[idx]-time_sec) * 1e9)
 
                 # Prepare camera message
-                image_msg: Image = numpyToImage(cam[idx], 'bgra8')
+                image_msg: Image = numpyToImage(cam[idx], 'bgr8')
 
                 # Prepare occupancy grid message
                 occ_msg: OccupancyGrid = numpyToOccupancyGrid(occ[idx])
@@ -401,6 +401,11 @@ class player(Node):
         for arg in args:
             arg: str
             if arg.find('from=') != -1:
+                datestring = arg.split('=')[1]
+                if len(datestring.split('-')) == 2:
+                    self.search_from = strptime(datestring, '%m-%d')
+                elif len(datestring.split('-')) == 3:
+                    self.search_from = strptime(datestring, '%y-%m-%d')
                 print(arg.split('=')[1])
             elif arg.find('src=') != -1:
                 self.srcdir = arg.split('=')[1]

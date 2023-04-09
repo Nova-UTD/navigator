@@ -36,16 +36,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 
     std::string xodr_path = "/navigator/data/maps/campus.xodr";
 
-    if (do_load_from_file)
-    {
-        RCLCPP_INFO(get_logger(), "Loading map from %s", xodr_path.c_str());
-        this->map_ = new odr::OpenDriveMap(xodr_path, false);
-        RCLCPP_INFO(get_logger(), "Map loaded with %i roads", map_->get_roads().size());
-    }
-    else
-    {
-        world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
-    }
+
 
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
@@ -59,11 +50,28 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
     rough_path_sub_ = this->create_subscription<Path>("/planning/rough_route", 10, bind(&MapManagementNode::updateRouteWaypoints, this, std::placeholders::_1));
 
-    drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
+    // drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
     // route_timer_ = this->create_wall_timer(ROUTE_PUBLISH_FREQUENCY, bind(&MapManagementNode::publishRefinedRoute, this));
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
+    if (do_load_from_file)
+    {
+        RCLCPP_INFO(get_logger(), "Loading map from %s", xodr_path.c_str());
+        this->map_ = new odr::OpenDriveMap(xodr_path, false);
+        this->lane_polys_ = map_->get_lane_polygons(1.0, false);
+
+        RCLCPP_INFO(get_logger(), "Map loaded with %i roads", map_->get_roads().size());
+
+
+        odr::point destination(-1484.9, -228.2);
+        updateRouteGivenDestination(destination);
+    }
+    else
+    {
+        world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
+    }
 }
 
 /**
@@ -130,7 +138,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
     if (lane_shapes_in_range.size() < 1)
     {
-        RCLCPP_WARN(get_logger(), "There are no lane shapes nearby. Pausing grid generation.");
+        RCLCPP_WARN(get_logger(), "There are no lane shapes nearby.");
+        std::printf("(%f, %f)\n", vehicle_pos.x, vehicle_pos.y);
         return;
     }
 
@@ -142,6 +151,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
     for (unsigned i = 0; i < lane_shapes_in_range.size(); ++i)
         local_tree.insert(lane_shapes_in_range.at(i));
+
+    std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
 
     int area = 0;
     int height = 0;
@@ -209,29 +220,29 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             drivable_grid_data.push_back(cell_is_drivable ? 0 : 100);
             junction_grid_data.push_back(cell_is_in_junction ? 100 : 0);
 
-            // Get closest route point
-            if (local_route_linestring_.size() > 0 && cell_is_drivable && i > 0)
-            {
-                int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 8);
+            // // Get closest route point
+            // if (local_route_linestring_.size() > 0 && cell_is_drivable && i > 0)
+            // {
+            //     int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 8);
 
-                if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
-                {
-                    goal_is_set = true;
-                    goal_pt = BoostPoint(i, j);
-                }
+            //     if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
+            //     {
+            //         goal_is_set = true;
+            //         goal_pt = BoostPoint(i, j);
+            //     }
 
-                // Distances > 10 are set to 100
-                if (dist > 20)
-                    dist = 100;
-                else
-                    dist *= 5;
+            //     // Distances > 10 are set to 100
+            //     if (dist > 20)
+            //         dist = 100;
+            //     else
+            //         dist *= 5;
 
-                route_dist_grid_data.push_back(dist);
-            }
-            else
-            {
-                route_dist_grid_data.push_back(100);
-            }
+            //     route_dist_grid_data.push_back(dist);
+            // }
+            // else
+            // {
+            //     route_dist_grid_data.push_back(100);
+            // }
 
             area += 1;
         }
@@ -309,6 +320,7 @@ TransformStamped MapManagementNode::getVehicleTf()
                              "Could not get base_link->map tf: %s. This will republish every 5 seconds.", ex.what());
         return TransformStamped();
     }
+    RCLCPP_INFO(get_logger(), "Returing empty transform");
     return t;
 }
 
@@ -555,6 +567,38 @@ RoiIndices getWaypointsInROI(LineString waypoints, bgi::rtree<odr::value, bgi::r
     return result;
 }
 
+std::vector<odr::LaneKey>  laneKeysFromPoint(odr::point pt, bgi::rtree<odr::value, bgi::rstar<16, 4>> lane_tree, std::vector<odr::LanePair> lane_polys)
+{
+    std::vector<odr::value> query_results;
+
+    lane_tree.query(bgi::intersects(pt), std::back_inserter(query_results));
+
+    std::vector<odr::LaneKey> lane_keys;
+
+    // Move through our tree search results, extracting the lane key and
+    // adding it to our result list.
+    for (auto result : query_results)
+    {
+        odr::LanePair result_pair = lane_polys[result.second];
+        lane_keys.push_back(result_pair.first.key);
+    }
+
+    if (lane_keys.size() > 0)
+        return lane_keys;
+
+    // At this point, our search could not find any lanes intersecting the point.
+    // The fallback is to find the nearest lane to the point, even if they don't touch.
+    lane_tree.query(bgi::nearest(pt, 1), std::back_inserter(query_results));
+    odr::LanePair result_pair = lane_polys[query_results.front().second];
+    lane_keys.push_back(result_pair.first.key);
+
+    double dist = bg::distance(pt, query_results.front().first);
+    std::printf("Lane key does not touch current pos. Distance: %f \n", dist);
+
+    return lane_keys;
+
+}
+
 std::vector<odr::LaneKey> getLaneKeysFromIndices(RoiIndices indices, LineString waypoints, bgi::rtree<odr::value, bgi::rstar<16, 4>> lane_tree, std::vector<odr::LanePair> lane_polys)
 {
     LineString waypoints_within_roi;
@@ -647,6 +691,54 @@ std::vector<LineString> MapManagementNode::getCenterlinesFromKeys(std::vector<od
     }
 
     return centerlines;
+}
+
+/**
+ * @brief Given a destination point (x,y), set our route linestring
+ * to be the continuous centerlines of the lanes connecting
+ * the current location to the destination. Should be fast.
+ */
+void MapManagementNode::updateRouteGivenDestination(odr::point destination)
+{
+    RCLCPP_INFO(get_logger(), "Updating route from destination (%f, %f)", destination.get<0>(), destination.get<1>());
+    auto current_tf = getVehicleTf();
+    odr::point current_position(current_tf.transform.translation.x, current_tf.transform.translation.y);
+
+    RCLCPP_INFO(get_logger(), "Current pos: (%f, %f)", current_position.get<0>(), current_position.get<1>());
+
+    if (this->map_wide_tree_.size() == 0) {
+        RCLCPP_INFO(get_logger(), "map_wide_tree_ was empty. Generating.");
+        this->map_wide_tree_ = this->map_->generate_mesh_tree();
+    }
+
+    // odr::LaneKey from = laneKeysFromPoint(current_position, map_wide_tree_, lane_polys_).front();
+    odr::LaneKey from = odr::LaneKey("35", 0.0, -1);
+    odr::LaneKey to = odr::LaneKey("26", 0.0, -1);
+    RCLCPP_INFO(get_logger(), "From %s to %s", from.to_string().c_str(), to.to_string().c_str());
+
+    std::vector<odr::LaneKey> complete_segment; // keys, but with gaps in lanes filled.
+    auto adjacency_pairs = bfs(from, to, map_->get_routing_graph());
+    RCLCPP_INFO(get_logger(), "BFS returned %i pairs", adjacency_pairs.size());
+
+    // Work our way back from destination to source in the tree search,
+    // producing a continuous LaneKey route.
+    try
+    {
+        odr::LaneKey parent = adjacency_pairs.at(to);
+        do
+        {
+            complete_segment.push_back(parent);
+            parent = adjacency_pairs.at(parent);
+        } while (parent.to_string() != from.to_string());
+    }
+    catch (...)
+    {
+        RCLCPP_ERROR(get_logger(), "BFS could not locate route parent. Returning.");
+    }
+
+    for (odr::LaneKey segment : complete_segment) {
+        RCLCPP_INFO(get_logger(), "%s", segment.to_string().c_str());
+    }
 }
 
 /**
