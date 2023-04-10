@@ -66,7 +66,9 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 
 
         odr::point destination(-1484.9, -228.2);
-        updateRouteGivenDestination(destination);
+        odr::LaneKey start("35", 0.0, -1);
+        odr::LaneKey dest("26", 0.0, -1);
+        calculateRoute(start, dest);
     }
     else
     {
@@ -289,6 +291,61 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
+
+std::vector<odr::LaneKey> MapManagementNode::getTrueSuccessors(odr::LaneKey key)
+{
+    std::vector<odr::LaneKey> results;
+
+    // Get starting Lane object
+    odr::Road start_road = map_->id_to_road.at(key.road_id);
+    odr::LaneSection start_lsec = start_road.get_lanesection(key.lanesection_s0);
+    odr::Lane start_lane = start_lsec.id_to_lane.at(key.lane_id);
+
+    // Find the starting lane's end point
+    double nose_s = -0.5;
+    if (key.lane_id < 0) {
+        nose_s = start_road.get_lanesection_end(key.lanesection_s0) + 0.5; // s_max + half a meter.
+    } 
+    double outer_t = start_lane.outer_border.get(nose_s);
+    double inner_t = start_lane.inner_border.get(nose_s);
+    double center_t = (inner_t+outer_t)/2;
+    odr::Vec3D nose_vec = start_road.get_surface_pt_unchecked(nose_s,center_t);
+    odr::point nose_pt(nose_vec[0], nose_vec[1]);
+    std::printf("(%f,%f)\n", nose_vec[0], nose_vec[1]);
+
+    std::vector<odr::value> lanes_containing_nose_point;
+
+    map_wide_tree_.query(bgi::intersects(nose_pt), std::back_inserter(lanes_containing_nose_point));
+
+    for (odr::value pair : lanes_containing_nose_point)
+    {
+        odr::ring ring = this->lane_polys_.at(pair.second).second;
+        odr::Lane lane = this->lane_polys_.at(pair.second).first;
+        bool point_is_within_shape = bg::within(nose_pt, ring);
+        if (point_is_within_shape) {
+            odr::LaneKey result(lane.key);
+            std::printf("%s\n",result.to_string().c_str());
+            results.push_back(result);
+        }
+    }
+
+    // start_lane.successor
+
+    std::printf("Returning %i results\n", results.size());
+    return results;
+
+}
+
+std::vector<odr::LaneKey> MapManagementNode::calculateRoute(odr::LaneKey start, odr::LaneKey end)
+{
+    if (this->map_wide_tree_.size() == 0) {
+        RCLCPP_INFO(get_logger(), "map_wide_tree_ was empty. Generating.");
+        this->map_wide_tree_ = this->map_->generate_mesh_tree();
+    }
+    return getTrueSuccessors(start);
+
+}
+
 
 /**
  * @brief Caches the latest clock from CARLA. Usand published for message timestamps.

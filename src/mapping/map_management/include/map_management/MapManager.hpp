@@ -93,6 +93,9 @@ namespace navigator
             void drivableAreaGridPubTimerCb();
             void publishRefinedRoute();
             void updateRouteWaypoints(Path::SharedPtr msg);
+            std::vector<odr::LaneKey> calculateRoute(odr::LaneKey start, odr::LaneKey end);
+            std::vector<odr::LaneKey> getTrueSuccessors(odr::LaneKey key);
+
             void updateRouteGivenDestination(odr::point destination);
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
             std::map<odr::LaneKey, bool> getJunctionMap(std::vector<odr::LanePair> lane_polys);
