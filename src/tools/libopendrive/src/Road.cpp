@@ -140,9 +140,9 @@ namespace odr
     {
         double lanesection_s0;
         if (s < 0)
-            lanesection_s0 = this->get_lanesection_s0(s+0.5);
+            lanesection_s0 = this->get_lanesection_s0(s+0.8);
         else 
-            lanesection_s0 = this->get_lanesection_s0(s-0.5);
+            lanesection_s0 = this->get_lanesection_s0(s-0.8);
         if (std::isnan(lanesection_s0))
         {
             throw std::runtime_error(string_format("cannot get road surface pt, no lane section for s %.3f, road length: %.3f", s, this->length));

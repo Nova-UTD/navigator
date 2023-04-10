@@ -26,6 +26,13 @@ struct RoiIndices
     int end = -1;
 };
 
+struct Arc
+{
+    odr::LaneKey sourceKey;
+    odr::LaneKey targetKey;
+    double sourceLength;
+};
+
 MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
     // Params
@@ -62,13 +69,30 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         this->map_ = new odr::OpenDriveMap(xodr_path, false);
         this->lane_polys_ = map_->get_lane_polygons(1.0, false);
 
+        for (auto pair : lane_polys_)
+        {
+            odr::LaneKey key = pair.first.key;
+
+            if (key.road_id == "2000")
+            {
+                std::printf("FOUND %s\n", key.to_string().c_str());
+            }
+        }
+
         RCLCPP_INFO(get_logger(), "Map loaded with %i roads", map_->get_roads().size());
 
+        if (this->map_wide_tree_.size() == 0) {
+            RCLCPP_INFO(get_logger(), "map_wide_tree_ was empty. Generating.");
+            this->map_wide_tree_ = this->map_->generate_mesh_tree();
+        }
 
-        odr::point destination(-1484.9, -228.2);
-        odr::LaneKey start("35", 0.0, -1);
-        odr::LaneKey dest("26", 0.0, -1);
-        calculateRoute(start, dest);
+
+        // odr::point destination(-1484.9, -228.2);
+        // odr::LaneKey start("35", 0.0, -1);
+        // odr::LaneKey dest("26", 0.0, -1);
+        // calculateRoute(start, dest);
+
+        buildTrueRoutingGraph();
     }
     else
     {
@@ -292,48 +316,83 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
+odr::point MapManagementNode::getLaneStart(odr::LaneKey key)
+{
+    // Get the current lane's start point (x,y)
+    odr::Road current_road = map_->id_to_road.at(key.road_id);
+    odr::LaneSection current_lsec = current_road.s_to_lanesection.at(key.lanesection_s0);
+    odr::Lane current_lane = current_lsec.id_to_lane.at(key.lane_id);
+    
+    double s_start;
+    if (key.lane_id < 0) {
+        s_start = key.lanesection_s0;
+    } else {
+        s_start = current_road.get_lanesection_end(key.lanesection_s0);
+    }
+    double t = current_lane.outer_border.get(s_start);
+    odr::Vec3D start_vec = current_road.get_surface_pt(s_start,t);
+    odr::point start_xy(start_vec[0], start_vec[1]);
+
+    return start_xy;
+}
+
 std::vector<odr::LaneKey> MapManagementNode::getTrueSuccessors(odr::LaneKey key)
 {
     std::vector<odr::LaneKey> results;
 
-    // Get starting Lane object
-    odr::Road start_road = map_->id_to_road.at(key.road_id);
-    odr::LaneSection start_lsec = start_road.get_lanesection(key.lanesection_s0);
-    odr::Lane start_lane = start_lsec.id_to_lane.at(key.lane_id);
+    // We assume that each lane's listed successors and predecessors could be
+    // actual successors, and this function verifies or refutes each one,
+    // returning the verified ones.
 
-    // Find the starting lane's end point
-    double nose_s = -0.5;
-    if (key.lane_id < 0) {
-        nose_s = start_road.get_lanesection_end(key.lanesection_s0) + 0.5; // s_max + half a meter.
-    } 
-    double outer_t = start_lane.outer_border.get(nose_s);
-    double inner_t = start_lane.inner_border.get(nose_s);
-    double center_t = (inner_t+outer_t)/2;
-    odr::Vec3D nose_vec = start_road.get_surface_pt_unchecked(nose_s,center_t);
-    odr::point nose_pt(nose_vec[0], nose_vec[1]);
-    std::printf("(%f,%f)\n", nose_vec[0], nose_vec[1]);
-
-    std::vector<odr::value> lanes_containing_nose_point;
-
-    map_wide_tree_.query(bgi::intersects(nose_pt), std::back_inserter(lanes_containing_nose_point));
-
-    for (odr::value pair : lanes_containing_nose_point)
-    {
-        odr::ring ring = this->lane_polys_.at(pair.second).second;
-        odr::Lane lane = this->lane_polys_.at(pair.second).first;
-        bool point_is_within_shape = bg::within(nose_pt, ring);
-        if (point_is_within_shape) {
-            odr::LaneKey result(lane.key);
-            // std::printf("%s\n",result.to_string().c_str());
-            results.push_back(result);
-        }
+    if (this->faulty_routing_graph.edges.size() < 1){
+        RCLCPP_ERROR_ONCE(get_logger(), "Routing graph was empty!");
     }
 
-    // start_lane.successor
+    // Get the current lane's endpoint (x,y)
+    odr::Road current_road = map_->id_to_road.at(key.road_id);
+    odr::LaneSection current_lsec = current_road.s_to_lanesection.at(key.lanesection_s0);
+    odr::Lane current_lane = current_lsec.id_to_lane.at(key.lane_id);
+    
+    double s_end;
+    if (key.lane_id > 0) {
+        s_end = key.lanesection_s0;
+    } else {
+        s_end = current_road.get_lanesection_end(key.lanesection_s0);
+    }
+    double t = current_lane.outer_border.get(s_end);
+    odr::Vec3D end_vec = current_road.get_surface_pt(s_end,t);
+    odr::point end_xy(end_vec[0], end_vec[1]);
 
-    // std::printf("Returning %i results\n", results.size());
+    auto predecessors = faulty_routing_graph.get_lane_predecessors(key);
+
+    // For each predecessor, get their lane's START (x,y)
+    for (odr::LaneKey predecessor : predecessors)
+    {
+        odr::point start_xy = getLaneStart(predecessor);
+        float dist = bg::distance(end_xy, start_xy);
+        // std::printf("Dist: %f\n", dist);
+
+        if (dist < 0.05)
+            results.push_back(predecessor);
+    }
+
+    auto successors = faulty_routing_graph.get_lane_successors(key);
+
+    // For each predecessor, get their lane's START (x,y)
+    for (odr::LaneKey successor : successors)
+    {
+        odr::point start_xy = getLaneStart(successor);
+        float dist = bg::distance(end_xy, start_xy);
+        // std::printf("Dist: %f\n", dist);
+
+        if (dist < 0.05)
+            results.push_back(successor);
+    }
+
+    std::printf("Found %i successors\n", results.size());
+
+
     return results;
-
 }
 
 void MapManagementNode::buildTrueRoutingGraph()
@@ -343,11 +402,124 @@ void MapManagementNode::buildTrueRoutingGraph()
         return;
     }
 
-    // for (odr::LanePair : lane_polys_)
-    // {
-    //     this
-    // }
+    if (faulty_routing_graph.edges.size() < 1) {
+        RCLCPP_INFO(get_logger(), "Building faulty routing graph...");
+        faulty_routing_graph = this->map_->get_routing_graph();
+    }
+    
 
+    lemon::SmartDigraph g;
+    lemon::SmartDigraph::ArcMap<double> costMap(g);
+    lemon::SmartDigraph::NodeMap<odr::LaneKey> nodeMap(g);
+    std::map<odr::LaneKey, int> nodes;
+    std::vector<Arc> arcs;
+    int node_idx = 0;
+
+    for (odr::LanePair pair : lane_polys_)
+    {
+        odr::LaneKey from_key = pair.first.key;
+        odr::Road from_road = map_->id_to_road.at(from_key.road_id);
+        double from_length = from_road.get_lanesection_end(from_key.lanesection_s0) - from_key.lanesection_s0;
+        nodes[from_key] = node_idx;
+        node_idx++;
+
+        auto successors = getTrueSuccessors(from_key);
+
+        for (odr::LaneKey to_key : successors)
+        {
+            // std::printf("Arc: %s ->%s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
+            if (to_key.road_id == "2000") {
+                std::printf("Arc: %s ->%s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
+            }
+            if (from_key.road_id == "2000") {
+                std::printf("Arc: %s ->%s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
+            }
+
+            arcs.push_back(Arc {from_key, to_key, from_length});
+        }
+    }
+
+    //instantiate a LEMON map of arc costs
+    // lemon::SmartDigraph::ArcMap<double> costMap(g);
+    // lemon::SmartDigraph::NodeMap<std::string> nodeMap(g);
+    // std::map<odr::LaneKey, int> nodes = { 
+    //                          std::make_pair("A",0),
+    //                          std::make_pair("B",1),
+    //                          std::make_pair("C",2),
+    //                          std::make_pair("D",3),
+    //                          std::make_pair("E",4),
+    //                          std::make_pair("F",5)
+    //                        };
+    
+    // std::vector<Arc> arcs = { Arc {"A","B",4},
+    //                         Arc {"A","C",2},
+    //                         Arc {"B","D",10},
+    //                         Arc {"B","C",40},
+    //                         Arc {"C","E",403},
+    //                         Arc {"E","D",4},
+    //                         Arc {"D","E",4},
+    //                         Arc {"D","F",11}
+    //                         };
+
+    //populate graph
+    //nodes first
+    lemon::SmartDigraph::Node currentNode;
+    for (auto nodesIter = nodes.begin(); nodesIter != nodes.end(); ++nodesIter)
+    {
+        odr::LaneKey key = nodesIter->first;
+        currentNode = g.addNode();
+        nodeMap[currentNode] = key;
+    }
+    //then the arcs with the costs through the cost map
+    lemon::SmartDigraph::Arc currentArc;
+    for (auto arcsIter = arcs.begin(); arcsIter != arcs.end(); ++arcsIter)
+    {
+        int sourceIndex = nodes.at(arcsIter->sourceKey);
+        int targetIndex = nodes.at(arcsIter->targetKey);
+    
+        SmartDigraph::Node sourceNode = g.nodeFromId(sourceIndex);
+        SmartDigraph::Node targetNode = g.nodeFromId(targetIndex);
+    
+        currentArc = g.addArc(sourceNode, targetNode);
+        costMap[currentArc] = arcsIter->sourceLength;
+    }
+
+    odr::LaneKey from_key("35", 0.0, -1);
+    odr::LaneKey to_key("72", 0.0, -3);
+    SmartDigraph::Node start = g.nodeFromId( nodes.at(from_key) );
+    SmartDigraph::Node end = g.nodeFromId( nodes.at(to_key) );
+    
+    SptSolver spt(g, costMap);
+
+
+    std::printf("Running solver from %s to %s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
+
+    spt.run(start, end);
+    std::printf("SPT complete!\n");
+
+    std::vector<lemon::SmartDigraph::Node> path;
+    int iters = 0;
+    for (lemon::SmartDigraph::Node v = end; v != start; v = spt.predNode(v))
+    {
+      if (v != lemon::INVALID && spt.reached(v)) //special LEMON node constant
+      {
+         path.push_back(v);
+      }
+      if (iters > 100) {
+        std::printf("Path iteration limit exceeded! Stopping.\n");
+        break;
+      }
+      iters++;
+    }
+    path.push_back(start);
+
+    std::printf("Path has %i nodes\n", path.size());
+
+
+    for (auto p = path.rbegin(); p != path.rend(); ++p) 
+    {
+        std::printf("%s\n",nodeMap[*p].to_string().c_str());
+    }
 
 }
 

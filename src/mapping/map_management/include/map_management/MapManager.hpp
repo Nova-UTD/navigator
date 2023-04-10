@@ -30,7 +30,8 @@
 #include <boost/geometry/index/rtree.hpp>
 
 // LEMON
-#include "lemon/list_graph.h"
+#include "lemon/smart_graph.h"
+#include <lemon/dijkstra.h>
 
 // ROS
 #include "rclcpp/rclcpp.hpp"
@@ -68,6 +69,10 @@ using geometry_msgs::msg::PoseStamped;
 using geometry_msgs::msg::TransformStamped;
 using rosgraph_msgs::msg::Clock;
 
+using SptSolver = lemon::Dijkstra<lemon::SmartDigraph, lemon::SmartDigraph::ArcMap<double>>;
+using lemon::SmartDigraph;
+using std::string;
+
 namespace navigator
 {
     namespace planning
@@ -100,6 +105,9 @@ namespace navigator
             std::vector<odr::LaneKey> getTrueSuccessors(odr::LaneKey key);
             void recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target);
             void buildTrueRoutingGraph();
+            odr::RoutingGraph faulty_routing_graph;
+            odr::point getLaneStart(odr::LaneKey key);
+
 
             std::unordered_map<odr::LaneKey, std::vector<odr::LaneKey>> connectivity_map;
 
