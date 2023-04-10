@@ -96,6 +96,10 @@ RUN apt update && apt install -y ros-foxy-joy-linux ros-foxy-pcl-ros minicom ros
 
 RUN pip3 install scikit-image pynmea2 pyproj
 RUN apt update && apt install -y ros-foxy-rmw-fastrtps-cpp
+
+# Lemon
+WORKDIR /workspace
+RUN apt update && apt install -y wget && wget http://lemon.cs.elte.hu/pub/sources/lemon-1.3.1.tar.gz && tar xvzf lemon-1.3.1.tar.gz && cd lemon-1.3.1 && mkdir build && cd build && cmake .. && make && make install
 #################
 #  END CLEANUP  #
 #################

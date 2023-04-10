@@ -29,6 +29,9 @@
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/index/rtree.hpp>
 
+// LEMON
+#include "lemon/list_graph.h"
+
 // ROS
 #include "rclcpp/rclcpp.hpp"
 #include "tf2/exceptions.h"
@@ -95,6 +98,10 @@ namespace navigator
             void updateRouteWaypoints(Path::SharedPtr msg);
             std::vector<odr::LaneKey> calculateRoute(odr::LaneKey start, odr::LaneKey end);
             std::vector<odr::LaneKey> getTrueSuccessors(odr::LaneKey key);
+            void recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target);
+            void buildTrueRoutingGraph();
+
+            std::unordered_map<odr::LaneKey, std::vector<odr::LaneKey>> connectivity_map;
 
             void updateRouteGivenDestination(odr::point destination);
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);

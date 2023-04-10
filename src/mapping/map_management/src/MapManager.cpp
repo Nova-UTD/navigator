@@ -324,16 +324,54 @@ std::vector<odr::LaneKey> MapManagementNode::getTrueSuccessors(odr::LaneKey key)
         bool point_is_within_shape = bg::within(nose_pt, ring);
         if (point_is_within_shape) {
             odr::LaneKey result(lane.key);
-            std::printf("%s\n",result.to_string().c_str());
+            // std::printf("%s\n",result.to_string().c_str());
             results.push_back(result);
         }
     }
 
     // start_lane.successor
 
-    std::printf("Returning %i results\n", results.size());
+    // std::printf("Returning %i results\n", results.size());
     return results;
 
+}
+
+void MapManagementNode::buildTrueRoutingGraph()
+{
+    if (this->lane_polys_.size() < 1 || this->map_ == nullptr){
+        RCLCPP_ERROR(get_logger(), "Map not yet loaded. Routing graph could not be built.");
+        return;
+    }
+
+    // for (odr::LanePair : lane_polys_)
+    // {
+    //     this
+    // }
+
+
+}
+
+void MapManagementNode::recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target)
+{
+    odr::LaneKey current_lane = predecessors.back();
+    if (current_lane.to_string() == target.to_string()){
+        RCLCPP_INFO(get_logger(), "FOUND TARGET");
+        return;
+    } else{
+        std::printf("%s != %s\n", current_lane.to_string().c_str(), target.to_string().c_str());
+    }
+
+    auto successors = getTrueSuccessors(current_lane);
+
+    // for (auto successor : successors)
+    // {
+    //     const odr::LaneKey const_succ = odr::LaneKey(successor);
+    //     if (std::find(predecessors.begin(), predecessors.end(), const_succ) != predecessors.end())
+    //         return;
+    //     std::vector<odr::LaneKey> new_predecessors(predecessors);
+    //     new_predecessors.push_back(successor);
+    //     recursiveSearch(new_predecessors, target);
+    // }
 }
 
 std::vector<odr::LaneKey> MapManagementNode::calculateRoute(odr::LaneKey start, odr::LaneKey end)
@@ -342,7 +380,9 @@ std::vector<odr::LaneKey> MapManagementNode::calculateRoute(odr::LaneKey start, 
         RCLCPP_INFO(get_logger(), "map_wide_tree_ was empty. Generating.");
         this->map_wide_tree_ = this->map_->generate_mesh_tree();
     }
-    return getTrueSuccessors(start);
+    std::vector<odr::LaneKey> route;
+    recursiveSearch(getTrueSuccessors(start), end);
+    return route;
 
 }
 
