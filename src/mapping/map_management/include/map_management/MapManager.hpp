@@ -50,6 +50,7 @@
 #include "nav_msgs/msg/map_meta_data.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
+#include "nova_msgs/srv/set_route.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
 #include "std_msgs/msg/float32.hpp"
 
@@ -103,11 +104,11 @@ namespace navigator
             void updateRouteWaypoints(Path::SharedPtr msg);
             std::vector<odr::LaneKey> calculateRoute(odr::LaneKey start, odr::LaneKey end);
             std::vector<odr::LaneKey> getTrueSuccessors(odr::LaneKey key);
+            void setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response);
             void recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target);
             void buildTrueRoutingGraph();
             odr::RoutingGraph faulty_routing_graph;
             odr::point getLaneStart(odr::LaneKey key);
-
 
             std::unordered_map<odr::LaneKey, std::vector<odr::LaneKey>> connectivity_map;
 
@@ -128,6 +129,8 @@ namespace navigator
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
             rclcpp::Subscription<Path>::SharedPtr rough_path_sub_;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
+
+            rclcpp::Service<nova_msgs::srv::SetRoute>::SharedPtr route_set_service_;
 
             rclcpp::TimerBase::SharedPtr drivable_area_grid_pub_timer_;
             rclcpp::TimerBase::SharedPtr route_distance_grid_pub_timer_;

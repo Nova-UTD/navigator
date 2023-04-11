@@ -2,4 +2,4 @@ geometry_msgs/Point[] route_nodes
 bool loop
 ---
 bool success
-std_msgs/String message
+string message
