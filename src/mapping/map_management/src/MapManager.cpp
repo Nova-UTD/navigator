@@ -72,11 +72,6 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         for (auto pair : lane_polys_)
         {
             odr::LaneKey key = pair.first.key;
-
-            if (key.road_id == "2000")
-            {
-                std::printf("FOUND %s\n", key.to_string().c_str());
-            }
         }
 
         RCLCPP_INFO(get_logger(), "Map loaded with %i roads", map_->get_roads().size());
@@ -93,6 +88,8 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         // calculateRoute(start, dest);
 
         buildTrueRoutingGraph();
+
+        updateRouteGivenDestination(odr::point())
     }
     else
     {
@@ -177,8 +174,6 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
     for (unsigned i = 0; i < lane_shapes_in_range.size(); ++i)
         local_tree.insert(lane_shapes_in_range.at(i));
-
-    std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
 
     int area = 0;
     int height = 0;
@@ -316,6 +311,12 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
+/**
+ * @brief Return the (x,y) point at the start of a lane's outer border.
+ * 
+ * @param key 
+ * @return odr::point 
+ */
 odr::point MapManagementNode::getLaneStart(odr::LaneKey key)
 {
     // Get the current lane's start point (x,y)
@@ -336,6 +337,19 @@ odr::point MapManagementNode::getLaneStart(odr::LaneKey key)
     return start_xy;
 }
 
+/**
+ * @brief Given a key, find true successors: immediately connected lanes
+ * ahead of the given one with respect to traffic flow.
+ * 
+ * Assuming right-hand driving rules, we treat the "start" of a lane as having:
+ * - Either s = lanesection_s0 and ID < 0, OR
+ * - s = lanesection_s_max and ID > 0.
+ * 
+ * Recall that lanesections are identified by their start and end s values.
+ * 
+ * @param key 
+ * @return std::vector<odr::LaneKey> 
+ */
 std::vector<odr::LaneKey> MapManagementNode::getTrueSuccessors(odr::LaneKey key)
 {
     std::vector<odr::LaneKey> results;
@@ -389,12 +403,18 @@ std::vector<odr::LaneKey> MapManagementNode::getTrueSuccessors(odr::LaneKey key)
             results.push_back(successor);
     }
 
-    std::printf("Found %i successors\n", results.size());
-
+    // std::printf("Found %i successors\n", results.size());
 
     return results;
 }
 
+
+
+/**
+ * @brief Build a proper routing graph of the map
+ * using LEMON's SmartDigraph.
+ * 
+ */
 void MapManagementNode::buildTrueRoutingGraph()
 {
     if (this->lane_polys_.size() < 1 || this->map_ == nullptr){
@@ -426,40 +446,8 @@ void MapManagementNode::buildTrueRoutingGraph()
         auto successors = getTrueSuccessors(from_key);
 
         for (odr::LaneKey to_key : successors)
-        {
-            // std::printf("Arc: %s ->%s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
-            if (to_key.road_id == "2000") {
-                std::printf("Arc: %s ->%s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
-            }
-            if (from_key.road_id == "2000") {
-                std::printf("Arc: %s ->%s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
-            }
-
             arcs.push_back(Arc {from_key, to_key, from_length});
-        }
     }
-
-    //instantiate a LEMON map of arc costs
-    // lemon::SmartDigraph::ArcMap<double> costMap(g);
-    // lemon::SmartDigraph::NodeMap<std::string> nodeMap(g);
-    // std::map<odr::LaneKey, int> nodes = { 
-    //                          std::make_pair("A",0),
-    //                          std::make_pair("B",1),
-    //                          std::make_pair("C",2),
-    //                          std::make_pair("D",3),
-    //                          std::make_pair("E",4),
-    //                          std::make_pair("F",5)
-    //                        };
-    
-    // std::vector<Arc> arcs = { Arc {"A","B",4},
-    //                         Arc {"A","C",2},
-    //                         Arc {"B","D",10},
-    //                         Arc {"B","C",40},
-    //                         Arc {"C","E",403},
-    //                         Arc {"E","D",4},
-    //                         Arc {"D","E",4},
-    //                         Arc {"D","F",11}
-    //                         };
 
     //populate graph
     //nodes first
@@ -492,10 +480,9 @@ void MapManagementNode::buildTrueRoutingGraph()
     SptSolver spt(g, costMap);
 
 
-    std::printf("Running solver from %s to %s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
+    // std::printf("Running solver from %s to %s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
 
     spt.run(start, end);
-    std::printf("SPT complete!\n");
 
     std::vector<lemon::SmartDigraph::Node> path;
     int iters = 0;
@@ -506,7 +493,6 @@ void MapManagementNode::buildTrueRoutingGraph()
          path.push_back(v);
       }
       if (iters > 100) {
-        std::printf("Path iteration limit exceeded! Stopping.\n");
         break;
       }
       iters++;
@@ -980,34 +966,12 @@ void MapManagementNode::updateRouteGivenDestination(odr::point destination)
         this->map_wide_tree_ = this->map_->generate_mesh_tree();
     }
 
-    // odr::LaneKey from = laneKeysFromPoint(current_position, map_wide_tree_, lane_polys_).front();
-    odr::LaneKey from = odr::LaneKey("35", 0.0, -1);
-    odr::LaneKey to = odr::LaneKey("26", 0.0, -1);
+    odr::LaneKey from = laneKeysFromPoint(current_position, map_wide_tree_, lane_polys_).front();
+    odr::LaneKey to = laneKeysFromPoint(destination, map_wide_tree_, lane_polys_).front();
     RCLCPP_INFO(get_logger(), "From %s to %s", from.to_string().c_str(), to.to_string().c_str());
 
     std::vector<odr::LaneKey> complete_segment; // keys, but with gaps in lanes filled.
-    auto adjacency_pairs = bfs(from, to, map_->get_routing_graph());
-    RCLCPP_INFO(get_logger(), "BFS returned %i pairs", adjacency_pairs.size());
-
-    // Work our way back from destination to source in the tree search,
-    // producing a continuous LaneKey route.
-    try
-    {
-        odr::LaneKey parent = adjacency_pairs.at(to);
-        do
-        {
-            complete_segment.push_back(parent);
-            parent = adjacency_pairs.at(parent);
-        } while (parent.to_string() != from.to_string());
-    }
-    catch (...)
-    {
-        RCLCPP_ERROR(get_logger(), "BFS could not locate route parent. Returning.");
-    }
-
-    for (odr::LaneKey segment : complete_segment) {
-        RCLCPP_INFO(get_logger(), "%s", segment.to_string().c_str());
-    }
+    
 }
 
 /**
