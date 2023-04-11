@@ -68,11 +68,6 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         this->map_ = new odr::OpenDriveMap(xodr_path, false);
         this->lane_polys_ = map_->get_lane_polygons(1.0, false);
 
-        for (auto pair : lane_polys_)
-        {
-            odr::LaneKey key = pair.first.key;
-        }
-
         RCLCPP_INFO(get_logger(), "Map loaded with %i roads", map_->get_roads().size());
 
         if (this->map_wide_tree_.size() == 0)
@@ -91,6 +86,39 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 
 void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response)
 {
+    odr::LaneKey from_key("35", 0.0, -1);
+    odr::LaneKey to_key("72", 0.0, -3);
+    SmartDigraph::Node start = g->nodeFromId(routing_nodes_->at(from_key));
+    SmartDigraph::Node end = g->nodeFromId(routing_nodes_->at(to_key));
+
+    SptSolver spt(*g, *costMap);
+
+    // std::printf("Running solver from %s to %s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
+
+    spt.run(start, end);
+
+    std::vector<lemon::SmartDigraph::Node> path;
+    int iters = 0;
+    for (lemon::SmartDigraph::Node v = end; v != start; v = spt.predNode(v))
+    {
+        if (v != lemon::INVALID && spt.reached(v)) // special LEMON node constant
+        {
+            path.push_back(v);
+        }
+        if (iters > 100)
+        {
+            break;
+        }
+        iters++;
+    }
+    path.push_back(start);
+
+    std::printf("Path has %i nodes\n", path.size());
+
+    for (auto p = path.rbegin(); p != path.rend(); ++p)
+    {
+        std::printf("%s\n", (*nodeMap)[*p].to_string().c_str());
+    }
     response->message = "Success!";
     response->success = true;
 }
@@ -431,20 +459,22 @@ void MapManagementNode::buildTrueRoutingGraph()
         RCLCPP_INFO(get_logger(), "Building faulty routing graph...");
         faulty_routing_graph = this->map_->get_routing_graph();
     }
+    g = new lemon::SmartDigraph();
+    nodeMap = new lemon::SmartDigraph::NodeMap<odr::LaneKey>(*g);
+    std::printf("469\n");
 
-    lemon::SmartDigraph g;
-    lemon::SmartDigraph::ArcMap<double> costMap(g);
-    lemon::SmartDigraph::NodeMap<odr::LaneKey> nodeMap(g);
-    std::map<odr::LaneKey, int> nodes;
+    costMap = new lemon::SmartDigraph::ArcMap<double>(*g);
+    routing_nodes_ = new std::map<odr::LaneKey, int>();
     std::vector<Arc> arcs;
     int node_idx = 0;
+    std::printf("476\n");
 
     for (odr::LanePair pair : lane_polys_)
     {
         odr::LaneKey from_key = pair.first.key;
         odr::Road from_road = map_->id_to_road.at(from_key.road_id);
         double from_length = from_road.get_lanesection_end(from_key.lanesection_s0) - from_key.lanesection_s0;
-        nodes[from_key] = node_idx;
+        routing_nodes_->insert(std::pair<odr::LaneKey, int>(from_key, node_idx));
         node_idx++;
 
         auto successors = getTrueSuccessors(from_key);
@@ -453,61 +483,29 @@ void MapManagementNode::buildTrueRoutingGraph()
             arcs.push_back(Arc{from_key, to_key, from_length});
     }
 
+    std::printf("487\n");
+
     // populate graph
     // nodes first
     lemon::SmartDigraph::Node currentNode;
-    for (auto nodesIter = nodes.begin(); nodesIter != nodes.end(); ++nodesIter)
+    for (auto nodesIter = routing_nodes_->begin(); nodesIter != routing_nodes_->end(); ++nodesIter)
     {
         odr::LaneKey key = nodesIter->first;
-        currentNode = g.addNode();
-        nodeMap[currentNode] = key;
+        currentNode = g->addNode();
+        (*nodeMap)[currentNode] = key;
     }
     // then the arcs with the costs through the cost map
     lemon::SmartDigraph::Arc currentArc;
     for (auto arcsIter = arcs.begin(); arcsIter != arcs.end(); ++arcsIter)
     {
-        int sourceIndex = nodes.at(arcsIter->sourceKey);
-        int targetIndex = nodes.at(arcsIter->targetKey);
+        int sourceIndex = routing_nodes_->at(arcsIter->sourceKey);
+        int targetIndex = routing_nodes_->at(arcsIter->targetKey);
 
-        SmartDigraph::Node sourceNode = g.nodeFromId(sourceIndex);
-        SmartDigraph::Node targetNode = g.nodeFromId(targetIndex);
+        SmartDigraph::Node sourceNode = g->nodeFromId(sourceIndex);
+        SmartDigraph::Node targetNode = g->nodeFromId(targetIndex);
 
-        currentArc = g.addArc(sourceNode, targetNode);
-        costMap[currentArc] = arcsIter->sourceLength;
-    }
-
-    odr::LaneKey from_key("35", 0.0, -1);
-    odr::LaneKey to_key("72", 0.0, -3);
-    SmartDigraph::Node start = g.nodeFromId(nodes.at(from_key));
-    SmartDigraph::Node end = g.nodeFromId(nodes.at(to_key));
-
-    SptSolver spt(g, costMap);
-
-    // std::printf("Running solver from %s to %s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
-
-    spt.run(start, end);
-
-    std::vector<lemon::SmartDigraph::Node> path;
-    int iters = 0;
-    for (lemon::SmartDigraph::Node v = end; v != start; v = spt.predNode(v))
-    {
-        if (v != lemon::INVALID && spt.reached(v)) // special LEMON node constant
-        {
-            path.push_back(v);
-        }
-        if (iters > 100)
-        {
-            break;
-        }
-        iters++;
-    }
-    path.push_back(start);
-
-    std::printf("Path has %i nodes\n", path.size());
-
-    for (auto p = path.rbegin(); p != path.rend(); ++p)
-    {
-        std::printf("%s\n", nodeMap[*p].to_string().c_str());
+        currentArc = g->addArc(sourceNode, targetNode);
+        (*costMap)[currentArc] = arcsIter->sourceLength;
     }
 }
 

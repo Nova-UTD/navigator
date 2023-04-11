@@ -103,6 +103,12 @@ namespace navigator
             void publishRefinedRoute();
             void updateRouteWaypoints(Path::SharedPtr msg);
             std::vector<odr::LaneKey> calculateRoute(odr::LaneKey start, odr::LaneKey end);
+            lemon::SmartDigraph *g = nullptr;
+
+            lemon::SmartDigraph::NodeMap<odr::LaneKey> *nodeMap;
+            std::map<odr::LaneKey, int> *routing_nodes_ = nullptr;
+            lemon::SmartDigraph::ArcMap<double> *costMap = nullptr;
+
             std::vector<odr::LaneKey> getTrueSuccessors(odr::LaneKey key);
             void setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response);
             void recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target);
