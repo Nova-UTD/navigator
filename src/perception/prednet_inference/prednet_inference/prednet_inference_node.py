@@ -40,7 +40,7 @@ import torch
 import matplotlib.pyplot as plt
 
 # Set the Environmental varibale  max_split_size_mb to working amount in order to mkae the model run
-# export max_split_size_mb=87 // in comand line
+# export 'PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:unlimited' // in comand line
 
 class PredNetNode(Node):
 
