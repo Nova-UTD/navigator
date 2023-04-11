@@ -2,7 +2,7 @@ from setuptools import setup
 from glob import glob
 import os
 
-package_name = 'prednet_inference'
+package_name = 'object_tracking'
 
 setup(
     name=package_name,
@@ -23,7 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'prednet_inference_node = prednet_inference.prednet_inference_node:main',
+            'object_tracking_node = object_tracking.object_tracking_node:main',
         ],
     },
 )

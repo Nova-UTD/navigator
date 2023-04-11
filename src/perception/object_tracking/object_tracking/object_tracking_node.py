@@ -77,14 +77,17 @@ class CameraHandler:
 class ObjectTrackingNode(Node):
 
     def __init__(self):
-        super().__init__('prednet_inference_node')
+        super().__init__('object_tracking_node')
+        
+        
+        self.get_logger().info("Starting")
         
         # Subcribes to bounding boxes detection
         self.boxes_sub = self.create_subscription(
-            BoundingBoxes, '/camera/object', self.update_detection, 10)
+            Float32, '/camera/object', self.update_detection, 10)
         
         # Get active UVC cameras
-        _, working_ports, _ = self.current_image
+        _, working_ports, _ = self.list_ports()
 
         # Holds what updates the camera
         self.camera_handlers =[]
@@ -114,7 +117,7 @@ class ObjectTrackingNode(Node):
         
         # Instantiates publisher
         self.tracking_pub = self.create_publisher(
-           BoundingBoxes, '/grid/predictions', 10)
+           Float32, '/grid/predictions', 10)
         
         # CUrrent Object boundaries
         self.current_boxes = BoundingBoxes()
@@ -128,6 +131,9 @@ class ObjectTrackingNode(Node):
         """      
 
     def update_tracking(self):
+        
+        self.get_logger().info("Trying to update trakcing")
+        
         for i in range(len(self.camera_handlers)):
             current_cam = self.camera_handlers[i]
             
@@ -155,10 +161,7 @@ class ObjectTrackingNode(Node):
     
     
     def list_ports(self) -> tuple:
-        """
-        Test the ports and returns a tuple with the available ports and the ones that are working.
-
-        Taken from S.O.
+        """:
 
         Returns:
             tuple: available, working, and broken ports
