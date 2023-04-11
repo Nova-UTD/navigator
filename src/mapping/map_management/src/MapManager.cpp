@@ -84,10 +84,89 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     }
 }
 
+std::vector<odr::LaneKey> laneKeysFromPoint(odr::point pt, bgi::rtree<odr::value, bgi::rstar<16, 4>> lane_tree, std::vector<odr::LanePair> lane_polys)
+{
+    std::vector<odr::value> query_results;
+
+    lane_tree.query(bgi::intersects(pt), std::back_inserter(query_results));
+
+    std::vector<odr::LaneKey> lane_keys;
+
+    // Move through our tree search results, extracting the lane key and
+    // adding it to our result list.
+    for (auto result : query_results)
+    {
+        odr::ring ring = lane_polys.at(result.second).second;
+        bool point_is_within_shape = bg::within(pt, ring);
+        odr::LanePair result_pair = lane_polys[result.second];
+        if (point_is_within_shape)
+            lane_keys.push_back(result_pair.first.key);
+    }
+
+    if (lane_keys.size() > 0)
+        return lane_keys;
+
+    // At this point, our search could not find any lanes intersecting the point.
+    // The fallback is to find the nearest lane to the point, even if they don't touch.
+    lane_tree.query(bgi::nearest(pt, 1), std::back_inserter(query_results));
+    odr::LanePair result_pair = lane_polys[query_results.front().second];
+    lane_keys.push_back(result_pair.first.key);
+
+    double dist = bg::distance(pt, query_results.front().first);
+    std::printf("Lane key does not touch current pos. Distance: %f \n", dist);
+
+    return lane_keys;
+}
+
 void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response)
 {
-    odr::LaneKey from_key("35", 0.0, -1);
-    odr::LaneKey to_key("72", 0.0, -3);
+    if (request->route_nodes.size() < 2)
+    {
+        RCLCPP_ERROR(get_logger(), "Service call requires at least two points.");
+        response->message = "Service call requires at least two points.";
+        response->success = false;
+        return;
+    }
+
+    // For the first two points, get their lanekeys
+    // TODO: Extend this to n points
+    odr::point from_pt(request->route_nodes[0].x, request->route_nodes[0].y);
+    odr::point to_pt(request->route_nodes[1].x, request->route_nodes[1].y);
+    auto from_keys = laneKeysFromPoint(from_pt, map_wide_tree_, lane_polys_);
+    auto to_keys = laneKeysFromPoint(to_pt, map_wide_tree_, lane_polys_);
+    if (from_keys.size() > 1)
+    {
+        RCLCPP_ERROR(get_logger(), "Route start falls within a junction.");
+        std::ostringstream message_stream;
+        message_stream << "Route start falls within a junction: " << from_keys.front().to_string().c_str();
+        std::string message = message_stream.str();
+        response->message = message;
+        response->success = false;
+        return;
+    }
+    if (to_keys.size() > 1)
+    {
+        RCLCPP_ERROR(get_logger(), "Route end falls within a junction.");
+        response->message = "Route end falls within a junction.";
+        response->success = false;
+        return;
+    }
+    if (from_keys.size() < 1)
+    {
+        RCLCPP_ERROR(get_logger(), "Route start does not fall within a lane.");
+        response->message = "Route start does not fall within a lane.";
+        response->success = false;
+        return;
+    }
+    if (to_keys.size() < 1)
+    {
+        RCLCPP_ERROR(get_logger(), "Route end does not fall within a lane.");
+        response->message = "Route end does not fall within a lane.";
+        response->success = false;
+        return;
+    }
+    odr::LaneKey from_key = from_keys[0];
+    odr::LaneKey to_key = to_keys[0];
     SmartDigraph::Node start = g->nodeFromId(routing_nodes_->at(from_key));
     SmartDigraph::Node end = g->nodeFromId(routing_nodes_->at(to_key));
 
@@ -97,13 +176,13 @@ void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute:
 
     spt.run(start, end);
 
-    std::vector<lemon::SmartDigraph::Node> path;
+    std::vector<lemon::SmartDigraph::Node> node_route;
     int iters = 0;
     for (lemon::SmartDigraph::Node v = end; v != start; v = spt.predNode(v))
     {
         if (v != lemon::INVALID && spt.reached(v)) // special LEMON node constant
         {
-            path.push_back(v);
+            node_route.push_back(v);
         }
         if (iters > 100)
         {
@@ -111,16 +190,34 @@ void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute:
         }
         iters++;
     }
-    path.push_back(start);
+    node_route.push_back(start);
 
-    std::printf("Path has %i nodes\n", path.size());
+    std::printf("Path has %i nodes\n", node_route.size());
 
-    for (auto p = path.rbegin(); p != path.rend(); ++p)
+    route_linestring_.clear();
+
+    for (auto p = node_route.rbegin(); p != node_route.rend(); ++p)
     {
         std::printf("%s\n", (*nodeMap)[*p].to_string().c_str());
+        bg::append(route_linestring_, getLaneCenterline((*nodeMap)[*p]));
     }
-    response->message = "Success!";
-    response->success = true;
+
+    if (node_route.size() < 2)
+    {
+        std::ostringstream message_stream;
+        message_stream << "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " not found.";
+        std::string message = message_stream.str();
+        response->message = message;
+        response->success = false;
+    }
+    else
+    {
+        std::ostringstream message_stream;
+        message_stream << "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " has " << node_route.size() << " lanes and " << route_linestring_.size() << " points.";
+        std::string message = message_stream.str();
+        response->message = message;
+        response->success = true;
+    }
 }
 
 /**
@@ -771,37 +868,6 @@ RoiIndices getWaypointsInROI(LineString waypoints, bgi::rtree<odr::value, bgi::r
     result.end = end_idx;
 
     return result;
-}
-
-std::vector<odr::LaneKey> laneKeysFromPoint(odr::point pt, bgi::rtree<odr::value, bgi::rstar<16, 4>> lane_tree, std::vector<odr::LanePair> lane_polys)
-{
-    std::vector<odr::value> query_results;
-
-    lane_tree.query(bgi::intersects(pt), std::back_inserter(query_results));
-
-    std::vector<odr::LaneKey> lane_keys;
-
-    // Move through our tree search results, extracting the lane key and
-    // adding it to our result list.
-    for (auto result : query_results)
-    {
-        odr::LanePair result_pair = lane_polys[result.second];
-        lane_keys.push_back(result_pair.first.key);
-    }
-
-    if (lane_keys.size() > 0)
-        return lane_keys;
-
-    // At this point, our search could not find any lanes intersecting the point.
-    // The fallback is to find the nearest lane to the point, even if they don't touch.
-    lane_tree.query(bgi::nearest(pt, 1), std::back_inserter(query_results));
-    odr::LanePair result_pair = lane_polys[query_results.front().second];
-    lane_keys.push_back(result_pair.first.key);
-
-    double dist = bg::distance(pt, query_results.front().first);
-    std::printf("Lane key does not touch current pos. Distance: %f \n", dist);
-
-    return lane_keys;
 }
 
 std::vector<odr::LaneKey> getLaneKeysFromIndices(RoiIndices indices, LineString waypoints, bgi::rtree<odr::value, bgi::rstar<16, 4>> lane_tree, std::vector<odr::LanePair> lane_polys)
