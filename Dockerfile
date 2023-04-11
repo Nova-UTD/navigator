@@ -100,6 +100,15 @@ RUN apt update && apt install -y ros-foxy-rmw-fastrtps-cpp
 # Lemon
 WORKDIR /workspace
 RUN apt update && apt install -y wget && wget http://lemon.cs.elte.hu/pub/sources/lemon-1.3.1.tar.gz && tar xvzf lemon-1.3.1.tar.gz && cd lemon-1.3.1 && mkdir build && cd build && cmake .. && make && make install
+
+# Audio
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+    alsa-base \
+    alsa-utils \
+    libsndfile1-dev\
+    espeak ffmpeg libespeak1 && \
+    apt-get clean && pip3 install pyttsx3
 #################
 #  END CLEANUP  #
 #################
