@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>prednet_inference</name>
+  <name>object_tracking</name>
   <version>1.0.0</version>
   <description>Node for tracking a given 2D bounding box.</description>
   <maintainer email="project.nova@utdallas.edu">Nova</maintainer>
@@ -20,6 +20,7 @@
   <depend>torch</depend>
   <depend>sensor_msgs</depend>
   <depend>norfair</depend>
+  <depend>cv2</depend>
  
 
   <export>
