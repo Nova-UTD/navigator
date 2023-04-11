@@ -3,8 +3,7 @@ from os import name, path, environ
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import IncludeLaunchDescription
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.actions import ExecuteProcess
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, Shutdown
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -53,18 +52,39 @@ def generate_launch_description():
         executable='airbag_node'
     )
 
-    carla_bridge_official = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([get_package_share_directory(
-            'carla_ros_bridge'), '/carla_ros_bridge.launch.py']),
-        launch_arguments={
-            'host': 'localhost',
-            'port': str(2000 + int(environ['ROS_DOMAIN_ID'])),
-            'synchronous_mode': 'True',
-            'town': 'Town02',
-            'register_all_sensors': 'False',
-            'ego_vehicle_role_name': 'hero',
-            'timeout': '30'
-        }.items(),
+    camera_streamer = Node(
+        package='web_video_server',
+        executable='web_video_server'
+    )
+
+    joy_linux = Node(
+        package="joy_linux",
+        executable="joy_linux_node"
+    )
+
+    joy_translation = Node(
+        package="joy_translation",
+        executable="joy_translation_node"
+    )
+
+    carla_bridge_official = Node(
+        package='carla_ros_bridge',
+        executable='bridge',
+        name='carla_ros_bridge',
+        parameters=[
+            {'host': 'localhost'},
+            {'port': 2000 + int(environ['ROS_DOMAIN_ID'])},
+            {'synchronous_mode': True},
+            {'town': 'Town02'},
+            {'register_all_sensors': False},
+            {'ego_vehicle_role_name': 'hero'},
+            {'timeout': 30.0},
+            {'fixed_delta_seconds': 0.1}
+        ],
+        remappings=[
+            ('/carla/hero/lidar', '/lidar/fused'),
+            ('/carla/hero/rgb_center/image', '/cameras/stitched')
+        ]
     )
 
     gnss_processor = Node(
@@ -114,8 +134,13 @@ def generate_launch_description():
     )
 
     grid_summation = Node(
-        package='grids',
+        package='costs',
         executable='grid_summation_node'
+    )
+
+    junction_manager = Node(
+        package='costs',
+        executable='junction_manager'
     )
 
     rqt = Node(
@@ -129,6 +154,29 @@ def generate_launch_description():
         executable='route_reader_node'
     )
 
+    rtp = Node(
+        package='rtp',
+        executable='rtp_node'
+    )
+
+    prednet_inference = Node(
+        package='prednet_inference',
+        executable='prednet_inference_node'
+    )
+
+    web_bridge = Node(
+        package='rosbridge_server',
+        executable='rosbridge_websocket'
+    )
+
+    guardian = Node(
+        package='guardian',
+        executable='guardian_node',
+        parameters=[
+            {'simulated': True}
+        ]
+    )
+
     return LaunchDescription([
         # CONTROL
         # carla_controller,
@@ -137,29 +185,39 @@ def generate_launch_description():
         carla_bridge_official,
         carla_spawner,
         leaderboard_liaison,
+        web_bridge,
+        joy_linux,
+        joy_translation,
 
         # LOCALIZATION
-        gnss_averager,
+        # gnss_averager,
         # mcl,
 
         # MAPPING
 
         # MISC
         urdf_publisher,
-        rviz,
+        # rviz,
         # rqt,
+        camera_streamer,
 
         # PERCEPTION
-        image_segmentation,
-        semantic_projection,
+        # image_segmentation,
+        # semantic_projection,
         lidar_processor,
         ground_seg,
         static_grid,
+        # prednet_inference,
 
         # PLANNING
         grid_summation,
-        airbags,
         route_reader,
+        junction_manager,
+        rtp,
+
+        # SAFETY
+        airbags,
+        guardian,
 
         # STATE ESTIMATION
         map_manager,

@@ -43,7 +43,7 @@ from sensor_msgs.msg import Imu
 class GnssAveragingNode(Node):
 
     def __init__(self):
-        super().__init__('gnss_estimation_node')
+        super().__init__('gnss_averaging_node')
 
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 1)
@@ -55,21 +55,21 @@ class GnssAveragingNode(Node):
             CarlaSpeedometer, '/carla/hero/speedometer', self.speedometer_cb, 1)
 
         self.raw_gnss_sub = self.create_subscription(
-            Odometry, '/odometry/gnss_raw', self.raw_gnss_cb, 10
+            Odometry, '/gnss/odometry_raw', self.raw_gnss_cb, 10
         )
 
         self.true_pose_sub = self.create_subscription(
             PoseStamped, '/true_pose', self.true_pose_cb, 1)
 
         self.smoothed_gnss_sub = self.create_subscription(
-            Odometry, '/odometry/gnss_processed', self.smoothed_gnss_cb, 10
+            Odometry, '/gnss/odometry_processed', self.smoothed_gnss_cb, 10
         )
 
         self.result_pub = self.create_publisher(
             Odometry, '/odometry/processed', 1)
 
         self.diagnostic_pub = self.create_publisher(
-            DiagnosticStatus, '/status', 1)
+            DiagnosticStatus, '/node_statuses', 1)
 
         self.tf_broadcaster = TransformBroadcaster(self)
 
@@ -95,7 +95,15 @@ class GnssAveragingNode(Node):
         self.diag_state = 'OK'
 
     def smoothed_gnss_cb(self, msg: Odometry):
-        self.yaw = 2*math.asin(msg.pose.pose.orientation.z)
+        q = msg.pose.pose.orientation
+
+        if q.z < 0:
+            self.yaw = abs(2*np.arccos(q.w) - 2 * np.pi)
+        else:
+            self.yaw = 2 * np.arccos(q.w)
+
+        if self.yaw > np.pi:
+            self.yaw -= 2 * np.pi
 
     def true_pose_cb(self, msg: PoseStamped):
         if self.current_pose is None:
@@ -211,7 +219,7 @@ class GnssAveragingNode(Node):
             # print("Dead reckoning with dt = {:.2f}".format(dt))
 
             # Update heading by integrating heading rate
-            self.current_pose[2] += self.heading_rate * dt
+            self.current_pose[2] += self.heading_rate * dt * 1.2
             self.current_pose[2] %= 2 * np.pi
             # self.current_pose[2] = 2*math.asin(msg.pose.pose.orientation.z)
 
@@ -246,7 +254,7 @@ class GnssAveragingNode(Node):
         transl.z = 0.0  # TODO: Stop assuming flat surface
         t.transform.translation = transl
         t.transform.rotation = result_msg.pose.pose.orientation
-        self.tf_broadcaster.sendTransform(t)
+        # self.tf_broadcaster.sendTransform(t)
 
     def clock_cb(self, msg: Clock):
         if self.last_update_time is None:

@@ -29,6 +29,8 @@ class McuInterfaceNode(Node):
     def __init__(self, bus):
         super().__init__('mcu_interface_node')
 
+        self.last_command_rcv_time = None
+
         self.vehicle_command_sub = self.create_subscription(
             CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.commandCb, 1)
 
@@ -43,25 +45,28 @@ class McuInterfaceNode(Node):
 
         self.get_logger().info("Bus now connected.")
 
-        # what is create_timer? -Jai 
-        self.vehicle_command_timer = self.create_timer(0.3, self.publishCommand)
+        self.vehicle_command_timer = self.create_timer(0.1, self.publishCommand)
         self.throttle = 0
 
     def commandCb(self, msg: CarlaEgoVehicleControl):
         self.throttle = msg.throttle
+        print(f"Joystick Throttle: {self.throttle}\n")
 
     # publishes the number (0-1) received from the subscription 
     def publishCommand(self):
         throttle = self.throttle
-        if throttle < 0.1:
-            return
-        throttle = min(throttle, 0.3)
-        self.get_logger().info(f"Throttle = {throttle}")
+        # if throttle < 0.1:
+        #     return
+        # throttle = min(throttle, 0.3)
+
+        throttle *= 1.0
+        throttle = min(throttle, 0.8)
+        self.get_logger().info(f"Throttle {self.throttle } => {throttle}")
 
         # command = str.encode(f"$throttle,{throttle};\n")
         # s stands for start and e stands for end
-        command = f"s{throttle}e".encode()
-        self.get_logger().info(f"s{throttle}e")
+        command = f"s{throttle}e\r".encode()
+        self.get_logger().info(f"Command: s{throttle}e")
         self.bus.write(command)
 
         # self.sio.write(f"$throttle,{throttle};\n")
@@ -75,7 +80,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     # Try ls /dev/seria/by-id
-    channel = '/dev/serial/by-id/usb-Adafruit_Industries_LLC_Grand_Central_M4_Express_BA3E99D033533853202020350D3B12FF-if00'
+    channel = '/dev/serial/by-id/usb-Adafruit_Grand_Central_M4_D0993EBA5338533335202020FF123B0D-if00'
     bitrate = 115200
 
     bus = None

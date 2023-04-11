@@ -75,7 +75,7 @@ COPY ./docker ./opt/docker_ws
 COPY ./src/tools/cyclonedds /opt/cyclone_ws/cyclonedds
 COPY ./src/tools/rmw_cyclonedds /opt/cyclone_ws/rmw_cyclonedds
 WORKDIR /opt/cyclone_ws
-RUN . /opt/ros/foxy/setup.sh && colcon build
+RUN . /opt/ros/foxy/setup.sh && colcon build --cmake-clean-cache
 
 RUN apt update && echo "net.core.rmem_max=8388608\nnet.core.rmem_default=8388608\n" | tee /etc/sysctl.d/60-cyclonedds.conf
 
@@ -92,7 +92,10 @@ RUN pip3 install --upgrade scipy networkx
 # https://stackoverflow.com/questions/66669735/ubuntu-20-04-cant-find-pcl-because-of-incorrect-include-directory-after-install
 RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10/pcl /lib/x86_64-linux-gnu/cmake/pcl/include/pcl
 
-RUN apt update && apt install -y ros-foxy-joy-linux ros-foxy-pcl-ros minicom ros-foxy-rqt-console
+RUN apt update && apt install -y ros-foxy-joy-linux ros-foxy-pcl-ros minicom ros-foxy-rosbridge-server ros-foxy-image-transport ros-foxy-async-web-server-cpp
+
+RUN pip3 install scikit-image pynmea2 pyproj
+RUN apt update && apt install -y ros-foxy-rmw-fastrtps-cpp
 #################
 #  END CLEANUP  #
 #################
