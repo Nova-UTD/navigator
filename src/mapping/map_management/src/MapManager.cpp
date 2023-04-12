@@ -26,6 +26,13 @@ struct RoiIndices
     int end = -1;
 };
 
+struct Arc
+{
+    odr::LaneKey sourceKey;
+    odr::LaneKey targetKey;
+    double sourceLength;
+};
+
 MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
     // Params
@@ -36,17 +43,6 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 
     std::string xodr_path = "/navigator/data/maps/campus.xodr";
 
-    if (do_load_from_file)
-    {
-        RCLCPP_INFO(get_logger(), "Loading map from %s", xodr_path.c_str());
-        this->map_ = new odr::OpenDriveMap(xodr_path, false);
-        RCLCPP_INFO(get_logger(), "Map loaded with %i roads", map_->get_roads().size());
-    }
-    else
-    {
-        world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
-    }
-
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
     junction_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/junction", 10);
@@ -55,15 +51,173 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     traffic_light_points_pub_ = this->create_publisher<PolygonStamped>("/traffic_light_points", 10);
     goal_pose_pub_ = this->create_publisher<PoseStamped>("/planning/goal_pose", 1);
     route_progress_pub_ = this->create_publisher<std_msgs::msg::Float32>("/route_progress", 1);
-
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
-    rough_path_sub_ = this->create_subscription<Path>("/planning/rough_route", 10, bind(&MapManagementNode::updateRouteWaypoints, this, std::placeholders::_1));
 
-    drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
+    // Services
+    route_set_service_ = this->create_service<nova_msgs::srv::SetRoute>("set_route", bind(&MapManagementNode::setRoute, this, std::placeholders::_1, std::placeholders::_2));
+
+    // drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
     // route_timer_ = this->create_wall_timer(ROUTE_PUBLISH_FREQUENCY, bind(&MapManagementNode::publishRefinedRoute, this));
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
+    if (do_load_from_file)
+    {
+        RCLCPP_INFO(get_logger(), "Loading map from %s", xodr_path.c_str());
+        this->map_ = new odr::OpenDriveMap(xodr_path, false);
+        this->lane_polys_ = map_->get_lane_polygons(1.0, false);
+
+        RCLCPP_INFO(get_logger(), "Map loaded with %i roads", map_->get_roads().size());
+
+        if (this->map_wide_tree_.size() == 0)
+        {
+            RCLCPP_INFO(get_logger(), "map_wide_tree_ was empty. Generating.");
+            this->map_wide_tree_ = this->map_->generate_mesh_tree();
+        }
+
+        buildTrueRoutingGraph();
+    }
+    else
+    {
+        world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
+    }
+}
+
+std::vector<odr::LaneKey> laneKeysFromPoint(odr::point pt, bgi::rtree<odr::value, bgi::rstar<16, 4>> lane_tree, std::vector<odr::LanePair> lane_polys)
+{
+    std::vector<odr::value> query_results;
+
+    lane_tree.query(bgi::intersects(pt), std::back_inserter(query_results));
+
+    std::vector<odr::LaneKey> lane_keys;
+
+    // Move through our tree search results, extracting the lane key and
+    // adding it to our result list.
+    for (auto result : query_results)
+    {
+        odr::ring ring = lane_polys.at(result.second).second;
+        bool point_is_within_shape = bg::within(pt, ring);
+        odr::LanePair result_pair = lane_polys[result.second];
+        if (point_is_within_shape)
+            lane_keys.push_back(result_pair.first.key);
+    }
+
+    if (lane_keys.size() > 0)
+        return lane_keys;
+
+    // At this point, our search could not find any lanes intersecting the point.
+    // The fallback is to find the nearest lane to the point, even if they don't touch.
+    lane_tree.query(bgi::nearest(pt, 1), std::back_inserter(query_results));
+    odr::LanePair result_pair = lane_polys[query_results.front().second];
+    lane_keys.push_back(result_pair.first.key);
+
+    double dist = bg::distance(pt, query_results.front().first);
+    std::printf("Lane key does not touch current pos. Distance: %f \n", dist);
+
+    return lane_keys;
+}
+
+void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response)
+{
+    if (request->route_nodes.size() < 2)
+    {
+        RCLCPP_ERROR(get_logger(), "Service call requires at least two points.");
+        response->message = "Service call requires at least two points.";
+        response->success = false;
+        return;
+    }
+
+    // For the first two points, get their lanekeys
+    // TODO: Extend this to n points
+    odr::point from_pt(request->route_nodes[0].x, request->route_nodes[0].y);
+    odr::point to_pt(request->route_nodes[1].x, request->route_nodes[1].y);
+    auto from_keys = laneKeysFromPoint(from_pt, map_wide_tree_, lane_polys_);
+    auto to_keys = laneKeysFromPoint(to_pt, map_wide_tree_, lane_polys_);
+    if (from_keys.size() > 1)
+    {
+        RCLCPP_ERROR(get_logger(), "Route start falls within a junction.");
+        std::ostringstream message_stream;
+        message_stream << "Route start falls within a junction: " << from_keys.front().to_string().c_str();
+        std::string message = message_stream.str();
+        response->message = message;
+        response->success = false;
+        return;
+    }
+    if (to_keys.size() > 1)
+    {
+        RCLCPP_ERROR(get_logger(), "Route end falls within a junction.");
+        response->message = "Route end falls within a junction.";
+        response->success = false;
+        return;
+    }
+    if (from_keys.size() < 1)
+    {
+        RCLCPP_ERROR(get_logger(), "Route start does not fall within a lane.");
+        response->message = "Route start does not fall within a lane.";
+        response->success = false;
+        return;
+    }
+    if (to_keys.size() < 1)
+    {
+        RCLCPP_ERROR(get_logger(), "Route end does not fall within a lane.");
+        response->message = "Route end does not fall within a lane.";
+        response->success = false;
+        return;
+    }
+    odr::LaneKey from_key = from_keys[0];
+    odr::LaneKey to_key = to_keys[0];
+    SmartDigraph::Node start = g->nodeFromId(routing_nodes_->at(from_key));
+    SmartDigraph::Node end = g->nodeFromId(routing_nodes_->at(to_key));
+
+    SptSolver spt(*g, *costMap);
+
+    // std::printf("Running solver from %s to %s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
+
+    spt.run(start, end);
+
+    std::vector<lemon::SmartDigraph::Node> node_route;
+    int iters = 0;
+    for (lemon::SmartDigraph::Node v = end; v != start; v = spt.predNode(v))
+    {
+        if (v != lemon::INVALID && spt.reached(v)) // special LEMON node constant
+        {
+            node_route.push_back(v);
+        }
+        if (iters > 100)
+        {
+            break;
+        }
+        iters++;
+    }
+    node_route.push_back(start);
+
+    std::printf("Path has %i nodes\n", node_route.size());
+
+    route_linestring_.clear();
+
+    for (auto p = node_route.rbegin(); p != node_route.rend(); ++p)
+    {
+        std::printf("%s\n", (*nodeMap)[*p].to_string().c_str());
+        bg::append(route_linestring_, getLaneCenterline((*nodeMap)[*p]));
+    }
+
+    if (node_route.size() < 2)
+    {
+        std::ostringstream message_stream;
+        message_stream << "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " not found.";
+        std::string message = message_stream.str();
+        response->message = message;
+        response->success = false;
+    }
+    else
+    {
+        std::ostringstream message_stream;
+        message_stream << "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " has " << node_route.size() << " lanes and " << route_linestring_.size() << " points.";
+        std::string message = message_stream.str();
+        response->message = message;
+        response->success = true;
+    }
 }
 
 /**
@@ -130,7 +284,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
     if (lane_shapes_in_range.size() < 1)
     {
-        RCLCPP_WARN(get_logger(), "There are no lane shapes nearby. Pausing grid generation.");
+        RCLCPP_WARN(get_logger(), "There are no lane shapes nearby.");
+        std::printf("(%f, %f)\n", vehicle_pos.x, vehicle_pos.y);
         return;
     }
 
@@ -209,29 +364,29 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             drivable_grid_data.push_back(cell_is_drivable ? 0 : 100);
             junction_grid_data.push_back(cell_is_in_junction ? 100 : 0);
 
-            // Get closest route point
-            if (local_route_linestring_.size() > 0 && cell_is_drivable && i > 0)
-            {
-                int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 8);
+            // // Get closest route point
+            // if (local_route_linestring_.size() > 0 && cell_is_drivable && i > 0)
+            // {
+            //     int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 8);
 
-                if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
-                {
-                    goal_is_set = true;
-                    goal_pt = BoostPoint(i, j);
-                }
+            //     if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
+            //     {
+            //         goal_is_set = true;
+            //         goal_pt = BoostPoint(i, j);
+            //     }
 
-                // Distances > 10 are set to 100
-                if (dist > 20)
-                    dist = 100;
-                else
-                    dist *= 5;
+            //     // Distances > 10 are set to 100
+            //     if (dist > 20)
+            //         dist = 100;
+            //     else
+            //         dist *= 5;
 
-                route_dist_grid_data.push_back(dist);
-            }
-            else
-            {
-                route_dist_grid_data.push_back(100);
-            }
+            //     route_dist_grid_data.push_back(dist);
+            // }
+            // else
+            // {
+            //     route_dist_grid_data.push_back(100);
+            // }
 
             area += 1;
         }
@@ -280,6 +435,216 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 }
 
 /**
+ * @brief Return the (x,y) point at the start of a lane's outer border.
+ *
+ * @param key
+ * @return odr::point
+ */
+odr::point MapManagementNode::getLaneStart(odr::LaneKey key)
+{
+    // Get the current lane's start point (x,y)
+    odr::Road current_road = map_->id_to_road.at(key.road_id);
+    odr::LaneSection current_lsec = current_road.s_to_lanesection.at(key.lanesection_s0);
+    odr::Lane current_lane = current_lsec.id_to_lane.at(key.lane_id);
+
+    double s_start;
+    if (key.lane_id < 0)
+    {
+        s_start = key.lanesection_s0;
+    }
+    else
+    {
+        s_start = current_road.get_lanesection_end(key.lanesection_s0);
+    }
+    double t = current_lane.outer_border.get(s_start);
+    odr::Vec3D start_vec = current_road.get_surface_pt(s_start, t);
+    odr::point start_xy(start_vec[0], start_vec[1]);
+
+    return start_xy;
+}
+
+/**
+ * @brief Given a key, find true successors: immediately connected lanes
+ * ahead of the given one with respect to traffic flow.
+ *
+ * Assuming right-hand driving rules, we treat the "start" of a lane as having:
+ * - Either s = lanesection_s0 and ID < 0, OR
+ * - s = lanesection_s_max and ID > 0.
+ *
+ * Recall that lanesections are identified by their start and end s values.
+ *
+ * @param key
+ * @return std::vector<odr::LaneKey>
+ */
+std::vector<odr::LaneKey> MapManagementNode::getTrueSuccessors(odr::LaneKey key)
+{
+    std::vector<odr::LaneKey> results;
+
+    // We assume that each lane's listed successors and predecessors could be
+    // actual successors, and this function verifies or refutes each one,
+    // returning the verified ones.
+
+    if (this->faulty_routing_graph.edges.size() < 1)
+    {
+        RCLCPP_ERROR_ONCE(get_logger(), "Routing graph was empty!");
+    }
+
+    // Get the current lane's endpoint (x,y)
+    odr::Road current_road = map_->id_to_road.at(key.road_id);
+    odr::LaneSection current_lsec = current_road.s_to_lanesection.at(key.lanesection_s0);
+    odr::Lane current_lane = current_lsec.id_to_lane.at(key.lane_id);
+
+    double s_end;
+    if (key.lane_id > 0)
+    {
+        s_end = key.lanesection_s0;
+    }
+    else
+    {
+        s_end = current_road.get_lanesection_end(key.lanesection_s0);
+    }
+    double t = current_lane.outer_border.get(s_end);
+    odr::Vec3D end_vec = current_road.get_surface_pt(s_end, t);
+    odr::point end_xy(end_vec[0], end_vec[1]);
+
+    auto predecessors = faulty_routing_graph.get_lane_predecessors(key);
+
+    // For each predecessor, get their lane's START (x,y)
+    for (odr::LaneKey predecessor : predecessors)
+    {
+        odr::point start_xy = getLaneStart(predecessor);
+        float dist = bg::distance(end_xy, start_xy);
+        // std::printf("Dist: %f\n", dist);
+
+        if (dist < 0.05)
+            results.push_back(predecessor);
+    }
+
+    auto successors = faulty_routing_graph.get_lane_successors(key);
+
+    // For each predecessor, get their lane's START (x,y)
+    for (odr::LaneKey successor : successors)
+    {
+        odr::point start_xy = getLaneStart(successor);
+        float dist = bg::distance(end_xy, start_xy);
+        // std::printf("Dist: %f\n", dist);
+
+        if (dist < 0.05)
+            results.push_back(successor);
+    }
+
+    // std::printf("Found %i successors\n", results.size());
+
+    return results;
+}
+
+/**
+ * @brief Build a proper routing graph of the map
+ * using LEMON's SmartDigraph.
+ *
+ */
+void MapManagementNode::buildTrueRoutingGraph()
+{
+    if (this->lane_polys_.size() < 1 || this->map_ == nullptr)
+    {
+        RCLCPP_ERROR(get_logger(), "Map not yet loaded. Routing graph could not be built.");
+        return;
+    }
+
+    if (faulty_routing_graph.edges.size() < 1)
+    {
+        RCLCPP_INFO(get_logger(), "Building faulty routing graph...");
+        faulty_routing_graph = this->map_->get_routing_graph();
+    }
+    g = new lemon::SmartDigraph();
+    nodeMap = new lemon::SmartDigraph::NodeMap<odr::LaneKey>(*g);
+    std::printf("469\n");
+
+    costMap = new lemon::SmartDigraph::ArcMap<double>(*g);
+    routing_nodes_ = new std::map<odr::LaneKey, int>();
+    std::vector<Arc> arcs;
+    int node_idx = 0;
+    std::printf("476\n");
+
+    for (odr::LanePair pair : lane_polys_)
+    {
+        odr::LaneKey from_key = pair.first.key;
+        odr::Road from_road = map_->id_to_road.at(from_key.road_id);
+        double from_length = from_road.get_lanesection_end(from_key.lanesection_s0) - from_key.lanesection_s0;
+        routing_nodes_->insert(std::pair<odr::LaneKey, int>(from_key, node_idx));
+        node_idx++;
+
+        auto successors = getTrueSuccessors(from_key);
+
+        for (odr::LaneKey to_key : successors)
+            arcs.push_back(Arc{from_key, to_key, from_length});
+    }
+
+    std::printf("487\n");
+
+    // populate graph
+    // nodes first
+    lemon::SmartDigraph::Node currentNode;
+    for (auto nodesIter = routing_nodes_->begin(); nodesIter != routing_nodes_->end(); ++nodesIter)
+    {
+        odr::LaneKey key = nodesIter->first;
+        currentNode = g->addNode();
+        (*nodeMap)[currentNode] = key;
+    }
+    // then the arcs with the costs through the cost map
+    lemon::SmartDigraph::Arc currentArc;
+    for (auto arcsIter = arcs.begin(); arcsIter != arcs.end(); ++arcsIter)
+    {
+        int sourceIndex = routing_nodes_->at(arcsIter->sourceKey);
+        int targetIndex = routing_nodes_->at(arcsIter->targetKey);
+
+        SmartDigraph::Node sourceNode = g->nodeFromId(sourceIndex);
+        SmartDigraph::Node targetNode = g->nodeFromId(targetIndex);
+
+        currentArc = g->addArc(sourceNode, targetNode);
+        (*costMap)[currentArc] = arcsIter->sourceLength;
+    }
+}
+
+void MapManagementNode::recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target)
+{
+    odr::LaneKey current_lane = predecessors.back();
+    if (current_lane.to_string() == target.to_string())
+    {
+        RCLCPP_INFO(get_logger(), "FOUND TARGET");
+        return;
+    }
+    else
+    {
+        std::printf("%s != %s\n", current_lane.to_string().c_str(), target.to_string().c_str());
+    }
+
+    auto successors = getTrueSuccessors(current_lane);
+
+    // for (auto successor : successors)
+    // {
+    //     const odr::LaneKey const_succ = odr::LaneKey(successor);
+    //     if (std::find(predecessors.begin(), predecessors.end(), const_succ) != predecessors.end())
+    //         return;
+    //     std::vector<odr::LaneKey> new_predecessors(predecessors);
+    //     new_predecessors.push_back(successor);
+    //     recursiveSearch(new_predecessors, target);
+    // }
+}
+
+std::vector<odr::LaneKey> MapManagementNode::calculateRoute(odr::LaneKey start, odr::LaneKey end)
+{
+    if (this->map_wide_tree_.size() == 0)
+    {
+        RCLCPP_INFO(get_logger(), "map_wide_tree_ was empty. Generating.");
+        this->map_wide_tree_ = this->map_->generate_mesh_tree();
+    }
+    std::vector<odr::LaneKey> route;
+    recursiveSearch(getTrueSuccessors(start), end);
+    return route;
+}
+
+/**
  * @brief Caches the latest clock from CARLA. Usand published for message timestamps.
  *
  * @param msg
@@ -309,6 +674,7 @@ TransformStamped MapManagementNode::getVehicleTf()
                              "Could not get base_link->map tf: %s. This will republish every 5 seconds.", ex.what());
         return TransformStamped();
     }
+    RCLCPP_INFO(get_logger(), "Returing empty transform");
     return t;
 }
 
@@ -333,57 +699,6 @@ void add_edge(vector<int> adj[], int src, int dest)
 {
     adj[src].push_back(dest);
     adj[dest].push_back(src);
-}
-
-/**
- * @brief Simple breadth-first search using libOpenDRIVE's inbuilt routing graph.
- * Undirected! See https://en.wikipedia.org/wiki/Breadth-first_search#Pseudocode
- *
- * @param source
- * @param dest
- * @param graph
- * @return std::unordered_map<odr::LaneKey, odr::LaneKey>
- */
-std::unordered_map<odr::LaneKey, odr::LaneKey> bfs(odr::LaneKey source, odr::LaneKey dest, odr::RoutingGraph graph)
-{
-    std::unordered_set<odr::LaneKey> visited_lanes;
-    std::unordered_map<odr::LaneKey, odr::LaneKey> parents;
-    visited_lanes.insert(source);
-    std::vector<odr::LaneKey> route;
-    std::queue<odr::LaneKey> queue;
-
-    queue.push(source);
-    while (!queue.empty())
-    {
-        odr::LaneKey v = queue.front();
-        queue.pop();
-
-        if (v.to_string() == dest.to_string())
-        {
-            return parents;
-        }
-
-        for (auto w : graph.get_lane_predecessors(v))
-        {
-            if (visited_lanes.find(w) == visited_lanes.end())
-            {
-                visited_lanes.insert(w);
-                parents.insert(std::make_pair(w, v));
-                queue.push(w);
-            }
-        }
-        for (auto w : graph.get_lane_successors(v))
-        {
-            if (visited_lanes.find(w) == visited_lanes.end())
-            {
-                visited_lanes.insert(w);
-                parents.insert(std::make_pair(w, v));
-                queue.push(w);
-            }
-        }
-    }
-    // RCLCPP_ERROR(get_logger(), "Destination not found");
-    return parents;
 }
 
 LineString getSmoothSection(LineString full_route, BoostPoint ego, int &start_idx, int &end_idx)
@@ -591,118 +906,30 @@ std::vector<odr::LaneKey> getLaneKeysFromIndices(RoiIndices indices, LineString 
     return lane_keys;
 }
 
-std::vector<LineString> MapManagementNode::getCenterlinesFromKeys(std::vector<odr::LaneKey> keys, odr::RoutingGraph graph)
-{
-
-    // Move from first to second-to-last key.
-    // Use VFS to find route from this key to the next one,
-    // collectively forming a route chain connecting each waypoint's parent lane
-
-    std::vector<odr::LaneKey> complete_keys; // keys, but with gaps in lanes filled.
-
-    // Loop starts at last key and works to the first key
-    for (auto iter = keys.end() - 1; iter != keys.begin(); iter--)
-    {
-        std::vector<odr::LaneKey> complete_segment; // keys, but with gaps in lanes filled.
-        odr::LaneKey from = *iter;
-        odr::LaneKey to = *(iter - 1);
-        // std::printf("(%s)=>(%s)\n", from.to_string().c_str(), to.to_string().c_str());
-        if (from.to_string() == to.to_string()) // Keys have the same lane
-            continue;
-        auto adjacency_pairs = bfs(from, to, graph);
-        // std::printf("BFS returned %i pairs\n", adjacency_pairs.size());
-
-        complete_segment.push_back(to);
-
-        // Work our way back from destination to source in the tree search,
-        // producing a continuous LaneKey route.
-        try
-        {
-            odr::LaneKey parent = adjacency_pairs.at(to);
-            do
-            {
-                complete_segment.push_back(parent);
-                parent = adjacency_pairs.at(parent);
-            } while (parent.to_string() != from.to_string());
-        }
-        catch (...)
-        {
-            // RCLCPP_ERROR(get_logger(), "BFS could not locate route parent. Returning.");
-        }
-
-        complete_keys.insert(complete_keys.begin(), complete_segment.begin(), complete_segment.end());
-    }
-
-    // The final key is left out of above. Add it now.
-    complete_keys.push_back(keys.back());
-
-    // We now have a continuous LaneKey sequence that connects all provided Keys.
-    std::vector<LineString> centerlines;
-    for (auto key : complete_keys)
-    {
-        // std::printf("%s\n", key.to_string().c_str());
-
-        LineString centerline = getLaneCenterline(key);
-        centerlines.push_back(centerline);
-    }
-
-    return centerlines;
-}
-
 /**
- * @brief Given rough waypoints, turn them into a smooth, local curve
- * of continuous lane centerlines.
- *
- * 1. Crop waypoints to those nearby (<40m, plus 1-waypoint buffer on either end)
- * 2. Convert waypoints to matching lanes (odr::LaneKeys)
- * 3. Convert LaneKeys to LineStrings from BoostGeometry
- * 4. Reorient these LineStrings so that their ends line up. Combine them into a single curve.
- * 5. Convert the final LineString to a path message.
- *
+ * @brief Given a destination point (x,y), set our route linestring
+ * to be the continuous centerlines of the lanes connecting
+ * the current location to the destination. Should be fast.
  */
-void MapManagementNode::publishRefinedRoute()
+void MapManagementNode::updateRouteGivenDestination(odr::point destination)
 {
-    if (rough_route_tree_.empty() || map_wide_tree_.empty())
-        return;
+    RCLCPP_INFO(get_logger(), "Updating route from destination (%f, %f)", destination.get<0>(), destination.get<1>());
+    auto current_tf = getVehicleTf();
+    odr::point current_position(current_tf.transform.translation.x, current_tf.transform.translation.y);
 
-    // Get waypoint closest to ego
-    auto ego_tf = getVehicleTf();
-    BoostPoint ego_pos(ego_tf.transform.translation.x, ego_tf.transform.translation.y);
+    RCLCPP_INFO(get_logger(), "Current pos: (%f, %f)", current_position.get<0>(), current_position.get<1>());
 
-    // Get indices of waypoint ROI
-    RoiIndices waypoint_roi = getWaypointsInROI(rough_route_, rough_route_tree_, ego_pos);
-
-    // Let's take a moment to publish our route progress using this info
-    float route_progress = static_cast<float>(waypoint_roi.center) / rough_route_.size();
-    std_msgs::msg::Float32 progress_msg;
-    progress_msg.data = route_progress;
-    route_progress_pub_->publish(progress_msg);
-
-    // Get LaneKeys
-    std::vector<odr::LaneKey> keys = getLaneKeysFromIndices(waypoint_roi, rough_route_, map_wide_tree_, lane_polys_);
-
-    // Get centerlines
-    auto centerlines = getCenterlinesFromKeys(keys, map_->get_routing_graph());
-
-    // Orient them so that their ends and beginnings properly match
-    LineString route_ls = getReorientedRoute(centerlines);
-    bg::simplify(route_ls, local_route_linestring_, 1.0);
-
-    // Convert to ROS message
-    Path result;
-    result.header.frame_id = "map";
-    result.header.stamp = clock_->clock;
-    for (auto pt : route_ls)
+    if (this->map_wide_tree_.size() == 0)
     {
-        PoseStamped pose;
-        pose.pose.position.x = pt.get<0>();
-        pose.pose.position.y = pt.get<1>();
-        pose.header.frame_id = "map";
-        pose.header.stamp = clock_->clock;
-        result.poses.push_back(pose);
+        RCLCPP_INFO(get_logger(), "map_wide_tree_ was empty. Generating.");
+        this->map_wide_tree_ = this->map_->generate_mesh_tree();
     }
 
-    route_path_pub_->publish(result);
+    odr::LaneKey from = laneKeysFromPoint(current_position, map_wide_tree_, lane_polys_).front();
+    odr::LaneKey to = laneKeysFromPoint(destination, map_wide_tree_, lane_polys_).front();
+    RCLCPP_INFO(get_logger(), "From %s to %s", from.to_string().c_str(), to.to_string().c_str());
+
+    std::vector<odr::LaneKey> complete_segment; // keys, but with gaps in lanes filled.
 }
 
 std::map<odr::LaneKey, bool> MapManagementNode::getJunctionMap(std::vector<odr::LanePair> lane_polys)

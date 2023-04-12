@@ -29,6 +29,10 @@
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/index/rtree.hpp>
 
+// LEMON
+#include "lemon/smart_graph.h"
+#include <lemon/dijkstra.h>
+
 // ROS
 #include "rclcpp/rclcpp.hpp"
 #include "tf2/exceptions.h"
@@ -46,6 +50,7 @@
 #include "nav_msgs/msg/map_meta_data.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
+#include "nova_msgs/srv/set_route.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
 #include "std_msgs/msg/float32.hpp"
 
@@ -64,6 +69,10 @@ using geometry_msgs::msg::PolygonStamped;
 using geometry_msgs::msg::PoseStamped;
 using geometry_msgs::msg::TransformStamped;
 using rosgraph_msgs::msg::Clock;
+
+using SptSolver = lemon::Dijkstra<lemon::SmartDigraph, lemon::SmartDigraph::ArcMap<double>>;
+using lemon::SmartDigraph;
+using std::string;
 
 namespace navigator
 {
@@ -91,8 +100,25 @@ namespace navigator
             void clockCb(Clock::SharedPtr msg);
             TransformStamped getVehicleTf();
             void drivableAreaGridPubTimerCb();
-            void updateRouteWaypoints(Path::SharedPtr msg);
             void publishRefinedRoute();
+            void updateRouteWaypoints(Path::SharedPtr msg);
+            std::vector<odr::LaneKey> calculateRoute(odr::LaneKey start, odr::LaneKey end);
+            lemon::SmartDigraph *g = nullptr;
+
+            lemon::SmartDigraph::NodeMap<odr::LaneKey> *nodeMap;
+            std::map<odr::LaneKey, int> *routing_nodes_ = nullptr;
+            lemon::SmartDigraph::ArcMap<double> *costMap = nullptr;
+
+            std::vector<odr::LaneKey> getTrueSuccessors(odr::LaneKey key);
+            void setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response);
+            void recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target);
+            void buildTrueRoutingGraph();
+            odr::RoutingGraph faulty_routing_graph;
+            odr::point getLaneStart(odr::LaneKey key);
+
+            std::unordered_map<odr::LaneKey, std::vector<odr::LaneKey>> connectivity_map;
+
+            void updateRouteGivenDestination(odr::point destination);
             void worldInfoCb(CarlaWorldInfo::SharedPtr msg);
             std::map<odr::LaneKey, bool> getJunctionMap(std::vector<odr::LanePair> lane_polys);
 
@@ -109,6 +135,8 @@ namespace navigator
             rclcpp::Subscription<Clock>::SharedPtr clock_sub;
             rclcpp::Subscription<Path>::SharedPtr rough_path_sub_;
             rclcpp::Subscription<CarlaWorldInfo>::SharedPtr world_info_sub;
+
+            rclcpp::Service<nova_msgs::srv::SetRoute>::SharedPtr route_set_service_;
 
             rclcpp::TimerBase::SharedPtr drivable_area_grid_pub_timer_;
             rclcpp::TimerBase::SharedPtr route_distance_grid_pub_timer_;

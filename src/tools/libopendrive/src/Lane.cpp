@@ -10,6 +10,11 @@ namespace odr
 HeightOffset::HeightOffset(double inner, double outer) : inner(inner), outer(outer) {}
 
 LaneKey::LaneKey(std::string road_id, double lanesection_s0, int lane_id) : road_id(road_id), lanesection_s0(lanesection_s0), lane_id(lane_id) {}
+LaneKey::LaneKey() {
+    road_id = "";
+    lanesection_s0 = -1.0;
+    lane_id = -1;
+}
 
 std::string LaneKey::to_string() const { return string_format("%s/%f/%d", this->road_id.c_str(), this->lanesection_s0, this->lane_id); }
 

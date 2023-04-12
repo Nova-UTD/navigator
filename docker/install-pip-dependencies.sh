@@ -9,6 +9,9 @@ pygame \
 tabulate \
 pexpect \
 transforms3d \
+scikit-image \ 
+pynmea2  \ 
+pyproj \
 pep8 \
 autopep8 \
 cmake_format==0.6.11 \
@@ -16,7 +19,7 @@ pylint \
 simple-pid \
 py-trees==0.8.3 \
 networkx==2.2 \
-Shapely==1.7.1 \
+shapely==2.0.0 \
 psutil \
 xmlschema==1.0.18 \
 ephem \
@@ -25,7 +28,9 @@ six \
 simple-watchdog-timer \
 numpy \
 python-can \
-pyserial
+pyserial \
+scipy \
+networkx 
 # distro \
 # torch==1.12.0 \
 # torchvision \

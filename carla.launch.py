@@ -83,7 +83,7 @@ def generate_launch_description():
         ],
         remappings=[
             ('/carla/hero/lidar', '/lidar/fused'),
-            ('/carla/hero/rgb_center/image', '/cameras/stitched')
+            ('/carla/hero/rgb_center/image', '/cameras/camera0')
         ]
     )
 
@@ -201,7 +201,7 @@ def generate_launch_description():
         # MAPPING
 
         # MISC
-        recorder,
+        # recorder,
         urdf_publisher,
         # rviz,
         # rqt,
@@ -227,5 +227,5 @@ def generate_launch_description():
 
         # STATE ESTIMATION
         map_manager,
-        # gnss_processor,
+        gnss_processor,
     ])

@@ -47,11 +47,10 @@ class GnssInterfaceNode(Node):
         self.odom_pub = self.create_publisher(Odometry, '/gnss/odometry', 1)
         self.navsat_pub = self.create_publisher(NavSatFix, '/gnss/fix', 1)
 
-        self.lat0 = 32.989488  # TODO: Get this foom the map manager
-        self.lon0 = -96.750437
+        self.lat0 = 32.9881733525  # TODO: Get this foom the map manager
+        self.lon0 = -96.73645812583334
         utm_zone = 14
-        self.proj = pyproj.Proj(proj='utm', zone=utm_zone,
-                                ellipsis='WGS84', preserve_units=True)
+        self.proj = pyproj.Proj('+proj=tmerc +lat_0=32.9881733525 +lon_0=-96.73645812583334 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m  +vunits=m', preserve_units=True)
 
         self.speed = 0.0
 
@@ -72,6 +71,8 @@ class GnssInterfaceNode(Node):
         transl.z = self.cached_odom.pose.pose.position.z
         t.transform.translation = transl
         t.transform.rotation = self.cached_odom.pose.pose.orientation
+
+        # self.get_logger().error(str(t))
         self.tf_broadcaster.sendTransform(t)
 
     def getData(self):
