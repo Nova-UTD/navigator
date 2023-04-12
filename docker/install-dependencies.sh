@@ -2,33 +2,46 @@
 
 apt-get update
 
-apt-get install -y ros-foxy-diagnostic-updater \
+apt-get install -y ros-humble-diagnostic-updater \
 libfprint-2-2:amd64 \
 libpam-fprintd:amd64 \
 fprintd
 
-apt install -y ros-foxy-velodyne-msgs \
-ros-foxy-velodyne-driver \
-ros-foxy-velodyne-laserscan \
-ros-foxy-tf-transformations \
-ros-foxy-ros-testing \
-ros-foxy-vision-opencv \
-ros-foxy-pcl-conversions \
+apt install -y ros-humble-velodyne-msgs \
+ros-humble-velodyne-driver \
+ros-humble-velodyne-laserscan \
+ros-humble-joy-linux \
+ros-humble-pcl-ros \
+minicom \
+ros-humble-joy-linux \
+ros-humble-rosbridge-server \
+ros-humble-image-transport \
+ros-humble-async-web-server-cpp \
+ros-humble-tf-transformations \
+ros-humble-rmw-fastrtps-cpp \
+ros-humble-ros-testing \
+ros-humble-vision-opencv \
+ros-humble-pcl-conversions \
 software-properties-common \
-ros-foxy-ament-cmake-nose \
-ros-foxy-cv-bridge \
-ros-foxy-pcl-conversions \
-ros-foxy-tf-transformations \
-ros-foxy-ament-cmake-nose \
+ros-humble-ament-cmake-nose \
+ros-humble-cv-bridge \
+ros-humble-pcl-conversions \
+ros-humble-tf-transformations \
+ros-humble-ament-cmake-nose \
 python3-nose \
-ros-foxy-lgsvl-msgs \
-ros-foxy-pcl-conversions \
-ros-foxy-ros-testing \
+ros-humble-lgsvl-msgs \
+ros-humble-pcl-conversions \
+ros-humble-ros-testing \
 python3-matplotlib \
 python3-scipy \
-ros-foxy-rviz2 \
-ros-foxy-robot-localization \
-ros-foxy-derived-object-msgs \
+ros-humble-rviz2 \
+ros-humble-robot-localization \
 byobu \
-ros-foxy-velodyne-pointcloud \
-nvidia-cuda-toolkit
+ros-humble-velodyne-pointcloud \
+nvidia-cuda-toolkit \
+alsa-base \
+alsa-utils \
+libsndfile1-dev \
+espeak \
+ffmpeg \
+libespeak1
