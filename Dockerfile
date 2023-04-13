@@ -57,6 +57,8 @@ RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10
 WORKDIR /workspace
 RUN apt update && apt install -y wget && wget http://lemon.cs.elte.hu/pub/sources/lemon-1.3.1.tar.gz && tar xvzf lemon-1.3.1.tar.gz && cd lemon-1.3.1 && mkdir build && cd build && cmake .. && make && make install
 RUN apt update && apt install -y ros-humble-ament-cmake*
+
+RUN pip3 install pyserial python-can
 #################
 #  END CLEANUP  #
 #################

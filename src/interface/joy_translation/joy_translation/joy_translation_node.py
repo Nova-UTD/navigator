@@ -125,7 +125,7 @@ class joy_translation_node(Node):
         MAX_SPEED = 10  # m/s. Descriptive, not prescriptive.
 
         # Just an unconstrained, parabolic map.
-        parabolic_steer = joystick_pos**2
+        parabolic_steer = joystick_pos**3
         if joystick_pos < 0:
             parabolic_steer *= -1
 
@@ -150,7 +150,7 @@ class joy_translation_node(Node):
         command_msg.header.stamp = self.clock
         command_msg.header.frame_id = 'base_link'
         command_msg.throttle = ((right_trigger*-1)+1)/2
-        # self.get_logger().info(str(command_msg.throttle))
+        self.get_logger().info(str(command_msg.throttle))
         # command_msg.throttle = 0.0
         command_msg.steer = self.getSpeedAdjustedSteering(msg.axes[0]*-1)
 
