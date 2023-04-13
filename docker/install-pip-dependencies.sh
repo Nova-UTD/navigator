@@ -3,14 +3,14 @@
 pip3 install pymap3d==2.9.1 \
 dictor \
 requests \
-opencv-python==4.2.0.32 \
+opencv-python \
 open3d \
 pygame \
 tabulate \
 pexpect \
 transforms3d \
-scikit-image \ 
-pynmea2  \ 
+scikit-image \
+pynmea2  \
 pyproj \
 pep8 \
 autopep8 \
