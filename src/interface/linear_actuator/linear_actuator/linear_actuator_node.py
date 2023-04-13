@@ -59,10 +59,6 @@ class linear_actuator_node(Node):
 
         self.retry_connection_timer = self.create_timer(1.0, self.connectToBus)
 
-        self.current_mode = Mode.DISABLED
-        self.current_mode_sub = self.create_subscription(
-            Mode, '/guardian/mode', self.currentModeCb, 1)
-
         # channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
         # bitrate = 250000
         # self.bus = can.interface.Bus(bustype='slcan', channel=channel, bitrate=bitrate, receive_own_messages=True)

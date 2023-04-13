@@ -31,6 +31,9 @@ from dataclasses import dataclass
 STALENESS_TOLERANCE = 0.8  # sec. Statuses staler than this will be marked as stale
 NOT_RECEIVED = b'\xff'
 
+# DISENGAGES GUARDIAN FOR TESTING. OTHERWISE SET TO TRUE
+ENGAGED = True
+
 
 @dataclass
 class StatusEntry:
@@ -98,7 +101,7 @@ class guardian_node(Node):
         status_timer = self.create_timer(0.2, self.publishStatusArray)
 
         self.auto_disabled = True
-        self.manual_disabled = True
+        self.manual_disabled = False
 
     def pathCb(self, msg: Path):
         """Here we simply note the time that the message was received.
@@ -159,7 +162,7 @@ class guardian_node(Node):
             if status.level == DiagnosticStatus.ERROR:
                 global_status.level = DiagnosticStatus.ERROR
                 global_status.message = status.message
-                self.manual_disabled = True
+                self.manual_disabled = False
                 manual_error_description += status.message + '; '
             elif status.level == NOT_RECEIVED:
                 global_status.level = DiagnosticStatus.ERROR
@@ -173,7 +176,7 @@ class guardian_node(Node):
             elif self.isStale(status, dict_entry):
                 global_status.level = DiagnosticStatus.ERROR
                 global_status.message = f"{dict_entry} was stale."
-                self.manual_disabled = True
+                self.manual_disabled = False
                 manual_error_description += f"{dict_entry} was stale. "
             elif status.level == DiagnosticStatus.WARN and global_status.level != DiagnosticStatus.ERROR:
                 global_status.level = DiagnosticStatus.WARN

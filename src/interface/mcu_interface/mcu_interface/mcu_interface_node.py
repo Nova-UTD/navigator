@@ -61,12 +61,12 @@ class McuInterfaceNode(Node):
 
         throttle *= 1.0
         throttle = min(throttle, 0.8)
-        self.get_logger().info(f"Throttle {self.throttle } => {throttle}")
+        # self.get_logger().info(f"Throttle {self.throttle } => {throttle}")
 
         # command = str.encode(f"$throttle,{throttle};\n")
         # s stands for start and e stands for end
         command = f"s{throttle}e\r".encode()
-        self.get_logger().info(f"Command: s{throttle}e")
+        # self.get_logger().info(f"Command: s{throttle}e")
         self.bus.write(command)
 
         # self.sio.write(f"$throttle,{throttle};\n")
