@@ -132,28 +132,26 @@ def generate_launch_description():
         executable="parade_controller_node"
     )
 
-    left_lidar_driver = Node(
-        package='velodyne_driver',
-        executable='velodyne_driver_node',
-        parameters=[
-            "/navigator/param/perception/lidar_driver_left.param.yaml"],
-        namespace='velo_left'
-    )
-
     right_lidar_driver = Node(
         package='velodyne_driver',
         executable='velodyne_driver_node',
         parameters=[
             "/home/nova/navigator/param/perception/lidar_driver_right.param.yaml"],
         namespace='velo_right'
-
+    )
+    left_lidar_driver = Node(
+        package='velodyne_driver',
+        executable='velodyne_driver_node',
+        parameters=[
+            "/home/nova/navigator/param/perception/lidar_driver_left.param.yaml"],
+        namespace='velo_left'
     )
 
     left_lidar_pointcloud = Node(
         package='velodyne_pointcloud',
         executable='velodyne_convert_node',
         parameters=[
-            "/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
+            "/home/nova/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
         namespace='velo_left'
     )
 
@@ -208,8 +206,8 @@ def generate_launch_description():
         # linear_actuator,
         # web_bridge,
         # gnss,
-        # left_lidar_driver,
-        # left_lidar_pointcloud,
+        left_lidar_driver,
+        left_lidar_pointcloud,
         right_lidar_driver,
         right_lidar_pointcloud,
         # camera,
@@ -221,9 +219,9 @@ def generate_launch_description():
         # rviz,
 
         # PERCEPTION
-        # ground_seg,
-        # lidar_processor,
-        # static_grid,
+        ground_seg,
+        lidar_processor,
+        static_grid,
 
         # PLANNING
         # map_manager,
