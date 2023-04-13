@@ -85,8 +85,8 @@ class RecursiveTreePlanner(Node):
 
         self.speed_costmap = np.zeros((151, 151))
 
-        cost_map_sub = self.create_subscription(
-            OccupancyGrid, '/grid/cost', self.costMapCb, 1)
+        steering_cost_map_sub = self.create_subscription(
+            OccupancyGrid, '/grid/steering_cost', self.costMapCb, 1)
 
         speed_cost_map_sub = self.create_subscription(
             OccupancyGrid, '/grid/speed_cost', self.speedCostMapCb, 1)

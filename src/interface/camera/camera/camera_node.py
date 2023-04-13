@@ -38,6 +38,7 @@ class camera_node(Node):
             with open(f'/sys/class/video4linux/video{port}/name') as f:
                 contents = f.readline()
                 if contents.find('ZED') >= 0:
+                    self.get_logger().info(f"Found {contents}!")
                     camera = cv2.VideoCapture(port)
                     self.cameras.append(camera)
                     

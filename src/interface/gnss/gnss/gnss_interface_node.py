@@ -99,7 +99,7 @@ class GnssInterfaceNode(Node):
                     navsat_msg.longitude = msg.longitude
 
                     if msg.latitude == 0.0:
-                        self.get_logger().warning("Message latitude was zero. Signal invalid.")
+                        self.get_logger().warning("Message latitude was zero. Signal invalid. Are you indoors?")
 
                     try:
                         navsat_msg.altitude = msg.altitude
@@ -157,7 +157,7 @@ class GnssInterfaceNode(Node):
                 self.status.level = DiagnosticStatus.ERROR
                 return
             except pynmea2.ParseError as e:
-                print('Parse error: {}'.format(e))
+                # print('Parse error: {}'.format(e))
                 return
 
     def getOdomMsg(self, lat: float, lon: float) -> Odometry:
@@ -186,7 +186,7 @@ class GnssInterfaceNode(Node):
             return
         try:
             self.bus = serial.Serial(
-                '/dev/serial/by-path/pci-0000:00:14.0-usb-0:6.4.4.4.4.1:1.0', 115200, timeout=0.05)
+                '/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.2.1:1.0', 115200, timeout=0.05)
             self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus, self.bus))
             self.get_logger().info("Connected to GNSS")
         except serial.SerialException as e:

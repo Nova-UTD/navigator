@@ -193,6 +193,11 @@ def generate_launch_description():
         executable='recorder'
     )
 
+    grid_summation = Node(
+        package='costs',
+        executable='grid_summation_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         # controller,
@@ -206,11 +211,11 @@ def generate_launch_description():
         # linear_actuator,
         # web_bridge,
         # gnss,
-        left_lidar_driver,
-        left_lidar_pointcloud,
-        right_lidar_driver,
-        right_lidar_pointcloud,
-        # camera,
+        # left_lidar_driver,
+        # left_lidar_pointcloud,
+        # right_lidar_driver,
+        # right_lidar_pointcloud,
+        camera,
 
         # MISC
         clock,
@@ -220,11 +225,14 @@ def generate_launch_description():
 
         # PERCEPTION
         ground_seg,
-        lidar_processor,
+        # lidar_processor,
         static_grid,
+        
 
         # PLANNING
         # map_manager,
+        # grid_summation,
+
 
         # SAFETY
         # guardian,
