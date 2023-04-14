@@ -204,13 +204,13 @@ def generate_launch_description():
 
         # INTERFACE
         # camera_streamer,
-        # joy,
-        # joy_translator,
-        # epas,
-        # mcu_interface,
-        # linear_actuator,
+        joy,
+        joy_translator,
+        epas,
+        mcu_interface,
+        linear_actuator,
         # web_bridge,
-        gnss,
+        # gnss,
         left_lidar_driver,
         left_lidar_pointcloud,
         right_lidar_driver,
@@ -219,6 +219,7 @@ def generate_launch_description():
 
         # MISC
         clock,
+        
         # recorder,
         urdf_publisher,
         # rviz,

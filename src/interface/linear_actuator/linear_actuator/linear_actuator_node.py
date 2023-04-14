@@ -103,7 +103,6 @@ class linear_actuator_node(Node):
             
             self.bus = can.interface.Bus(
                 bustype='slcan', channel=channel, bitrate=bitrate )
-            self.get_logger().info("Trying to connect")
             self.get_logger().warning("CONNECTED")
             response = self.enableClutch(self.bus)
             self.get_logger().warning(
@@ -258,20 +257,20 @@ def main(args=None):
     channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
     bitrate = 250000
 
-    with can.interface.Bus(
-                bustype='slcan', channel=channel, bitrate=bitrate ) as bus:
-
+    try:
+        bus = can.interface.Bus(bustype='slcan', channel=channel, bitrate=bitrate)
         LAN = linear_actuator_node(bus)
-
         rclpy.spin(LAN)
-
+        
         # Destroy the node explicitly
         # (optional - otherwise it will be done automatically
         # when the garbage collector destroys the node object)
         linear_actuator_node.disableClutch()
         linear_actuator_node.destroy_node()
         rclpy.shutdown()
-
+    finally:
+        print("Shutting down CAN bus.")
+        bus.shutdown()
 
 if __name__ == '__main__':
     main()
