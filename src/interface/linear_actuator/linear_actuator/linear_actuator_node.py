@@ -37,10 +37,12 @@ class linear_actuator_node(Node):
     vehicle_command_sub = None
     brake = None
 
-    def __init__(self):
+    def __init__(self, bus):
         super().__init__('linear_actuator_node')
 
-        self.bus = None
+        self.bus = bus
+
+        self.get_logger().info("Bus connected! Hello, world.")
 
         self.vehicle_command_sub = self.create_subscription(
             CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.sendBrakeControl, 10)
@@ -56,8 +58,6 @@ class linear_actuator_node(Node):
         self.current_mode = Mode.DISABLED
         self.current_mode_sub = self.create_subscription(
             Mode, '/guardian/mode', self.currentModeCb, 1)
-
-        self.retry_connection_timer = self.create_timer(1.0, self.connectToBus)
 
         # channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
         # bitrate = 250000
@@ -90,7 +90,9 @@ class linear_actuator_node(Node):
 
     def connectToBus(self):
         self.bus: can.interface.Bus
+        self.get_logger().info("Connect called")
         if self.bus is not None and self.bus.state == can.bus.BusState.ACTIVE:
+            self.get_logger().info("Bus already connected.")
             return
         try:
             self.status = self.initStatusMsg()
@@ -98,8 +100,10 @@ class linear_actuator_node(Node):
             self.status.message = "Connecting to LA."
             channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
             bitrate = 250000
+            
             self.bus = can.interface.Bus(
-                bustype='slcan', channel=channel, bitrate=bitrate, )
+                bustype='slcan', channel=channel, bitrate=bitrate )
+            self.get_logger().info("Trying to connect")
             self.get_logger().warning("CONNECTED")
             response = self.enableClutch(self.bus)
             self.get_logger().warning(
@@ -250,17 +254,23 @@ class linear_actuator_node(Node):
 
 def main(args=None):
     rclpy.init(args=args)
+        
+    channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
+    bitrate = 250000
 
-    LAN = linear_actuator_node()
+    with can.interface.Bus(
+                bustype='slcan', channel=channel, bitrate=bitrate ) as bus:
 
-    rclpy.spin(LAN)
+        LAN = linear_actuator_node(bus)
 
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    linear_actuator_node.disableClutch()
-    linear_actuator_node.destroy_node()
-    rclpy.shutdown()
+        rclpy.spin(LAN)
+
+        # Destroy the node explicitly
+        # (optional - otherwise it will be done automatically
+        # when the garbage collector destroys the node object)
+        linear_actuator_node.disableClutch()
+        linear_actuator_node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':

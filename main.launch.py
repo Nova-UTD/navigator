@@ -204,29 +204,29 @@ def generate_launch_description():
 
         # INTERFACE
         # camera_streamer,
-        # joy,
-        # joy_translator,
-        # epas,
-        # mcu_interface,
-        # linear_actuator,
+        joy,
+        joy_translator,
+        epas,
+        mcu_interface,
+        linear_actuator,
         # web_bridge,
         # gnss,
         # left_lidar_driver,
         # left_lidar_pointcloud,
         # right_lidar_driver,
         # right_lidar_pointcloud,
-        camera,
+        # camera,
 
         # MISC
         clock,
         # recorder,
-        urdf_publisher,
+        # urdf_publisher,
         # rviz,
 
         # PERCEPTION
-        ground_seg,
+        # ground_seg,
         # lidar_processor,
-        static_grid,
+        # static_grid,
         
 
         # PLANNING
@@ -235,5 +235,5 @@ def generate_launch_description():
 
 
         # SAFETY
-        # guardian,
+        guardian,
     ])
