@@ -38,12 +38,13 @@ class camera_node(Node):
             with open(f'/sys/class/video4linux/video{port}/name') as f:
                 contents = f.readline()
                 if contents.find('ZED') >= 0:
-                    self.get_logger().info(f"Found {contents}!")
                     camera = cv2.VideoCapture(port)
                     self.cameras.append(camera)
                     
                     camera_pub = self.create_publisher(Image, f'/cameras/camera{len(self.camera_publishers)}', 1)
                     self.camera_publishers.append(camera_pub)
+
+        self.get_logger().info(f"Connected to {len(self.camera_publishers)} cameras.")
 
         # Call publishFrames very frequently.
         self.capture_timer = self.create_timer(0.01, self.publishFrames)

@@ -41,7 +41,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     // Load map from file if from_file is true
     bool do_load_from_file = this->get_parameter("from_file").as_bool();
 
-    std::string xodr_path = "/navigator/data/maps/campus.xodr";
+    std::string xodr_path = "/home/nova/navigator/data/maps/campus.xodr";
 
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
@@ -56,7 +56,6 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     // Services
     route_set_service_ = this->create_service<nova_msgs::srv::SetRoute>("set_route", bind(&MapManagementNode::setRoute, this, std::placeholders::_1, std::placeholders::_2));
 
-    // drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
     // route_timer_ = this->create_wall_timer(ROUTE_PUBLISH_FREQUENCY, bind(&MapManagementNode::publishRefinedRoute, this));
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
@@ -82,6 +81,9 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     {
         world_info_sub = this->create_subscription<CarlaWorldInfo>("/carla/world_info", 10, bind(&MapManagementNode::worldInfoCb, this, std::placeholders::_1));
     }
+
+    drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
+
 }
 
 std::vector<odr::LaneKey> laneKeysFromPoint(odr::point pt, bgi::rtree<odr::value, bgi::rstar<16, 4>> lane_tree, std::vector<odr::LanePair> lane_polys)
@@ -674,7 +676,9 @@ TransformStamped MapManagementNode::getVehicleTf()
                              "Could not get base_link->map tf: %s. This will republish every 5 seconds.", ex.what());
         return TransformStamped();
     }
-    RCLCPP_INFO(get_logger(), "Returing empty transform");
+
+    // RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+    //                          "Returning empty transform.");
     return t;
 }
 

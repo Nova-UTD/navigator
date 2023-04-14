@@ -190,8 +190,6 @@ class GridSummationNode(Node):
         steering_cost = np.zeros((151, 151))
         speed_cost = np.zeros((151, 151))
 
-        self.get_logger().info("Adding costs")
-
         # Calculate the weighted cost map layers
 
         # 1. Current occupancy
@@ -208,6 +206,11 @@ class GridSummationNode(Node):
                 weighted_current_occ_arr)
             steering_cost += weighted_current_occ_arr
             speed_cost += weighted_current_occ_arr
+        elif stale:
+            print("OCCUPANCY WAS STALE")
+        elif empty:
+            print("OCCUPANCY WAS EMPTY")
+            
 
         # 2. Future occupancy
         stale = self.checkForStaleness(self.future_occupancy_grid, status)

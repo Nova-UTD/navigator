@@ -78,7 +78,6 @@ class GnssInterfaceNode(Node):
     def getData(self):
 
         if self.sio is None:
-            self.get_logger().warn("SIO object was none. Skipping data read.")
             return
 
         self.status = self.initStatusMsg()
@@ -184,6 +183,9 @@ class GnssInterfaceNode(Node):
 
         if self.bus is not None and self.bus.is_open:
             return
+        
+        self.get_logger().info("Trying to connect to GNSS")
+        
         try:
             self.bus = serial.Serial(
                 '/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.2.1:1.0', 115200, timeout=0.05)

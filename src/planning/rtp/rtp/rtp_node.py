@@ -52,7 +52,7 @@ from skimage.draw import line
 
 from matplotlib.patches import Rectangle
 
-N_BRANCHES: int = 17
+N_BRANCHES: int = 7
 STEP_LEN: float = 12.0  # meters
 DEPTH: int = 3
 
@@ -105,7 +105,7 @@ class RecursiveTreePlanner(Node):
         self.clock = Clock().clock
 
         self.command_pub = self.create_publisher(
-            CarlaEgoVehicleControl, '/control/unlimited', 1)
+            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 1)
 
         self.speed_sub = self.create_subscription(
             CarlaSpeedometer, '/carla/hero/speedometer', self.speedCb, 1)
@@ -412,7 +412,11 @@ class RecursiveTreePlanner(Node):
             command.throttle = 0.0
             command.brake = 0.8
 
+        command.throttle = 0.23
+        command.brake = 0.0
+
         if self.current_mode == Mode.AUTO:
+            print("AUTO")
             self.command_pub.publish(command)
 
         self.path_pub.publish(result_msg)

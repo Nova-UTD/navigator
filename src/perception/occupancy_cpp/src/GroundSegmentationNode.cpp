@@ -59,7 +59,7 @@ pcl::PointCloud<pcl::PointXYZI> GroundSegmentationNode::removeGround(pcl::PointC
 {
   float lidar_height = 0.0; // TODO: Make ROS parameter
   float range = 80.0;
-  float s = 0.1;         // Original: 0.55
+  float s = 0.16;         // Original: 0.55
   float res = 0.4;        // Grid cell size, in meters
   float max_height = 2.5; // Exclude points above this height, in meters
 
