@@ -2,7 +2,7 @@ from setuptools import setup
 from glob import glob
 import os
 
-package_name = 'object_tracking'
+package_name = 'driveable_area'
 
 setup(
     name=package_name,
@@ -23,7 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'object_tracking_node = object_tracking.object_tracking_node:main',
+            'driveable_area_node = driveable_area.driveable_area_node:main',
         ],
     },
 )

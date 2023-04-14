@@ -163,6 +163,11 @@ def generate_launch_description():
         package='prednet_inference',
         executable='prednet_inference_node'
     )
+    
+    driveable_area = Node(
+        package='driveable_area',
+        executable='driveable_area_node'
+    )
 
     web_bridge = Node(
         package='rosbridge_server',
@@ -208,6 +213,7 @@ def generate_launch_description():
         ground_seg,
         static_grid,
         # prednet_inference,
+        driveable_area,
 
         # PLANNING
         grid_summation,
