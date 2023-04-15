@@ -108,8 +108,9 @@ def generate_launch_description():
     joy = Node(
         package='joy_linux',
         executable='joy_linux_node',
-        parameters=[(
-        )]
+        parameters=[
+        {"dev":"/dev/input/by-id/usb-©Microsoft_Corporation_Controller_061ABA4-joystick"}
+        ]
     )
 
     joy_translator = Node(
@@ -210,7 +211,7 @@ def generate_launch_description():
         mcu_interface,
         linear_actuator,
         # web_bridge,
-        # gnss,
+        gnss,
         left_lidar_driver,
         left_lidar_pointcloud,
         right_lidar_driver,
