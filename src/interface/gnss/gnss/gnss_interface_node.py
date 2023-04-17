@@ -206,9 +206,9 @@ class GnssInterfaceNode(Node):
         return (x, y)
 
     def getOdomMsg(self, lat: float, lon: float) -> Odometry:
-        x0, y0 = self.latlonToMercator(self.lat0, self.lon0, latToScale(self.lat0))
+        x0, y0 = self.proj(latitude=self.lat0, longitude=self.lon0)
 
-        x, y = self.latlonToMercator(lat, lon, latToScale(lat))
+        x, y = self.proj(latitude=lat, longitude=lon)
 
         position_x = x - x0
         position_y = y - y0
