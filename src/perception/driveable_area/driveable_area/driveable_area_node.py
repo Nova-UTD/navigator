@@ -29,13 +29,17 @@ from rosgraph_msgs.msg import Clock
 from std_msgs.msg import Float32
 from sensor_msgs.msg import Image
 
+import mmcv
+from mmcv.parallel import MMDataParallel
 from mmseg.models import build_segmentor
+from mmseg.apis import MMSegInferencer
 from mmcv.runner import (
     get_dist_info,
     init_dist,
     load_checkpoint,
     wrap_fp16_model,
 )
+
 
 # Set the Environmental varibale  max_split_size_mb to working amount in order to mkae the model run
 # export 'PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:unlimited' // in comand line
@@ -55,7 +59,7 @@ class DriveableAreaNode(Node):
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 10)
         # Subscribes to timer in order to make predictions at a constant rate
-        self.timer = self.create_timer(0.1, self.makimport matplotlib.pyplot as plt
+        self.timer = self.create_timer(0.1, self.make_segmentation)
 
         
         self.br = CvBridge()
@@ -85,6 +89,16 @@ class DriveableAreaNode(Node):
             if self.current_image == None:
                 return
             image = self.br.imgmsg_to_cv2(self.current_image)
+            
+            
+            
+            size = (1024, 512)
+            self.get_logger().info(f"Changing size from {image.shape} to {size}")
+            resized = cv2.resize(image, size, interpolation = cv2.INTER_AREA)
+            
+            
+            
+            
             
             # Display image
             
