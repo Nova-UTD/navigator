@@ -17,6 +17,28 @@ from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import NavSatFix
 from tf2_ros import TransformBroadcaster
 
+from shapely.geometry import LineString, Point
+import shapely
+
+
+def toRadians(degrees: float):
+    return degrees * math.pi / 180.0
+
+
+def latToScale(lat: float) -> float:
+    """Return UTM projection scale
+
+    Args:
+        lat (float): degrees latitude
+
+    Returns:
+        float: projection scale
+    """
+    return math.cos(toRadians(lat))
+
+
+EARTH_RADIUS_EQUA = 6378137.0
+
 
 class GnssInterfaceNode(Node):
 
@@ -50,12 +72,15 @@ class GnssInterfaceNode(Node):
         self.lat0 = 32.9881733525  # TODO: Get this foom the map manager
         self.lon0 = -96.73645812583334
         utm_zone = 14
-        self.proj = pyproj.Proj('+proj=tmerc +lat_0=32.9881733525 +lon_0=-96.73645812583334 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m  +vunits=m', preserve_units=True)
+        self.proj = pyproj.Proj(
+            '+proj=tmerc +lat_0=32.9881733525 +lon_0=-96.73645812583334 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m  +vunits=m', preserve_units=True)
 
         self.speed = 0.0
 
         self.read_timer = self.create_timer(0.05, self.getData)
         self.tf_timer = self.create_timer(0.05, self.publishTf)
+
+        self.trace = []
 
     def publishTf(self):
         if self.cached_odom is None:
@@ -115,6 +140,7 @@ class GnssInterfaceNode(Node):
 
                     self.odom_pub.publish(odom_msg)
                     self.cached_odom = odom_msg
+
                     # print(f"{msg.latitude}, {msg.longitude}")
 
                 elif msg.sentence_type == "VTG":
@@ -158,14 +184,38 @@ class GnssInterfaceNode(Node):
             except pynmea2.ParseError as e:
                 # print('Parse error: {}'.format(e))
                 return
+            
+    def latlonToMercator(self, lat: float, lon: float, scale: float) -> tuple:
+        """Convert geodetic coords (in degrees) to UTM coords (meters)
+
+        Copied to match CARLA:
+        [LatLonToMercator](https://github.com/carla-simulator/carla/blob/fe3cb6863a604f5c0cf8b692fe2b6300b45b5999/LibCarla/source/carla/geom/GeoLocation.cpp#L38)
+
+        Args:
+            lat (float): degrees
+            lon (float): degrees
+            scale (float): projection scale (see latToScale)
+
+        Returns:
+            tuple: (x,y) in UTM meters
+        """
+        x = scale * toRadians(lon) * EARTH_RADIUS_EQUA
+        y = scale * EARTH_RADIUS_EQUA * \
+            math.log(math.tan((90.0+lat) * math.pi/360.0))
+
+        return (x, y)
 
     def getOdomMsg(self, lat: float, lon: float) -> Odometry:
-        x0, y0 = self.proj(latitude=self.lat0, longitude=self.lon0)
+        x0, y0 = self.latlonToMercator(self.lat0, self.lon0, latToScale(self.lat0))
 
-        x, y = self.proj(longitude=lon, latitude=lat)
+        x, y = self.latlonToMercator(lat, lon, latToScale(lat))
 
         position_x = x - x0
         position_y = y - y0
+
+        new_shapely_pt = Point(position_x, position_y)
+        if len(self.trace) == 0 or shapely.distance(self.trace[-1], new_shapely_pt) > 7.0:
+            self.trace.append(new_shapely_pt)
 
         msg = Odometry()
         msg.pose.pose.position.x = position_x
@@ -183,9 +233,9 @@ class GnssInterfaceNode(Node):
 
         if self.bus is not None and self.bus.is_open:
             return
-        
+
         self.get_logger().info("Trying to connect to GNSS")
-        
+
         try:
             self.bus = serial.Serial(
                 '/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.2.1:1.0', 115200, timeout=0.05)
@@ -217,10 +267,20 @@ class GnssInterfaceNode(Node):
     def clockCb(self, msg: Clock):
         self.clock = msg.clock
 
+    def close(self):
+        self.get_logger().info(f"CLOSING GNSS with {len(self.trace)} pts")
+
+        with open("trace.txt", 'w') as f:
+            ls = LineString(self.trace)
+            f.write(ls.wkt)
+
 
 def main(args=None):
     rclpy.init(args=args)
-    gnss_interface_node = GnssInterfaceNode()
-    rclpy.spin(gnss_interface_node)
-    gnss_interface_node.destroy_node()
-    rclpy.shutdown()
+    try:
+        gnss_interface_node = GnssInterfaceNode()
+        rclpy.spin(gnss_interface_node)
+    finally:
+        gnss_interface_node.close()
+        gnss_interface_node.destroy_node()
+        rclpy.shutdown()

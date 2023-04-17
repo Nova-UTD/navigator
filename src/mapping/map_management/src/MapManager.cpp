@@ -48,15 +48,15 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     junction_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/junction", 10);
     route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
     route_path_pub_ = this->create_publisher<Path>("/planning/smooth_route", 10);
-    traffic_light_points_pub_ = this->create_publisher<PolygonStamped>("/traffic_light_points", 10);
     goal_pose_pub_ = this->create_publisher<PoseStamped>("/planning/goal_pose", 1);
     route_progress_pub_ = this->create_publisher<std_msgs::msg::Float32>("/route_progress", 1);
     clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
+    clicked_point_sub_ = this->create_subscription<PointStamped>("/clicked_point", 1, bind(&MapManagementNode::clickedPointCb, this, std::placeholders::_1));
 
     // Services
     route_set_service_ = this->create_service<nova_msgs::srv::SetRoute>("set_route", bind(&MapManagementNode::setRoute, this, std::placeholders::_1, std::placeholders::_2));
 
-    // route_timer_ = this->create_wall_timer(ROUTE_PUBLISH_FREQUENCY, bind(&MapManagementNode::publishRefinedRoute, this));
+    route_timer_ = this->create_wall_timer(LOCAL_ROUTE_LS_FREQ, bind(&MapManagementNode::updateLocalRouteLinestring, this));
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -76,6 +76,9 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         }
 
         buildTrueRoutingGraph();
+
+        // Temporary linestring from file
+        boost::geometry::read_wkt<bg::model::linestring<odr::point>>("LINESTRING (-1827.3481232674671 474.4790299474954, -1827.1946344496162 481.49111251993367, -1827.35921445157 488.55963063370274, -1827.4947859990684 495.8181595216425, -1825.6128816644532 502.8948003222886, -1819.1991005552547 506.4048429522615, -1812.8666435840273 503.1083360953645, -1811.6651252994338 495.9237319712097, -1811.6047409560804 488.86743272243365, -1811.6462661068279 481.61041548325363, -1812.1910307703392 474.6192917517117, -1815.138735010009 468.1999534807634, -1822.0577029283977 466.3434006567176)", route_linestring_);
     }
     else
     {
@@ -83,7 +86,34 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     }
 
     drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
+    drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
 
+}
+
+/**
+ * Given a global (possible large) route linestring:
+ * 1. Find the point closest to the car.
+ * 2. Select the point following it in the linestring.
+ * 3. For this point and the following points, append them until the current point's
+ * distance to the car is beyond some max constant
+*/
+void MapManagementNode::updateLocalRouteLinestring()
+{
+    float MAX_DISTANCE = 40.0; // meters
+
+    auto ego_tf = getEgoTf();
+
+    float prev_distance = 99999.9;
+
+    for (auto pt : route_linestring_)
+    {
+        float current_distance = bg::distance(pt, )
+    }
+}
+
+void MapManagementNode::clickedPointCb(PointStamped::SharedPtr msg)
+{
+    setRouteFromClickedPt(*msg);
 }
 
 std::vector<odr::LaneKey> laneKeysFromPoint(odr::point pt, bgi::rtree<odr::value, bgi::rstar<16, 4>> lane_tree, std::vector<odr::LanePair> lane_polys)
@@ -120,6 +150,105 @@ std::vector<odr::LaneKey> laneKeysFromPoint(odr::point pt, bgi::rtree<odr::value
     return lane_keys;
 }
 
+void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
+{
+
+
+    // For the first two points, get their lanekeys
+    // TODO: Extend this to n points
+    auto vehicle_tf = getEgoTf();
+    auto vehicle_pos = vehicle_tf.transform.translation;
+    odr::point from_pt(vehicle_pos.x, vehicle_pos.y);
+
+    if (clicked_pt.header.frame_id != "base_link")
+    {
+        RCLCPP_ERROR(get_logger(), "Clicked point should be in base_link.");
+        return;
+    }
+
+    // Transform clicked point to map frame
+    float yaw = acos(vehicle_tf.transform.rotation.w) * 2;
+    float x_ = clicked_pt.point.x;
+    float y_ = clicked_pt.point.y;
+    float clicked_x = (x_ * cos(yaw) - y_ * sin(yaw)) + vehicle_pos.x;
+    float clicked_y = (y_ * cos(yaw) + x_ * sin(yaw)) + vehicle_pos.y;
+    odr::point to_pt(clicked_x, clicked_y);
+
+    auto from_keys = laneKeysFromPoint(from_pt, map_wide_tree_, lane_polys_);
+    auto to_keys = laneKeysFromPoint(to_pt, map_wide_tree_, lane_polys_);
+    if (from_keys.size() > 1)
+    {
+        RCLCPP_ERROR(get_logger(), "Route start falls within a junction.");
+        return;
+    }
+    if (to_keys.size() > 1)
+    {
+        RCLCPP_ERROR(get_logger(), "Route end falls within a junction.");
+        return;
+    }
+    if (from_keys.size() < 1)
+    {
+    RCLCPP_ERROR(get_logger(), "Route start does not fall within a lane.");
+        return;
+    }
+    if (to_keys.size() < 1)
+    {
+        RCLCPP_ERROR(get_logger(), "Route end does not fall within a lane.");
+    }
+    odr::LaneKey from_key = from_keys[0];
+    odr::LaneKey to_key = to_keys[0];
+
+    if (from_key.road_id == to_key.road_id && from_key.lanesection_s0 == to_key.lanesection_s0)
+    {
+        RCLCPP_ERROR(get_logger(), "Cannot create a route within the same lanesection.");
+        return;
+    }
+
+    SmartDigraph::Node start = g->nodeFromId(routing_nodes_->at(from_key));
+    SmartDigraph::Node end = g->nodeFromId(routing_nodes_->at(to_key));
+
+    SptSolver spt(*g, *costMap);
+
+    // std::printf("Running solver from %s to %s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
+
+    spt.run(start, end);
+
+    std::vector<lemon::SmartDigraph::Node> node_route;
+    int iters = 0;
+    for (lemon::SmartDigraph::Node v = end; v != start; v = spt.predNode(v))
+    {
+        if (v != lemon::INVALID && spt.reached(v)) // special LEMON node constant
+        {
+            node_route.push_back(v);
+        }
+        if (iters > 100)
+        {
+            break;
+        }
+        iters++;
+    }
+    node_route.push_back(start);
+
+    std::printf("Path has %i nodes\n", node_route.size());
+
+    route_linestring_.clear();
+
+    for (auto p = node_route.rbegin(); p != node_route.rend(); ++p)
+    {
+        std::printf("%s\n", (*nodeMap)[*p].to_string().c_str());
+        bg::append(route_linestring_, getLaneCenterline((*nodeMap)[*p]));
+    }
+
+    if (node_route.size() < 2)
+    {
+        RCLCPP_INFO_STREAM(get_logger(), "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " not found.");
+    }
+    else
+    {
+        RCLCPP_INFO_STREAM(get_logger(), "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " has " << node_route.size() << " lanes and " << route_linestring_.size() << " points.");
+    }
+}
+
 void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response)
 {
     if (request->route_nodes.size() < 2)
@@ -128,6 +257,9 @@ void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute:
         response->message = "Service call requires at least two points.";
         response->success = false;
         return;
+    } else if (request->route_nodes.size() > 2)
+    {
+        RCLCPP_WARN(get_logger(), "Routing only supported for two points at the moment. Remaining points will be ignored.");
     }
 
     // For the first two points, get their lanekeys
@@ -273,7 +405,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
         this->map_wide_tree_ = this->map_->generate_mesh_tree();
 
     // Get the search region
-    TransformStamped vehicle_tf = getVehicleTf();
+    TransformStamped vehicle_tf = getEgoTf();
     auto vehicle_pos = vehicle_tf.transform.translation;
     double range_plus = top_dist * 1.4; // This is a little leeway to account for map->base_link rotation
     odr::point bounding_box_min = odr::point(vehicle_pos.x - range_plus, vehicle_pos.y - range_plus);
@@ -367,28 +499,28 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             junction_grid_data.push_back(cell_is_in_junction ? 100 : 0);
 
             // // Get closest route point
-            // if (local_route_linestring_.size() > 0 && cell_is_drivable && i > 0)
-            // {
-            //     int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 8);
+            if (route_linestring_.size() > 0)
+            {
+                int dist = static_cast<int>(bg::distance(route_linestring_, p) * 8);
 
-            //     if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
-            //     {
-            //         goal_is_set = true;
-            //         goal_pt = BoostPoint(i, j);
-            //     }
+                if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
+                {
+                    goal_is_set = true;
+                    goal_pt = BoostPoint(i, j);
+                }
 
-            //     // Distances > 10 are set to 100
-            //     if (dist > 20)
-            //         dist = 100;
-            //     else
-            //         dist *= 5;
+                // Distances > 10 are set to 100
+                if (dist > 20)
+                    dist = 100;
+                else
+                    dist *= 5;
 
-            //     route_dist_grid_data.push_back(dist);
-            // }
-            // else
-            // {
-            //     route_dist_grid_data.push_back(100);
-            // }
+                route_dist_grid_data.push_back(dist);
+            }
+            else
+            {
+                route_dist_grid_data.push_back(100);
+            }
 
             area += 1;
         }
@@ -555,8 +687,8 @@ void MapManagementNode::buildTrueRoutingGraph()
 
     if (faulty_routing_graph.edges.size() < 1)
     {
-        RCLCPP_INFO(get_logger(), "Building faulty routing graph...");
         faulty_routing_graph = this->map_->get_routing_graph();
+        RCLCPP_INFO(get_logger(), "Built rough routing graph.");
     }
     g = new lemon::SmartDigraph();
     nodeMap = new lemon::SmartDigraph::NodeMap<odr::LaneKey>(*g);
@@ -606,6 +738,8 @@ void MapManagementNode::buildTrueRoutingGraph()
         currentArc = g->addArc(sourceNode, targetNode);
         (*costMap)[currentArc] = arcsIter->sourceLength;
     }
+
+    RCLCPP_INFO(get_logger(), "Built complete routing graph.");
 }
 
 void MapManagementNode::recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target)
@@ -661,7 +795,7 @@ void MapManagementNode::clockCb(Clock::SharedPtr msg)
  *
  * @return TransformStamped
  */
-TransformStamped MapManagementNode::getVehicleTf()
+TransformStamped MapManagementNode::getEgoTf()
 {
     TransformStamped t;
     try
@@ -918,7 +1052,7 @@ std::vector<odr::LaneKey> getLaneKeysFromIndices(RoiIndices indices, LineString 
 void MapManagementNode::updateRouteGivenDestination(odr::point destination)
 {
     RCLCPP_INFO(get_logger(), "Updating route from destination (%f, %f)", destination.get<0>(), destination.get<1>());
-    auto current_tf = getVehicleTf();
+    auto current_tf = getEgoTf();
     odr::point current_position(current_tf.transform.translation.x, current_tf.transform.translation.y);
 
     RCLCPP_INFO(get_logger(), "Current pos: (%f, %f)", current_position.get<0>(), current_position.get<1>());

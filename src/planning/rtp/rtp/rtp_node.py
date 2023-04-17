@@ -108,7 +108,7 @@ class RecursiveTreePlanner(Node):
             CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 1)
 
         self.speed_sub = self.create_subscription(
-            CarlaSpeedometer, '/carla/hero/speedometer', self.speedCb, 1)
+            CarlaSpeedometer, '/speed', self.speedCb, 1)
 
         self.path_pub = self.create_publisher(
             Path, '/planning/path', 1)
@@ -355,7 +355,7 @@ class RecursiveTreePlanner(Node):
         if best_path is None:
             status.level = DiagnosticStatus.ERROR
             status.message = "Could not find viable path. Likely too far off course."
-            self.get_logger().error("Could not find viable path")
+            # self.get_logger().error("Could not find viable path")
             self.status_pub.publish(status)
             return
 
@@ -387,33 +387,40 @@ class RecursiveTreePlanner(Node):
 
         command.header.stamp = self.clock
 
-        MAX_SPEED = np.min([10.0, (distance_from_barrier - 5)/2])
-        target_speed = MAX_SPEED - command.steer * 3.5  # m/s, ~10mph
+        MAX_SPEED = np.min([0.5, (distance_from_barrier - 5)/2])
+        target_speed = MAX_SPEED # m/s, ~10mph
+
+        self.get_logger().info(f"Current speed: {self.speed}")
 
         pid_error = target_speed - self.speed
 
-        if pid_error > 3.0:
-            command.throttle = 0.6
-            command.brake = 0.0
-        elif pid_error > 0.5:
-            command.throttle = 0.3
-            command.brake = 0.0
-        elif pid_error > -1.0:
-            # Coast if speeding by ~2 mph
-            command.throttle = 0.0
-            command.brake = 0.0
-        elif pid_error > -2.0:
-            # Brake slightly if speeding by ~5 mph
-            command.throttle = 0.0
-            command.brake = 0.3
-        else:
-            status.level = DiagnosticStatus.WARN
-            status.message = f"{int(abs(pid_error))} m/s over limit"
-            command.throttle = 0.0
-            command.brake = 0.8
+        # if pid_error > 3.0:
+        #     command.throttle = 0.6
+        #     command.brake = 0.0
+        # elif pid_error > 0.5:
+        #     command.throttle = 0.3
+        #     command.brake = 0.0
+        # elif pid_error > -1.0:
+        #     # Coast if speeding by ~2 mph
+        #     command.throttle = 0.0
+        #     command.brake = 0.0
+        # elif pid_error > -2.0:
+        #     # Brake slightly if speeding by ~5 mph
+        #     command.throttle = 0.0
+        #     command.brake = 0.3
+        # else:
+        #     status.level = DiagnosticStatus.WARN
+        #     status.message = f"{int(abs(pid_error))} m/s over limit"
+        #     command.throttle = 0.0
+        #     command.brake = 0.8
 
-        command.throttle = 0.23
-        command.brake = 0.0
+        if self.speed > MAX_SPEED + 0.5:
+            command.brake = 0.4
+        MAX_SPEED = 1.0
+        if self.speed > MAX_SPEED:
+            command.throttle = 0.0
+        else:
+            command.throttle = 0.2
 
         if self.current_mode == Mode.AUTO:
             print("AUTO")

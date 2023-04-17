@@ -233,7 +233,7 @@ class GridSummationNode(Node):
             msg = self.drivable_grid
             weighted_drivable_arr = self.getWeightedArray(
                 msg, DRIVABLE_GRID_SCALE)
-            steering_cost += weighted_drivable_arr
+            # steering_cost += weighted_drivable_arr
             # speed_cost += weighted_drivable_arr
 
         # 4. Route distance

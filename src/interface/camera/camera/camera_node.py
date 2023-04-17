@@ -47,7 +47,7 @@ class camera_node(Node):
         self.get_logger().info(f"Connected to {len(self.camera_publishers)} cameras.")
 
         # Call publishFrames very frequently.
-        self.capture_timer = self.create_timer(0.01, self.publishFrames)
+        self.capture_timer = self.create_timer(0.1, self.publishFrames)
 
     def publishFrames(self):
         """Iterate through each camera and publish the latest frame

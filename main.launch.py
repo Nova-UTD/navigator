@@ -87,7 +87,10 @@ def generate_launch_description():
 
     ground_seg = Node(
         package='occupancy_cpp',
-        executable='ground_segmentation_exe'
+        executable='ground_segmentation_exe',
+        parameters=[
+            {'sensitivity': 0.08},
+        ]
     )
 
     image_segmentation = Node(
@@ -199,6 +202,11 @@ def generate_launch_description():
         executable='grid_summation_node'
     )
 
+    rtp = Node(
+        package='rtp',
+        executable='rtp_node'
+    )
+
     return LaunchDescription([
         # CONTROL
         # controller,
@@ -234,6 +242,7 @@ def generate_launch_description():
         # PLANNING
         map_manager,
         grid_summation,
+        rtp,
 
 
         # SAFETY
