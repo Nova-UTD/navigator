@@ -240,7 +240,7 @@ def generate_launch_description():
         
 
         # PLANNING
-        map_manager,
+        # map_manager,
         grid_summation,
         rtp,
 

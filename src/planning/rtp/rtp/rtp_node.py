@@ -52,7 +52,7 @@ from skimage.draw import line
 
 from matplotlib.patches import Rectangle
 
-N_BRANCHES: int = 7
+N_BRANCHES: int = 13
 STEP_LEN: float = 12.0  # meters
 DEPTH: int = 3
 
@@ -387,7 +387,7 @@ class RecursiveTreePlanner(Node):
 
         command.header.stamp = self.clock
 
-        MAX_SPEED = np.min([0.5, (distance_from_barrier - 5)/2])
+        MAX_SPEED = np.min([1.0, (distance_from_barrier - 5)/2])
         target_speed = MAX_SPEED # m/s, ~10mph
 
         self.get_logger().info(f"Current speed: {self.speed}")

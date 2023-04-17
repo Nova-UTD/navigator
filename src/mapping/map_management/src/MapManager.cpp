@@ -78,7 +78,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         buildTrueRoutingGraph();
 
         // Temporary linestring from file
-        boost::geometry::read_wkt<bg::model::linestring<odr::point>>("LINESTRING (-1827.3481232674671 474.4790299474954, -1827.1946344496162 481.49111251993367, -1827.35921445157 488.55963063370274, -1827.4947859990684 495.8181595216425, -1825.6128816644532 502.8948003222886, -1819.1991005552547 506.4048429522615, -1812.8666435840273 503.1083360953645, -1811.6651252994338 495.9237319712097, -1811.6047409560804 488.86743272243365, -1811.6462661068279 481.61041548325363, -1812.1910307703392 474.6192917517117, -1815.138735010009 468.1999534807634, -1822.0577029283977 466.3434006567176)", route_linestring_);
+        boost::geometry::read_wkt<bg::model::linestring<odr::point>>("LINESTRING (-1806.5003661900073 506.67421761212637, -1810.6698044592672 500.79040047018117, -1811.2443518768366 493.62146536407596, -1811.3076732263878 486.4247101068794, -1811.3239849730878 479.05197806347326, -1811.3066364773506 471.75650324670363, -1811.2710470698887 464.54753052375014, -1811.345121362587 457.32526955542176, -1811.5685970701475 450.00081936375864, -1811.792647485982 442.9406913333003, -1810.0371531561143 436.0410101009743, -1803.8203072241959 432.3158855101262, -1796.7478508236434 433.5129120047093, -1792.3111770361375 438.93273602872, -1791.3694848047803 446.1441181074285, -1791.4867053474193 453.3885948109644, -1791.7302683248781 460.5558312642236, -1791.782186331146 467.99234555459725, -1791.5986396330495 475.11310936702546, -1791.3946921017593 482.2087312251068, -1791.2218875972922 489.3644320116615)", route_linestring_);
     }
     else
     {
@@ -101,14 +101,41 @@ void MapManagementNode::updateLocalRouteLinestring()
 {
     float MAX_DISTANCE = 40.0; // meters
 
-    auto ego_tf = getEgoTf();
+    auto ego_transl = getEgoTf().transform.translation;
+    BoostPoint ego_pos(ego_transl.x, ego_transl.y);
 
     float prev_distance = 99999.9;
 
-    for (auto pt : route_linestring_)
+    BoostPoint closest_route_pt;
+    int closest_point_idx = 0;
+    bool closest_point_found = false;
+    LineString local_ls;
+
+    for (auto route_pt : route_linestring_)
     {
-        float current_distance = bg::distance(pt, )
+        float current_distance = bg::distance(route_pt, ego_pos);
+
+        if (current_distance < 40.0){
+            closest_point_found = true;
+        }
+        if (closest_point_found) {
+            bg::append(local_ls, route_pt);
+
+            if (current_distance > MAX_DISTANCE)
+                break;
+        }
+
+        if (closest_point_found == false)
+        {
+            closest_route_pt = route_pt;
+            prev_distance = current_distance;
+            closest_point_idx++;
+        }
     }
+
+    double min_distance = bg::distance(ego_pos, closest_route_pt);
+    printf("Closest route point was %f meters away. Appended %i points\n", min_distance, local_ls.size());
+    local_route_linestring_ = local_ls;
 }
 
 void MapManagementNode::clickedPointCb(PointStamped::SharedPtr msg)
@@ -247,6 +274,8 @@ void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
     {
         RCLCPP_INFO_STREAM(get_logger(), "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " has " << node_route.size() << " lanes and " << route_linestring_.size() << " points.");
     }
+
+    bg::simplify(route_linestring_, route_linestring_, 1.0);
 }
 
 void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response)
@@ -499,9 +528,9 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             junction_grid_data.push_back(cell_is_in_junction ? 100 : 0);
 
             // // Get closest route point
-            if (route_linestring_.size() > 0)
+            if (local_route_linestring_.size() > 0)
             {
-                int dist = static_cast<int>(bg::distance(route_linestring_, p) * 8);
+                int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 8);
 
                 if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
                 {
