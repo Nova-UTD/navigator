@@ -188,7 +188,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             // Get closest route point
             if (local_route_linestring_.size() > 0 && cell_is_drivable && i > 0)
             {
-                int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 8);
+                int dist = static_cast<int>((1-(1/(1+bg::distance(local_route_linestring_, p))))*100);
 
                 if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
                 {
@@ -196,11 +196,13 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                     goal_pt = BoostPoint(i, j);
                 }
 
-                // Distances > 10 are set to 100
-                if (dist > 20)
+                // Distances > 20 are set to 100
+                if (dist > 80)
                     dist = 100;
-                else
-                    dist *= 5;
+                //else
+                    //dist *= 5;
+                
+                RCLCPP_INFO(get_logger(), "dist value %i", dist);
 
                 route_dist_grid_data.push_back(dist);
             }
