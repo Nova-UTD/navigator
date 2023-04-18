@@ -40,6 +40,8 @@ import torch
 
 import matplotlib.pyplot as plt
 
+# Set the Environmental varibale  max_split_size_mb to working amount in order to mkae the model run
+# export 'PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:unlimited' // in comand line
 
 class PredNetNode(Node):
 
@@ -84,18 +86,18 @@ class PredNetNode(Node):
 
         # GPU that the prednet model will use
         self.device = 'cuda:0'
-
+        
         # Whether the images have been made (for testing)
-        self.madeExample = True
-
+        self.madeExample = False
+        
         # Model directry
         # Importing models
         modelDir = "/navigator/data/perception/models/prednet.pt"
 
         # Sets the device to the rigth GPU
-        # torch.cuda.set_device(torch.device(self.device))
-        # torch.cuda.empty_cache()
-
+        torch.cuda.set_device(torch.device(self.device))
+        torch.cuda.empty_cache()
+        
         # Prints out the GPU being used
         self.get_logger().info("Current GPU device: " + str(torch.cuda.current_device()))
 
