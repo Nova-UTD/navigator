@@ -22,6 +22,8 @@ import time
 import copy
 from cv_bridge import CvBridge # Package to convert between ROS and OpenCV Images
 import cv2 # OpenCV library
+import math
+import matplotlib.pyplot as plt
 
 
 # Message definitions
@@ -31,14 +33,7 @@ from sensor_msgs.msg import Image
 
 import mmcv
 from mmcv.parallel import MMDataParallel
-from mmseg.models import build_segmentor
-from mmseg.apis import MMSegInferencer
-from mmcv.runner import (
-    get_dist_info,
-    init_dist,
-    load_checkpoint,
-    wrap_fp16_model,
-)
+from mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
 
 
 # Set the Environmental varibale  max_split_size_mb to working amount in order to mkae the model run
@@ -49,10 +44,7 @@ class DriveableAreaNode(Node):
 
     def __init__(self):
         super().__init__('driveable_area_node')
-        
-        
-        self.get_logger().info("Starting")
-        
+                
         camera_sub = self.create_subscription(Image, '/cameras/stitched', self.update_camera,1)
         
         # Subscribes to clock for headers
@@ -61,15 +53,20 @@ class DriveableAreaNode(Node):
         # Subscribes to timer in order to make predictions at a constant rate
         self.timer = self.create_timer(0.1, self.make_segmentation)
 
+        self.current_image = None
         
         self.br = CvBridge()
-        """
-        # GPU that the prednet model will use
-        self.device = 'cuda:0'
-        # Sets the device to the rigth GPU
-        torch.cuda.set_device(torch.device(self.device))
-        torch.cuda.empty_cache()
-        """      
+        
+        self.done = False
+            
+        config_file = '/navigator/data/perception/models/ccnet_r50-d8_512x1024_80k_drivable_bdd100k.py'
+        checkpoint_file = '/navigator/data/perception/models/ccnet_r50-d8_512x1024_80k_drivable_bdd100k.pth'
+        
+        # checkpoint file download link: https://dl.cv.ethz.ch/bdd100k/drivable/models/ccnet_r50-d8_512x1024_80k_drivable_bdd100k.pth
+
+        # build the model from a config file and a checkpoint file
+        self.model = init_segmentor(config_file, checkpoint_file, device='cuda:0')
+          
 
     def clock_cb(self, msg):
         self.clock = msg.clock
@@ -79,38 +76,63 @@ class DriveableAreaNode(Node):
         self.current_image = image
     
     def make_segmentation(self):
+        if self.current_image == None:
+            return
+        
+        start = time.time()
+        
+        image = self.br.imgmsg_to_cv2(self.current_image)
+        
+        original_size = (image.shape[1], image.shape[0])
+        
+        # model input size
+        target_size = (1024, 512)
+        
+        # scale needed to rescale input image to the cropable size of the 
+        max_scale_match = max(target_size[0]/ original_size[0], target_size[1]/ original_size[1])
+        
+        # size of the scaled image
+        middle_size = (int(original_size[0] * max_scale_match), int(original_size[1] * max_scale_match))
+        
+        # scales the image
+        resized_image = cv2.resize(image, middle_size, interpolation = cv2.INTER_AREA)
+        
+        
+        x_pixel_drop_count = middle_size[0] - target_size[0]
+            
+        # if the int(pixel_drop_count /2) isn't a whole number there would be a extra pixel
+            # to handle this round one up, the other down
+        xstart = math.ceil(x_pixel_drop_count/2)
+        xend = middle_size[0] - math.floor(x_pixel_drop_count/2)
                 
-        #for i in range(len(self.camera_handlers)):
-        if True:
-            #current_cam = self.camera_handlers[i]
-            
-            #if current_cam.current_image == None:
-                #continue
-            if self.current_image == None:
-                return
-            image = self.br.imgmsg_to_cv2(self.current_image)
-            
-            
-            
-            size = (1024, 512)
-            self.get_logger().info(f"Changing size from {image.shape} to {size}")
-            resized = cv2.resize(image, size, interpolation = cv2.INTER_AREA)
-            
-            
-            
-            
-            
-            # Display image
-            
-            #image2D = self.current_image.data.reshape((self.current_image.width, self.current_image.height))
-            
-            IMAGES_FN = '/navigator/src/perception/driveable_area/cameraView/'
-            
-            cv2.imwrite(IMAGES_FN + "cameraCenter.jpeg", image)
-            
-        return    
-    
-
+        # Crops the image
+        cropped_image = resized_image[middle_size[1] - target_size[1]:, xstart: xend, :3]
+                
+        # inference_segmentor
+        segmented_image = inference_segmentor(self.model, cropped_image)
+        
+        
+        resize_nparr = np.ones((middle_size[1], middle_size[0])) * 2
+        resize_nparr[middle_size[1] - target_size[1]:, xstart: xend] = segmented_image[0]
+        
+        output_image = cv2.resize(resize_nparr, original_size, interpolation = cv2.INTER_AREA)
+        
+        
+        self.get_logger().info(f"{time.time() - start}")
+        
+        """
+        IMAGES_FN = '/navigator/src/perception/driveable_area/cameraView/'
+        
+        
+        fig1 = plt.figure()
+        ax1 = fig1.add_subplot(111)
+        h = ax1.matshow(output_image)
+        plt.colorbar(h)
+        # plt.show()[]
+        fig1.savefig(IMAGES_FN + "drivearea.png")
+        plt.close()
+        """
+        
 
         
         

@@ -213,7 +213,7 @@ def generate_launch_description():
         ground_seg,
         static_grid,
         # prednet_inference,
-        driveable_area,
+        # driveable_area,
 
         # PLANNING
         grid_summation,
