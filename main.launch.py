@@ -220,11 +220,11 @@ def generate_launch_description():
         linear_actuator,
         # web_bridge,
         gnss,
-        left_lidar_driver,
-        left_lidar_pointcloud,
-        right_lidar_driver,
-        right_lidar_pointcloud,
-        camera,
+        # left_lidar_driver,
+        # left_lidar_pointcloud,
+        # right_lidar_driver,
+        # right_lidar_pointcloud,
+        # camera,
 
         # MISC
         clock,
@@ -240,7 +240,7 @@ def generate_launch_description():
         
 
         # PLANNING
-        # map_manager,
+        map_manager,
         grid_summation,
         rtp,
 

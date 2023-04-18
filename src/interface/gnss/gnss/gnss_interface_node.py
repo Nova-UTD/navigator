@@ -1,6 +1,7 @@
 import io
 import math
 from dataclasses import dataclass
+from datetime import datetime
 
 import pynmea2
 import pyproj
@@ -73,7 +74,8 @@ class GnssInterfaceNode(Node):
         self.lon0 = -96.73645812583334
         utm_zone = 14
         self.proj = pyproj.Proj(
-            '+proj=tmerc +lat_0=32.9881733525 +lon_0=-96.73645812583334 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m  +vunits=m', preserve_units=True)
+            '+proj=tmerc +lat_0=32.9881733525 +lon_0=-96.73645812583334 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +geoidgrids=./data/egm96_15.gtx +vunits=m +no_defs', preserve_units=True)
+
 
         self.speed = 0.0
 
@@ -269,8 +271,13 @@ class GnssInterfaceNode(Node):
 
     def close(self):
         self.get_logger().info(f"CLOSING GNSS with {len(self.trace)} pts")
-
-        with open("trace.txt", 'w') as f:
+        '''
+        if len(self.trace) < 10:
+            self.get_logger().warning("Trace was too short. Not saving to file.")
+            return
+        '''
+        datestring = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
+        with open(f"trace{datestring}.txt", 'w') as f:
             ls = LineString(self.trace)
             f.write(ls.wkt)
 
