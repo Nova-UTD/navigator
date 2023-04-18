@@ -21,6 +21,8 @@ from tf2_ros import TransformBroadcaster
 from shapely.geometry import LineString, Point
 import shapely
 
+RAM_CONFIG_STRING = "B5 62 06 8A 32 00 01 01 00 00 24 00 31 10 00 25 00 31 10 01 18 00 31 10 01 21 00 11 20 04 05 00 22 20 03 01 00 21 30 64 00 07 00 91 20 01 16 00 91 20 01 1B 00 91 20 01 8E 3E"
+BBR_CONFIG_STRING = "B5 62 06 8A 32 00 01 02 00 00 24 00 31 10 00 25 00 31 10 01 18 00 31 10 01 21 00 11 20 04 05 00 22 20 03 01 00 21 30 64 00 07 00 91 20 01 16 00 91 20 01 1B 00 91 20 01 8F 6F"
 
 def toRadians(degrees: float):
     return degrees * math.pi / 180.0
@@ -243,6 +245,14 @@ class GnssInterfaceNode(Node):
                 '/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.2.1:1.0', 115200, timeout=0.05)
             self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus, self.bus))
             self.get_logger().info("Connected to GNSS")
+
+            # Sends configuration on intialization so output is 10hz
+            byte_data = bytes.fromHex(RAM_CONFIG_STRING.replace(" ", ""))
+            self.bus.write(byte_data) # SEND CONFIG TO RAM LAYER
+            byte_data = bytes.fromHex(BBR_CONFIG_STRING.replace(" ", ""))
+            self.bus.write(byte_data) # SEND CONFIG TO BBR LAYER         
+            self.get_logger().info("Configuration sent!")
+
         except serial.SerialException as e:
             self.get_logger().error(str(e))
             status_msg = self.initStatusMsg()
