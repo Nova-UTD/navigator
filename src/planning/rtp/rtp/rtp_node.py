@@ -59,7 +59,7 @@ DEPTH: int = 3
 # These are vdehicle constants for the GEM e6.
 # The sim vehicle (Tesla Model 3) has similar constants.
 WHEEL_BASE: float = 3.5  # meters
-MAX_TURN_ANGLE = 0.30  # radians
+MAX_TURN_ANGLE = 0.46  # radians
 COST_CUTOFF = 90
 
 
@@ -355,7 +355,7 @@ class RecursiveTreePlanner(Node):
         if best_path is None:
             status.level = DiagnosticStatus.ERROR
             status.message = "Could not find viable path. Likely too far off course."
-            # self.get_logger().error("Could not find viable path")
+            self.get_logger().error("Could not find viable path")
             self.status_pub.publish(status)
             return
 
@@ -375,9 +375,17 @@ class RecursiveTreePlanner(Node):
             pose_msg.pose.position.y = pose[1] * 0.4 - 30
             # TODO: Add heading (pose[2]?)
             result_msg.poses.append(pose_msg)
-
+        if len(result_msg.poses) == 0:
+            pose_msg = PoseStamped()
+            pose_msg.header.frame_id = "base_link"
+            pose_msg.header.stamp = self.clock
+            pose_msg.pose.position.x = 50 * 0.4 - 20
+            pose_msg.pose.position.y = 75 * 0.4 - 30
+            # TODO: Add heading (pose[2]?)
+            result_msg.poses.append(pose_msg)
+            self.get_logger().info('Publishjed singleposition')
         command = CarlaEgoVehicleControl()
-        command.steer = best_path.poses[2][2] * -2.5  # First steering value
+        command.steer = best_path.poses[3][2] * -2.7  # First steering value
         # command.steer = -1.0
 
         if command.steer > 1.0:
@@ -387,18 +395,23 @@ class RecursiveTreePlanner(Node):
 
         command.header.stamp = self.clock
 
-        MAX_SPEED = np.min([1.0, (distance_from_barrier - 5)/2])
+        MAX_SPEED = np.min([2.0, (distance_from_barrier - 5)/2])
         target_speed = MAX_SPEED # m/s, ~10mph
 
         self.get_logger().info(f"Current speed: {self.speed}")
 
         pid_error = target_speed - self.speed
-
+        
+        if pid_error > 0:
+            command.throttle = min(pid_error *0.3, 0.4)
+        else:
+            command.brake = min(pid_error *0.3 *-1, 0.4)
+            
         # if pid_error > 3.0:
-        #     command.throttle = 0.6
+        #     command.throttle = 0.5
         #     command.brake = 0.0
         # elif pid_error > 0.5:
-        #     command.throttle = 0.3
+        #     command.throttle = 0.4
         #     command.brake = 0.0
         # elif pid_error > -1.0:
         #     # Coast if speeding by ~2 mph
@@ -414,13 +427,13 @@ class RecursiveTreePlanner(Node):
         #     command.throttle = 0.0
         #     command.brake = 0.8
 
-        if self.speed > MAX_SPEED + 0.5:
-            command.brake = 0.4
-        MAX_SPEED = 1.0
-        if self.speed > MAX_SPEED:
-            command.throttle = 0.0
-        else:
-            command.throttle = 0.2
+        # if self.speed > MAX_SPEED + 0.5:
+        #     command.brake = 0.4
+        # MAX_SPEED = 1.0
+        # if self.speed > MAX_SPEED:
+        #     command.throttle = 0.0
+        # else:
+        #     command.throttle = 0.4
 
         if self.current_mode == Mode.AUTO:
             print("AUTO")
