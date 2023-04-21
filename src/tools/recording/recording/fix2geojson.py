@@ -34,20 +34,29 @@ class FixToGeoJSONNode(Node):
         super().__init__("FixToGeoJSONNode")
 
         fix_sub = self.create_subscription(NavSatFix, "/gnss/fix", self.fixCb, 1)
+        # odom_sub = self.create_subscription(Odometry, "/gnss/odometry", self.odomCb, 1)
         self.coordinates = []
 
     def close(self):
-        ls = LineString(self.coordinates)
+        # ls = LineString(self.coordinates)
 
-        json = shapely.to_geojson(ls)
+        # json = shapely.to_geojson(ls)
 
-        with open("fix.geojson", "w") as f:
-            f.write(json)
+        # with open("fix.geojson", "w") as f:
+        #     f.write(json)
 
-        self.get_logger().info(f"Wrote {len(self.coordinates)}")
+        with open("trace.csv", "w") as f:
+            for coord in self.coordinates:
+                f.write(f"{coord[0]},{coord[1]}\n")
+
+        self.get_logger().info(f"Wrote {len(self.coordinates)} points")
+
+    def odomCb(self, msg: Odometry):
+        pos = [msg.pose.pose.position.x, msg.pose.pose.position.y]
+        self.coordinates.append(pos)
 
     def fixCb(self, msg: NavSatFix):
-        coord = Point(msg.longitude, msg.latitude)
+        coord = [msg.longitude, msg.latitude]
         self.coordinates.append(coord)
 
 

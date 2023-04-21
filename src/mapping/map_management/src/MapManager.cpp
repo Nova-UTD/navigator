@@ -87,8 +87,6 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     }
 
     drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
-    drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
-
 }
 
 /**
@@ -97,7 +95,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
  * 2. Select the point following it in the linestring.
  * 3. For this point and the following points, append them until the current point's
  * distance to the car is beyond some max constant
-*/
+ */
 void MapManagementNode::updateLocalRouteLinestring()
 {
     float MAX_DISTANCE = 50.0; // meters
@@ -116,10 +114,12 @@ void MapManagementNode::updateLocalRouteLinestring()
     {
         float current_distance = bg::distance(route_pt, ego_pos);
 
-        if (current_distance < MAX_DISTANCE){
+        if (current_distance < MAX_DISTANCE)
+        {
             closest_point_found = true;
         }
-        if (closest_point_found) {
+        if (closest_point_found)
+        {
             bg::append(local_ls, route_pt);
 
             if (current_distance > MAX_DISTANCE)
@@ -181,7 +181,6 @@ std::vector<odr::LaneKey> laneKeysFromPoint(odr::point pt, bgi::rtree<odr::value
 void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
 {
 
-
     // For the first two points, get their lanekeys
     // TODO: Extend this to n points
     auto vehicle_tf = getEgoTf();
@@ -216,7 +215,7 @@ void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
     }
     if (from_keys.size() < 1)
     {
-    RCLCPP_ERROR(get_logger(), "Route start does not fall within a lane.");
+        RCLCPP_ERROR(get_logger(), "Route start does not fall within a lane.");
         return;
     }
     if (to_keys.size() < 1)
@@ -287,7 +286,8 @@ void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute:
         response->message = "Service call requires at least two points.";
         response->success = false;
         return;
-    } else if (request->route_nodes.size() > 2)
+    }
+    else if (request->route_nodes.size() > 2)
     {
         RCLCPP_WARN(get_logger(), "Routing only supported for two points at the moment. Remaining points will be ignored.");
     }
