@@ -246,12 +246,12 @@ class GnssInterfaceNode(Node):
             self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus, self.bus))
             self.get_logger().info("Connected to GNSS")
 
-            # Sends configuration on intialization so output is 10hz
-            byte_data = bytes.fromHex(RAM_CONFIG_STRING.replace(" ", ""))
-            self.bus.write(byte_data) # SEND CONFIG TO RAM LAYER
-            byte_data = bytes.fromHex(BBR_CONFIG_STRING.replace(" ", ""))
-            self.bus.write(byte_data) # SEND CONFIG TO BBR LAYER         
-            self.get_logger().info("Configuration sent!")
+            # # Sends configuration on intialization so output is 10hz
+            # byte_data = bytes.fromHex(RAM_CONFIG_STRING.replace(" ", ""))
+            # self.bus.write(byte_data) # SEND CONFIG TO RAM LAYER
+            # byte_data = bytes.fromHex(BBR_CONFIG_STRING.replace(" ", ""))
+            # self.bus.write(byte_data) # SEND CONFIG TO BBR LAYER         
+            # self.get_logger().info("Configuration sent!")
 
         except serial.SerialException as e:
             self.get_logger().error(str(e))
