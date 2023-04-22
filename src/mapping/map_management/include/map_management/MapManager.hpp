@@ -12,6 +12,7 @@
 #include <chrono> // Time literals
 #include <vector>
 #include <string>
+#include <deque>
 
 // libOpenDRIVE includes
 #include "OpenDriveMap.h"
@@ -28,6 +29,7 @@
 #include <boost/geometry/geometries/box.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/index/rtree.hpp>
+#include <boost/geometry/algorithms/intersection.hpp>
 #include <boost/geometry/io/wkt/read.hpp>
 
 // LEMON

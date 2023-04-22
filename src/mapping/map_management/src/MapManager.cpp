@@ -458,9 +458,27 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     int idx = 0;
 
     bgi::rtree<odr::value, bgi::rstar<16, 4>> local_tree;
+    std::unordered_map< unsigned int, odr::polygon> box_to_poly_map;
+    for (unsigned i = 0; i < lane_shapes_in_range.size(); ++i){
+        std::deque<odr::polygon> output;
+        odr::polygon a;
+        odr::polygon b;
 
-    for (unsigned i = 0; i < lane_shapes_in_range.size(); ++i)
-        local_tree.insert(lane_shapes_in_range.at(i));
+        bg::assign(a, lane_shapes_in_range.at(i).first);
+        bg::assign(b, search_region);
+        bg::intersection(a,b, output);
+        int count = 0;
+        if(output.size()>1){
+            local_tree.insert(lane_shapes_in_range.at(i));
+            odr::polygon poly;
+            bg::convert(lane_shapes_in_range.at(i).first, poly);
+            box_to_poly_map[lane_shapes_in_range.at(i).second] = poly;
+            
+        } else{
+            local_tree.insert(lane_shapes_in_range.at(i));
+            box_to_poly_map[lane_shapes_in_range.at(i).second] = output[0];
+        }         
+    }
 
     int area = 0;
     int height = 0;
@@ -508,7 +526,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                 for (auto pair : local_tree_query_results)
                 {
                     // auto pair = local_tree_query_results.front();
-                    odr::ring ring = this->lane_polys_.at(pair.second).second;
+                    odr::ring ring;
+                    bg::convert(this->lane_polys_.at(pair.second).second, ring);
                     odr::Lane lane = this->lane_polys_.at(pair.second).first;
                     // odr::Road road = this->map_->id_to_road.at(lane.key.road_id);
                     bool point_is_within_shape = bg::within(p, ring);
@@ -544,8 +563,10 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                 // Distances > 10 are set to 100
                 if (dist > 32)
                     dist = 100;
-                else
-                    dist *= 5;
+                //else
+                    //dist *= 5;
+                
+                //RCLCPP_INFO(get_logger(), "dist value %i", dist);
 
                 route_dist_grid_data.push_back(dist);
             }

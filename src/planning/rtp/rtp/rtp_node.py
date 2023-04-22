@@ -357,8 +357,11 @@ class RecursiveTreePlanner(Node):
             status.message = "Could not find viable path. Likely too far off course."
             self.get_logger().error("Could not find viable path")
             self.status_pub.publish(status)
-            return
-
+            path = CostedPath()
+            path.poses = [[origin[0], origin[1], 0.0]]
+            path.cost = 0
+            best_path = path
+            
         barrier_idx = self.getBarrierIndex(best_path, self.speed_costmap)
         barrier_pose = best_path.poses[barrier_idx]
 
