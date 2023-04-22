@@ -15,7 +15,7 @@
     <link name="model_link">
         <visual>
             <geometry>
-                <mesh filename="file:///navigator/data/hailbopp.stl" scale="1.0 1.0 1.0" />
+                <mesh filename="file:////home/nova/navigator/data/hailbopp.stl" scale="1.0 1.0 1.0" />
             </geometry>
             <material name="maroon" />
             <origin xyz="-2.6 0 0.28" rpy="0 0 1.570796" />
@@ -25,7 +25,7 @@
     <joint name="model_joint" type="fixed">
         <parent link="base_link" />
         <child link="model_link" />
-        <origin xyz="-1.2 -2.75 -0.7" rpy="0 0 -1.570796" />
+        <origin xyz="-1.2 -2.75 0.0" rpy="0 0 -1.570796" />
     </joint>
 
 
@@ -101,7 +101,7 @@
   <joint name="lidar_right_joint" type="fixed">
     <parent link="base_link"/>
     <child link="lidar_right"/>
-    <origin xyz="0.0 -0.73 1.5" rpy="-.20 .20 -.85"/>
+    <origin xyz="0.0 -0.73 1.8" rpy="-.20 .20 -.85"/>
   </joint>
 
   <link name="lidar_left">
@@ -126,7 +126,7 @@
   <joint name="lidar_left_joint" type="fixed">
     <parent link="base_link"/>
     <child link="lidar_left"/>
-    <origin xyz="0.0 0.73 1.5" rpy="0.15 0.2 0.55"/>
+    <origin xyz="0.0 0.73 1.8" rpy="0.15 0.2 0.55"/>
   </joint>
 
   <link name="zed2_left_camera_optical_frame"></link>

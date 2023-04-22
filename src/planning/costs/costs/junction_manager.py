@@ -35,6 +35,8 @@ from carla_msgs.msg import CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
 from rosgraph_msgs.msg import Clock
+from sensor_msgs.msg import Joy
+
 
 import matplotlib.pyplot as plt
 
@@ -54,8 +56,9 @@ class JunctionManager(Node):
         self.ego_has_stopped = False
         self.last_stop_time = 0.0
         self.last_in_junction_time = 0.0
+        self.button = 0.0
 
-        # Subscriptions and publishers
+        # Subs
         self.current_occupancy_sub = self.create_subscription(
             OccupancyGrid, '/grid/occupancy/current', self.currentOccupancyCb, 1)
 
@@ -65,20 +68,29 @@ class JunctionManager(Node):
         self.speed_sub = self.create_subscription(
             CarlaSpeedometer, '/carla/hero/speedometer', self.speedometerCb, 1)
 
+        self.clock_sub = self.create_subscription(
+        Clock, '/clock', self.clockCb, 1)
+
+        self.joy_sub = self.create_subscription(
+            Joy, '/joy', self.joyCb, 10)
+
+        # Pubs
         self.stateful_grid_pub = self.create_publisher(
             OccupancyGrid, '/grid/stateful_junction', 1)
 
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/node_statuses', 1)
 
-        self.clock_sub = self.create_subscription(
-            Clock, '/clock', self.clockCb, 1)
+        
 
     def speedometerCb(self, msg: CarlaSpeedometer):
         self.speed = msg.speed
 
     def clockCb(self, msg: Clock):
         self.time_sec = msg.clock.sec + msg.clock.nanosec * 1e-9
+
+    def buttonCb(self, msg: Joy):
+        self.button = msg.buttons[8]
 
     def resizeOccupancyGrid(self, original: np.ndarray) -> np.ndarray:
         # This is a temporary measure until our current occ. grid's params
@@ -159,8 +171,13 @@ class JunctionManager(Node):
             self.last_stop_time < STOP_STALENESS_THRESHOLD
 
         if has_stopped_recently:
-            junction_is_occupied = self.junctionIsOccupied(occupancy, junction)
-            if not junction_is_occupied:
+            # Changing to xbox button press
+            # junction_is_occupied = self.junctionIsOccupied(occupancy, junction)
+            # if not junction_is_occupied:
+            #     can_enter = True
+
+            # Checks if Xbox button is pressed
+            if(self.button != 0.0):
                 can_enter = True
 
         if not can_enter:

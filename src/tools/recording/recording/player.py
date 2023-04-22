@@ -223,7 +223,9 @@ class player(Node):
         self.search_to = strptime('30-1-1_0-0-0', '%y-%m-%d_%H-%M-%S')
         self.processArguments(sys.argv)
 
+
         self.records = self.getFilesInRange()
+        self.get_logger().info(f"Playing {len(self.records)} records from {strftime('%m/%d/%Y',self.search_from)} to {strftime('%m/%d/%Y',self.search_to)}")
         # self.setUpDirectory()
 
         self.tf_broadcaster = TransformBroadcaster(self)
@@ -282,6 +284,9 @@ class player(Node):
         for record in self.records:
             # Load the arrays from .npz
             npz: np.Npz = np.load(record)
+
+            self.get_logger().info(f"Playing {record}")
+
             cam = npz['cam']
             occ = npz['occ']
             odom = npz['odom']
@@ -293,7 +298,7 @@ class player(Node):
                 time_nsec = int((times[idx]-time_sec) * 1e9)
 
                 # Prepare camera message
-                image_msg: Image = numpyToImage(cam[idx], 'bgra8')
+                image_msg: Image = numpyToImage(cam[idx], 'bgr8')
 
                 # Prepare occupancy grid message
                 occ_msg: OccupancyGrid = numpyToOccupancyGrid(occ[idx])
@@ -357,6 +362,7 @@ class player(Node):
                         continue  # Recording too old
                     elif folder_time > self.search_to:
                         continue  # Recording too new
+
                     with os.scandir(entry.path) as records:
                         for record in records:
                             if not record.is_file():
@@ -401,6 +407,12 @@ class player(Node):
         for arg in args:
             arg: str
             if arg.find('from=') != -1:
+                datestring = arg.split('=')[1]
+                if len(datestring.split('-')) == 2:
+                    year = datetime.now().year
+                    self.search_from = strptime(f"{year}-{datestring}", '%Y-%m-%d')
+                elif len(datestring.split('-')) == 3:
+                    self.search_from = strptime(datestring, '%y-%m-%d')
                 print(arg.split('=')[1])
             elif arg.find('src=') != -1:
                 self.srcdir = arg.split('=')[1]

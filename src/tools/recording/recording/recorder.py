@@ -85,7 +85,6 @@ name_to_dtypes = {
 
 # Larger = fewer writes, but they take longer.
 RAM_LIMIT = 1e8  # bytes.
-
 FRAME_RATE = 5  # FPS. Messages will be recorded at this rate.
 
 
@@ -138,6 +137,8 @@ class recorder(Node):
         self.stamps = []
         self.total_disk_usage = 0  # Bytes
 
+        self.recording_enabled = False
+
         self.setUpDirectory()
 
         current_occ_grid_sub = self.create_subscription(
@@ -168,7 +169,11 @@ class recorder(Node):
 
         state_kv = KeyValue()
         state_kv.key = 'state'
-        state_kv.value = f"recording"
+        if self.recording_enabled:
+            state_kv.value = 'recording'
+        else:
+            state_kv.value = 'idle'
+
         msg.values.append(state_kv)
 
         disk_usage_kv = KeyValue()
@@ -192,6 +197,11 @@ class recorder(Node):
         Add the latest received data to RAM.
         Once RAM is full (RAM_LIMIT), calls writeToFile().
         """
+
+        if not self.recording_enabled:
+            status_msg = self.getStatus()
+            self.status_pub.publish(status_msg)
+            return
 
         if self.current_cam_msg is None:
             self.get_logger().warning("Cam not received")

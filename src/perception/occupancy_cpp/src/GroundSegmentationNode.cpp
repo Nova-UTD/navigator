@@ -14,6 +14,8 @@ using namespace std::chrono_literals;
 
 GroundSegmentationNode::GroundSegmentationNode() : Node("ground_segmentation_node")
 {
+  this->declare_parameter<double>("sensitivity", 0.2);
+
   // Subscribe to and use CARLA's clock
   clock_sub = this->create_subscription<Clock>(
       "/clock", 10,
@@ -59,7 +61,7 @@ pcl::PointCloud<pcl::PointXYZI> GroundSegmentationNode::removeGround(pcl::PointC
 {
   float lidar_height = 0.0; // TODO: Make ROS parameter
   float range = 80.0;
-  float s = 0.55;         // ?
+  float s = this->get_parameter("sensitivity").as_double();         // Original: 0.55
   float res = 0.4;        // Grid cell size, in meters
   float max_height = 2.5; // Exclude points above this height, in meters
 

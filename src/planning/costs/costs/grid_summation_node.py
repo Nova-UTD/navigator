@@ -80,7 +80,7 @@ class GridSummationNode(Node):
             CarlaSpeedometer, '/carla/hero/speedometer', self.speedometerCb, 1)
 
         self.steering_cost_pub = self.create_publisher(
-            OccupancyGrid, '/grid/cost', 1)
+            OccupancyGrid, '/grid/steering_cost', 1)
 
         self.speed_cost_pub = self.create_publisher(
             OccupancyGrid, '/grid/speed_cost', 1)
@@ -206,6 +206,11 @@ class GridSummationNode(Node):
                 weighted_current_occ_arr)
             steering_cost += weighted_current_occ_arr
             speed_cost += weighted_current_occ_arr
+        elif stale:
+            print("OCCUPANCY WAS STALE")
+        elif empty:
+            print("OCCUPANCY WAS EMPTY")
+            
 
         # 2. Future occupancy
         stale = self.checkForStaleness(self.future_occupancy_grid, status)
@@ -228,7 +233,7 @@ class GridSummationNode(Node):
             msg = self.drivable_grid
             weighted_drivable_arr = self.getWeightedArray(
                 msg, DRIVABLE_GRID_SCALE)
-            steering_cost += weighted_drivable_arr
+            # steering_cost += weighted_drivable_arr
             # speed_cost += weighted_drivable_arr
 
         # 4. Route distance
@@ -259,32 +264,32 @@ class GridSummationNode(Node):
         # plt.show()
 
         # Publish as an OccupancyGrid
-        result_msg = OccupancyGrid()
+        steering_cost_msg = OccupancyGrid()
 
-        result_msg.data = steering_cost.astype(np.int8).flatten().tolist()
-        result_msg.info = self.drivable_grid.info
-        result_msg.header = self.drivable_grid.header
+        steering_cost_msg.data = steering_cost.astype(np.int8).flatten().tolist()
+        steering_cost_msg.info = self.drivable_grid.info
+        steering_cost_msg.header = self.drivable_grid.header
 
-        self.steering_cost_pub.publish(result_msg)
+        self.steering_cost_pub.publish(steering_cost_msg)
 
-        result_msg.data = speed_cost.astype(np.int8).flatten().tolist()
-        self.speed_cost_pub.publish(result_msg)
+        steering_cost_msg.data = speed_cost.astype(np.int8).flatten().tolist()
+        self.speed_cost_pub.publish(steering_cost_msg)
 
         egma_msg = Egma()
-        egma_msg.header = result_msg.header
+        egma_msg.header = steering_cost_msg.header
 
-        current_stamp = result_msg.header.stamp
+        current_stamp = steering_cost_msg.header.stamp
         t = current_stamp.sec + current_stamp.nanosec * 1e-9
         for i in range(15):
-            frame = result_msg
+            frame = steering_cost_msg
 
             t += 0.1  # dt = 0.1 seconds
             next_stamp = current_stamp
             next_stamp.sec = int(t)
             next_stamp.nanosec = int(t * 1e9 % 1e9)
 
-            result_msg.header.stamp = next_stamp
-            result_msg.header.frame_id = 'base_link'
+            steering_cost_msg.header.stamp = next_stamp
+            steering_cost_msg.header.frame_id = 'base_link'
 
             egma_msg.egma.append(frame)
 
