@@ -253,8 +253,13 @@ class linear_actuator_node(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-        
-    channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
+    
+    # LA channel
+    # channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
+    # EPAS channel 
+    channel='/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00'
+    # OBC channel
+    # channel = '/dev/serial/by-id/usb-OnLogic_K800_eMCU_50010066514151D2-if02'
     bitrate = 250000
 
     try:
