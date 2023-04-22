@@ -37,12 +37,10 @@ class linear_actuator_node(Node):
     vehicle_command_sub = None
     brake = None
 
-    def __init__(self, bus):
+    def __init__(self):
         super().__init__('linear_actuator_node')
 
-        self.bus = bus
-
-        self.get_logger().info("Bus connected! Hello, world.")
+        self.bus = None
 
         self.vehicle_command_sub = self.create_subscription(
             CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', self.sendBrakeControl, 10)
@@ -54,6 +52,12 @@ class linear_actuator_node(Node):
         self.clock = Clock().clock
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 10)
+
+        self.current_mode = Mode.DISABLED
+        self.current_mode_sub = self.create_subscription(
+            Mode, '/guardian/mode', self.currentModeCb, 1)
+
+        self.retry_connection_timer = self.create_timer(1.0, self.connectToBus)
 
         self.current_mode = Mode.DISABLED
         self.current_mode_sub = self.create_subscription(
@@ -90,19 +94,16 @@ class linear_actuator_node(Node):
 
     def connectToBus(self):
         self.bus: can.interface.Bus
-        self.get_logger().info("Connect called")
         if self.bus is not None and self.bus.state == can.bus.BusState.ACTIVE:
-            self.get_logger().info("Bus already connected.")
             return
         try:
             self.status = self.initStatusMsg()
             self.status.level = DiagnosticStatus.ERROR
             self.status.message = "Connecting to LA."
-            channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
+            channel = '/dev/serial/by-id/usb-OnLogic_K800_eMCU_50010066514151D2-if02'
             bitrate = 250000
-            
             self.bus = can.interface.Bus(
-                bustype='slcan', channel=channel, bitrate=bitrate )
+                bustype='slcan', channel=channel, bitrate=bitrate, )
             self.get_logger().warning("CONNECTED")
             response = self.enableClutch(self.bus)
             self.get_logger().warning(
@@ -241,7 +242,6 @@ class linear_actuator_node(Node):
             bus.send(message)
             print("Sending message!")
             msg = bus.recv(0.1)
-            return msg
             print(f"Got response {msg}")
         except can.exceptions.CanError as e:
             self.status.level = DiagnosticStatus.ERROR
@@ -249,42 +249,23 @@ class linear_actuator_node(Node):
 
         self.status_pub.publish(self.status)
 
+        return msg
 
 
 def main(args=None):
     rclpy.init(args=args)
-    
-    # LA channel
-    # channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
-    # EPAS channel 
-    channel='/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00'
-    # OBC channel
-    # channel = '/dev/serial/by-id/usb-OnLogic_K800_eMCU_50010066514151D2-if02'
-    bitrate = 250000
 
-    try:
-        bus = can.interface.Bus(bustype='slcan', channel=channel, bitrate=bitrate)
+    LAN = linear_actuator_node()
 
-        data = [0xF5, 0x00, 0, 0, 0x01, 0, 0, 0]
+    rclpy.spin(LAN)
 
-        message = can.Message(
-            arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
+    # Destroy the node explicitly
+    # (optional - otherwise it will be done automatically
+    # when the garbage collector destroys the node object)
+    linear_actuator_node.disableClutch()
+    linear_actuator_node.destroy_node()
+    rclpy.shutdown()
 
-        try:
-            bus.send(message)
-
-        LAN = linear_actuator_node(bus)
-        rclpy.spin(LAN)
-        
-        # Destroy the node explicitly
-        # (optional - otherwise it will be done automatically
-        # when the garbage collector destroys the node object)
-        linear_actuator_node.disableClutch()
-        linear_actuator_node.destroy_node()
-        rclpy.shutdown()
-    finally:
-        print("Shutting down CAN bus.")
-        bus.shutdown()
 
 if __name__ == '__main__':
     main()
