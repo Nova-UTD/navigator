@@ -264,6 +264,15 @@ def main(args=None):
 
     try:
         bus = can.interface.Bus(bustype='slcan', channel=channel, bitrate=bitrate)
+
+        data = [0xF5, 0x00, 0, 0, 0x01, 0, 0, 0]
+
+        message = can.Message(
+            arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
+
+        try:
+            bus.send(message)
+
         LAN = linear_actuator_node(bus)
         rclpy.spin(LAN)
         

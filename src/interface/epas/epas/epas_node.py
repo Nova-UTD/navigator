@@ -64,18 +64,20 @@ class EpasNode(Node):
 
     def connectToBus(self):
         # EPAS channel
-        # channel='/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00'
+        channel='/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00'
         # LA channel 
-        channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
+        # channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
         self.bus: can.interface.Bus
         if self.bus is not None and self.bus.state == can.bus.BusState.ACTIVE:
             return
         try:
             self.bus = can.interface.Bus(
                 bustype='slcan', channel=channel, bitrate=500000, receive_own_messages=True)
+                
+
         except can.exceptions.CanInitializationError as e:
             self.status.level = DiagnosticStatus.ERROR
-            self.status.message = f"EPAS failed to connect to bus. {e}"
+            self.status.message = f"EPAS/LA failed to connect to bus. {e}"
             self.status_pub.publish(self.status)
         return
 
@@ -101,6 +103,18 @@ class EpasNode(Node):
 
     def commandCb(self, msg: CarlaEgoVehicleControl):
         self.cmd_msg = msg
+
+        # LINEAR ACTUATOR LOGIC #################
+        if self.bus is None:
+            self.get_logger().warn("Bus not yet set. Skipping command")
+        if msg.brake < 0.1:
+            # We don't bother with small brake signals
+            return
+
+        position = max((1-msg.brake) / 2 - 0.1, 0.0)
+        response = self.sendToPosition(position, self.bus)
+        #########################################
+
 
     def parseIncomingMessages(self, msg1_data: bytearray, msg2_data: bytearray) -> EpasState:
         torque = msg1_data[0]
@@ -187,10 +201,121 @@ class EpasNode(Node):
             self.sendCommand(self.target_angle, self.bus)
         self.status_pub.publish(self.status)
 
+############################################
+############################################
+### LINEAR ACTUATOR ########################
+############################################
+############################################
+
+
+def sendToPosition(self, pos: float, bus: can.Bus):
+
+        # self.get_logger().info('hey im in the sendtoposition function')
+        """Given position, send appropriate CAN messages to LA
+
+        Args:
+            pos (float): Position from 0.0 (fully extended) to 1.0 (fully retracted)
+
+        Position command format:
+        [0x0F 0x4A  DPOS_LOW Byte3 0 0 0 0]
+
+        Byte 3:
+        [ClutchEnable MotorEnable POS7 POS6 POS5 POS4 POS3]
+        """
+
+        self.status = self.initStatusMsg()
+
+        if self.bus is None:
+            self.get_logger().warn("Bus not yet set.")
+            return
+
+        POSITION_MAX = 3.45
+        POSITION_MIN = 0.80
+        range = POSITION_MAX - POSITION_MIN
+        pos_inches = pos * range + POSITION_MIN
+
+        # Account for 0.5 inch offset
+        pos_value = int(pos_inches * 1000) + 500
+
+        dpos_hi = int(pos_value / 0x100)
+        dpos_low = pos_value % 0x100
+
+        clutch_enable = True
+        motor_enable = True
+        clutch_enable_byte = clutch_enable * 0x80
+        motor_enable_byte = motor_enable * 0x40
+        byte3 = sum([dpos_hi, clutch_enable_byte, motor_enable_byte])
+
+        data = [0x0F, 0x4A, dpos_low, byte3, 0, 0, 0]
+
+        message = can.Message(
+            arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
+
+        try:
+            bus.send(message)
+            print("Sending message!")
+            msg = bus.recv(0.1)
+            return msg
+            print(f"Got response {msg}")
+        except can.exceptions.CanError as e:
+            self.status.level = DiagnosticStatus.ERROR
+            self.status.message = "LA failed to send command: {e}."
+
+        # NEED TO MERGE STATUS??
+        # self.status_pub.publish(self.status)
+
+def disableClutch(self):
+        """Turn off the motor, then the clutch.
+
+        Args:
+            bus (can.Bus): Bus to interact with
+
+        Returns:
+            _type_: _description_
+        """
+
+        bus = self.bus
+
+        # Disable motor
+        clutch_enable = True
+        motor_enable = False
+        clutch_enable_byte = clutch_enable * 0x80
+        motor_enable_byte = motor_enable * 0x40
+        byte3 = clutch_enable_byte + motor_enable_byte
+
+        data = [0x0F, 0x4A, 0, byte3, 0, 0, 0]
+
+        message = can.Message(
+            arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
+
+        bus.send(message)
+
+        time.sleep(0.1)  # Give motor time to stop
+
+        # Disable clutch
+        clutch_enable = False
+        motor_enable = False
+        clutch_enable_byte = clutch_enable * 0x80
+        motor_enable_byte = motor_enable * 0x40
+        byte3 = clutch_enable_byte + motor_enable_byte
+
+        data = [0x0F, 0x4A, 0, byte3, 0, 0, 0]
+
+        message = can.Message(
+            arbitration_id=COMMAND_ID, data=data, is_extended_id=True)
+
+        bus.send(message)
+
+        msg = bus.recv(0.1)
+        return msg
+
 
 def main(args=None):
     rclpy.init(args=args)
     epas_node = EpasNode()
     rclpy.spin(epas_node)
+
+    epas_node.disableClutch()
     epas_node.destroy_node()
+
     rclpy.shutdown()
