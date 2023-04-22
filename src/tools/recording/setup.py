@@ -25,6 +25,7 @@ setup(
             "recorder = recording.recorder:main",
             "player = recording.player:main",
             "fix2geojson = recording.fix2geojson:main",
+            "odom2tf = recording.odom2tf:main",
         ],
     },
 )
