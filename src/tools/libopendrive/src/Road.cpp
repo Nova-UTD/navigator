@@ -136,6 +136,64 @@ namespace odr
         return xyz;
     }
 
+    Vec3D Road::get_surface_pt_unchecked(double s, const double t, Vec3D *vn) const
+    {
+        double lanesection_s0;
+        if (s < 0)
+            lanesection_s0 = this->get_lanesection_s0(s+0.8);
+        else 
+            lanesection_s0 = this->get_lanesection_s0(s-0.8);
+        if (std::isnan(lanesection_s0))
+        {
+            throw std::runtime_error(string_format("cannot get road surface pt, no lane section for s %.3f, road length: %.3f", s, this->length));
+        }
+
+        const LaneSection &lanesection = this->s_to_lanesection.at(lanesection_s0);
+        const Lane &lane = lanesection.id_to_lane.at(lanesection.get_lane_id(s, t));
+        const double t_inner_brdr = lane.inner_border.get(s);
+        double h_t = 0;
+
+        if (lane.level)
+        {
+            const double h_inner_brdr = -std::tan(this->crossfall.get_crossfall(s, (lane.id > 0))) * std::abs(t_inner_brdr);
+            const double superelev = this->superelevation.get(s); // cancel out superelevation
+            h_t = h_inner_brdr + std::tan(superelev) * (t - t_inner_brdr);
+        }
+        else
+        {
+            h_t = -std::tan(this->crossfall.get_crossfall(s, (lane.id > 0))) * std::abs(t);
+        }
+
+        if (lane.s_to_height_offset.size() > 0)
+        {
+            const std::map<double, HeightOffset> &height_offs = lane.s_to_height_offset;
+
+            auto s0_height_offs_iter = height_offs.upper_bound(s);
+            if (s0_height_offs_iter != height_offs.begin())
+                s0_height_offs_iter--;
+
+            const double t_outer_brdr = lane.outer_border.get(s);
+            const double inner_height = s0_height_offs_iter->second.inner;
+            const double outer_height = s0_height_offs_iter->second.outer;
+            const double p_t = (t_outer_brdr != t_inner_brdr) ? (t - t_inner_brdr) / (t_outer_brdr - t_inner_brdr) : 0.0;
+            h_t += p_t * (outer_height - inner_height) + inner_height;
+
+            if (std::next(s0_height_offs_iter) != height_offs.end())
+            {
+                /* if successive lane height entry available linearly interpolate */
+                const double ds = std::next(s0_height_offs_iter)->first - s0_height_offs_iter->first;
+                const double d_lh_inner = std::next(s0_height_offs_iter)->second.inner - inner_height;
+                const double dh_inner = (d_lh_inner / ds) * (s - s0_height_offs_iter->first);
+                const double d_lh_outer = std::next(s0_height_offs_iter)->second.outer - outer_height;
+                const double dh_outer = (d_lh_outer / ds) * (s - s0_height_offs_iter->first);
+
+                h_t += p_t * (dh_outer - dh_inner) + dh_inner;
+            }
+        }
+
+        return this->get_xyz(s, t, h_t, nullptr, nullptr, vn);
+    }
+
     Vec3D Road::get_surface_pt(double s, const double t, Vec3D *vn) const
     {
         CHECK_AND_REPAIR(s >= 0, "s < 0", s = 0);

@@ -63,15 +63,20 @@ class EpasNode(Node):
         self.retry_connection_timer = self.create_timer(1.0, self.connectToBus)
 
     def connectToBus(self):
+        # EPAS channel
+        channel='/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00'
+        # LA channel 
+        # channel = '/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001C000F4E50430120303838-if00'
         self.bus: can.interface.Bus
         if self.bus is not None and self.bus.state == can.bus.BusState.ACTIVE:
             return
         try:
             self.bus = can.interface.Bus(
-                bustype='slcan', channel='/dev/serial/by-id/usb-Protofusion_Labs_CANable_1205aa6_https:__github.com_normaldotcom_cantact-fw_001500174E50430520303838-if00', bitrate=500000, receive_own_messages=True)
+                bustype='slcan', channel=channel, bitrate=500000, receive_own_messages=True)
+                
         except can.exceptions.CanInitializationError as e:
             self.status.level = DiagnosticStatus.ERROR
-            self.status.message = f"EPAS failed to connect to bus. {e}"
+            self.status.message = f"EPAS/LA failed to connect to bus. {e}"
             self.status_pub.publish(self.status)
         return
 
@@ -182,6 +187,7 @@ class EpasNode(Node):
                 self.current_mode == Mode.AUTO:
             self.sendCommand(self.target_angle, self.bus)
         self.status_pub.publish(self.status)
+
 
 
 def main(args=None):

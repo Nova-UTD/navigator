@@ -829,8 +829,6 @@ namespace odr
         std::vector<std::pair<Lane, ring>> polys;
 
         int idx = 0;
-
-        std::ofstream f("points2.csv");
         for (odr::Road road : this->get_roads())
         {
             for (odr::LaneSection lsec : road.get_lanesections())
@@ -897,11 +895,6 @@ namespace odr
                     bg::append(lane_ring, start_pt); // close the ring
                     polys.push_back(std::pair<Lane, ring>(lane, lane_ring));
                     idx++;
-
-                    for (auto pt : lane_ring)
-                    {
-                        f << idx << ',' << pt.get<0>() << ',' << pt.get<1>() << std::endl;
-                    }
                 }
             }
         }
