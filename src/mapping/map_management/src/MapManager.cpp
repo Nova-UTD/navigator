@@ -77,8 +77,10 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 
         buildTrueRoutingGraph();
 
+        setRouteFromClickedPt(PointStamped());
+
         // Temporary linestring from file
-        boost::geometry::read_wkt<bg::model::linestring<odr::point>>("LINESTRING (-1798.9355636032028 502.00006160045496, -1791.7629703341581 501.6444127841822, -1784.5727040061124 500.8201951856406, -1777.565537945425 500.44942982016386, -1770.2642534419194 500.23147963834566, -1762.9073423323719 500.1085329508202, -1755.5820498795283 499.9974272070694, -1748.544803996993 499.71040992357507, -1742.1083941761399 496.568826581963, -1739.8923712198173 489.8838605095388, -1740.122147672383 482.7392593520186, -1739.9880377043673 475.6583638715254, -1739.873076006057 468.6401327984447, -1739.716717528943 461.40766428351606, -1739.523095709209 454.3692718243806, -1739.4636161034475 447.18765174903, -1742.3002338640656 440.67677620965003, -1749.1091216766747 438.5776418424612, -1756.286663739246 438.5277202304183, -1763.5259446747707 438.175600648828, -1770.7105053019284 437.2129482448423, -1777.8706728218765 435.91148397356756, -1785.066815911799 434.6597535518578, -1792.256557655802 433.49933845749314, -1799.3253227379967 432.8930584129469, -1806.481363694731 432.8941854877436, -1813.7481445128133 432.960956584538, -1821.0033263279147 433.41645055380303, -1826.716134941449 437.76976537046164, -1827.3973827962134 444.94244424615636, -1827.367528151321 452.20168129841124, -1827.1859518215797 459.4762319988502, -1827.033380748884 466.5785167800843, -1826.9547986903533 473.68783932113877, -1827.006750628981 480.7979255498412, -1827.2663053414226 488.1041662480852, -1827.3498979247504 495.10668130336916, -1825.669598839582 501.9611812028784, -1819.1373033658333 505.3316472464687, -1812.1022993655852 504.74347962333445, -1805.142815350107 503.45238226216753)", route_linestring_);
+        // boost::geometry::read_wkt<bg::model::linestring<odr::point>>("LINESTRING (-1798.9355636032028 502.00006160045496, -1791.7629703341581 501.6444127841822, -1784.5727040061124 500.8201951856406, -1777.565537945425 500.44942982016386, -1770.2642534419194 500.23147963834566, -1762.9073423323719 500.1085329508202, -1755.5820498795283 499.9974272070694, -1748.544803996993 499.71040992357507, -1742.1083941761399 496.568826581963, -1739.8923712198173 489.8838605095388, -1740.122147672383 482.7392593520186, -1739.9880377043673 475.6583638715254, -1739.873076006057 468.6401327984447, -1739.716717528943 461.40766428351606, -1739.523095709209 454.3692718243806, -1739.4636161034475 447.18765174903, -1742.3002338640656 440.67677620965003, -1749.1091216766747 438.5776418424612, -1756.286663739246 438.5277202304183, -1763.5259446747707 438.175600648828, -1770.7105053019284 437.2129482448423, -1777.8706728218765 435.91148397356756, -1785.066815911799 434.6597535518578, -1792.256557655802 433.49933845749314, -1799.3253227379967 432.8930584129469, -1806.481363694731 432.8941854877436, -1813.7481445128133 432.960956584538, -1821.0033263279147 433.41645055380303, -1826.716134941449 437.76976537046164, -1827.3973827962134 444.94244424615636, -1827.367528151321 452.20168129841124, -1827.1859518215797 459.4762319988502, -1827.033380748884 466.5785167800843, -1826.9547986903533 473.68783932113877, -1827.006750628981 480.7979255498412, -1827.2663053414226 488.1041662480852, -1827.3498979247504 495.10668130336916, -1825.669598839582 501.9611812028784, -1819.1373033658333 505.3316472464687, -1812.1022993655852 504.74347962333445, -1805.142815350107 503.45238226216753)", route_linestring_);
         // bg::simplify(route_linestring_, route_linestring_, 1.0);
     }
     else
@@ -183,97 +185,125 @@ void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
 
     // For the first two points, get their lanekeys
     // TODO: Extend this to n points
-    auto vehicle_tf = getEgoTf();
-    auto vehicle_pos = vehicle_tf.transform.translation;
-    odr::point from_pt(vehicle_pos.x, vehicle_pos.y);
+    // auto vehicle_tf = getEgoTf();
+    // auto vehicle_pos = vehicle_tf.transform.translation;
+    // odr::point from_pt(vehicle_pos.x, vehicle_pos.y);
+    // RCLCPP_INFO(get_logger(), "Setting from clicked point.");
 
-    if (clicked_pt.header.frame_id != "base_link")
-    {
-        RCLCPP_ERROR(get_logger(), "Clicked point should be in base_link.");
-        return;
-    }
+    // if (clicked_pt.header.frame_id != "base_link")
+    // {
+    //     RCLCPP_ERROR(get_logger(), "Clicked point should be in base_link.");
+    //     return;
+    // }
 
-    // Transform clicked point to map frame
-    float yaw = acos(vehicle_tf.transform.rotation.w) * 2;
-    float x_ = clicked_pt.point.x;
-    float y_ = clicked_pt.point.y;
-    float clicked_x = (x_ * cos(yaw) - y_ * sin(yaw)) + vehicle_pos.x;
-    float clicked_y = (y_ * cos(yaw) + x_ * sin(yaw)) + vehicle_pos.y;
-    odr::point to_pt(clicked_x, clicked_y);
+    // // Transform clicked point to map frame
+    // float yaw = acos(vehicle_tf.transform.rotation.w) * 2;
+    // float x_ = clicked_pt.point.x;
+    // float y_ = clicked_pt.point.y;
+    // float clicked_x = (x_ * cos(yaw) - y_ * sin(yaw)) + vehicle_pos.x;
+    // float clicked_y = (y_ * cos(yaw) + x_ * sin(yaw)) + vehicle_pos.y;
+    // odr::point to_pt(clicked_x, clicked_y);
 
-    auto from_keys = laneKeysFromPoint(from_pt, map_wide_tree_, lane_polys_);
-    auto to_keys = laneKeysFromPoint(to_pt, map_wide_tree_, lane_polys_);
-    if (from_keys.size() > 1)
-    {
-        RCLCPP_ERROR(get_logger(), "Route start falls within a junction.");
-        return;
-    }
-    if (to_keys.size() > 1)
-    {
-        RCLCPP_ERROR(get_logger(), "Route end falls within a junction.");
-        return;
-    }
-    if (from_keys.size() < 1)
-    {
-        RCLCPP_ERROR(get_logger(), "Route start does not fall within a lane.");
-        return;
-    }
-    if (to_keys.size() < 1)
-    {
-        RCLCPP_ERROR(get_logger(), "Route end does not fall within a lane.");
-    }
-    odr::LaneKey from_key = from_keys[0];
-    odr::LaneKey to_key = to_keys[0];
+    // auto from_keys = laneKeysFromPoint(from_pt, map_wide_tree_, lane_polys_);
+    // auto to_keys = laneKeysFromPoint(to_pt, map_wide_tree_, lane_polys_);
+    // if (from_keys.size() > 1)
+    // {
+    //     RCLCPP_ERROR(get_logger(), "Route start falls within a junction.");
+    //     return;
+    // }
+    // if (to_keys.size() > 1)
+    // {
+    //     RCLCPP_ERROR(get_logger(), "Route end falls within a junction.");
+    //     return;
+    // }
+    // if (from_keys.size() < 1)
+    // {
+    //     RCLCPP_ERROR(get_logger(), "Route start does not fall within a lane.");
+    //     return;
+    // }
+    // if (to_keys.size() < 1)
+    // {
+    //     RCLCPP_ERROR(get_logger(), "Route end does not fall within a lane.");
+    // }
+    // // odr::LaneKey from_key = from_keys[0];
+    // // odr::LaneKey to_key = to_keys[0];
+    // odr::LaneKey to_key("30", 0.0, -3);
+    // odr::LaneKey from_key("0", 0.0, -2);
 
-    if (from_key.road_id == to_key.road_id && from_key.lanesection_s0 == to_key.lanesection_s0)
-    {
-        RCLCPP_ERROR(get_logger(), "Cannot create a route within the same lanesection.");
-        return;
-    }
+    // if (from_key.road_id == to_key.road_id && from_key.lanesection_s0 == to_key.lanesection_s0)
+    // {
+    //     RCLCPP_ERROR(get_logger(), "Cannot create a route within the same lanesection.");
+    //     return;
+    // }
 
-    SmartDigraph::Node start = g->nodeFromId(routing_nodes_->at(from_key));
-    SmartDigraph::Node end = g->nodeFromId(routing_nodes_->at(to_key));
+    // SmartDigraph::Node start = g->nodeFromId(routing_nodes_->at(from_key));
+    // SmartDigraph::Node end = g->nodeFromId(routing_nodes_->at(to_key));
 
-    SptSolver spt(*g, *costMap);
+    // SptSolver spt(*g, *costMap);
 
-    // std::printf("Running solver from %s to %s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
+    // // std::printf("Running solver from %s to %s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
 
-    spt.run(start, end);
+    // spt.run(start, end);
 
-    std::vector<lemon::SmartDigraph::Node> node_route;
-    int iters = 0;
-    for (lemon::SmartDigraph::Node v = end; v != start; v = spt.predNode(v))
-    {
-        if (v != lemon::INVALID && spt.reached(v)) // special LEMON node constant
-        {
-            node_route.push_back(v);
-        }
-        if (iters > 100)
-        {
-            break;
-        }
-        iters++;
-    }
-    node_route.push_back(start);
+    // std::vector<lemon::SmartDigraph::Node> node_route;
+    // int iters = 0;
+    // for (lemon::SmartDigraph::Node v = end; v != start; v = spt.predNode(v))
+    // {
+    //     if (v != lemon::INVALID && spt.reached(v)) // special LEMON node constant
+    //     {
+    //         node_route.push_back(v);
+    //     }
+    //     if (iters > 100)
+    //     {
+    //         break;
+    //     }
+    //     iters++;
+    // }
+    // node_route.push_back(start);
 
-    std::printf("Path has %i nodes\n", node_route.size());
+    // std::printf("Path has %i nodes\n", node_route.size());
+
+    std::vector<odr::LaneKey> to_park_keys;
+    to_park_keys.push_back(odr::LaneKey("14", 313.39848024248613, 2));
+    to_park_keys.push_back(odr::LaneKey("14", 48.122505395107886, 1));
+    to_park_keys.push_back(odr::LaneKey("14", 0.0, 1));
+    to_park_keys.push_back(odr::LaneKey("105", 0.0, 1));
+    to_park_keys.push_back(odr::LaneKey("0", 0.0, -3));
+    to_park_keys.push_back(odr::LaneKey("0", 53.384839499112189, -3));
+    to_park_keys.push_back(odr::LaneKey("0", 61.099814596270349e+1, -4));
+    to_park_keys.push_back(odr::LaneKey("0", 84.213823743447264, -3));
+    to_park_keys.push_back(odr::LaneKey("220",0.0, -1));
+    to_park_keys.push_back(odr::LaneKey("33",0.0, 3));
+    to_park_keys.push_back(odr::LaneKey("4",0.0, 3));
+    to_park_keys.push_back(odr::LaneKey("52",0.0, 3));
+    to_park_keys.push_back(odr::LaneKey("84",0.0, -3));
+    to_park_keys.push_back(odr::LaneKey("62",0.0, -3));
+    to_park_keys.push_back(odr::LaneKey("42",0.0, -3));
+    to_park_keys.push_back(odr::LaneKey("484",0.0, -1));
+    to_park_keys.push_back(odr::LaneKey("30",0.0, -3));
+    to_park_keys.push_back(odr::LaneKey("68",0.0, -3));
 
     route_linestring_.clear();
 
-    for (auto p = node_route.rbegin(); p != node_route.rend(); ++p)
+    for (odr::LaneKey k : to_park_keys)
     {
-        std::printf("%s\n", (*nodeMap)[*p].to_string().c_str());
-        bg::append(route_linestring_, getLaneCenterline((*nodeMap)[*p]));
+        bg::append(route_linestring_, getLaneCenterline(k));
     }
 
-    if (node_route.size() < 2)
-    {
-        RCLCPP_INFO_STREAM(get_logger(), "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " not found.");
-    }
-    else
-    {
-        RCLCPP_INFO_STREAM(get_logger(), "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " has " << node_route.size() << " lanes and " << route_linestring_.size() << " points.");
-    }
+    // for (auto p = node_route.rbegin(); p != node_route.rend(); ++p)
+    // {
+    //     std::printf("%s\n", (*nodeMap)[*p].to_string().c_str());
+    //     bg::append(route_linestring_, getLaneCenterline((*nodeMap)[*p]));
+    // }
+
+    // if (node_route.size() < 2)
+    // {
+    //     RCLCPP_INFO_STREAM(get_logger(), "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " not found.");
+    // }
+    // else
+    // {
+    //     RCLCPP_INFO_STREAM(get_logger(), "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " has " << node_route.size() << " lanes and " << route_linestring_.size() << " points.");
+    // }
 
     bg::simplify(route_linestring_, route_linestring_, 1.0);
 }
