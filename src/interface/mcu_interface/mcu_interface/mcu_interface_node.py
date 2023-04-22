@@ -16,6 +16,7 @@ import io
 import serial
 import rclpy
 from carla_msgs.msg import CarlaEgoVehicleControl
+from nova_msgs.msg import Mode
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 
@@ -41,6 +42,10 @@ class McuInterfaceNode(Node):
             self.get_logger().warn("Bus not yet set. Waiting...")
             time.sleep(1.0)
 
+        self.current_mode = Mode.DISABLED
+        self.current_mode_sub = self.create_subscription(
+            Mode, '/guardian/mode', self.currentModeCb, 1)
+
         self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus, self.bus))
 
         self.get_logger().info("Bus now connected.")
@@ -52,6 +57,9 @@ class McuInterfaceNode(Node):
         self.throttle = msg.throttle
         print(f"Joystick Throttle: {self.throttle}\n")
 
+    def currentModeCb(self, msg: Mode):
+        self.current_mode = msg.mode
+
     # publishes the number (0-1) received from the subscription 
     def publishCommand(self):
         throttle = self.throttle
@@ -61,12 +69,15 @@ class McuInterfaceNode(Node):
 
         throttle *= 1.0
         throttle = min(throttle, 0.8)
-        self.get_logger().info(f"Throttle {self.throttle } => {throttle}")
+
+        if self.current_mode == Mode.DISABLED:
+            throttle = 0.0
+        # self.get_logger().info(f"Throttle {self.throttle } => {throttle}")
 
         # command = str.encode(f"$throttle,{throttle};\n")
         # s stands for start and e stands for end
         command = f"s{throttle}e\r".encode()
-        self.get_logger().info(f"Command: s{throttle}e")
+        # self.get_logger().info(f"Command: s{throttle}e")
         self.bus.write(command)
 
         # self.sio.write(f"$throttle,{throttle};\n")

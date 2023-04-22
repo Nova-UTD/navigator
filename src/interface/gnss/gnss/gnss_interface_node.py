@@ -1,6 +1,7 @@
 import io
 import math
 from dataclasses import dataclass
+from datetime import datetime
 
 import pynmea2
 import pyproj
@@ -16,6 +17,30 @@ from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import NavSatFix
 from tf2_ros import TransformBroadcaster
+
+from shapely.geometry import LineString, Point
+import shapely
+
+RAM_CONFIG_STRING = "B5 62 06 8A 32 00 01 01 00 00 24 00 31 10 00 25 00 31 10 01 18 00 31 10 01 21 00 11 20 04 05 00 22 20 03 01 00 21 30 64 00 07 00 91 20 01 16 00 91 20 01 1B 00 91 20 01 8E 3E"
+BBR_CONFIG_STRING = "B5 62 06 8A 32 00 01 02 00 00 24 00 31 10 00 25 00 31 10 01 18 00 31 10 01 21 00 11 20 04 05 00 22 20 03 01 00 21 30 64 00 07 00 91 20 01 16 00 91 20 01 1B 00 91 20 01 8F 6F"
+
+def toRadians(degrees: float):
+    return degrees * math.pi / 180.0
+
+
+def latToScale(lat: float) -> float:
+    """Return UTM projection scale
+
+    Args:
+        lat (float): degrees latitude
+
+    Returns:
+        float: projection scale
+    """
+    return math.cos(toRadians(lat))
+
+
+EARTH_RADIUS_EQUA = 6378137.0
 
 
 class GnssInterfaceNode(Node):
@@ -47,16 +72,19 @@ class GnssInterfaceNode(Node):
         self.odom_pub = self.create_publisher(Odometry, '/gnss/odometry', 1)
         self.navsat_pub = self.create_publisher(NavSatFix, '/gnss/fix', 1)
 
-        self.lat0 = 32.989488  # TODO: Get this foom the map manager
-        self.lon0 = -96.750437
+        self.lat0 = 32.9881733525  # TODO: Get this foom the map manager
+        self.lon0 = -96.73645812583334
         utm_zone = 14
-        self.proj = pyproj.Proj(proj='utm', zone=utm_zone,
-                                ellipsis='WGS84', preserve_units=True)
+        self.proj = pyproj.Proj(
+            '+proj=tmerc +lat_0=32.9881733525 +lon_0=-96.73645812583334 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +geoidgrids=./data/egm96_15.gtx +vunits=m +no_defs', preserve_units=True)
+
 
         self.speed = 0.0
 
         self.read_timer = self.create_timer(0.05, self.getData)
         self.tf_timer = self.create_timer(0.05, self.publishTf)
+
+        self.trace = []
 
     def publishTf(self):
         if self.cached_odom is None:
@@ -72,12 +100,13 @@ class GnssInterfaceNode(Node):
         transl.z = self.cached_odom.pose.pose.position.z
         t.transform.translation = transl
         t.transform.rotation = self.cached_odom.pose.pose.orientation
+
+        # self.get_logger().error(str(t))
         self.tf_broadcaster.sendTransform(t)
 
     def getData(self):
 
         if self.sio is None:
-            self.get_logger().warn("SIO object was none. Skipping data read.")
             return
 
         self.status = self.initStatusMsg()
@@ -98,7 +127,7 @@ class GnssInterfaceNode(Node):
                     navsat_msg.longitude = msg.longitude
 
                     if msg.latitude == 0.0:
-                        self.get_logger().warning("Message latitude was zero. Signal invalid.")
+                        self.get_logger().warning("Message latitude was zero. Signal invalid. Are you indoors?")
 
                     try:
                         navsat_msg.altitude = msg.altitude
@@ -115,6 +144,7 @@ class GnssInterfaceNode(Node):
 
                     self.odom_pub.publish(odom_msg)
                     self.cached_odom = odom_msg
+
                     # print(f"{msg.latitude}, {msg.longitude}")
 
                 elif msg.sentence_type == "VTG":
@@ -156,16 +186,40 @@ class GnssInterfaceNode(Node):
                 self.status.level = DiagnosticStatus.ERROR
                 return
             except pynmea2.ParseError as e:
-                print('Parse error: {}'.format(e))
+                # print('Parse error: {}'.format(e))
                 return
+            
+    def latlonToMercator(self, lat: float, lon: float, scale: float) -> tuple:
+        """Convert geodetic coords (in degrees) to UTM coords (meters)
+
+        Copied to match CARLA:
+        [LatLonToMercator](https://github.com/carla-simulator/carla/blob/fe3cb6863a604f5c0cf8b692fe2b6300b45b5999/LibCarla/source/carla/geom/GeoLocation.cpp#L38)
+
+        Args:
+            lat (float): degrees
+            lon (float): degrees
+            scale (float): projection scale (see latToScale)
+
+        Returns:
+            tuple: (x,y) in UTM meters
+        """
+        x = scale * toRadians(lon) * EARTH_RADIUS_EQUA
+        y = scale * EARTH_RADIUS_EQUA * \
+            math.log(math.tan((90.0+lat) * math.pi/360.0))
+
+        return (x, y)
 
     def getOdomMsg(self, lat: float, lon: float) -> Odometry:
         x0, y0 = self.proj(latitude=self.lat0, longitude=self.lon0)
 
-        x, y = self.proj(longitude=lon, latitude=lat)
+        x, y = self.proj(latitude=lat, longitude=lon)
 
         position_x = x - x0
         position_y = y - y0
+
+        new_shapely_pt = Point(position_x, position_y)
+        if len(self.trace) == 0 or shapely.distance(self.trace[-1], new_shapely_pt) > 7.0:
+            self.trace.append(new_shapely_pt)
 
         msg = Odometry()
         msg.pose.pose.position.x = position_x
@@ -183,11 +237,22 @@ class GnssInterfaceNode(Node):
 
         if self.bus is not None and self.bus.is_open:
             return
+
+        self.get_logger().info("Trying to connect to GNSS")
+
         try:
             self.bus = serial.Serial(
-                '/dev/serial/by-path/pci-0000:00:14.0-usb-0:6.4.4.4.4.1:1.0', 115200, timeout=0.05)
+                '/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.2.1:1.0', 115200, timeout=0.05)
             self.sio = io.TextIOWrapper(io.BufferedRWPair(self.bus, self.bus))
             self.get_logger().info("Connected to GNSS")
+
+            # # Sends configuration on intialization so output is 10hz
+            # byte_data = bytes.fromHex(RAM_CONFIG_STRING.replace(" ", ""))
+            # self.bus.write(byte_data) # SEND CONFIG TO RAM LAYER
+            # byte_data = bytes.fromHex(BBR_CONFIG_STRING.replace(" ", ""))
+            # self.bus.write(byte_data) # SEND CONFIG TO BBR LAYER         
+            # self.get_logger().info("Configuration sent!")
+
         except serial.SerialException as e:
             self.get_logger().error(str(e))
             status_msg = self.initStatusMsg()
@@ -214,10 +279,25 @@ class GnssInterfaceNode(Node):
     def clockCb(self, msg: Clock):
         self.clock = msg.clock
 
+    def close(self):
+        self.get_logger().info(f"CLOSING GNSS with {len(self.trace)} pts")
+        '''
+        if len(self.trace) < 10:
+            self.get_logger().warning("Trace was too short. Not saving to file.")
+            return
+        '''
+        datestring = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
+        with open(f"trace{datestring}.txt", 'w') as f:
+            ls = LineString(self.trace)
+            f.write(ls.wkt)
+
 
 def main(args=None):
     rclpy.init(args=args)
-    gnss_interface_node = GnssInterfaceNode()
-    rclpy.spin(gnss_interface_node)
-    gnss_interface_node.destroy_node()
-    rclpy.shutdown()
+    try:
+        gnss_interface_node = GnssInterfaceNode()
+        rclpy.spin(gnss_interface_node)
+    finally:
+        gnss_interface_node.close()
+        gnss_interface_node.destroy_node()
+        rclpy.shutdown()

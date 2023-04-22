@@ -107,7 +107,7 @@ class DualLidarProcessingNode(Node):
         msg_array['z'] = merged_z
         msg_array['intensity'] = merged_i
 
-        msg_array = self.remove_nearby_points(msg_array, 0.5, 2.0)
+        msg_array = self.remove_nearby_points(msg_array, (-4.0,0.5), (-1.3,1.3))
         # msg_array = self.remove_points_above(msg_array, 2.0)
         # msg_array = self.remove_ground_points(msg_array, 0.2)
 
@@ -164,7 +164,7 @@ class DualLidarProcessingNode(Node):
         '''
         return pcd[pcd['z'] >= height]
 
-    def remove_nearby_points(self, pcd: np.array, x_distance: float, y_distance: float) -> np.array:
+    def remove_nearby_points(self, pcd: np.array, x: tuple, y: tuple) -> np.array:
         '''
         Remove points in a rectangle around the sensor
 
@@ -174,17 +174,13 @@ class DualLidarProcessingNode(Node):
         :returns: an array in ros2_numpy format with the nearby points removed
         '''
 
-        # Ensure these positive
-        x_distance = abs(x_distance)
-        y_distance = abs(y_distance)
-
         # Unfortunately, I can't find a way to avoid doing this in one go
         pcd = pcd[np.logical_not(
             np.logical_and(
-                np.logical_and(pcd['x'] > (x_distance*-1),
-                               pcd['x'] < x_distance),
-                np.logical_and(pcd['y'] > (y_distance*-1),
-                               pcd['y'] < y_distance),
+                np.logical_and(pcd['x'] > x[0],
+                               pcd['x'] < x[1]),
+                np.logical_and(pcd['y'] > y[0],
+                               pcd['y'] < y[1]),
             ))]
 
         pcd = pcd[pcd['z'] >= -2.0]

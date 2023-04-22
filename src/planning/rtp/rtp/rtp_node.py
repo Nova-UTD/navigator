@@ -85,8 +85,8 @@ class RecursiveTreePlanner(Node):
 
         self.speed_costmap = np.zeros((151, 151))
 
-        cost_map_sub = self.create_subscription(
-            OccupancyGrid, '/grid/cost', self.costMapCb, 1)
+        steering_cost_map_sub = self.create_subscription(
+            OccupancyGrid, '/grid/steering_cost', self.costMapCb, 1)
 
         speed_cost_map_sub = self.create_subscription(
             OccupancyGrid, '/grid/speed_cost', self.speedCostMapCb, 1)
@@ -105,10 +105,10 @@ class RecursiveTreePlanner(Node):
         self.clock = Clock().clock
 
         self.command_pub = self.create_publisher(
-            CarlaEgoVehicleControl, '/control/unlimited', 1)
+            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 1)
 
         self.speed_sub = self.create_subscription(
-            CarlaSpeedometer, '/carla/hero/speedometer', self.speedCb, 1)
+            CarlaSpeedometer, '/speed', self.speedCb, 1)
 
         self.path_pub = self.create_publisher(
             Path, '/planning/path', 1)
@@ -378,7 +378,15 @@ class RecursiveTreePlanner(Node):
             pose_msg.pose.position.y = pose[1] * 0.4 - 30
             # TODO: Add heading (pose[2]?)
             result_msg.poses.append(pose_msg)
-
+        if len(result_msg.poses) == 0:
+            pose_msg = PoseStamped()
+            pose_msg.header.frame_id = "base_link"
+            pose_msg.header.stamp = self.clock
+            pose_msg.pose.position.x = 50 * 0.4 - 20
+            pose_msg.pose.position.y = 75 * 0.4 - 30
+            # TODO: Add heading (pose[2]?)
+            result_msg.poses.append(pose_msg)
+            self.get_logger().info('Publishjed singleposition')
         command = CarlaEgoVehicleControl()
         command.steer = best_path.poses[3][2] * -2.7  # First steering value
         # command.steer = -1.0
@@ -431,6 +439,7 @@ class RecursiveTreePlanner(Node):
         #     command.throttle = 0.4
 
         if self.current_mode == Mode.AUTO:
+            print("AUTO")
             self.command_pub.publish(command)
 
         self.path_pub.publish(result_msg)
