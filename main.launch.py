@@ -224,7 +224,7 @@ def generate_launch_description():
         # left_lidar_pointcloud,
         # right_lidar_driver,
         # right_lidar_pointcloud,
-        camera,
+        # camera,
 
         # MISC
         clock,
@@ -234,14 +234,14 @@ def generate_launch_description():
         # rviz,
 
         # PERCEPTION
-        # ground_seg,
+        ground_seg,
         # lidar_processor,
-        # static_grid,
+        static_grid,
         
 
         # PLANNING
         # map_manager,
-        # grid_summation,
+        grid_summation,
         # rtp,
 
 
