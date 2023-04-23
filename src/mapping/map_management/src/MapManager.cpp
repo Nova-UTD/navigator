@@ -54,7 +54,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     clicked_point_sub_ = this->create_subscription<PointStamped>("/clicked_point", 1, bind(&MapManagementNode::clickedPointCb, this, std::placeholders::_1));
 
     // Services
-    route_set_service_ = this->create_service<nova_msgs::srv::SetRoute>("set_route", bind(&MapManagementNode::setRoute, this, std::placeholders::_1, std::placeholders::_2));
+    // route_set_service_ = this->create_service<nova_msgs::srv::SetRoute>("set_route", bind(&MapManagementNode::setRoute, this, std::placeholders::_1, std::placeholders::_2));
 
     route_timer_ = this->create_wall_timer(LOCAL_ROUTE_LS_FREQ, bind(&MapManagementNode::updateLocalRouteLinestring, this));
 
@@ -82,7 +82,10 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         // setRouteFromClickedPt(PointStamped());
 
         // Temporary linestring from file
-        // boost::geometry::read_wkt<bg::model::linestring<odr::point>>("LINESTRING (-1798.9355636032028 502.00006160045496, -1791.7629703341581 501.6444127841822, -1784.5727040061124 500.8201951856406, -1777.565537945425 500.44942982016386, -1770.2642534419194 500.23147963834566, -1762.9073423323719 500.1085329508202, -1755.5820498795283 499.9974272070694, -1748.544803996993 499.71040992357507, -1742.1083941761399 496.568826581963, -1739.8923712198173 489.8838605095388, -1740.122147672383 482.7392593520186, -1739.9880377043673 475.6583638715254, -1739.873076006057 468.6401327984447, -1739.716717528943 461.40766428351606, -1739.523095709209 454.3692718243806, -1739.4636161034475 447.18765174903, -1742.3002338640656 440.67677620965003, -1749.1091216766747 438.5776418424612, -1756.286663739246 438.5277202304183, -1763.5259446747707 438.175600648828, -1770.7105053019284 437.2129482448423, -1777.8706728218765 435.91148397356756, -1785.066815911799 434.6597535518578, -1792.256557655802 433.49933845749314, -1799.3253227379967 432.8930584129469, -1806.481363694731 432.8941854877436, -1813.7481445128133 432.960956584538, -1821.0033263279147 433.41645055380303, -1826.716134941449 437.76976537046164, -1827.3973827962134 444.94244424615636, -1827.367528151321 452.20168129841124, -1827.1859518215797 459.4762319988502, -1827.033380748884 466.5785167800843, -1826.9547986903533 473.68783932113877, -1827.006750628981 480.7979255498412, -1827.2663053414226 488.1041662480852, -1827.3498979247504 495.10668130336916, -1825.669598839582 501.9611812028784, -1819.1373033658333 505.3316472464687, -1812.1022993655852 504.74347962333445, -1805.142815350107 503.45238226216753)", route_linestring_);
+        std::ifstream ifs("/home/nova/navigator/data/maps/route_wkt.txt");
+        std::string wkt_str( (std::istreambuf_iterator<char>(ifs) ),
+                       (std::istreambuf_iterator<char>()    ) );
+        boost::geometry::read_wkt<bg::model::linestring<odr::point>>(wkt_str.c_str(), route_linestring_);
         // bg::simplify(route_linestring_, route_linestring_, 1.0);
     }
     else
@@ -103,47 +106,31 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 void MapManagementNode::updateLocalRouteLinestring()
 {
     float MAX_DISTANCE = 50.0; // meters
+    float min_distance = 999999.9;
 
     auto ego_transl = getEgoTf().transform.translation;
     BoostPoint ego_pos(ego_transl.x, ego_transl.y);
 
-    float prev_distance = 99999.9;
+    local_route_linestring_.clear();
 
-    BoostPoint closest_route_pt;
-    int closest_point_idx = 0;
-    bool closest_point_found = false;
-    LineString local_ls;
-
-    std::printf("Full route has %i pts\n", route_linestring_.size());
-
-    for (auto route_pt : route_linestring_)
+    int min_idx = 0;
+    for (int i = 0; i < route_linestring_.size(); i++)
     {
-        float current_distance = bg::distance(route_pt, ego_pos);
-
-        if (current_distance < MAX_DISTANCE)
+        auto pt = route_linestring_[i];
+        float dist = bg::distance(pt, ego_pos);
+        if (dist < min_distance)
         {
-            closest_point_found = true;
-        }
-        if (closest_point_found)
-        {
-            bg::append(local_ls, route_pt);
-
-            if (current_distance > MAX_DISTANCE)
-                break;
-        }
-
-        if (closest_point_found == false)
-        {
-            closest_route_pt = route_pt;
-            prev_distance = current_distance;
-            closest_point_idx++;
+            min_distance = dist;
+            min_idx = i;
         }
     }
 
-    double min_distance = bg::distance(ego_pos, closest_route_pt);
-    // printf("Closest route point was %f meters away. Appended %i points\n", min_distance, local_ls.size());
-    local_route_linestring_ = local_ls;
-    std::printf("Local LS has %i pts\n", local_route_linestring_.size());
+    for (int i = min_idx; i < route_linestring_.size(); i+= 3)
+    {
+        if (bg::distance(ego_pos, route_linestring_[i]) > 30)
+            return;
+        bg::append(local_route_linestring_, route_linestring_[i]);
+    }
 }
 
 void MapManagementNode::clickedPointCb(PointStamped::SharedPtr msg)
@@ -207,12 +194,20 @@ void MapManagementNode::setPredeterminedRoute()
     to_park_keys.push_back(odr::LaneKey("30",0.0, -3));
     to_park_keys.push_back(odr::LaneKey("68",0.0, -3));
 
-    route_linestring_.clear();
+    route_linestrings_.clear();
 
     for (odr::LaneKey k : to_park_keys)
     {
-        std::printf("%s\n", k.to_string().c_str());
-        bg::append(route_linestring_, getLaneCenterline(k));
+        std::printf("Appending %s to route linestrings.\n", k.to_string().c_str());
+        LineString key_ls = getLaneCenterline(k);
+        std::printf("Key LS has %i points\n", key_ls.size());
+
+        // bg::append(route_linestring_, getLaneCenterline(k));
+        LineString key_ls_simplified;
+        bg::simplify(key_ls, key_ls_simplified, 2.0);
+
+        route_linestrings_.push_back(key_ls_simplified);
+        // route_linestrings_.push_back(getLaneCenterline(k));
     }
 
     // bg::simplify(route_linestring_, route_linestring_, 1.0);
@@ -321,111 +316,111 @@ void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
 
 }
 
-void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response)
-{
-    if (request->route_nodes.size() < 2)
-    {
-        RCLCPP_ERROR(get_logger(), "Service call requires at least two points.");
-        response->message = "Service call requires at least two points.";
-        response->success = false;
-        return;
-    }
-    else if (request->route_nodes.size() > 2)
-    {
-        RCLCPP_WARN(get_logger(), "Routing only supported for two points at the moment. Remaining points will be ignored.");
-    }
+// void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response)
+// {
+//     if (request->route_nodes.size() < 2)
+//     {
+//         RCLCPP_ERROR(get_logger(), "Service call requires at least two points.");
+//         response->message = "Service call requires at least two points.";
+//         response->success = false;
+//         return;
+//     }
+//     else if (request->route_nodes.size() > 2)
+//     {
+//         RCLCPP_WARN(get_logger(), "Routing only supported for two points at the moment. Remaining points will be ignored.");
+//     }
 
-    // For the first two points, get their lanekeys
-    // TODO: Extend this to n points
-    odr::point from_pt(request->route_nodes[0].x, request->route_nodes[0].y);
-    odr::point to_pt(request->route_nodes[1].x, request->route_nodes[1].y);
-    auto from_keys = laneKeysFromPoint(from_pt, map_wide_tree_, lane_polys_);
-    auto to_keys = laneKeysFromPoint(to_pt, map_wide_tree_, lane_polys_);
-    if (from_keys.size() > 1)
-    {
-        RCLCPP_ERROR(get_logger(), "Route start falls within a junction.");
-        std::ostringstream message_stream;
-        message_stream << "Route start falls within a junction: " << from_keys.front().to_string().c_str();
-        std::string message = message_stream.str();
-        response->message = message;
-        response->success = false;
-        return;
-    }
-    if (to_keys.size() > 1)
-    {
-        RCLCPP_ERROR(get_logger(), "Route end falls within a junction.");
-        response->message = "Route end falls within a junction.";
-        response->success = false;
-        return;
-    }
-    if (from_keys.size() < 1)
-    {
-        RCLCPP_ERROR(get_logger(), "Route start does not fall within a lane.");
-        response->message = "Route start does not fall within a lane.";
-        response->success = false;
-        return;
-    }
-    if (to_keys.size() < 1)
-    {
-        RCLCPP_ERROR(get_logger(), "Route end does not fall within a lane.");
-        response->message = "Route end does not fall within a lane.";
-        response->success = false;
-        return;
-    }
-    odr::LaneKey from_key = from_keys[0];
-    odr::LaneKey to_key = to_keys[0];
-    SmartDigraph::Node start = g->nodeFromId(routing_nodes_->at(from_key));
-    SmartDigraph::Node end = g->nodeFromId(routing_nodes_->at(to_key));
+//     // For the first two points, get their lanekeys
+//     // TODO: Extend this to n points
+//     odr::point from_pt(request->route_nodes[0].x, request->route_nodes[0].y);
+//     odr::point to_pt(request->route_nodes[1].x, request->route_nodes[1].y);
+//     auto from_keys = laneKeysFromPoint(from_pt, map_wide_tree_, lane_polys_);
+//     auto to_keys = laneKeysFromPoint(to_pt, map_wide_tree_, lane_polys_);
+//     if (from_keys.size() > 1)
+//     {
+//         RCLCPP_ERROR(get_logger(), "Route start falls within a junction.");
+//         std::ostringstream message_stream;
+//         message_stream << "Route start falls within a junction: " << from_keys.front().to_string().c_str();
+//         std::string message = message_stream.str();
+//         response->message = message;
+//         response->success = false;
+//         return;
+//     }
+//     if (to_keys.size() > 1)
+//     {
+//         RCLCPP_ERROR(get_logger(), "Route end falls within a junction.");
+//         response->message = "Route end falls within a junction.";
+//         response->success = false;
+//         return;
+//     }
+//     if (from_keys.size() < 1)
+//     {
+//         RCLCPP_ERROR(get_logger(), "Route start does not fall within a lane.");
+//         response->message = "Route start does not fall within a lane.";
+//         response->success = false;
+//         return;
+//     }
+//     if (to_keys.size() < 1)
+//     {
+//         RCLCPP_ERROR(get_logger(), "Route end does not fall within a lane.");
+//         response->message = "Route end does not fall within a lane.";
+//         response->success = false;
+//         return;
+//     }
+//     odr::LaneKey from_key = from_keys[0];
+//     odr::LaneKey to_key = to_keys[0];
+//     SmartDigraph::Node start = g->nodeFromId(routing_nodes_->at(from_key));
+//     SmartDigraph::Node end = g->nodeFromId(routing_nodes_->at(to_key));
 
-    SptSolver spt(*g, *costMap);
+//     SptSolver spt(*g, *costMap);
 
-    // std::printf("Running solver from %s to %s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
+//     // std::printf("Running solver from %s to %s\n", from_key.to_string().c_str(), to_key.to_string().c_str());
 
-    spt.run(start, end);
+//     spt.run(start, end);
 
-    std::vector<lemon::SmartDigraph::Node> node_route;
-    int iters = 0;
-    for (lemon::SmartDigraph::Node v = end; v != start; v = spt.predNode(v))
-    {
-        if (v != lemon::INVALID && spt.reached(v)) // special LEMON node constant
-        {
-            node_route.push_back(v);
-        }
-        if (iters > 100)
-        {
-            break;
-        }
-        iters++;
-    }
-    node_route.push_back(start);
+//     std::vector<lemon::SmartDigraph::Node> node_route;
+//     int iters = 0;
+//     for (lemon::SmartDigraph::Node v = end; v != start; v = spt.predNode(v))
+//     {
+//         if (v != lemon::INVALID && spt.reached(v)) // special LEMON node constant
+//         {
+//             node_route.push_back(v);
+//         }
+//         if (iters > 100)
+//         {
+//             break;
+//         }
+//         iters++;
+//     }
+//     node_route.push_back(start);
 
-    std::printf("Path has %i nodes\n", node_route.size());
+//     std::printf("Path has %i nodes\n", node_route.size());
 
-    route_linestring_.clear();
+//     route_linestring_.clear();
 
-    for (auto p = node_route.rbegin(); p != node_route.rend(); ++p)
-    {
-        std::printf("%s\n", (*nodeMap)[*p].to_string().c_str());
-        bg::append(route_linestring_, getLaneCenterline((*nodeMap)[*p]));
-    }
+//     for (auto p = node_route.rbegin(); p != node_route.rend(); ++p)
+//     {
+//         std::printf("%s\n", (*nodeMap)[*p].to_string().c_str());
+//         bg::append(route_linestring_, getLaneCenterline((*nodeMap)[*p]));
+//     }
 
-    if (node_route.size() < 2)
-    {
-        std::ostringstream message_stream;
-        message_stream << "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " not found.";
-        std::string message = message_stream.str();
-        response->message = message;
-        response->success = false;
-    }
-    else
-    {
-        std::ostringstream message_stream;
-        message_stream << "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " has " << node_route.size() << " lanes and " << route_linestring_.size() << " points.";
-        std::string message = message_stream.str();
-        response->message = message;
-        response->success = true;
-    }
-}
+//     if (node_route.size() < 2)
+//     {
+//         std::ostringstream message_stream;
+//         message_stream << "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " not found.";
+//         std::string message = message_stream.str();
+//         response->message = message;
+//         response->success = false;
+//     }
+//     else
+//     {
+//         std::ostringstream message_stream;
+//         message_stream << "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " has " << node_route.size() << " lanes and " << route_linestring_.size() << " points.";
+//         std::string message = message_stream.str();
+//         response->message = message;
+//         response->success = true;
+//     }
+// }
 
 /**
  * @brief Returns an OccupancyGrid for lanes of type 'driving'
@@ -539,6 +534,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     if (h > M_PI)
         h -= 2 * M_PI;
 
+
     for (float j = y_min; j <= y_max; j += res)
     {
         for (float i = x_min; i <= x_max; i += res)
@@ -590,6 +586,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             drivable_grid_data.push_back(cell_is_drivable ? 0 : 100);
             junction_grid_data.push_back(cell_is_in_junction ? 100 : 0);
 
+
+
             // // Get closest route point
             if (i < 0)
                 route_dist_grid_data.push_back(100);
@@ -597,11 +595,6 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             {
                 int dist = static_cast<int>((1-(1/(1+bg::distance(local_route_linestring_, p))))*100);
 
-                if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
-                {
-                    goal_is_set = true;
-                    goal_pt = BoostPoint(i, j);
-                }
                 const int SCALE = 24;
 
                 // Distances > 10 are set to 100
@@ -656,15 +649,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     junction_grid_pub_->publish(junction_grid);
     route_dist_grid_pub_->publish(route_dist_grid); // Route distance grid
 
-    PoseStamped goal_pose;
-    goal_pose.pose.position.x = goal_pt.get<0>();
-    goal_pose.pose.position.y = goal_pt.get<1>();
-    goal_pose.header.frame_id = "base_link";
-    goal_pose.header.stamp = clock_->clock;
-    goal_pose_pub_->publish(goal_pose);
-
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    // std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+    std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
 /**
