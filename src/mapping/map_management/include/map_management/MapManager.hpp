@@ -132,6 +132,8 @@ namespace navigator
             LineString getLaneCenterline(odr::LaneKey key);
             std::vector<LineString> getCenterlinesFromKeys(std::vector<odr::LaneKey> keys, odr::RoutingGraph graph);
 
+            void setPredeterminedRoute();
+
             rclcpp::Publisher<OccupancyGrid>::SharedPtr drivable_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr junction_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr route_dist_grid_pub_;

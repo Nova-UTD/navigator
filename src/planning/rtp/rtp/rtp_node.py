@@ -59,7 +59,7 @@ DEPTH: int = 3
 # These are vdehicle constants for the GEM e6.
 # The sim vehicle (Tesla Model 3) has similar constants.
 WHEEL_BASE: float = 3.5  # meters
-MAX_TURN_ANGLE = 0.46  # radians
+MAX_TURN_ANGLE = 0.6  # radians
 COST_CUTOFF = 90
 
 
@@ -84,6 +84,7 @@ class RecursiveTreePlanner(Node):
         super().__init__('rtp_node')
 
         self.speed_costmap = np.zeros((151, 151))
+        self.origin = (50., 75.)
 
         steering_cost_map_sub = self.create_subscription(
             OccupancyGrid, '/grid/steering_cost', self.costMapCb, 1)
@@ -246,10 +247,9 @@ class RecursiveTreePlanner(Node):
         # plt.figure(figsize=(8, 6), dpi=160)
         # plt.axes().set_aspect('equal')
         # print(f"Generating path with depth {depth}, seg len {segment_length}")
-        origin = (50., 75.)
 
         path = CostedPath()
-        path.poses = [[origin[0], origin[1], 0.0]]
+        path.poses = [[self.origin[0], self.origin[1], 0.0]]
         path.cost = 0
         results = []
         costs = []
@@ -358,7 +358,7 @@ class RecursiveTreePlanner(Node):
             self.get_logger().error("Could not find viable path")
             self.status_pub.publish(status)
             path = CostedPath()
-            path.poses = [[origin[0], origin[1], 0.0]]
+            path.poses = [[self.origin[0], self.origin[1], 0.0]]
             path.cost = 0
             best_path = path
             
@@ -388,6 +388,8 @@ class RecursiveTreePlanner(Node):
             result_msg.poses.append(pose_msg)
             self.get_logger().info('Publishjed singleposition')
         command = CarlaEgoVehicleControl()
+        if len(best_path.poses) < 4:
+            return
         command.steer = best_path.poses[3][2] * -2.7  # First steering value
         # command.steer = -1.0
 
