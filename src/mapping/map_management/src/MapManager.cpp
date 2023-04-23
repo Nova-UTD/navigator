@@ -595,7 +595,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                 route_dist_grid_data.push_back(100);
             else if (local_route_linestring_.size() > 0)
             {
-                int dist = static_cast<int>(bg::distance(local_route_linestring_, p));
+                int dist = static_cast<int>((1-(1/(1+bg::distance(local_route_linestring_, p))))*100);
 
                 if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
                 {
@@ -605,11 +605,11 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                 const int SCALE = 24;
 
                 // Distances > 10 are set to 100
-                if (dist > 4)
+                if (dist > 80)
                     route_dist_grid_data.push_back(100);
                 else 
                 {
-                    route_dist_grid_data.push_back(dist * SCALE);
+                    route_dist_grid_data.push_back(dist);
                     // dist *= 10;
                 }
                 
