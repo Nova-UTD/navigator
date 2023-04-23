@@ -77,7 +77,9 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 
         buildTrueRoutingGraph();
 
-        setRouteFromClickedPt(PointStamped());
+        setPredeterminedRoute();
+
+        // setRouteFromClickedPt(PointStamped());
 
         // Temporary linestring from file
         // boost::geometry::read_wkt<bg::model::linestring<odr::point>>("LINESTRING (-1798.9355636032028 502.00006160045496, -1791.7629703341581 501.6444127841822, -1784.5727040061124 500.8201951856406, -1777.565537945425 500.44942982016386, -1770.2642534419194 500.23147963834566, -1762.9073423323719 500.1085329508202, -1755.5820498795283 499.9974272070694, -1748.544803996993 499.71040992357507, -1742.1083941761399 496.568826581963, -1739.8923712198173 489.8838605095388, -1740.122147672383 482.7392593520186, -1739.9880377043673 475.6583638715254, -1739.873076006057 468.6401327984447, -1739.716717528943 461.40766428351606, -1739.523095709209 454.3692718243806, -1739.4636161034475 447.18765174903, -1742.3002338640656 440.67677620965003, -1749.1091216766747 438.5776418424612, -1756.286663739246 438.5277202304183, -1763.5259446747707 438.175600648828, -1770.7105053019284 437.2129482448423, -1777.8706728218765 435.91148397356756, -1785.066815911799 434.6597535518578, -1792.256557655802 433.49933845749314, -1799.3253227379967 432.8930584129469, -1806.481363694731 432.8941854877436, -1813.7481445128133 432.960956584538, -1821.0033263279147 433.41645055380303, -1826.716134941449 437.76976537046164, -1827.3973827962134 444.94244424615636, -1827.367528151321 452.20168129841124, -1827.1859518215797 459.4762319988502, -1827.033380748884 466.5785167800843, -1826.9547986903533 473.68783932113877, -1827.006750628981 480.7979255498412, -1827.2663053414226 488.1041662480852, -1827.3498979247504 495.10668130336916, -1825.669598839582 501.9611812028784, -1819.1373033658333 505.3316472464687, -1812.1022993655852 504.74347962333445, -1805.142815350107 503.45238226216753)", route_linestring_);
@@ -112,6 +114,8 @@ void MapManagementNode::updateLocalRouteLinestring()
     bool closest_point_found = false;
     LineString local_ls;
 
+    std::printf("Full route has %i pts\n", route_linestring_.size());
+
     for (auto route_pt : route_linestring_)
     {
         float current_distance = bg::distance(route_pt, ego_pos);
@@ -137,8 +141,9 @@ void MapManagementNode::updateLocalRouteLinestring()
     }
 
     double min_distance = bg::distance(ego_pos, closest_route_pt);
-    printf("Closest route point was %f meters away. Appended %i points\n", min_distance, local_ls.size());
+    // printf("Closest route point was %f meters away. Appended %i points\n", min_distance, local_ls.size());
     local_route_linestring_ = local_ls;
+    std::printf("Local LS has %i pts\n", local_route_linestring_.size());
 }
 
 void MapManagementNode::clickedPointCb(PointStamped::SharedPtr msg)
@@ -178,6 +183,40 @@ std::vector<odr::LaneKey> laneKeysFromPoint(odr::point pt, bgi::rtree<odr::value
     std::printf("Lane key does not touch current pos. Distance: %f \n", dist);
 
     return lane_keys;
+}
+
+void MapManagementNode::setPredeterminedRoute()
+{
+    std::vector<odr::LaneKey> to_park_keys;
+    to_park_keys.push_back(odr::LaneKey("14", 313.39848024248613, 2));
+    to_park_keys.push_back(odr::LaneKey("14", 48.122505395107886, 1));
+    to_park_keys.push_back(odr::LaneKey("14", 0.0, 1));
+    to_park_keys.push_back(odr::LaneKey("105", 0.0, 1));
+    to_park_keys.push_back(odr::LaneKey("0", 0.0, -3));
+    to_park_keys.push_back(odr::LaneKey("0", 53.384839499112189, -3));
+    to_park_keys.push_back(odr::LaneKey("0", 61.099814596270349, -4));
+    to_park_keys.push_back(odr::LaneKey("0", 84.213823743447264, -3));
+    to_park_keys.push_back(odr::LaneKey("220",0.0, -1));
+    to_park_keys.push_back(odr::LaneKey("33",0.0, 3));
+    to_park_keys.push_back(odr::LaneKey("4",0.0, 3));
+    to_park_keys.push_back(odr::LaneKey("52",0.0, 3));
+    to_park_keys.push_back(odr::LaneKey("84",0.0, -3));
+    to_park_keys.push_back(odr::LaneKey("62",0.0, -3));
+    to_park_keys.push_back(odr::LaneKey("42",0.0, -3));
+    to_park_keys.push_back(odr::LaneKey("484",0.0, -1));
+    to_park_keys.push_back(odr::LaneKey("30",0.0, -3));
+    to_park_keys.push_back(odr::LaneKey("68",0.0, -3));
+
+    route_linestring_.clear();
+
+    for (odr::LaneKey k : to_park_keys)
+    {
+        std::printf("%s\n", k.to_string().c_str());
+        bg::append(route_linestring_, getLaneCenterline(k));
+    }
+
+    // bg::simplify(route_linestring_, route_linestring_, 1.0);
+
 }
 
 void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
@@ -263,32 +302,7 @@ void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
 
     // std::printf("Path has %i nodes\n", node_route.size());
 
-    std::vector<odr::LaneKey> to_park_keys;
-    to_park_keys.push_back(odr::LaneKey("14", 313.39848024248613, 2));
-    to_park_keys.push_back(odr::LaneKey("14", 48.122505395107886, 1));
-    to_park_keys.push_back(odr::LaneKey("14", 0.0, 1));
-    to_park_keys.push_back(odr::LaneKey("105", 0.0, 1));
-    to_park_keys.push_back(odr::LaneKey("0", 0.0, -3));
-    to_park_keys.push_back(odr::LaneKey("0", 53.384839499112189, -3));
-    to_park_keys.push_back(odr::LaneKey("0", 61.099814596270349e+1, -4));
-    to_park_keys.push_back(odr::LaneKey("0", 84.213823743447264, -3));
-    to_park_keys.push_back(odr::LaneKey("220",0.0, -1));
-    to_park_keys.push_back(odr::LaneKey("33",0.0, 3));
-    to_park_keys.push_back(odr::LaneKey("4",0.0, 3));
-    to_park_keys.push_back(odr::LaneKey("52",0.0, 3));
-    to_park_keys.push_back(odr::LaneKey("84",0.0, -3));
-    to_park_keys.push_back(odr::LaneKey("62",0.0, -3));
-    to_park_keys.push_back(odr::LaneKey("42",0.0, -3));
-    to_park_keys.push_back(odr::LaneKey("484",0.0, -1));
-    to_park_keys.push_back(odr::LaneKey("30",0.0, -3));
-    to_park_keys.push_back(odr::LaneKey("68",0.0, -3));
-
-    route_linestring_.clear();
-
-    for (odr::LaneKey k : to_park_keys)
-    {
-        bg::append(route_linestring_, getLaneCenterline(k));
-    }
+    
 
     // for (auto p = node_route.rbegin(); p != node_route.rend(); ++p)
     // {
@@ -305,7 +319,6 @@ void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
     //     RCLCPP_INFO_STREAM(get_logger(), "Path between " << from_key.to_string().c_str() << " and " << to_key.to_string().c_str() << " has " << node_route.size() << " lanes and " << route_linestring_.size() << " points.");
     // }
 
-    bg::simplify(route_linestring_, route_linestring_, 1.0);
 }
 
 void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response)
@@ -478,7 +491,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
     if (lane_shapes_in_range.size() < 1)
     {
-        RCLCPP_WARN(get_logger(), "There are no lane shapes nearby.");
+        // RCLCPP_WARN(get_logger(), "There are no lane shapes nearby.");
         std::printf("(%f, %f)\n", vehicle_pos.x, vehicle_pos.y);
         return;
     }
@@ -487,28 +500,28 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
     int idx = 0;
 
-    bgi::rtree<odr::value, bgi::rstar<16, 4>> local_tree;
-    std::unordered_map< unsigned int, odr::polygon> box_to_poly_map;
-    for (unsigned i = 0; i < lane_shapes_in_range.size(); ++i){
-        std::deque<odr::polygon> output;
-        odr::polygon a;
-        odr::polygon b;
+    // bgi::rtree<odr::value, bgi::rstar<16, 4>> local_tree;
+    // std::unordered_map< unsigned int, odr::polygon> box_to_poly_map;
+    // for (unsigned i = 0; i < lane_shapes_in_range.size(); ++i){
+    //     std::deque<odr::polygon> output;
+    //     odr::polygon a;
+    //     odr::polygon b;
 
-        bg::assign(a, lane_shapes_in_range.at(i).first);
-        bg::assign(b, search_region);
-        bg::intersection(a,b, output);
-        int count = 0;
-        if(output.size()>1){
-            local_tree.insert(lane_shapes_in_range.at(i));
-            odr::polygon poly;
-            bg::convert(lane_shapes_in_range.at(i).first, poly);
-            box_to_poly_map[lane_shapes_in_range.at(i).second] = poly;
+    //     bg::assign(a, lane_shapes_in_range.at(i).first);
+    //     bg::assign(b, search_region);
+    //     bg::intersection(a,b, output);
+    //     int count = 0;
+    //     if(output.size()>1){
+    //         local_tree.insert(lane_shapes_in_range.at(i));
+    //         odr::polygon poly;
+    //         bg::convert(lane_shapes_in_range.at(i).first, poly);
+    //         box_to_poly_map[lane_shapes_in_range.at(i).second] = poly;
             
-        } else{
-            local_tree.insert(lane_shapes_in_range.at(i));
-            box_to_poly_map[lane_shapes_in_range.at(i).second] = output[0];
-        }         
-    }
+    //     } else{
+    //         local_tree.insert(lane_shapes_in_range.at(i));
+    //         box_to_poly_map[lane_shapes_in_range.at(i).second] = output[0];
+    //     }         
+    // }
 
     int area = 0;
     int height = 0;
@@ -548,31 +561,31 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
             odr::point p(i_in_map, j_in_map);
 
-            std::vector<odr::value> local_tree_query_results;
-            local_tree.query(bgi::contains(p), std::back_inserter(local_tree_query_results));
+            // std::vector<odr::value> local_tree_query_results;
+            // local_tree.query(bgi::contains(p), std::back_inserter(local_tree_query_results));
 
-            if (local_tree_query_results.size() > 0)
-            {
-                for (auto pair : local_tree_query_results)
-                {
-                    // auto pair = local_tree_query_results.front();
-                    odr::ring ring;
-                    bg::convert(this->lane_polys_.at(pair.second).second, ring);
-                    odr::Lane lane = this->lane_polys_.at(pair.second).first;
-                    // odr::Road road = this->map_->id_to_road.at(lane.key.road_id);
-                    bool point_is_within_shape = bg::within(p, ring);
-                    if (point_is_within_shape)
-                    {
+            // if (local_tree_query_results.size() > 0)
+            // {
+            //     for (auto pair : local_tree_query_results)
+            //     {
+            //         // auto pair = local_tree_query_results.front();
+            //         odr::ring ring;
+            //         bg::convert(this->lane_polys_.at(pair.second).second, ring);
+            //         odr::Lane lane = this->lane_polys_.at(pair.second).first;
+            //         // odr::Road road = this->map_->id_to_road.at(lane.key.road_id);
+            //         bool point_is_within_shape = bg::within(p, ring);
+            //         if (point_is_within_shape)
+            //         {
 
-                        cell_is_in_junction = this->road_in_junction_map_[lane.key];
-                        if (lane.type == "driving")
-                        {
-                            cell_is_drivable = true;
-                            break;
-                        }
-                    }
-                }
-            }
+            //             cell_is_in_junction = this->road_in_junction_map_[lane.key];
+            //             if (lane.type == "driving")
+            //             {
+            //                 cell_is_drivable = true;
+            //                 break;
+            //             }
+            //         }
+            //     }
+            // }
 
             drivable_grid_data.push_back(cell_is_drivable ? 0 : 100);
             junction_grid_data.push_back(cell_is_in_junction ? 100 : 0);
@@ -582,23 +595,26 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                 route_dist_grid_data.push_back(100);
             else if (local_route_linestring_.size() > 0)
             {
-                int dist = static_cast<int>(bg::distance(local_route_linestring_, p) * 7);
+                int dist = static_cast<int>(bg::distance(local_route_linestring_, p));
 
                 if (dist < 1.0 && !goal_is_set && abs(i) + abs(j) > 30)
                 {
                     goal_is_set = true;
                     goal_pt = BoostPoint(i, j);
                 }
+                const int SCALE = 24;
 
                 // Distances > 10 are set to 100
-                if (dist > 32)
-                    dist = 100;
-                //else
-                    //dist *= 5;
+                if (dist > 4)
+                    route_dist_grid_data.push_back(100);
+                else 
+                {
+                    route_dist_grid_data.push_back(dist * SCALE);
+                    // dist *= 10;
+                }
                 
                 //RCLCPP_INFO(get_logger(), "dist value %i", dist);
 
-                route_dist_grid_data.push_back(dist);
             }
             else
             {
@@ -648,7 +664,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     goal_pose_pub_->publish(goal_pose);
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+    // std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
 /**
