@@ -53,7 +53,7 @@ from skimage.draw import line
 from matplotlib.patches import Rectangle
 
 N_BRANCHES: int = 9
-STEP_LEN: float = 12.0  # meters
+STEP_LEN: float = 8.0  # meters
 DEPTH: int = 3
 
 # These are vdehicle constants for the GEM e6.
@@ -415,7 +415,8 @@ class RecursiveTreePlanner(Node):
         command = CarlaEgoVehicleControl()
         if len(best_path.poses) < 4:
             return
-        command.steer = best_path.poses[3][2] * -2.7  # First steering value
+        command.steer = (best_path.poses[1][2]) * -2.7  # First steering value
+        
         # command.steer = -1.0
 
         if command.steer > 1.0:
@@ -430,7 +431,7 @@ class RecursiveTreePlanner(Node):
 
 
         pid_error = target_speed - self.speed
-        self.get_logger().info(f"Speed err: {pid_error}. Steer: {command.steer}")
+        self.get_logger().info(f"Steer/Pose: {command.steer}/{best_path.poses[1][2]}")
         
         if pid_error > 0:
             command.throttle = min(pid_error *0.3, 0.4)
@@ -468,6 +469,7 @@ class RecursiveTreePlanner(Node):
         if self.current_mode == Mode.AUTO:
             print("AUTO")
             self.command_pub.publish(command)
+        
 
         self.path_pub.publish(result_msg)
 

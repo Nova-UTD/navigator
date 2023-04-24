@@ -41,7 +41,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     // Load map from file if from_file is true
     bool do_load_from_file = this->get_parameter("from_file").as_bool();
 
-std::string xodr_path = "/home/wheitman/navigator/data/maps/campus.xodr";
+std::string xodr_path = "/home/nova/navigator/data/maps/campus.xodr";
 
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
@@ -82,7 +82,7 @@ std::string xodr_path = "/home/wheitman/navigator/data/maps/campus.xodr";
         // setRouteFromClickedPt(PointStamped());
 
         // Temporary linestring from file
-        std::ifstream ifs("/home/wheitman/navigator/data/maps/route_wkt.txt");
+        std::ifstream ifs("/home/nova/navigator/data/maps/route_wkt.txt");
         std::string wkt_str( (std::istreambuf_iterator<char>(ifs) ),
                        (std::istreambuf_iterator<char>()) );
         boost::geometry::read_wkt<bg::model::linestring<odr::point>>(wkt_str.c_str(), route_linestring_);
@@ -92,7 +92,7 @@ std::string xodr_path = "/home/wheitman/navigator/data/maps/campus.xodr";
         // Read junctions from file
         odr::multipolygon junction_mps;
 
-        std::ifstream ifs_jct("/home/wheitman/navigator/data/maps/junction_wkt.txt");
+        std::ifstream ifs_jct("/home/nova/navigator/data/maps/junction_wkt.txt");
         std::string wkt_str_jct( (std::istreambuf_iterator<char>(ifs_jct) ),
                        (std::istreambuf_iterator<char>()) );
         boost::geometry::read_wkt<odr::multipolygon>(wkt_str_jct.c_str(), junction_mps);
