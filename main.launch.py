@@ -50,7 +50,7 @@ def generate_launch_description():
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        arguments=[path.join("/home/nova/navigator/data", "hail_bopp.urdf")]
+        arguments=[path.join("/home/wheitman/navigator/data", "hail_bopp.urdf")]
     )
 
     guardian = Node(
@@ -89,7 +89,7 @@ def generate_launch_description():
         package='occupancy_cpp',
         executable='ground_segmentation_exe',
         parameters=[
-            {'sensitivity': 0.08},
+            {'sensitivity': 0.13},
         ]
     )
 
@@ -140,14 +140,14 @@ def generate_launch_description():
         package='velodyne_driver',
         executable='velodyne_driver_node',
         parameters=[
-            "/home/nova/navigator/param/perception/lidar_driver_right.param.yaml"],
+            "/home/wheitman/navigator/param/perception/lidar_driver_right.param.yaml"],
         namespace='velo_right'
     )
     left_lidar_driver = Node(
         package='velodyne_driver',
         executable='velodyne_driver_node',
         parameters=[
-            "/home/nova/navigator/param/perception/lidar_driver_left.param.yaml"],
+            "/home/wheitman/navigator/param/perception/lidar_driver_left.param.yaml"],
         namespace='velo_left'
     )
 
@@ -155,7 +155,7 @@ def generate_launch_description():
         package='velodyne_pointcloud',
         executable='velodyne_convert_node',
         parameters=[
-            "/home/nova/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
+            "/home/wheitman/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
         namespace='velo_left'
     )
 
@@ -163,7 +163,7 @@ def generate_launch_description():
         package='velodyne_pointcloud',
         executable='velodyne_convert_node',
         parameters=[
-            "/home/nova/navigator/param/perception/lidar_pointcloud_right.param.yaml"],
+            "/home/wheitman/navigator/param/perception/lidar_pointcloud_right.param.yaml"],
         namespace='velo_right'
     )
 
@@ -213,17 +213,17 @@ def generate_launch_description():
 
         # INTERFACE
         # camera_streamer,
-        joy,
-        joy_translator,
-        epas,
-        mcu_interface,
-        linear_actuator,
+        # joy,
+        # joy_translator,
+        # epas,
+        # mcu_interface,
+        # linear_actuator,
         # web_bridge,
-        gnss,
-        left_lidar_driver,
-        left_lidar_pointcloud,
-        right_lidar_driver,
-        right_lidar_pointcloud,
+        # gnss,
+        # left_lidar_driver,
+        # left_lidar_pointcloud,
+        # right_lidar_driver,
+        # right_lidar_pointcloud,
         # camera,
 
         # MISC
@@ -240,7 +240,7 @@ def generate_launch_description():
         
 
         # PLANNING
-        map_manager,
+        # map_manager,
         grid_summation,
         rtp,
 

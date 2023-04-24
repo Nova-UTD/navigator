@@ -41,7 +41,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     // Load map from file if from_file is true
     bool do_load_from_file = this->get_parameter("from_file").as_bool();
 
-    std::string xodr_path = "/home/nova/navigator/data/maps/campus.xodr";
+std::string xodr_path = "/home/wheitman/navigator/data/maps/campus.xodr";
 
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
@@ -82,11 +82,33 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         // setRouteFromClickedPt(PointStamped());
 
         // Temporary linestring from file
-        std::ifstream ifs("/home/nova/navigator/data/maps/route_wkt.txt");
+        std::ifstream ifs("/home/wheitman/navigator/data/maps/route_wkt.txt");
         std::string wkt_str( (std::istreambuf_iterator<char>(ifs) ),
-                       (std::istreambuf_iterator<char>()    ) );
+                       (std::istreambuf_iterator<char>()) );
         boost::geometry::read_wkt<bg::model::linestring<odr::point>>(wkt_str.c_str(), route_linestring_);
+
+        std::printf("Route LS has %i pts\n", route_linestring_.size());
+
+        // Read junctions from file
+        odr::multipolygon junction_mps;
+
+        std::ifstream ifs_jct("/home/wheitman/navigator/data/maps/junction_wkt.txt");
+        std::string wkt_str_jct( (std::istreambuf_iterator<char>(ifs_jct) ),
+                       (std::istreambuf_iterator<char>()) );
+        boost::geometry::read_wkt<odr::multipolygon>(wkt_str_jct.c_str(), junction_mps);
+
+        junction_polys_.clear();
+        for (odr::polygon poly : junction_mps)
+        {
+            junction_polys_.push_back(poly);
+        }
+
+        std::printf("Added %i junction polygons\n", junction_polys_.size());
+
+
         // bg::simplify(route_linestring_, route_linestring_, 1.0);
+        std::printf("Route LS now has %i pts\n", route_linestring_.size());
+
     }
     else
     {
@@ -491,7 +513,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
         return;
     }
 
-    std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
+    // std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
 
     int idx = 0;
 
@@ -534,6 +556,16 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     if (h > M_PI)
         h -= 2 * M_PI;
 
+    std::vector<odr::polygon> nearby_junctions;
+
+    for (odr::polygon junction_poly : junction_polys_)
+    {
+        odr::point vehicle_pos_pt(vehicle_pos.x, vehicle_pos.y);
+        float dist = bg::distance(vehicle_pos_pt, junction_poly);
+
+        if (dist < 40.0)
+            nearby_junctions.push_back(junction_poly);
+    }
 
     for (float j = y_min; j <= y_max; j += res)
     {
@@ -583,10 +615,17 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
             //     }
             // }
 
+            for (auto poly : nearby_junctions)
+            {
+                if (bg::within(p, poly))
+                {
+                    cell_is_in_junction = true;
+                }
+            }
+
+
             drivable_grid_data.push_back(cell_is_drivable ? 0 : 100);
             junction_grid_data.push_back(cell_is_in_junction ? 100 : 0);
-
-
 
             // // Get closest route point
             if (i < 0)
@@ -650,7 +689,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     route_dist_grid_pub_->publish(route_dist_grid); // Route distance grid
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+    // std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
 /**
