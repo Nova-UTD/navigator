@@ -170,6 +170,8 @@ namespace navigator
             bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> rough_route_tree_;
 
+            std::vector<odr::polygon> junction_polys_;
+
             RouteManager rm;
         };
     }

@@ -52,14 +52,14 @@ from skimage.draw import line
 
 from matplotlib.patches import Rectangle
 
-N_BRANCHES: int = 13
+N_BRANCHES: int = 9
 STEP_LEN: float = 12.0  # meters
 DEPTH: int = 3
 
 # These are vdehicle constants for the GEM e6.
 # The sim vehicle (Tesla Model 3) has similar constants.
 WHEEL_BASE: float = 3.5  # meters
-MAX_TURN_ANGLE = 0.6  # radians
+MAX_TURN_ANGLE = 0.2  # radians
 COST_CUTOFF = 90
 
 
@@ -240,7 +240,11 @@ class RecursiveTreePlanner(Node):
             num_branches = (num_branches*2)+1
 
         for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, num_branches):
-            self.generatePaths(depth-1, new_path, angle, segment_length,
+            if angle > 0:
+                adjusted_angle = np.power(angle, 1.5)
+            else:
+                adjusted_angle = np.power(abs(angle), 1.5) * -1
+            self.generatePaths(depth-1, new_path, adjusted_angle, segment_length,
                                res, num_branches, results, result_costs, costmap)
 
     def startGeneration(self, costmap: np.ndarray, depth=7, segment_length=9.0, branches=7):
@@ -262,7 +266,7 @@ class RecursiveTreePlanner(Node):
         # of the path when we're close to the front of the car.
         # The closer we are to the front of the car, the more important a smooth path is!
 
-        for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, branches*3):
+        for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, branches*2):
             self.generatePaths(depth-1, path, angle, segment_length,
                                res, branches, results, costs, costmap)
 
@@ -296,6 +300,19 @@ class RecursiveTreePlanner(Node):
         color.a = 0.8
         color.r = 1.0
         marker.color = color
+
+        self.barrier_marker_pub.publish(marker)
+        print("Barrier published!")
+
+    def removeBarrierMarker(self):
+        marker = Marker()
+        marker.header.frame_id = 'base_link'
+        marker.header.stamp = self.clock
+        marker.ns = 'barrier'
+        marker.id = 0
+        marker.type = Marker.CUBE
+
+        marker.action = Marker.DELETE
 
         self.barrier_marker_pub.publish(marker)
 
@@ -361,14 +378,22 @@ class RecursiveTreePlanner(Node):
             path.poses = [[self.origin[0], self.origin[1], 0.0]]
             path.cost = 0
             best_path = path
+
+        poses_np = np.asarray(best_path.poses)
+        print(np.min(poses_np[:,2]))
             
         barrier_idx = self.getBarrierIndex(best_path, self.speed_costmap)
-        barrier_pose = best_path.poses[barrier_idx]
+        if barrier_idx == len(best_path.poses) - 1:
+            # No barrier in front of us! Set the distance to be large.
+            self.removeBarrierMarker()
+            distance_from_barrier = 40.0
+        else:
+            barrier_pose = best_path.poses[barrier_idx]
 
-        distance_from_barrier = np.linalg.norm(
-            [barrier_pose[0] * 0.4 - 20, barrier_pose[1] * 0.4 - 30])
+            distance_from_barrier = np.linalg.norm(
+                [barrier_pose[0] * 0.4 - 20, barrier_pose[1] * 0.4 - 30])
 
-        self.publishBarrierMarker(barrier_pose)
+            self.publishBarrierMarker(barrier_pose)
 
         for pose in best_path.poses:
             pose_msg = PoseStamped()
@@ -403,9 +428,9 @@ class RecursiveTreePlanner(Node):
         MAX_SPEED = np.min([2.0, (distance_from_barrier - 5)/2])
         target_speed = MAX_SPEED # m/s, ~10mph
 
-        self.get_logger().info(f"Current speed: {self.speed}")
 
         pid_error = target_speed - self.speed
+        self.get_logger().info(f"Speed err: {pid_error}. Steer: {command.steer}")
         
         if pid_error > 0:
             command.throttle = min(pid_error *0.3, 0.4)
