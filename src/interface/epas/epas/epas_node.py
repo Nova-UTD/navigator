@@ -9,6 +9,7 @@ from rosgraph_msgs.msg import Clock
 import rclpy
 from rclpy.node import Node
 from dataclasses import dataclass
+import numpy as np
 
 
 @dataclass
@@ -30,6 +31,8 @@ class EpasNode(Node):
         self.limit_right: int = 230
 
         self.bus = None
+
+        self.past_errors = np.zeroes(5)
 
         # try:
         #     self.bus = can.interface.Bus(
@@ -130,12 +133,27 @@ class EpasNode(Node):
         # self.get_logger().info('current_angle_normalized: '+str(current_angle_normalized))
         # self.get_logger().info('target: '+str(target))
 
-        # We need to map [-1.0, 1.0] to [0, 255]
+        # We need to map [-1.0, 1.0] to [0, 255
+        
+        # Append new incoming error
+        np.roll(self.past_errors, -1)
+        self.past_errors[-1] = e
+        
 
         Kp = 1
+        Ki = .2
+
+        INTEGRAL_CAP = .08
+
+        integral_term = np.sum(self.past_errors) * Ki
+
+        if(integral_term > INTEGRAL_CAP):
+            integral_term = INTEGRAL_CAP
+        elif(integral_term < -1 * INTEGRAL_CAP):
+            integral_term = -1 * INTEGRAL_CAP
 
         # Power is an abstract value from [-1., 1.], where -1 is hard push left
-        power = e * Kp
+        power = e * Kp + integral_term
 
         torqueA: int = min(255, max(0, math.ceil((power+1) * (255/2))))
         torqueB: int = 255-torqueA
