@@ -215,7 +215,7 @@ def generate_launch_description():
         # camera_streamer,
         joy,
         joy_translator,
-        epas,
+        # epas,
         # mcu_interface,
         # linear_actuator,
         # web_bridge,
@@ -242,7 +242,7 @@ def generate_launch_description():
         # PLANNING
         map_manager,
         grid_summation,
-        # rtp,
+        rtp,
 
 
         # SAFETY

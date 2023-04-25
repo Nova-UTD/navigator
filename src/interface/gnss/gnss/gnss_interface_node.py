@@ -218,7 +218,7 @@ class GnssInterfaceNode(Node):
         position_y = y - y0
 
         new_shapely_pt = Point(position_x, position_y)
-        if len(self.trace) == 0 or shapely.distance(self.trace[-1], new_shapely_pt) > 7.0:
+        if len(self.trace) == 0 or shapely.distance(self.trace[-1], new_shapely_pt) > 2.0:
             self.trace.append(new_shapely_pt)
 
         msg = Odometry()
