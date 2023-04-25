@@ -52,7 +52,7 @@ from skimage.draw import line
 
 from matplotlib.patches import Rectangle
 
-N_BRANCHES: int = 9
+N_BRANCHES: int = 5
 STEP_LEN: float = 8.0  # meters
 DEPTH: int = 3
 
@@ -84,7 +84,7 @@ class RecursiveTreePlanner(Node):
         super().__init__('rtp_node')
 
         self.speed_costmap = np.zeros((151, 151))
-        self.origin = (50., 75.)
+        self.origin = (44., 75.)
 
         steering_cost_map_sub = self.create_subscription(
             OccupancyGrid, '/grid/steering_cost', self.costMapCb, 1)
@@ -415,7 +415,10 @@ class RecursiveTreePlanner(Node):
         command = CarlaEgoVehicleControl()
         if len(best_path.poses) < 4:
             return
-        command.steer = (best_path.poses[1][2]) * -2.7  # First steering value
+        #command.steer = ((best_path.poses[4][2] + best_path.poses[5][2] + best_path.poses[6][2])/3.0) * -2.7  # First steering value
+        
+        x = np.sum((np.asarray(best_path.poses)[1:11,2] * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])))/10.0
+        command.steer = (x * -1.5)**3 - 1.6*x
         
         # command.steer = -1.0
 
@@ -431,7 +434,7 @@ class RecursiveTreePlanner(Node):
 
 
         pid_error = target_speed - self.speed
-        self.get_logger().info(f"Steer/Pose: {command.steer}/{best_path.poses[1][2]}")
+        self.get_logger().info(f"Steer/Pose: {command.steer}/{((best_path.poses[4][2] + best_path.poses[5][2] + best_path.poses[6][2])/3.0)}")
         
         if pid_error > 0:
             command.throttle = min(pid_error *0.3, 0.4)
