@@ -22,9 +22,9 @@ class sound_node(Node):
         self.current_mode = Mode.DISABLED
 
         self.doPlayAlert = False
-        self.doPlayWaitingSound = True
+        self.doPlayWaitingSound = False
 
-        sound_dir = "/home/wheitman/navigator/data/sounds"
+        sound_dir = "/home/nova/navigator/data/sounds"
 
         self.alert_wav = simpleaudio.WaveObject.from_wave_file(os.path.join(sound_dir, "alert.wav"))
         self.alert_play_obj = None
@@ -66,6 +66,8 @@ class sound_node(Node):
 
         if msg.mode == self.current_mode:
             return # no change.
+        
+        self.current_mode = msg.mode
         
         if msg.mode == Mode.AUTO:
             self.auto_on_wav.play()

@@ -32,7 +32,7 @@ class EpasNode(Node):
 
         self.bus = None
 
-        self.past_errors = np.zeroes(5)
+        self.past_errors = np.zeros(5)
 
         # try:
         #     self.bus = can.interface.Bus(
@@ -140,10 +140,11 @@ class EpasNode(Node):
         self.past_errors[-1] = e
         
 
-        Kp = 1
-        Ki = .2
+        Kp = .4
+        Ki = .68
 
         INTEGRAL_CAP = .08
+        TORQUE_LIMIT = 200
 
         integral_term = np.sum(self.past_errors) * Ki
 
@@ -155,7 +156,7 @@ class EpasNode(Node):
         # Power is an abstract value from [-1., 1.], where -1 is hard push left
         power = e * Kp + integral_term
 
-        torqueA: int = min(255, max(0, math.ceil((power+1) * (255/2))))
+        torqueA: int = min(TORQUE_LIMIT, max(0, math.ceil((power+1) * (255/2))))
         torqueB: int = 255-torqueA
         # self.get_logger().info(str(torqueA))
 

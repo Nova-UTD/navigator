@@ -11,7 +11,7 @@ from launch_ros.actions import Node
 
 from ament_index_python import get_package_share_directory
 
-NAVIGATOR_DIR = "/home/wheitman/navigator/"
+NAVIGATOR_DIR = "/home/nova/navigator/"
 
 def generate_launch_description():
 
@@ -59,6 +59,11 @@ def generate_launch_description():
         executable='guardian_node'
     )
 
+    sounds = Node(
+        package='guardian',
+        executable='sound_node'
+    )
+
     gnss = Node(
         package='gnss',
         executable='gnss_interface_node'
@@ -74,7 +79,7 @@ def generate_launch_description():
         executable='map_management_node',
         parameters=[
             {'from_file': True},
-            {'data_path': '/home/wheitman/navigator/data'}
+            {'data_path': '/home/nova/navigator/data'}
         ]
     )
 
@@ -227,15 +232,15 @@ def generate_launch_description():
         # camera_streamer,
         joy,
         joy_translator,
-        # epas,
-        # mcu_interface,
-        # linear_actuator,
+        epas,
+        mcu_interface,
+        linear_actuator,
         # web_bridge,
-        # gnss,
-        # left_lidar_driver,
-        # left_lidar_pointcloud,
-        # right_lidar_driver,
-        # right_lidar_pointcloud,
+        gnss,
+        left_lidar_driver,
+        left_lidar_pointcloud,
+        right_lidar_driver,
+        right_lidar_pointcloud,
         # camera,
 
         # MISC
@@ -247,7 +252,7 @@ def generate_launch_description():
 
         # PERCEPTION
         ground_seg,
-        # lidar_processor,
+        lidar_processor,
         static_grid,
         
 
@@ -261,4 +266,5 @@ def generate_launch_description():
 
         # SAFETY
         guardian,
+        sounds,
     ])
