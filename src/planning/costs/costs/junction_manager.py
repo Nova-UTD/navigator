@@ -71,8 +71,8 @@ class JunctionManager(Node):
         self.clock_sub = self.create_subscription(
         Clock, '/clock', self.clockCb, 1)
 
-        self.joy_sub = self.create_subscription(
-            Joy, '/joy', self.joyCb, 10)
+        # self.joy_sub = self.create_subscription(
+        #     Joy, '/joy', self.joyCb, 10)
 
         # Pubs
         self.stateful_grid_pub = self.create_publisher(

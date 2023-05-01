@@ -27,6 +27,7 @@ from time import sleep, strftime, strptime, time
 import numpy as np
 import rclpy
 # Message definitions
+from carla_msgs.msg import CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import MapMetaData, OccupancyGrid, Odometry
@@ -42,10 +43,16 @@ class odom2tf(Node):
         super().__init__('odom2tf')
 
         odom_sub = self.create_subscription(Odometry, '/gnss/odometry', self.odomCb, 1)
+        self.speed_pub = self.create_publisher(CarlaSpeedometer, '/speed', 1)
 
         self.tf_broadcaster = TransformBroadcaster(self)
 
     def odomCb(self, msg: Odometry):
+
+        speed_msg = CarlaSpeedometer()
+        speed_msg.speed = msg.twist.twist.linear.x
+        self.speed_pub.publish(speed_msg)
+
         t = TransformStamped()
         t.header = msg.header
         t.child_frame_id = msg.child_frame_id
@@ -62,10 +69,6 @@ class odom2tf(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = odom2tf()
-    try:
-        rclpy.spin(node)
-    finally:
-        # Write any remaining data to the file before closing.
-        node.close()
+    rclpy.spin(node)
     odom2tf.destroy_node()
     rclpy.shutdown()

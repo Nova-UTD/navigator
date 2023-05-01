@@ -110,6 +110,11 @@ def generate_launch_description():
         executable='mcu_interface_node'
     )
 
+    junction_manager = Node(
+        package='costs',
+        executable='junction_manager'
+    )
+
     joy = Node(
         package='joy_linux',
         executable='joy_linux_node',
@@ -251,6 +256,7 @@ def generate_launch_description():
         grid_summation,
         # rtp,
         odom2tf,
+        junction_manager,
 
 
         # SAFETY
