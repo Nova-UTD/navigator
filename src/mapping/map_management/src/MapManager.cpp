@@ -37,11 +37,12 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
     // Params
     this->declare_parameter("from_file", true);
+    this->declare_parameter("data_path", "/home/nova/navigator/data");
 
     // Load map from file if from_file is true
     bool do_load_from_file = this->get_parameter("from_file").as_bool();
 
-std::string xodr_path = "/home/nova/navigator/data/maps/campus.xodr";
+    std::string data_path = get_parameter("data_path").as_string()+"/maps/campus.xodr";
 
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
@@ -63,8 +64,8 @@ std::string xodr_path = "/home/nova/navigator/data/maps/campus.xodr";
 
     if (do_load_from_file)
     {
-        RCLCPP_INFO(get_logger(), "Loading map from %s", xodr_path.c_str());
-        this->map_ = new odr::OpenDriveMap(xodr_path, false);
+        RCLCPP_INFO(get_logger(), "Loading map from %s", data_path.c_str());
+        this->map_ = new odr::OpenDriveMap(data_path, false);
         this->lane_polys_ = map_->get_lane_polygons(1.0, false);
 
         RCLCPP_INFO(get_logger(), "Map loaded with %i roads", map_->get_roads().size());
@@ -82,7 +83,7 @@ std::string xodr_path = "/home/nova/navigator/data/maps/campus.xodr";
         // setRouteFromClickedPt(PointStamped());
 
         // Temporary linestring from file
-        std::ifstream ifs("/home/nova/navigator/data/maps/route_wkt.txt");
+        std::ifstream ifs(data_path+"/maps/route_wkt.txt");
         std::string wkt_str( (std::istreambuf_iterator<char>(ifs) ),
                        (std::istreambuf_iterator<char>()) );
         
@@ -94,7 +95,7 @@ std::string xodr_path = "/home/nova/navigator/data/maps/campus.xodr";
         // Read junctions from file
         odr::multipolygon junction_mps;
 
-        std::ifstream ifs_jct("/home/nova/navigator/data/maps/junction_wkt.txt");
+        std::ifstream ifs_jct(data_path+"/maps/junction_wkt.txt");
         std::string wkt_str_jct( (std::istreambuf_iterator<char>(ifs_jct) ),
                        (std::istreambuf_iterator<char>()) );
         boost::geometry::read_wkt<odr::multipolygon>(wkt_str_jct.c_str(), junction_mps);

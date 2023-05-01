@@ -11,6 +11,7 @@ from launch_ros.actions import Node
 
 from ament_index_python import get_package_share_directory
 
+NAVIGATOR_DIR = "/home/wheitman/navigator/"
 
 def generate_launch_description():
 
@@ -50,7 +51,7 @@ def generate_launch_description():
     urdf_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        arguments=[path.join("/home/nova/navigator/data", "hail_bopp.urdf")]
+        arguments=[path.join(NAVIGATOR_DIR, "data", "hail_bopp.urdf")]
     )
 
     guardian = Node(
@@ -73,6 +74,7 @@ def generate_launch_description():
         executable='map_management_node',
         parameters=[
             {'from_file': True},
+            {'data_path': '/home/wheitman/navigator/data'}
         ]
     )
 
@@ -197,6 +199,11 @@ def generate_launch_description():
         executable='recorder'
     )
 
+    odom2tf = Node(
+        package='recording',
+        executable='odom2tf'
+    )
+
     grid_summation = Node(
         package='costs',
         executable='grid_summation_node'
@@ -219,11 +226,11 @@ def generate_launch_description():
         # mcu_interface,
         # linear_actuator,
         # web_bridge,
-        gnss,
-        left_lidar_driver,
-        left_lidar_pointcloud,
-        right_lidar_driver,
-        right_lidar_pointcloud,
+        # gnss,
+        # left_lidar_driver,
+        # left_lidar_pointcloud,
+        # right_lidar_driver,
+        # right_lidar_pointcloud,
         # camera,
 
         # MISC
@@ -235,14 +242,15 @@ def generate_launch_description():
 
         # PERCEPTION
         ground_seg,
-        lidar_processor,
+        # lidar_processor,
         static_grid,
         
 
         # PLANNING
         map_manager,
         grid_summation,
-        rtp,
+        # rtp,
+        odom2tf,
 
 
         # SAFETY
