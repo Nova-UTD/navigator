@@ -53,7 +53,7 @@ from skimage.draw import line
 from matplotlib.patches import Rectangle
 
 N_BRANCHES: int = 11
-STEP_LEN: float = 4.0  # meters
+STEP_LEN: float = 6.0  # meters
 DEPTH: int = 3
 
 # These are vdehicle constants for the GEM e6.
@@ -312,7 +312,7 @@ class RecursiveTreePlanner(Node):
         results = []
         costs = []
 
-        res = 2.0
+        res = 1.0
 
         # The below loop creates the ROOT of our recursive tree
         # As a special case for the ROOT only, we multiply the number of branches
@@ -377,7 +377,7 @@ class RecursiveTreePlanner(Node):
         marker.points.append(pt_b)
 
         self.barrier_marker_pub.publish(marker)
-        print("Lookahead published!")
+        # print("Lookahead published!")
 
     def publishBarrierMarker(self, pose):
         marker = Marker()
@@ -404,7 +404,7 @@ class RecursiveTreePlanner(Node):
         marker.color = color
 
         self.barrier_marker_pub.publish(marker)
-        print("Barrier published!")
+        # print("Barrier published!")
 
     def removeBarrierMarker(self):
         marker = Marker()
@@ -494,7 +494,7 @@ class RecursiveTreePlanner(Node):
 
         lookahead_distance = min(max(self.speed * 3.0, 2.0), 20.) # meters
 
-        print(lookahead_distance)
+        # print(lookahead_distance)
             
         barrier_idx = self.getBarrierIndex(best_path, self.speed_costmap)
         if barrier_idx == len(best_path.poses) - 1:
@@ -505,7 +505,7 @@ class RecursiveTreePlanner(Node):
             barrier_pose = best_path.poses[barrier_idx]
 
             distance_from_barrier = np.linalg.norm(
-                [barrier_pose[0] * 0.4 - 20, barrier_pose[1] * 0.4 - 30])
+                [barrier_pose[0] * 0.4 - (self.origin[0] * 0.4), barrier_pose[1] * 0.4 - 30])
 
             self.publishBarrierMarker(barrier_pose)
 
@@ -519,7 +519,7 @@ class RecursiveTreePlanner(Node):
             lookahead_pose = poses_np_bl[-1]
 
 
-        print(f"Lookahead pose is ({lookahead_pose[0]}, {lookahead_pose[1]})")
+        # print(f"Lookahead pose is ({lookahead_pose[0]}, {lookahead_pose[1]})")
         self.publishLookaheadMarker(lookahead_distance, lookahead_pose)
 
         for pose in best_path.poses:
@@ -565,18 +565,32 @@ class RecursiveTreePlanner(Node):
 
         command.header.stamp = self.clock
 
-        MAX_SPEED = np.min([2.0, (distance_from_barrier - 5)/2 - 1.0])
+        
+
+        MAX_SPEED = 5.0
+
+        distance_from_barrier -= 7
+
+        if distance_from_barrier <= 10.0 and distance_from_barrier >= -5:
+            MAX_SPEED = distance_from_barrier / 3
+            if distance_from_barrier <= 3.0:
+                MAX_SPEED = -1.
+            print(f"MAX {MAX_SPEED}, BAR: {distance_from_barrier}")
+
+        MAX_SPEED = min(MAX_SPEED, 5.0-max_curvature * 2)
+
         target_speed = MAX_SPEED # m/s, ~10mph
 
 
         pid_error = target_speed - self.speed
-        self.get_logger().info(f"Steer/Pose: {command.steer}/{((best_path.poses[4][2] + best_path.poses[5][2] + best_path.poses[6][2])/3.0)}")
-        
+        # self.get_logger().info(f"Steer/Pose: {command.steer}/{((best_path.poses[4][2] + best_path.poses[5][2] + best_path.poses[6][2])/3.0)}")
+        # print(f"Speed: {self.speed} / {target_speed}")
         if pid_error > 0:
-            command.throttle = min(pid_error *0.3, 0.4)
+            command.throttle = min(pid_error *0.5, 0.6)
         else:
-            command.brake = min(pid_error *0.6 *-1, 0.4)
+            command.brake = pid_error *0.6 *-1
             
+        # print(f"Brake: {command.brake}")
         # if pid_error > 3.0:
         #     command.throttle = 0.5
         #     command.brake = 0.0
@@ -606,7 +620,7 @@ class RecursiveTreePlanner(Node):
         #     command.throttle = 0.4
 
         if self.current_mode == Mode.AUTO:
-            print("AUTO")
+            # print("AUTO")
             self.command_pub.publish(command)
 
         self.previous_steer = command.steer

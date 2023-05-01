@@ -71,8 +71,8 @@ class JunctionManager(Node):
         self.clock_sub = self.create_subscription(
         Clock, '/clock', self.clockCb, 1)
 
-        # self.joy_sub = self.create_subscription(
-        #     Joy, '/joy', self.joyCb, 10)
+        self.joy_sub = self.create_subscription(
+            Joy, '/joy', self.buttonCb, 10)
 
         # Pubs
         self.stateful_grid_pub = self.create_publisher(
@@ -179,6 +179,9 @@ class JunctionManager(Node):
             # Checks if Xbox button is pressed
             if(self.button != 0.0):
                 can_enter = True
+                print("You can now enter junction.")
+            else:
+                print("Waiting for button")
 
         if not can_enter:
             eroded_junction = binary_erosion(junction, square(2))
