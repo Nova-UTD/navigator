@@ -9,6 +9,7 @@ from rosgraph_msgs.msg import Clock
 import rclpy
 from rclpy.node import Node
 from dataclasses import dataclass
+from std_msgs.msg import Float32
 import numpy as np
 
 
@@ -54,6 +55,8 @@ class EpasNode(Node):
         self.status = DiagnosticStatus()
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/node_statuses', 1)
+        
+        # self.current_angle_pub = self.create_publisher(Float32, )
 
         self.clock = Clock().clock
         self.clock_sub = self.create_subscription(

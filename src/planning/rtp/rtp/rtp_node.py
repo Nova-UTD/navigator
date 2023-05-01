@@ -121,6 +121,8 @@ class RecursiveTreePlanner(Node):
 
         self.speed = 0.0
 
+        self.previous_steer = 0.0
+
         self.current_mode = Mode.DISABLED
 
     def currentModeCb(self, msg: Mode):
@@ -431,6 +433,8 @@ class RecursiveTreePlanner(Node):
     def costMapCb(self, msg: OccupancyGrid):
         start = time.time()
 
+        ALPHA = 0.5
+
         status = self.initStatusMsg()
 
         if msg.info.height == 0 or msg.info.width == 0:
@@ -543,14 +547,21 @@ class RecursiveTreePlanner(Node):
         # x = np.sum((np.asarray(best_path.poses)[1:11,2] * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])))/10.0
         # command.steer = (x * -1.5)**3 - 1.6*x
         
-        command.steer = np.arctan2(lookahead_pose[1], lookahead_pose[0]) * -1 / 0.46
+        target_steer = np.arctan2(lookahead_pose[1], lookahead_pose[0]) * -1 / 0.46
 
-        # command.steer = -1.0
+        DT = 0.2 # s
+        ALPHA = min(10 - 1 * self.speed, 10.0)
+
+        # command.steer = self.previous_steer + ALPHA * (target_steer - self.previous_steer) * DT
+
+        command.steer = target_steer
 
         if command.steer > 1.0:
             command.steer = 1.0
         elif command.steer < -1.0:
             command.steer = -1.0
+
+        
 
         command.header.stamp = self.clock
 
@@ -597,6 +608,8 @@ class RecursiveTreePlanner(Node):
         if self.current_mode == Mode.AUTO:
             print("AUTO")
             self.command_pub.publish(command)
+
+        self.previous_steer = command.steer
         
 
         self.path_pub.publish(result_msg)
