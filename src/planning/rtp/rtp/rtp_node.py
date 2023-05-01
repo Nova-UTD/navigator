@@ -53,8 +53,8 @@ from skimage.draw import line
 from matplotlib.patches import Rectangle
 
 N_BRANCHES: int = 11
-STEP_LEN: float = 14.0  # meters
-DEPTH: int = 2
+STEP_LEN: float = 4.0  # meters
+DEPTH: int = 3
 
 # These are vdehicle constants for the GEM e6.
 # The sim vehicle (Tesla Model 3) has similar constants.
@@ -182,16 +182,72 @@ class RecursiveTreePlanner(Node):
 
         return len(path.poses) - 1
 
+    # def getSegment(self, inital_pose: np.ndarray, steering_angle, segment_length: float, res: float, costmap) -> CostedPath:
+    #     end_pose = np.copy(inital_pose)
+    #     segment_poses = []
+    #     current_length = 0.0
+    #     total_cost = 0
+
+    #     x = end_pose[0]
+    #     y = end_pose[1]
+
+    #     idx = 0
+
+    #     dx = (res * np.cos(steering_angle + inital_pose[2]))
+    #     dy = (res * np.sin(steering_angle + inital_pose[2]))
+
+    #     while current_length < segment_length:
+    #         end_heading = end_pose[2]
+
+    #         # x, y = (res * np.cos(end_heading) + end_pose[0],
+    #         #         res * np.sin(end_heading) + end_pose[1])
+
+    #         # x = 
+    #         x = x + dx
+    #         y = y + dy
+
+    #         # Check cost at (x,y). Row-major means y is first!
+    #         if costmap.shape[0] < 1:
+    #             self.get_logger().warn("Costmap was empty")
+    #             return
+    #         cost = costmap[int(y), int(x)]
+    #         if cost > COST_CUTOFF:
+    #             return
+
+    #         total_cost += cost
+
+    #         segment_poses.append([
+    #             x, y, steering_angle
+    #         ])
+    #         end_pose = segment_poses[-1]
+    #         current_length += res
+
+    #         idx += 1
+
+    #     path = CostedPath()
+    #     path.poses = segment_poses
+    #     path.cost = total_cost
+
+    #     return path
+
     def getSegment(self, inital_pose: np.ndarray, steering_angle, segment_length: float, res: float, costmap) -> CostedPath:
         end_pose = np.copy(inital_pose)
         segment_poses = []
         current_length = 0.0
         total_cost = 0
+
+        idx = 0
+
+        dx = (segment_length * np.cos(steering_angle)) / res
+        dy = (segment_length * np.sin(steering_angle)) / res
+
         while current_length < segment_length:
             end_heading = end_pose[2]
 
             x, y = (res * np.cos(end_heading) + end_pose[0],
                     res * np.sin(end_heading) + end_pose[1])
+
+            # x = 
 
             # Check cost at (x,y). Row-major means y is first!
             if costmap.shape[0] < 1:
@@ -209,11 +265,14 @@ class RecursiveTreePlanner(Node):
             end_pose = segment_poses[-1]
             current_length += res
 
+            idx += 1
+
         path = CostedPath()
         path.poses = segment_poses
         path.cost = total_cost
 
         return path
+
 
     def generatePaths(self, depth: int, path: CostedPath, steering_angle, segment_length, res, num_branches, results: list, result_costs, costmap):
         # Current pose at this step is the latest pose in the current path
@@ -238,7 +297,7 @@ class RecursiveTreePlanner(Node):
             else:
                 adjusted_angle = np.power(abs(angle), 1.5) * -1
             self.generatePaths(depth-1, new_path, adjusted_angle, segment_length,
-                               res, num_branches-2, results, result_costs, costmap)
+                               res, num_branches, results, result_costs, costmap)
 
     def startGeneration(self, costmap: np.ndarray, depth=7, segment_length=9.0, branches=7):
         # plt.figure(figsize=(8, 6), dpi=160)
@@ -261,7 +320,7 @@ class RecursiveTreePlanner(Node):
 
         for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, branches):
             self.generatePaths(depth-1, path, angle, segment_length,
-                               res, branches-2, results, costs, costmap)
+                               res, branches, results, costs, costmap)
 
         # results = np.asarray(results)
         # print(results)
@@ -381,7 +440,7 @@ class RecursiveTreePlanner(Node):
         costmap = np.asarray(msg.data, dtype=np.int8).reshape(
             msg.info.height, msg.info.width)
         results = self.startGeneration(
-            costmap, depth=DEPTH, segment_length=STEP_LEN + 0.2 * self.speed, branches=N_BRANCHES)
+            costmap, depth=DEPTH, segment_length=STEP_LEN + 2. * self.speed, branches=N_BRANCHES)
 
         min_cost = 100000
         best_path: CostedPath = None
@@ -422,14 +481,14 @@ class RecursiveTreePlanner(Node):
 
         poses_np = np.asarray(best_path.poses)
         poses_np_bl = np.copy(poses_np)
-        poses_np_bl[:,0] -= self.origin[0]
+        poses_np_bl[:,0] -= (self.origin[0] + 5)
         poses_np_bl[:,1] -= self.origin[1]
         poses_np_bl[:,0:2] *= 0.4
 
         max_curvature = np.max(np.abs(poses_np[:,2]))
         # print(max_curvature)
 
-        lookahead_distance = max(10 - 7*max_curvature, 2.0) # meters
+        lookahead_distance = min(max(self.speed * 3.0, 2.0), 20.) # meters
 
         print(lookahead_distance)
             
@@ -451,6 +510,10 @@ class RecursiveTreePlanner(Node):
             if np.sqrt(pose[0]**2 + pose[1]**2) > lookahead_distance:
                 lookahead_pose = pose
                 break
+
+        if lookahead_pose is None:
+            lookahead_pose = poses_np_bl[-1]
+
 
         print(f"Lookahead pose is ({lookahead_pose[0]}, {lookahead_pose[1]})")
         self.publishLookaheadMarker(lookahead_distance, lookahead_pose)
@@ -477,9 +540,11 @@ class RecursiveTreePlanner(Node):
             return
         #command.steer = ((best_path.poses[4][2] + best_path.poses[5][2] + best_path.poses[6][2])/3.0) * -2.7  # First steering value
         
-        x = np.sum((np.asarray(best_path.poses)[1:11,2] * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])))/10.0
-        command.steer = (x * -1.5)**3 - 1.6*x
+        # x = np.sum((np.asarray(best_path.poses)[1:11,2] * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])))/10.0
+        # command.steer = (x * -1.5)**3 - 1.6*x
         
+        command.steer = np.arctan2(lookahead_pose[1], lookahead_pose[0]) * -1 / 0.46
+
         # command.steer = -1.0
 
         if command.steer > 1.0:
