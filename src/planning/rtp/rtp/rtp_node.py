@@ -40,7 +40,7 @@ from rclpy.node import Node
 from dataclasses import dataclass
 import random
 import time
-from geometry_msgs.msg import PoseStamped, Quaternion
+from geometry_msgs.msg import PoseStamped, Quaternion, Point
 from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer, CarlaEgoVehicleStatus
 from std_msgs.msg import String, ColorRGBA
 from sensor_msgs.msg import Imu
@@ -52,9 +52,9 @@ from skimage.draw import line
 
 from matplotlib.patches import Rectangle
 
-N_BRANCHES: int = 5
-STEP_LEN: float = 8.0  # meters
-DEPTH: int = 3
+N_BRANCHES: int = 11
+STEP_LEN: float = 14.0  # meters
+DEPTH: int = 2
 
 # These are vdehicle constants for the GEM e6.
 # The sim vehicle (Tesla Model 3) has similar constants.
@@ -87,7 +87,7 @@ class RecursiveTreePlanner(Node):
         self.origin = (44., 75.)
 
         steering_cost_map_sub = self.create_subscription(
-            OccupancyGrid, '/grid/steering_cost', self.costMapCb, 1)
+            OccupancyGrid, '/grid/route_distance', self.costMapCb, 1)
 
         speed_cost_map_sub = self.create_subscription(
             OccupancyGrid, '/grid/speed_cost', self.speedCostMapCb, 1)
@@ -230,14 +230,7 @@ class RecursiveTreePlanner(Node):
 
         if depth == 0:
             results.append(new_path)
-
-            if random.randint(0, 20) == 0:  # Only plot 5% of results
-                poses_np = np.asarray(new_path.poses)
-                # plt.plot(poses_np[:, 0], poses_np[:, 1])
             return
-
-        if depth == 1:
-            num_branches = (num_branches*2)+1
 
         for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, num_branches):
             if angle > 0:
@@ -245,7 +238,7 @@ class RecursiveTreePlanner(Node):
             else:
                 adjusted_angle = np.power(abs(angle), 1.5) * -1
             self.generatePaths(depth-1, new_path, adjusted_angle, segment_length,
-                               res, num_branches, results, result_costs, costmap)
+                               res, num_branches-2, results, result_costs, costmap)
 
     def startGeneration(self, costmap: np.ndarray, depth=7, segment_length=9.0, branches=7):
         # plt.figure(figsize=(8, 6), dpi=160)
@@ -258,7 +251,7 @@ class RecursiveTreePlanner(Node):
         results = []
         costs = []
 
-        res = 1.0
+        res = 2.0
 
         # The below loop creates the ROOT of our recursive tree
         # As a special case for the ROOT only, we multiply the number of branches
@@ -266,9 +259,9 @@ class RecursiveTreePlanner(Node):
         # of the path when we're close to the front of the car.
         # The closer we are to the front of the car, the more important a smooth path is!
 
-        for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, branches*2):
+        for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, branches):
             self.generatePaths(depth-1, path, angle, segment_length,
-                               res, branches, results, costs, costmap)
+                               res, branches-2, results, costs, costmap)
 
         # results = np.asarray(results)
         # print(results)
@@ -276,6 +269,54 @@ class RecursiveTreePlanner(Node):
         # plt.xlim((25,75))
         # plt.ylim((60,90))
         return results
+    
+    def publishLookaheadMarker(self, radius, pose):
+        marker = Marker()
+        marker.header.frame_id = 'base_link'
+        marker.header.stamp = self.clock
+        marker.ns = 'lookahead'
+        marker.id = 0
+        marker.type = Marker.CYLINDER
+
+        marker.action = Marker.ADD
+
+        marker.scale.x = radius * 2
+        marker.scale.y = radius * 2
+        marker.scale.z = 0.2
+
+        color = ColorRGBA()
+        color.a = 0.3
+        color.g = 1.0
+        color.b = 1.0
+        marker.color = color
+
+        self.barrier_marker_pub.publish(marker)
+
+        marker.id = 1
+        marker.type = Marker.ARROW
+
+        marker.action = Marker.ADD
+
+        marker.scale.x = 0.5
+        marker.scale.y = 0.8
+        marker.scale.z = 0.3
+
+        color = ColorRGBA()
+        color.a = 0.7
+        color.g = 1.0
+        color.b = 0.6
+        marker.color = color
+
+        pt_a = Point()
+        marker.points.append(pt_a)
+
+        pt_b = Point()
+        pt_b.x = pose[0]
+        pt_b.y = pose[1]
+        marker.points.append(pt_b)
+
+        self.barrier_marker_pub.publish(marker)
+        print("Lookahead published!")
 
     def publishBarrierMarker(self, pose):
         marker = Marker()
@@ -340,7 +381,7 @@ class RecursiveTreePlanner(Node):
         costmap = np.asarray(msg.data, dtype=np.int8).reshape(
             msg.info.height, msg.info.width)
         results = self.startGeneration(
-            costmap, depth=DEPTH, segment_length=STEP_LEN, branches=N_BRANCHES)
+            costmap, depth=DEPTH, segment_length=STEP_LEN + 0.2 * self.speed, branches=N_BRANCHES)
 
         min_cost = 100000
         best_path: CostedPath = None
@@ -380,7 +421,17 @@ class RecursiveTreePlanner(Node):
             best_path = path
 
         poses_np = np.asarray(best_path.poses)
-        print(np.min(poses_np[:,2]))
+        poses_np_bl = np.copy(poses_np)
+        poses_np_bl[:,0] -= self.origin[0]
+        poses_np_bl[:,1] -= self.origin[1]
+        poses_np_bl[:,0:2] *= 0.4
+
+        max_curvature = np.max(np.abs(poses_np[:,2]))
+        # print(max_curvature)
+
+        lookahead_distance = max(10 - 7*max_curvature, 2.0) # meters
+
+        print(lookahead_distance)
             
         barrier_idx = self.getBarrierIndex(best_path, self.speed_costmap)
         if barrier_idx == len(best_path.poses) - 1:
@@ -394,6 +445,15 @@ class RecursiveTreePlanner(Node):
                 [barrier_pose[0] * 0.4 - 20, barrier_pose[1] * 0.4 - 30])
 
             self.publishBarrierMarker(barrier_pose)
+
+        lookahead_pose = None
+        for pose in poses_np_bl[:]:
+            if np.sqrt(pose[0]**2 + pose[1]**2) > lookahead_distance:
+                lookahead_pose = pose
+                break
+
+        print(f"Lookahead pose is ({lookahead_pose[0]}, {lookahead_pose[1]})")
+        self.publishLookaheadMarker(lookahead_distance, lookahead_pose)
 
         for pose in best_path.poses:
             pose_msg = PoseStamped()
@@ -429,7 +489,7 @@ class RecursiveTreePlanner(Node):
 
         command.header.stamp = self.clock
 
-        MAX_SPEED = np.min([2.0, (distance_from_barrier - 5)/2])
+        MAX_SPEED = np.min([2.0, (distance_from_barrier - 5)/2 - 1.0])
         target_speed = MAX_SPEED # m/s, ~10mph
 
 
@@ -439,7 +499,7 @@ class RecursiveTreePlanner(Node):
         if pid_error > 0:
             command.throttle = min(pid_error *0.3, 0.4)
         else:
-            command.brake = min(pid_error *0.3 *-1, 0.4)
+            command.brake = min(pid_error *0.6 *-1, 0.4)
             
         # if pid_error > 3.0:
         #     command.throttle = 0.5
