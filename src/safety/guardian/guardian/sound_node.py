@@ -9,7 +9,7 @@ from nova_msgs.msg import Mode
 import rclpy
 from rclpy.node import Node
 import simpleaudio
-from std_msgs.msg import Empty
+from std_msgs.msg import Bool
 import os
 import time
 
@@ -41,12 +41,19 @@ class sound_node(Node):
         alert_sound_timer = self.create_timer(1.0, self.playAlert)
 
         waiting_sound_timer = self.create_timer(2.5, self.playWaitingSound)
-        proceed_sub = self.create_subscription(Empty, "/planning/proceed", self.proceedCb, 1)
+        is_waiting_sub = self.create_subscription(Bool, "/planning/is_waiting", self.isWaitingCb, 1)
 
-    def proceedCb(self):
+    def isWaitingCb(self, msg: Bool):
+        is_waiting = msg.data
+
+        if not is_waiting and self.doPlayWaitingSound:
+            self.doPlayWaitingSound = False
+            self.waiting_done_wav.play()
+        elif is_waiting:
+            self.doPlayWaitingSound
+
         self.doPlayWaitingSound = False
 
-        self.waiting_done_wav.play()
 
 
     def playWaitingSound(self):

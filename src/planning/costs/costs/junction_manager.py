@@ -36,7 +36,7 @@ from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Joy
-
+from std_msgs.msg import Bool
 
 import matplotlib.pyplot as plt
 
@@ -80,6 +80,8 @@ class JunctionManager(Node):
 
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/node_statuses', 1)
+        
+        self.is_waiting_pub = self.create_publisher(Bool, '/planning/is_waiting', 1)
 
         
 
@@ -180,8 +182,17 @@ class JunctionManager(Node):
             if(self.button != 0.0):
                 can_enter = True
                 print("You can now enter junction.")
+
+                is_waiting = Bool()
+                is_waiting.data = False
+                self.is_waiting_pub.publish(is_waiting)
+
             else:
                 print("Waiting for button")
+
+                is_waiting = Bool()
+                is_waiting.data = True
+                self.is_waiting_pub.publish(is_waiting)
 
         if not can_enter:
             eroded_junction = binary_erosion(junction, square(2))
