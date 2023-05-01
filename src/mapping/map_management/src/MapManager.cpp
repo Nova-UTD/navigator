@@ -83,7 +83,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         // setRouteFromClickedPt(PointStamped());
 
         // Temporary linestring from file
-        std::ifstream ifs(data_path+"/maps/route_wkt.txt");
+        std::ifstream ifs(data_path+"/maps/lot_t.txt");
         std::string wkt_str( (std::istreambuf_iterator<char>(ifs) ),
                        (std::istreambuf_iterator<char>()) );
         
