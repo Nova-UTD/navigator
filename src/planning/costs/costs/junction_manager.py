@@ -48,6 +48,8 @@ class JunctionManager(Node):
     def __init__(self):
         super().__init__('junction_manager')
 
+        self.target_speed = 0.0
+
         self.current_occupancy_grid = None
         self.junction_grid = None
         self.status = DiagnosticStatus()  # TODO: Add status
@@ -77,6 +79,8 @@ class JunctionManager(Node):
         # Pubs
         self.stateful_grid_pub = self.create_publisher(
             OccupancyGrid, '/grid/stateful_junction', 1)
+        
+        target_speed_sub = self.create_subscription(CarlaSpeedometer, '/planning/target_speed', self.targetSpeedCb,1)
 
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/node_statuses', 1)
@@ -119,6 +123,10 @@ class JunctionManager(Node):
 
         # This creates a binary array, where each cell is simply "is occupied" or "is not occupied"
         self.current_occupancy_grid = occupancy_grid > 80.0
+
+    def targetSpeedCb(self, msg: CarlaSpeedometer):
+        self.target_speed = msg.speed
+        # self.get_logger().info(f"TARGET SPEED: {self.target_speed}")
 
     def junctionIsOccupied(self, occupancy, junction) -> bool:
         # Erode the occupancy grid slightly.
@@ -187,7 +195,7 @@ class JunctionManager(Node):
                 is_waiting.data = False
                 self.is_waiting_pub.publish(is_waiting)
 
-            else:
+            elif self.target_speed < 0.0:
                 print("Waiting for button")
 
                 is_waiting = Bool()
