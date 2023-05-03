@@ -100,6 +100,8 @@ class RecursiveTreePlanner(Node):
 
         current_mode_sub = self.create_subscription(
             Mode, '/guardian/mode', self.currentModeCb, 1)
+        
+        self.target_speed_pub = self.create_publisher(CarlaSpeedometer, 'planning/target_speed', 1)
 
         clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)
@@ -159,7 +161,7 @@ class RecursiveTreePlanner(Node):
 
         # This is the number of cells to extend to either side of the path
         # It's the full width (in cells) divided by two, rounded up
-        REACH_CELLS = np.ceil(width_meters / GRID_RES / 2)  # = 3
+        REACH_CELLS = np.ceil(width_meters / GRID_RES / 3)  # = 3
 
         for i, pose in enumerate(path.poses):
             theta = pose[2] + np.pi/2
@@ -581,6 +583,9 @@ class RecursiveTreePlanner(Node):
 
         target_speed = MAX_SPEED # m/s, ~10mph
 
+        target_speed_msg = CarlaSpeedometer()
+        target_speed_msg.speed = target_speed
+        self.target_speed_pub.publish(target_speed_msg)
 
         pid_error = target_speed - self.speed
         # self.get_logger().info(f"Steer/Pose: {command.steer}/{((best_path.poses[4][2] + best_path.poses[5][2] + best_path.poses[6][2])/3.0)}")

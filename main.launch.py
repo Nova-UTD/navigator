@@ -259,7 +259,7 @@ def generate_launch_description():
         # PLANNING
         map_manager,
         grid_summation,
-        # rtp,
+        rtp,
         odom2tf,
         junction_manager,
 

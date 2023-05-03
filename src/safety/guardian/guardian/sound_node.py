@@ -46,13 +46,15 @@ class sound_node(Node):
     def isWaitingCb(self, msg: Bool):
         is_waiting = msg.data
 
+
         if not is_waiting and self.doPlayWaitingSound:
             self.doPlayWaitingSound = False
             self.waiting_done_wav.play()
         elif is_waiting:
-            self.doPlayWaitingSound
+            print("Is waiting")
+            # self.doPlayWaitingSound = True
 
-        self.doPlayWaitingSound = False
+        # self.doPlayWaitingSound = False
 
 
 
