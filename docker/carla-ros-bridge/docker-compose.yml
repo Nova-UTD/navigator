@@ -1,22 +1,19 @@
 version: '2.3'
-name: navigator
+name: carla_bridge
 services:
-    navigator:
+    carla_bridge:
         privileged: true
         stdin_open: true
         tty: true
         runtime: nvidia
 
-        image: navigator
-        container_name: navigator_${USER}
+        image: carla_bridge
+        container_name: carla_bridge_${USER}
 
         volumes:     
           - type: bind
-            source: $PWD
-            target: /navigator   
-          # - type: bind
-          #   source: /home/share/carla
-          #   target: /workspace
+            source: /home/share/carla
+            target: /carla
           - type: bind
             source: ${HOME}/.Xauthority
             target: /root/.Xauthority
@@ -28,14 +25,6 @@ services:
           - DISPLAY=:1
           - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
           - NVIDIA_VISIBLE_DEVICES=all
-
-        # deploy:
-        #   resources:
-        #     reservations:
-        #       devices:
-        #         - driver: nvidia
-        #           count: all
-        #           capabilities: [gpu]
 
         build:
           context: .
