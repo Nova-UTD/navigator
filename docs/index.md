@@ -23,17 +23,25 @@ Navigator is our answer to this delimma. It's built on standard technologies, is
 
 > Note: Lines with "$" are on host, while lines with "#" are within the container.
 
-1. [Install Docker](https://www.docker.com/get-started/) if you haven't already done so
-2. If not already set, choose a number between 0-100 and use this for your user-wide ROS_DOMAIN_ID. Add this to your `.bashrc` with `echo 'export ROS_DOMAIN_ID=[your number]' >> ~/.bashrc`
-2. Clone our repository
+1. [Install Docker](https://www.docker.com/get-started/). 
+> Note: Docker is already installed on the quad.
+2. Choose a number between 0-100 and use this for your user-wide ROS_DOMAIN_ID environment variable. Add the following line to your `.bashrc` file 
+```
+export ROS_DOMAIN_ID=57
+```
+3. Clone our repository
 ```
 $ git clone --recursive https://github.com/Nova-UTD/navigator
 $ cd navigator
 ```
-3. Build and start our Docker container
+4. Build our Docker container. The sequence of commands used to build the container is given in the `Dockerfile` file and the build and run parameters are specified in the `docker-compose.yml` file.
+> Note: A Docker image for Navigator already exists on the Quad, so there is no need to rebuild it (unless you've changed it!).
 ```
-$ docker build . -t navigator
-$ ./docker.sh
+$ docker compose build navigator
+```
+5. Run the Docker image.
+```
+$ docker compose run navigator
 ```
 which gives:
 ```
@@ -48,24 +56,48 @@ which gives:
 =====================================================================
 Developed by Nova, a student-run autonomous driving group at UT Dallas
 Find out more at https://nova-utd.github.io/navigator
-🦊 Sourcing ROS2 Foxy...
-🔗 Configuring the ROS DDS...
+🐢 Sourcing ROS2 Humble...
 🧭 Sourcing Navigator...
-🔌 Setting up CARLA API...
+❗ Finished environment setup
 root@justingpu:/navigator# 
 ```
-4.  Now that you're in the container, build our ROS workspace:
+4.  Now that you're in the container, build the navigator ROS workspace:
 ```
 $ colcon build --symlink-install
 ``` 
-
 That's it!
+> Note that if you've build the workspace outside the container or want to start with a fresh build, you can delete the `build` and `install` directories and call `colcon build` with the following extra flag:
+```
+$ rm -r -f build
+$ rm -r -f install
+$ colcon build --symlink-install --cmake-clean-cache
+```
 
-## CARLA demo
+
+## CARLA Simulator
 1. Make sure you've installed Navigator using the steps above.
 2. On the host, start CARLA: `./CarlaUE4.sh` See the [CARLA docs](https://carla.readthedocs.io/en/latest/start_quickstart/#running-carla) for more info.
+> Note: On the Quad, CARLA is installed at `/home/share/carla/`, so you can add an alias to the `.bashrc` file with the line `alias runcarla="/home/share/carla/CarlaUE4.sh"`.
 
-3. Run the following commands to start our system and connect it to CARLA:
+### CARLA-ROS2 Bridge
+The current CARLA-ROS2 bridge, that allows ROS to communicate with the CARLA simulator is compatible with ROS2 Foxy, not the ROS2 Humble we use for Navigator.  We use a second Docker container to run the CARLA-ROS2 bridge.
+3. The `Dockerfile` and `docker-compose.yml` for the CARLA-ROS2 bridge container is located in `navigator/docker/carla-ros-bridge`. Navigate to this directory and build this Docker image:
+```
+$ docker compose build carla_bridge
+```
+> Note: The Quad should already have an image for this Docker container built.
+4. Run the Docker container:
+```
+$ docker compose run carla_bridge
+```
+The `entrypoint.sh` script sources ROS2 (Foxy) and sets environment variables needed for the bridge.
+
+### Launching a Demo
+5. The bridge can be run using the following line within the CARLA-ROS2 bridge container:
+```
+# ros2 launch carla_ros_bridge carla_ros_bridge.launch.py
+```
+6. Run the following commands to start our system and connect it to CARLA:
 ```
 $ ./docker.sh
 ...
@@ -82,7 +114,7 @@ This should start a series of ROS nodes, spawning an ego vehicle in the simulato
 [INFO] [ukf_node-3]: process started with pid [61]
 ...
 ```
-4. Visualize the output by starting Rviz2. You can run Rviz2 directly from a second container instance:
+7. Visualize the output by starting Rviz2. You can run Rviz2 directly from a second container instance:
 ```
 $ xhost + # Authorize Docker to launch GUI programs
 $ ./docker.sh
