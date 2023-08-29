@@ -13,19 +13,21 @@ RUN git clone --recurse-submodules https://github.com/carla-simulator/ros-bridge
 # Sourcing ROS (need to run this using bash instead of sh)
 RUN /bin/bash -c "source /opt/ros/foxy/setup.bash"
 
-RUN apt-get update && apt update && \
-# pip is needed for rosdep install step below
-apt-get install -y python3-pip && \
-apt install -y \
-    # required ROS packages for rosdep install step below
-    ros-foxy-rviz2 \
-    ros-foxy-cv-bridge \
-    ros-foxy-pcl-conversions \
-    ros-foxy-pcl-ros \
-    ros-foxy-ackermann-msgs \
-    ros-foxy-rqt-gui-py \
-    ros-foxy-python-qt-binding \
-    ros-foxy-derived-object-msgs \
+# apt-get & apt installs
+# Also need to upgrade the apt packages, otherwise there are incompatibilities running ros2/rviz2
+RUN apt-get update && apt update && apt upgrade -y && \
+    # pip is needed for rosdep install step below
+    apt-get install -y python3-pip && \
+    apt install -y \
+        # required ROS packages for rosdep install step below
+        ros-foxy-rviz2 \
+        ros-foxy-cv-bridge \
+        ros-foxy-pcl-conversions \
+        ros-foxy-pcl-ros \
+        ros-foxy-ackermann-msgs \
+        ros-foxy-rqt-gui-py \
+        ros-foxy-python-qt-binding \
+        ros-foxy-derived-object-msgs \
     # cleanup to make image smaller
     && apt clean && rm -rf /var/lib/apt/lists/*
 
