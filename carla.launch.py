@@ -24,18 +24,6 @@ def generate_launch_description():
         executable='lidar_processing_node'
     )
 
-    mcl = Node(
-        package='state_estimation',
-        executable='mcl_node'
-    )
-
-    carla_spawner = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([get_package_share_directory(
-            'carla_spawn_objects'), '/carla_spawn_objects.launch.py']),
-        launch_arguments={
-            'objects_definition_file': '/navigator/data/carla_objects.json'}.items(),
-    )
-
     carla_controller = Node(
         package='carla_controller',
         executable='controller'
@@ -65,26 +53,6 @@ def generate_launch_description():
     joy_translation = Node(
         package="joy_translation",
         executable="joy_translation_node"
-    )
-
-    carla_bridge_official = Node(
-        package='carla_ros_bridge',
-        executable='bridge',
-        name='carla_ros_bridge',
-        parameters=[
-            {'host': 'localhost'},
-            {'port': 2000 + int(environ['ROS_DOMAIN_ID'])},
-            {'synchronous_mode': True},
-            {'town': 'Town02'},
-            {'register_all_sensors': False},
-            {'ego_vehicle_role_name': 'hero'},
-            {'timeout': 30.0},
-            {'fixed_delta_seconds': 0.2}
-        ],
-        remappings=[
-            ('/carla/hero/lidar', '/lidar/fused'),
-            ('/carla/hero/rgb_center/image', '/cameras/camera0')
-        ]
     )
 
     gnss_processor = Node(
@@ -189,15 +157,13 @@ def generate_launch_description():
 
     return LaunchDescription([
         # CONTROL
-        # carla_controller,
+        carla_controller,
 
         # INTERFACE
-        carla_bridge_official,
-        carla_spawner,
-        leaderboard_liaison,
-        web_bridge,
-        joy_linux,
-        joy_translation,
+        # leaderboard_liaison,
+        # web_bridge,
+        ##joy_linux,
+        ##joy_translation,
 
         # LOCALIZATION
         # gnss_averager,
@@ -210,7 +176,7 @@ def generate_launch_description():
         urdf_publisher,
         # rviz,
         # rqt,
-        camera_streamer,
+        # camera_streamer,
 
         # PERCEPTION
         # image_segmentation,
@@ -223,13 +189,13 @@ def generate_launch_description():
 
         # PLANNING
         grid_summation,
-        route_reader,
+        route_reader, # <<---- needs to be moved to carla bridge docker
         junction_manager,
         rtp,
 
         # SAFETY
-        airbags,
-        guardian,
+        ##airbags,
+        ##guardian,
 
         # STATE ESTIMATION
         map_manager,

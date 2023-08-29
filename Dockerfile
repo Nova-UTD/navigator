@@ -4,7 +4,6 @@ FROM ros:humble
 # This variable tells future scripts that user input isn't available during the Docker build.
 ENV DEBIAN_FRONTEND noninteractive
 
-
 # Get wget first so we can get the NVIDIA keys
 #RUN apt-get install -y wget
 
@@ -27,100 +26,101 @@ ENV DEBIAN_FRONTEND noninteractive
 #RUN pip3 install -U openmim && mim install mmcv-full
 
 # apt-get & apt installs
-RUN apt-get update && apt update && \
+# Also need to upgrade the apt packages, otherwise there are incompatibilities running ros2/rviz2
+RUN apt-get update && apt update && apt upgrade -y && \
     # =================================
     ## apt-get installs ===============
     apt-get install -y \
-    # important linux tool
-    wget \  
-    # install python libraries
-    python3-pip \
-    # be able to use git inside container
-    git \
-    #
-    fprintd \
-    #
-    libfprint-2-2:amd64 \
-    #
-    libgl1-mesa-glx \
-    #
-    libglib2.0-0 \
-    #
-    libpam-fprintd:amd64 \
-    #
-    libsm6 \
-    #
-    libxrender-dev \
-    #
-    libxext6 \
-    #
-    ninja-build \
-    #
-    ros-humble-diagnostic-updater \
+        # important linux tool
+        wget \  
+        # install python libraries
+        python3-pip \
+        # be able to use git inside container
+        git \
+        #
+        fprintd \
+        #
+        libfprint-2-2:amd64 \
+        #
+        libgl1-mesa-glx \
+        #
+        libglib2.0-0 \
+        #
+        libpam-fprintd:amd64 \
+        #
+        libsm6 \
+        #
+        libxrender-dev \
+        #
+        libxext6 \
+        #
+        ninja-build \
+        #
+        ros-humble-diagnostic-updater \
     # =================================
     # apt installs ====================
     && apt install -y \
-    #
-    alsa-base \
-    #
-    alsa-utils \
-    #
-    byobu \
-    #
-    espeak \
-    #
-    ffmpeg \
-    #
-    libespeak1 \
-    #
-    libsndfile1-dev \
-    #
-    minicom \
-    #
-    python3-matplotlib \
-    #
-    python3-nose \
-    #
-    python3-scipy \
-    #
-    ros-humble-ament-cmake* \
-    #
-    ros-humble-ament-cmake-nose \
-    #
-    ros-humble-async-web-server-cpp \
-    #
-    ros-humble-cv-bridge \
-    #
-    ros-humble-image-transport \
-    #
-    ros-humble-joy-linux \
-    #
-    ros-humble-lgsvl-msgs \
-    #
-    ros-humble-pcl-conversions \
-    #
-    ros-humble-pcl-ros \
-    #
-    ros-humble-rmw-fastrtps-cpp \
-    #
-    ros-humble-robot-localization \
-    #
-    ros-humble-rosbridge-server \
-    #
-    ros-humble-ros-testing \
-    #
-    ros-humble-rviz2 \
-    #
-    ros-humble-tf-transformations \
-    # ROS Support for Velodyne LiDAR
-    ros-humble-velodyne-driver \
-    ros-humble-velodyne-laserscan \
-    ros-humble-velodyne-msgs \
-    ros-humble-velodyne-pointcloud \
-    #
-    ros-humble-vision-opencv \
-    #
-    software-properties-common \
+        #
+        alsa-base \
+        #
+        alsa-utils \
+        #
+        byobu \
+        #
+        espeak \
+        #
+        ffmpeg \
+        #
+        libespeak1 \
+        #
+        libsndfile1-dev \
+        #
+        minicom \
+        #
+        python3-matplotlib \
+        #
+        python3-nose \
+        #
+        python3-scipy \
+        #
+        ros-humble-ament-cmake* \
+        #
+        ros-humble-ament-cmake-nose \
+        #
+        ros-humble-async-web-server-cpp \
+        #
+        ros-humble-cv-bridge \
+        #
+        ros-humble-image-transport \
+        #
+        ros-humble-joy-linux \
+        #
+        ros-humble-lgsvl-msgs \
+        #
+        ros-humble-pcl-conversions \
+        #
+        ros-humble-pcl-ros \
+        #
+        ros-humble-rmw-fastrtps-cpp \
+        #
+        ros-humble-robot-localization \
+        #
+        ros-humble-rosbridge-server \
+        #
+        ros-humble-ros-testing \
+        #
+        ros-humble-rviz2 \
+        #
+        ros-humble-tf-transformations \
+        # ROS Support for Velodyne LiDAR
+        ros-humble-velodyne-driver \
+        ros-humble-velodyne-laserscan \
+        ros-humble-velodyne-msgs \
+        ros-humble-velodyne-pointcloud \
+        #
+        ros-humble-vision-opencv \
+        #
+        software-properties-common \
     # cleanup to make image smaller
     && apt clean && rm -rf /var/lib/apt/lists/*
 

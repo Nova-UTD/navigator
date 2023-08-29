@@ -17,4 +17,5 @@
   </export>
 
   <depend>nav_msgs</depend>
+  <depend>delphi_esr_msgs</depend>
 </package>
