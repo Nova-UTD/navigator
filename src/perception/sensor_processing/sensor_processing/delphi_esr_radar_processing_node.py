@@ -18,7 +18,8 @@ from scipy.spatial.transform import Rotation as R
 # Message definitions
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid
-from delphi_esr_msgs.msg import EsrValid1
+from delphi_esr_msgs.msg import EsrTrack
+from derived_object_msgs.msg import ObjectWithCovarianceArray, ObjectWithCovariance
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
@@ -33,17 +34,25 @@ class DelphiESRRadarProcessingNode(Node):
     def __init__(self):
         super().__init__('delphi_esr_radar_processing_node')
 
-        self.left_pcd_cached = None
-        self.right_pcd_cached = None
+        self.classifications=['Unknown','Unknown Small','Unknown Medium','Unknown Big','Pedestrian','Bike','Car','Truck','Motorcycle','Other Vehicle','Barrier','Sign']
+        self.shape_types=['NONE','BOX','SPHERE','CYLINDER','CONE']
+
         self.clock = 0.0
         self.clock_msg = Clock()
 
-        self.left_lidar_sub = self.create_subscription(
-            EsrValid1, '/radar_1/esr_valid_1', self.radarCb, 10)
+        self.objects_sub = self.create_subscription(
+            ObjectWithCovarianceArray, '/radar_1/objects', self.objectsCb, 10)
+        
+        self.track_sub = self.create_subscription(
+            EsrTrack, '/radar_1/esr_track', self.trackCb, 10)
         
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 10
         )
+
+        # self.radar_pub = self.create_publisher(
+        #     PointCloud2, '/radar/polygons', 10
+        # )
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -54,8 +63,15 @@ class DelphiESRRadarProcessingNode(Node):
         self.clock = msg.clock.sec + msg.clock.nanosec * 1e-9
         self.clock_msg = msg
 
+    def objectsCb(self, msg: ObjectWithCovarianceArray):
+        for obj in msg.objects:
+            self.get_logger().info('%i: class: %s [%1.0f] age: %i' % (obj.id,self.classifications[obj.classification],float(obj.classification_certainty)/255.0*100.0,obj.classification_age))
+            self.get_logger().info('PolyPts: %i, ShapeType: %s' % (len(obj.polygon),self.shape_types[obj.shape.type]))
+            #self.get_logger().info('%1.2f, %1.2f, %1.2f' % (obj.shape.dimensions[0],obj.shape.dimensions[1],obj.shape.dimensions[2]))
+        #self.get_logger().info('=========================')
+        return
 
-    def radarCb(self, msg: EsrValid1):
+    def trackCb(self, msg: EsrTrack):
         self.get_logger().info('%1.2f - %1.2f - %1.2f  %s' % (msg.lr_range,msg.lr_range_rate,msg.lr_power,msg.canmsg))
         # self.right_pcd_cached: np.array = rnp.numpify(msg)
         # self.right_pcd_cached = self.transformToBaseLink(self.right_pcd_cached, 'radar')
@@ -97,7 +113,7 @@ class DelphiESRRadarProcessingNode(Node):
         # self.clean_lidar_pub.publish(merged_pcd_msg)
         return
 
-    def transformToBaseLink(self, pcd: np.array, source_frame: str) -> np.array:
+    def transformToBaseLink(self, pcd: np.array) -> np.array:
         '''
         Transform input cloud into car's origin frame
         :param pcd: Original pcd in another coordinate frame (e.g. hero/lidar)
@@ -105,7 +121,7 @@ class DelphiESRRadarProcessingNode(Node):
         '''
 
         try:
-            t: TransformStamped = self.tf_buffer.lookup_transform('base_link', source_frame, rclpy.time.Time())
+            t: TransformStamped = self.tf_buffer.lookup_transform('base_link', 'radar', rclpy.time.Time())
             quat = t.transform.rotation
         except Exception as e:
             self.get_logger().error(str(e))
