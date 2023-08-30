@@ -129,6 +129,15 @@
     <origin xyz="0.0 0.73 1.8" rpy="0.15 0.2 0.55"/>
   </joint>
 
+  <link name="radar"/>
+
+  <joint name="radar_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="radar"/>
+    <origin xyz="0.61 0.0 0.52" rpy="0 0 0"/>
+  </joint>
+
+
   <link name="zed2_left_camera_optical_frame"></link>
 
   <link name="zed2_camera_center">
