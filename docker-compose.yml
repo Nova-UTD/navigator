@@ -1,7 +1,7 @@
 version: '2.3'
 name: navigator
 services:
-    navigator:
+    navigator_quad:
         privileged: true
         stdin_open: true
         tty: true
@@ -17,6 +17,9 @@ services:
           - type: bind
             source: /home/share/carla
             target: /carla
+          - type: bind
+            source: /home/share/bags
+            target: /bags
           - type: bind
             source: ${HOME}/.Xauthority
             target: /root/.Xauthority
@@ -54,6 +57,8 @@ services:
         
         network_mode: "host"
 
+    # On Board Computer (OBC) does not have Carla or Bags directory
+    # runtime nvidia has yet to be set up on the OBC
     navigator_obc:
         privileged: true
         stdin_open: true

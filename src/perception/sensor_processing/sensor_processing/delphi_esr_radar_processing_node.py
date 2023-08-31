@@ -18,12 +18,13 @@ from scipy.spatial.transform import Rotation as R
 # Message definitions
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid
-from delphi_esr_msgs.msg import EsrTrack
+from delphi_esr_msgs.msg import EsrTrack, EsrTrackMotionPowerTrack, EsrTrackMotionPowerGroup
 from derived_object_msgs.msg import ObjectWithCovarianceArray, ObjectWithCovariance
+from visualization_msgs.msg import Marker, MarkerArray
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, ColorRGBA
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -37,21 +38,35 @@ class DelphiESRRadarProcessingNode(Node):
         self.classifications=['Unknown','Unknown Small','Unknown Medium','Unknown Big','Pedestrian','Bike','Car','Truck','Motorcycle','Other Vehicle','Barrier','Sign']
         self.shape_types=['NONE','BOX','SPHERE','CYLINDER','CONE']
 
+        self.power_cached = dict()
+        self.track_markers_cached = dict()
+
+        for trackid in range(1,65):
+            self.power_cached[trackid] = -100
+
         self.clock = 0.0
         self.clock_msg = Clock()
 
-        self.objects_sub = self.create_subscription(
-            ObjectWithCovarianceArray, '/radar_1/objects', self.objectsCb, 10)
+        # self.objects_sub = self.create_subscription(
+        #     ObjectWithCovarianceArray, '/radar_1/objects', self.objectsCb, 10)
         
         self.track_sub = self.create_subscription(
             EsrTrack, '/radar_1/esr_track', self.trackCb, 10)
         
+        self.objects_sub = self.create_subscription(
+            EsrTrackMotionPowerGroup, '/radar_1/esr_track_motion_power_group', self.motionCb, 10)
+
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 10
         )
 
+        self.radar_pub = self.create_publisher(
+            MarkerArray, '/radar/radar_viz', 10
+        )
+
+        # Implement a consolidated radar data, that has track data plus amplitude
         # self.radar_pub = self.create_publisher(
-        #     PointCloud2, '/radar/polygons', 10
+        #     MarkerArray, '/radar/radar_data', 10
         # )
 
         self.tf_buffer = Buffer()
@@ -65,14 +80,71 @@ class DelphiESRRadarProcessingNode(Node):
 
     def objectsCb(self, msg: ObjectWithCovarianceArray):
         for obj in msg.objects:
-            self.get_logger().info('%i: class: %s [%1.0f] age: %i' % (obj.id,self.classifications[obj.classification],float(obj.classification_certainty)/255.0*100.0,obj.classification_age))
-            self.get_logger().info('PolyPts: %i, ShapeType: %s' % (len(obj.polygon),self.shape_types[obj.shape.type]))
+            if obj.classification > 0:
+                self.get_logger().info('%i: class: %s [%1.0f] age: %i' % (obj.id,self.classifications[obj.classification],float(obj.classification_certainty)/255.0*100.0,obj.classification_age))
+                self.get_logger().info('PolyPts: %i, ShapeType: %s' % (len(obj.polygon.points),self.shape_types[obj.shape.type]))
             #self.get_logger().info('%1.2f, %1.2f, %1.2f' % (obj.shape.dimensions[0],obj.shape.dimensions[1],obj.shape.dimensions[2]))
         #self.get_logger().info('=========================')
         return
 
+    def motionCb(self, msg: EsrTrackMotionPowerGroup):
+        for track in msg.tracks:
+            # grab out the power from this message to look up when EsrTrack message comes in
+            self.power_cached[track.id] = track.power
+        return
+
     def trackCb(self, msg: EsrTrack):
-        self.get_logger().info('%1.2f - %1.2f - %1.2f  %s' % (msg.lr_range,msg.lr_range_rate,msg.lr_power,msg.canmsg))
+        #self.get_logger().info('[%i] status:%i %1.2fm, %1.1fdeg, %1.2fdB %1.2f/%1.2f' % (msg.id,msg.status,msg.range,msg.angle,self.power_cached[msg.id],msg.range_rate,msg.range_accel))
+
+        marker = Marker()
+        marker.header.frame_id = 'base_link'
+        marker.header.stamp = self.clock_msg.clock
+        # cylinder
+        marker.type = Marker.CYLINDER
+        marker.action = Marker.ADD
+        marker.ns = 'trk'
+        marker.id = msg.id
+        #marker.lifetime.sec = 1
+        # calculate xy position of track
+        x = msg.range*np.cos(msg.angle*np.pi/360.0)
+        y = msg.range*np.sin(msg.angle*np.pi/360.0)
+        v = self.transformToBaseLink(x,y,0.0)
+        marker.pose.position.x = v[0]
+        marker.pose.position.y = v[1]
+        marker.pose.position.z = v[2]
+
+        marker.pose.orientation.w = 1.0
+
+        # scale the marker by the dB power
+        marker.scale.x = 0.25*np.power(10.0,self.power_cached[msg.id]/10.0)
+        marker.scale.y = 0.25*np.power(10.0,self.power_cached[msg.id]/10.0)
+        marker.scale.z = 0.1
+
+        # choose color based on speed
+        color = ColorRGBA()
+        color.a = 0.9
+        if msg.range_rate > 0:
+            color.r = 1.0
+            color.g = np.max([1.0 - msg.range_rate/4.0,0.0])
+            color.b = np.max([1.0 - msg.range_rate/4.0,0.0])
+        else:
+            color.r = np.max([1.0 + msg.range_rate/4.0,0.0])
+            color.g = np.max([1.0 + msg.range_rate/4.0,0.0])
+            color.b = 1.0
+        marker.color = color
+
+        # self.get_logger().info('[%i] Position: %1.2f, %1.2f, %1.2f' % (msg.id,marker.pose.position.x,marker.pose.position.y,marker.pose.position.z))
+        # self.get_logger().info('[%i] Scale: %1.2f, %1.2f, %1.2f' % (msg.id,marker.scale.x,marker.scale.y,marker.scale.z))
+        # self.get_logger().info('[%i] Color: %1.2f, %1.2f, %1.2f' % (msg.id,marker.color.r,marker.color.g,marker.color.b))
+
+        self.track_markers_cached[msg.id] = marker
+
+        marker_array_msg = MarkerArray()
+        for mid, mkr in self.track_markers_cached.items():
+            marker_array_msg.markers.append(mkr)
+
+        self.radar_pub.publish(marker_array_msg)
+
         # self.right_pcd_cached: np.array = rnp.numpify(msg)
         # self.right_pcd_cached = self.transformToBaseLink(self.right_pcd_cached, 'radar')
 
@@ -113,11 +185,11 @@ class DelphiESRRadarProcessingNode(Node):
         # self.clean_lidar_pub.publish(merged_pcd_msg)
         return
 
-    def transformToBaseLink(self, pcd: np.array) -> np.array:
+    def transformToBaseLink(self, x, y, z):
         '''
-        Transform input cloud into car's origin frame
-        :param pcd: Original pcd in another coordinate frame (e.g. hero/lidar)
-        :returns: Transformed pcd as a ros2_numpy array
+        Transform radar point into car's origin frame
+        :param x,y,z: Original point in the radar frame
+        :returns: Transformed point as a ros2_numpy array
         '''
 
         try:
@@ -127,27 +199,18 @@ class DelphiESRRadarProcessingNode(Node):
             self.get_logger().error(str(e))
             return
 
+        v = np.array([x,y,z])
 
         # First rotate
-        xyz = np.vstack([pcd['x'].flatten(), pcd['y'].flatten(), pcd['z'].flatten()]).T
-        print(xyz)
         r: R = R.from_quat([quat.x, quat.y, quat.z, quat.w])
-        xyz = r.apply(xyz)
-
-        pcd['x'] = xyz[:,0].reshape(-1,16)
-        pcd['y'] = xyz[:,1].reshape(-1,16)
-        pcd['z'] = xyz[:,2].reshape(-1,16)
+        v = r.apply(v)
 
         # Then translate
-        pcd['x'] += t.transform.translation.x
-        pcd['y'] += t.transform.translation.y
-        pcd['z'] += t.transform.translation.z
+        v[0] = v[0] + t.transform.translation.x
+        v[1] = v[1] + t.transform.translation.y
+        v[2] = v[2] + t.transform.translation.z
 
-
-        # TODO: Actually look up transform and perform translation
-        #       and rotation accordingly.
-        # pcd['z'] += 2.08
-        return pcd
+        return v
 
     def remove_ground_points(self, pcd: np.array, height: float) -> np.array:
         '''

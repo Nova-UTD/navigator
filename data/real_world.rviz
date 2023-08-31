@@ -536,6 +536,18 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /cameras/stitched
       Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /radar/radar_viz
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 222; 255; 251

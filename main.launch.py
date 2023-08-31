@@ -11,7 +11,7 @@ from launch_ros.actions import Node
 
 from ament_index_python import get_package_share_directory
 
-NAVIGATOR_DIR = "/home/nova/navigator/"
+NAVIGATOR_DIR = "/navigator/"
 
 def generate_launch_description():
 
@@ -79,7 +79,7 @@ def generate_launch_description():
         executable='map_management_node',
         parameters=[
             {'from_file': True},
-            {'data_path': '/home/nova/navigator/data'}
+            {'data_path': '/navigator/data'}
         ]
     )
 
@@ -152,14 +152,14 @@ def generate_launch_description():
         package='velodyne_driver',
         executable='velodyne_driver_node',
         parameters=[
-            "/home/nova/navigator/param/perception/lidar_driver_right.param.yaml"],
+            "/navigator/param/perception/lidar_driver_right.param.yaml"],
         namespace='velo_right'
     )
     left_lidar_driver = Node(
         package='velodyne_driver',
         executable='velodyne_driver_node',
         parameters=[
-            "/home/nova/navigator/param/perception/lidar_driver_left.param.yaml"],
+            "/navigator/param/perception/lidar_driver_left.param.yaml"],
         namespace='velo_left'
     )
 
@@ -167,7 +167,7 @@ def generate_launch_description():
         package='velodyne_pointcloud',
         executable='velodyne_convert_node',
         parameters=[
-            "/home/nova/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
+            "/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
         namespace='velo_left'
     )
 
@@ -175,8 +175,13 @@ def generate_launch_description():
         package='velodyne_pointcloud',
         executable='velodyne_convert_node',
         parameters=[
-            "/home/nova/navigator/param/perception/lidar_pointcloud_right.param.yaml"],
+            "/navigator/param/perception/lidar_pointcloud_right.param.yaml"],
         namespace='velo_right'
+    )
+
+    radar_processor = Node(
+        package='sensor_processing',
+        executable='delphi_esr_radar_processing_node'
     )
 
     camera = Node(
@@ -224,7 +229,7 @@ def generate_launch_description():
         executable='rtp_node'
     )
 
-    return LaunchDescription([
+    full_stack = LaunchDescription([
         # CONTROL
         # controller,
 
@@ -255,7 +260,6 @@ def generate_launch_description():
         lidar_processor,
         static_grid,
         
-
         # PLANNING
         map_manager,
         grid_summation,
@@ -263,8 +267,30 @@ def generate_launch_description():
         odom2tf,
         junction_manager,
 
-
         # SAFETY
         guardian,
         sounds,
     ])
+
+    sensor_collection = LaunchDescription([
+        clock,
+        gnss,
+        left_lidar_driver,
+        left_lidar_pointcloud,
+        right_lidar_driver,
+        right_lidar_pointcloud,
+        lidar_processor,
+        radar_processor,
+        camera,
+        urdf_publisher,
+        rviz,
+    ])
+
+    radar_testing = LaunchDescription([
+        clock,
+        radar_processor,
+        urdf_publisher,
+        rviz,
+    ])
+
+    return sensor_collection
