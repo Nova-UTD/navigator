@@ -16,6 +16,7 @@ bool   movable_slow
 # 1 = moving
 bool   moving
 
-# Track amplitude with offset of -10dB. 
+# Track amplitude -10 -- 21 dB
+# Original CAN data has offset of -10dB. 
 # 0 -- 31 corresponds to -10 -- 21 dB
 int8   power
