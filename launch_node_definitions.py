@@ -163,7 +163,7 @@ left_lidar_driver = Node(
 
 left_lidar_pointcloud = Node(
     package='velodyne_pointcloud',
-    executable='velodyne_convert_node',
+    executable='velodyne_transform_node',
     parameters=[
         "/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
     namespace='velo_left'
@@ -171,7 +171,7 @@ left_lidar_pointcloud = Node(
 
 right_lidar_pointcloud = Node(
     package='velodyne_pointcloud',
-    executable='velodyne_convert_node',
+    executable='velodyne_transform_node',
     parameters=[
         "/navigator/param/perception/lidar_pointcloud_right.param.yaml"],
     namespace='velo_right'
