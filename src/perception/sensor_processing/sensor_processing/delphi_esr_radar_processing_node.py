@@ -20,6 +20,7 @@ from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid
 from delphi_esr_msgs.msg import EsrTrack, EsrTrackMotionPowerTrack, EsrTrackMotionPowerGroup
 from derived_object_msgs.msg import ObjectWithCovarianceArray, ObjectWithCovariance
+from nova_msgs.msg import RadarSpotlight
 from visualization_msgs.msg import Marker, MarkerArray
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
@@ -64,6 +65,10 @@ class DelphiESRRadarProcessingNode(Node):
             MarkerArray, '/radar/radar_viz', 10
         )
 
+        self.radar_spotlight_pub = self.create_publisher(
+            RadarSpotlight, '/radar/radar_spotlight', 10
+        )
+
         # Implement a consolidated radar data, that has track data plus amplitude
         # self.radar_pub = self.create_publisher(
         #     MarkerArray, '/radar/radar_data', 10
@@ -99,15 +104,19 @@ class DelphiESRRadarProcessingNode(Node):
         marker = Marker()
         marker.header.frame_id = 'base_link'
         marker.header.stamp = self.clock_msg.clock
-        # cylinder
-        marker.type = Marker.CYLINDER
-        marker.action = Marker.ADD
         marker.ns = 'trk'
         marker.id = msg.id
-        #marker.lifetime.sec = 1
+        marker.type = Marker.CYLINDER
+
+        marker.action = Marker.ADD
+        if msg.range > 50:
+            marker.action = Marker.DELETE
+        if self.power_cached[msg.id] < -3:
+            marker.action = Marker.DELETE
+        
         # calculate xy position of track
-        x = msg.range*np.cos(msg.angle*np.pi/360.0)
-        y = msg.range*np.sin(msg.angle*np.pi/360.0)
+        x = msg.range*np.cos(msg.angle*np.pi/180.0)
+        y = msg.range*np.sin(msg.angle*np.pi/180.0)
         v = self.transformToBaseLink(x,y,0.0)
         marker.pose.position.x = v[0]
         marker.pose.position.y = v[1]
@@ -116,9 +125,9 @@ class DelphiESRRadarProcessingNode(Node):
         marker.pose.orientation.w = 1.0
 
         # scale the marker by the dB power
-        marker.scale.x = 0.25*np.power(10.0,self.power_cached[msg.id]/10.0)
-        marker.scale.y = 0.25*np.power(10.0,self.power_cached[msg.id]/10.0)
-        marker.scale.z = 0.1
+        marker.scale.x = 0.25#0.5*np.power(10.0,self.power_cached[msg.id]/10.0/2.0)
+        marker.scale.y = 0.25#0.5*np.power(10.0,self.power_cached[msg.id]/10.0/2.0)
+        marker.scale.z = 0.75*np.power(10.0,self.power_cached[msg.id]/10.0/2.0)
 
         # choose color based on speed
         color = ColorRGBA()
@@ -139,11 +148,27 @@ class DelphiESRRadarProcessingNode(Node):
 
         self.track_markers_cached[msg.id] = marker
 
+        nearest_detection = 100
+        nearest_detection_id = -1
+        nearest_detection_amplitude = -20
         marker_array_msg = MarkerArray()
         for mid, mkr in self.track_markers_cached.items():
             marker_array_msg.markers.append(mkr)
+            if np.abs(mkr.pose.position.y) < 2: # if object is within 2m of centerline
+                if mkr.pose.position.x < nearest_detection:
+                    nearest_detection_id = mkr.id
+                    nearest_detection = mkr.pose.position.x
+                    nearest_detection_amplitude = self.power_cached[mkr.id]
 
         self.radar_pub.publish(marker_array_msg)
+
+        spotlight_msg = RadarSpotlight()
+        spotlight_msg.header.frame_id = 'base_link'
+        spotlight_msg.header.stamp = self.clock_msg.clock
+        spotlight_msg.track_id = nearest_detection_id
+        spotlight_msg.amplitude = nearest_detection_amplitude
+
+        self.radar_spotlight_pub.publish(spotlight_msg)
 
         # self.right_pcd_cached: np.array = rnp.numpify(msg)
         # self.right_pcd_cached = self.transformToBaseLink(self.right_pcd_cached, 'radar')
