@@ -1,12 +1,14 @@
-Navigator relies on ROS2 - the Robot Operating System. Before you can contribute to Navigator, you'll need to become familiar with developing for ROS. Our stack currently uses ROS2 Humble. Below is a concrete task that will require you to learn many of the fundamental elements of ROS. It will likely also require a fair bit of reading, learning, and exploration - all things Navigator is going to require of you too.  Good luck!
+Navigator relies on ROS2 - the Robot Operating System. Before you can contribute to Navigator, you'll need to become familiar with developing for ROS. Our stack currently uses ROS2 Humble. Below is a concrete task that will require you to learn many of the fundamental elements of ROS as well as Docker, since we use Docker quite heavily as well. It will likely also require a fair bit of reading, learning, and exploration - all things Navigator is going to require of you too.  Good luck!
 
 [Here is a video](turtlesim_demo.mp4) that shows what the final product should look like.
 
 # The Task
 
-1. Launch a docker container based on an `ubuntu:jammy` image on top of which you have preinstalled a version of ROS2 Humble, *compiled from source code* (not a package install 🙀).
+For this task, you will be using a well documented example/tutorial ROS2 package called `turtlesim`. It is part of the built-in ROS2 install. You will be supplementing this example with several additional ROS2 nodes. The scope of your task is outlined by the following desired functionality:
+
+1. Launch a docker container based on an `ubuntu:jammy` image on top of which you have preinstalled a version of ROS2 Humble, *compiled from source code* (not a package install 🙀 - this is to make you a Docker-guru).
 2. Use a launch file to:
-    - Run the turtlesim node that brings up the GUI/canvas, 
+    - Run the built-in turtlesim node that brings up the GUI/canvas with the first turtle, 
     - Spawn a second turtle using the built in spawn service,
     - Run a custom node to navigate the first turtle using your mouse pointer.
 3. In a second container (can be the same docker image), use another launch file to: 
