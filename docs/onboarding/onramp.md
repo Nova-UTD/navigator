@@ -6,7 +6,7 @@ Navigator relies on ROS2 - the Robot Operating System. Before you can contribute
 
 For this task, you will be using a well documented example/tutorial ROS2 package called `turtlesim`. It is part of the built-in ROS2 install. You will be supplementing this example with several additional ROS2 nodes. The scope of your task is outlined by the following desired functionality:
 
-1. Launch a docker container based on an `ubuntu:jammy` image on top of which you have preinstalled a version of ROS2 Humble, *compiled from source code* (not a package install 🙀 - this is to make you a Docker-guru).
+1. Launch a docker container based on an `ubuntu:jammy` image on top of which you have preinstalled a version of ROS2 Humble, *compiled from source code* (not a package install 🙀 - this is to make you can bend Docker to your will).
 2. Use a launch file to:
     - Run the built-in turtlesim node that brings up the GUI/canvas with the first turtle, 
     - Spawn a second turtle using the built in spawn service,
