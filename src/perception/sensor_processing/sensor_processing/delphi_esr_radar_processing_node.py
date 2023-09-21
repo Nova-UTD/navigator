@@ -115,8 +115,8 @@ class DelphiESRRadarProcessingNode(Node):
             marker.action = Marker.DELETE
         
         # calculate xy position of track
-        x = msg.range*np.cos(msg.angle*np.pi/180.0)
-        y = msg.range*np.sin(msg.angle*np.pi/180.0)
+        x = msg.range*np.cos(-msg.angle*np.pi/180.0)
+        y = msg.range*np.sin(-msg.angle*np.pi/180.0)
         v = self.transformToBaseLink(x,y,0.0)
         marker.pose.position.x = v[0]
         marker.pose.position.y = v[1]

@@ -19,45 +19,51 @@ NAVIGATOR_DIR = "/navigator/"
 
 def generate_launch_description():
 
+    ## lines indicate these were originally uncommented
+
     return LaunchDescription([
         # CONTROL
-        # controller,
+        carla_controller,
 
         # INTERFACE
-        # camera_streamer,
-        joy,
-        joy_translator,
-        hailbopp_epas,
-        hailbopp_mcu,
-        hailbopp_linear_actuator,
+        # leaderboard_liaison,
         # web_bridge,
-        gnss,
-        lidar_driver_left,
-        lidar_pointcloud_left,
-        lidar_driver_right,
-        lidar_pointcloud_right,
-        # camera,
+        ##joy_linux,
+        ##joy_translation,
+
+        # LOCALIZATION
+        # gnss_averager,
+        # mcl,
+
+        # MAPPING
 
         # MISC
-        clock,
-        
         # recorder,
-        urdf_publisher,
-        # rviz,
+        carla_urdf_publisher,
+        carla_rviz,
+        # rqt,
+        # camera_streamer,
 
         # PERCEPTION
+        # image_segmentation,
+        # semantic_projection,
+        carla_lidar_processor,
         ground_seg,
-        lidar_processor,
         static_grid,
-        
+        # prednet_inference,
+        # driveable_area,
+
         # PLANNING
-        map_manager,
         grid_summation,
-        rtp,
-        odom2tf,
+        #carla_route_reader, # <<---- needs to be moved to carla bridge docker? needs to import carla?
         junction_manager,
+        rtp,
 
         # SAFETY
-        guardian,
-        sounds,
+        ##airbags,
+        ##guardian,
+
+        # STATE ESTIMATION
+        ## map_manager,  <<----- seems to have hard coded stuff for campus testing
+        gnss_processor,
     ])

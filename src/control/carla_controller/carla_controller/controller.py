@@ -46,9 +46,9 @@ class CarlaController(Node):
             command.reverse = False
         else:
             command.reverse = True
-
+        command.reverse = False
         # Set the throttle to zero (don't move)
-        command.throttle = 0.0
+        command.throttle = 1.0
 
         # Pubish our finished command
         self.command_pub.publish(command)

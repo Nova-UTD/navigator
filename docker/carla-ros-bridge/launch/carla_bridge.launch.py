@@ -38,7 +38,7 @@ def generate_launch_description():
             'carla_spawn_objects'), '/carla_spawn_objects.launch.py']),
         launch_arguments={
             'objects_definition_file': '/launch/carla_objects.json'}.items(),
-    )
+    ) # spawn_point_ego_vehicle
 
     # carla_controller = Node(
     #     package='carla_controller',
