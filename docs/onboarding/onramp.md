@@ -26,10 +26,6 @@ For this task, you will be using a well documented example/tutorial ROS2 package
 
 We encourage you to code from the Quad (our beefy server in the upstairs lab). This will give you experience working in the Ubuntu/Linux OS environment. Also, it's already equipped with Docker. How can I connect remotely? Use SSH!
 
-Host Name: ```justingpu.utdallas.edu```     
-User Name: ```<first letter of first name><lastname>``` Ex. dvayman
-Temporary Password: ```n0va2023```
-
 - We use [NoMachine](https://www.nomachine.com/) for remote desktop.  
 - If off-campus, be sure to connect via the [UTD GlobalProtect VPN](https://atlas.utdallas.edu/TDClient/30/Portal/Requests/ServiceDet?ID=167) to enable SSH.
 
