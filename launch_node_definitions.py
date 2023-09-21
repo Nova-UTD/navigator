@@ -13,20 +13,14 @@ from ament_index_python import get_package_share_directory
 
 NAVIGATOR_DIR = "/navigator/"
 
-# leaderboard_liaison = Node(
-#     package='carla_interface',
-#     executable='liaison_node',
-#     parameters=[]
-# )
+airbags = Node(
+        package='airbags',
+        executable='airbag_node'
+    )
 
-lidar_processor = Node(
-    package='sensor_processing',
-    executable='dual_lidar_processing_node'
-)
-
-mcl = Node(
-    package='state_estimation',
-    executable='mcl_node'
+camera = Node(
+    package='camera',
+    executable='camera_node'
 )
 
 camera_streamer = Node(
@@ -41,15 +35,78 @@ camera_streamer = Node(
 #         'objects_definition_file': '/navigator/data/carla_objects.json'}.items(),
 # )
 
-# carla_controller = Node(
-#     package='carla_controller',
-#     executable='controller'
-# )
+carla_controller = Node(
+    package='carla_controller',
+    executable='controller'
+)
 
-urdf_publisher = Node(
+carla_leaderboard_liaison = Node(
+    package='carla_interface',
+    executable='liaison_node',
+    parameters=[]
+)
+
+carla_lidar_processor = Node(
+    package='sensor_processing',
+    executable='lidar_processing_node'
+)
+
+carla_guardian = Node(
+    package='guardian',
+    executable='guardian_node',
+    parameters=[
+        {'simulated': True}
+    ]
+)
+
+carla_route_reader = Node(
+    package='carla_interface',
+    executable='route_reader_node'
+)
+
+carla_rviz = Node(
+    package='rviz2',
+    executable='rviz2',
+    arguments=['-d' + '/navigator/data/mcl.rviz']
+)
+
+carla_urdf_publisher = Node(
     package='robot_state_publisher',
     executable='robot_state_publisher',
-    arguments=[path.join(NAVIGATOR_DIR, "data", "hail_bopp.urdf")]
+    arguments=[path.join("/navigator/data", "carla.urdf")]
+)
+
+clock = Node(
+    package='clock',
+    executable='clock_node'
+)
+
+controller = Node(
+    package="parade_controller",
+    executable="parade_controller_node"
+)
+
+driveable_area = Node(
+    package='driveable_area',
+    executable='driveable_area_node'
+)
+
+gps_node = Node(
+    package='nmea_navsat_driver',
+    executable='nmea_serial_driver'
+)
+
+grid_summation = Node(
+    package='costs',
+    executable='grid_summation_node'
+)
+
+ground_seg = Node(
+    package='occupancy_cpp',
+    executable='ground_segmentation_exe',
+    parameters=[
+        {'sensitivity': 0.13},
+    ]
 )
 
 guardian = Node(
@@ -57,14 +114,94 @@ guardian = Node(
     executable='guardian_node'
 )
 
-sounds = Node(
-    package='guardian',
-    executable='sound_node'
-)
-
 gnss = Node(
     package='gnss',
     executable='gnss_interface_node'
+)
+
+gnss_processor = Node(
+    package='state_estimation',
+    executable='gnss_processing_node'
+)
+
+gnss_averager = Node(
+    package='state_estimation',
+    executable='gnss_averaging_node'
+)
+
+hailbopp_epas = Node(
+    package='epas',
+    executable='epas_node'
+)
+
+hailbopp_linear_actuator = Node(
+    package='linear_actuator',
+    executable='linear_actuator_node'
+)
+
+hailbopp_mcu = Node(
+    package='mcu_interface',
+    executable='mcu_interface_node'
+)
+
+image_segmentation = Node(
+    package='segmentation',
+    executable='image_segmentation_node'
+)
+
+joy = Node(
+    package='joy_linux',
+    executable='joy_linux_node',
+    parameters=[
+    {"dev":"/dev/input/by-id/usb-©Microsoft_Corporation_Controller_061ABA4-joystick"}
+    ]
+)
+
+joy_translator = Node(
+    package='joy_translation',
+    executable='joy_translation_node'
+)
+
+junction_manager = Node(
+    package='costs',
+    executable='junction_manager'
+)
+
+lidar_driver_right = Node(
+    package='velodyne_driver',
+    executable='velodyne_driver_node',
+    parameters=[
+        "/navigator/param/perception/lidar_driver_right.param.yaml"],
+    namespace='velo_right'
+)
+
+lidar_driver_left = Node(
+    package='velodyne_driver',
+    executable='velodyne_driver_node',
+    parameters=[
+        "/navigator/param/perception/lidar_driver_left.param.yaml"],
+    namespace='velo_left'
+)
+
+lidar_pointcloud_left = Node(
+    package='velodyne_pointcloud',
+    executable='velodyne_transform_node',
+    parameters=[
+        "/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
+    namespace='velo_left'
+)
+
+lidar_pointcloud_right = Node(
+    package='velodyne_pointcloud',
+    executable='velodyne_transform_node',
+    parameters=[
+        "/navigator/param/perception/lidar_pointcloud_right.param.yaml"],
+    namespace='velo_right'
+)
+
+lidar_processor = Node(
+    package='sensor_processing',
+    executable='dual_lidar_processing_node'
 )
 
 mcl = Node(
@@ -81,6 +218,37 @@ map_manager = Node(
     ]
 )
 
+odom2tf = Node(
+    package='recording',
+    executable='odom2tf'
+)
+
+prednet_inference = Node(
+    package='prednet_inference',
+    executable='prednet_inference_node'
+)
+
+radar_processor = Node(
+    package='sensor_processing',
+    executable='delphi_esr_radar_processing_node'
+)
+
+recorder = Node(
+    package='recording',
+    executable='recorder'
+)
+
+rqt = Node(
+    package='rqt_gui',
+    executable='rqt_gui',
+    arguments=["--perspective-file=/navigator/data/rqt.perspective"]
+)
+
+rtp = Node(
+    package='rtp',
+    executable='rtp_node'
+)
+
 rviz = Node(
     package='rviz2',
     namespace='',
@@ -90,116 +258,14 @@ rviz = Node(
     respawn=True
 )
 
-ground_seg = Node(
-    package='occupancy_cpp',
-    executable='ground_segmentation_exe',
-    parameters=[
-        {'sensitivity': 0.13},
-    ]
-)
-
-image_segmentation = Node(
-    package='segmentation',
-    executable='image_segmentation_node'
-)
-
 semantic_projection = Node(
     package='segmentation',
     executable='image_projection_node'
 )
 
-mcu_interface = Node(
-    package='mcu_interface',
-    executable='mcu_interface_node'
-)
-
-junction_manager = Node(
-    package='costs',
-    executable='junction_manager'
-)
-
-joy = Node(
-    package='joy_linux',
-    executable='joy_linux_node',
-    parameters=[
-    {"dev":"/dev/input/by-id/usb-©Microsoft_Corporation_Controller_061ABA4-joystick"}
-    ]
-)
-
-joy_translator = Node(
-    package='joy_translation',
-    executable='joy_translation_node'
-)
-
-epas = Node(
-    package='epas',
-    executable='epas_node'
-)
-
-linear_actuator = Node(
-    package='linear_actuator',
-    executable='linear_actuator_node'
-)
-
-controller = Node(
-    package="parade_controller",
-    executable="parade_controller_node"
-)
-
-right_lidar_driver = Node(
-    package='velodyne_driver',
-    executable='velodyne_driver_node',
-    parameters=[
-        "/navigator/param/perception/lidar_driver_right.param.yaml"],
-    namespace='velo_right'
-)
-left_lidar_driver = Node(
-    package='velodyne_driver',
-    executable='velodyne_driver_node',
-    parameters=[
-        "/navigator/param/perception/lidar_driver_left.param.yaml"],
-    namespace='velo_left'
-)
-
-left_lidar_pointcloud = Node(
-    package='velodyne_pointcloud',
-    executable='velodyne_transform_node',
-    parameters=[
-        "/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
-    namespace='velo_left'
-)
-
-right_lidar_pointcloud = Node(
-    package='velodyne_pointcloud',
-    executable='velodyne_transform_node',
-    parameters=[
-        "/navigator/param/perception/lidar_pointcloud_right.param.yaml"],
-    namespace='velo_right'
-)
-
-radar_processor = Node(
-    package='sensor_processing',
-    executable='delphi_esr_radar_processing_node'
-)
-
-camera = Node(
-    package='camera',
-    executable='camera_node'
-)
-
-gps_node = Node(
-    package='nmea_navsat_driver',
-    executable='nmea_serial_driver'
-)
-
-web_bridge = Node(
-    package='rosbridge_server',
-    executable='rosbridge_websocket'
-)
-
-clock = Node(
-    package='clock',
-    executable='clock_node'
+sounds = Node(
+    package='guardian',
+    executable='sound_node'
 )
 
 static_grid = Node(
@@ -207,22 +273,13 @@ static_grid = Node(
     executable='static_grid_exe'
 )
 
-recorder = Node(
-    package='recording',
-    executable='recorder'
+urdf_publisher = Node(
+    package='robot_state_publisher',
+    executable='robot_state_publisher',
+    arguments=[path.join(NAVIGATOR_DIR, "data", "hail_bopp.urdf")]
 )
 
-odom2tf = Node(
-    package='recording',
-    executable='odom2tf'
-)
-
-grid_summation = Node(
-    package='costs',
-    executable='grid_summation_node'
-)
-
-rtp = Node(
-    package='rtp',
-    executable='rtp_node'
+web_bridge = Node(
+    package='rosbridge_server',
+    executable='rosbridge_websocket'
 )

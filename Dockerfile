@@ -108,6 +108,8 @@ RUN apt-get update && apt update && apt upgrade -y && \
         ros-humble-rosbridge-server \
         #
         ros-humble-ros-testing \
+        # rqt provides oscilliscope-style plotting of topics, etc
+        ros-humble-rqt* \
         #
         ros-humble-rviz2 \
         #
@@ -200,6 +202,7 @@ RUN pip3 install \
     # wcwidth \
     # six>=1.5 \
     # mmcls \
+RUN pip3 install --upgrade numpy && pip3 install --upgrade scipy
 
 # https://stackoverflow.com/questions/66669735/ubuntu-20-04-cant-find-pcl-because-of-incorrect-include-directory-after-install
 RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10/pcl /lib/x86_64-linux-gnu/cmake/pcl/include/pcl
