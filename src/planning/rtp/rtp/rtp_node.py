@@ -41,7 +41,8 @@ from dataclasses import dataclass
 import random
 import time
 from geometry_msgs.msg import PoseStamped, Quaternion, Point
-from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer, CarlaEgoVehicleStatus
+#from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer
+from navigator_msgs.msg import VehicleControl, VehicleSpeed
 from std_msgs.msg import String, ColorRGBA
 from sensor_msgs.msg import Imu
 
@@ -101,17 +102,17 @@ class RecursiveTreePlanner(Node):
         current_mode_sub = self.create_subscription(
             Mode, '/guardian/mode', self.currentModeCb, 1)
         
-        self.target_speed_pub = self.create_publisher(CarlaSpeedometer, '/planning/target_speed', 1)
+        self.target_speed_pub = self.create_publisher(VehicleSpeed, '/planning/target_speed', 1)
 
         clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)
         self.clock = Clock().clock
 
         self.command_pub = self.create_publisher(
-            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 1)
+            VehicleControl, '/vehicle/control', 1)
 
         self.speed_sub = self.create_subscription(
-            CarlaSpeedometer, '/speed', self.speedCb, 1)
+            VehicleSpeed, '/speed', self.speedCb, 1)
 
         self.path_pub = self.create_publisher(
             Path, '/planning/path', 1)
@@ -142,7 +143,7 @@ class RecursiveTreePlanner(Node):
     def clockCb(self, msg: Clock):
         self.clock = msg.clock
 
-    def speedCb(self, msg: CarlaSpeedometer):
+    def speedCb(self, msg: VehicleSpeed):
         self.speed = msg.speed
 
     def getBarrierIndex(self, path: CostedPath, map: np.ndarray, width_meters=1.8) -> int:
@@ -540,8 +541,8 @@ class RecursiveTreePlanner(Node):
             pose_msg.pose.position.y = 75 * 0.4 - 30
             # TODO: Add heading (pose[2]?)
             result_msg.poses.append(pose_msg)
-            self.get_logger().info('Publishjed singleposition')
-        command = CarlaEgoVehicleControl()
+            self.get_logger().info('Published singleposition')
+        command = VehicleControl()
         if len(best_path.poses) < 4:
             return
         #command.steer = ((best_path.poses[4][2] + best_path.poses[5][2] + best_path.poses[6][2])/3.0) * -2.7  # First steering value
@@ -583,7 +584,7 @@ class RecursiveTreePlanner(Node):
 
         target_speed = MAX_SPEED # m/s, ~10mph
 
-        target_speed_msg = CarlaSpeedometer()
+        target_speed_msg = VehicleSpeed()
         target_speed_msg.speed = target_speed
         self.target_speed_pub.publish(target_speed_msg)
 
