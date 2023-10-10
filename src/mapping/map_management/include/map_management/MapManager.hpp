@@ -98,7 +98,7 @@ namespace navigator
             // Parameters
             // TODO: Convert to ros params
             std::chrono::milliseconds GRID_PUBLISH_FREQUENCY = 200ms;
-            std::chrono::milliseconds LOCAL_ROUTE_LS_FREQ = 500ms;
+            std::chrono::milliseconds LOCAL_ROUTE_LS_FREQ = 300ms;
             const int GRID_RANGE = 30;
             const float GRID_RES = 0.4;
 
@@ -115,7 +115,7 @@ namespace navigator
             lemon::SmartDigraph::ArcMap<double> *costMap = nullptr;
 
             std::vector<odr::LaneKey> getTrueSuccessors(odr::LaneKey key);
-            void setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response);
+            // void setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response);
             void setRouteFromClickedPt(const PointStamped clicked_pt);
             void recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target);
             void buildTrueRoutingGraph();
@@ -131,6 +131,8 @@ namespace navigator
 
             LineString getLaneCenterline(odr::LaneKey key);
             std::vector<LineString> getCenterlinesFromKeys(std::vector<odr::LaneKey> keys, odr::RoutingGraph graph);
+
+            void setPredeterminedRoute();
 
             rclcpp::Publisher<OccupancyGrid>::SharedPtr drivable_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr junction_grid_pub_;
@@ -161,10 +163,14 @@ namespace navigator
             Path smoothed_route_msg_;
             LineString rough_route_;
             Path rough_route_msg_;
+            bg::model::multi_linestring<bg::model::linestring<odr::point>> route_linestrings_;
             bg::model::linestring<odr::point> route_linestring_;
             bg::model::linestring<odr::point> local_route_linestring_;
+            bg::model::multi_linestring<bg::model::linestring<odr::point>> local_route_linestrings_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> map_wide_tree_;
             bgi::rtree<odr::value, bgi::rstar<16, 4>> rough_route_tree_;
+
+            std::vector<odr::polygon> junction_polys_;
 
             RouteManager rm;
         };

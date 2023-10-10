@@ -23,7 +23,7 @@ GroundSegmentationNode::GroundSegmentationNode() : Node("ground_segmentation_nod
       { this->clock = *msg; });
 
   raw_lidar_sub = this->create_subscription<PointCloud2>(
-      "/lidar/fused", 10,
+      "/lidar", 10,
       std::bind(&GroundSegmentationNode::pointCloudCb, this, std::placeholders::_1));
 
   filtered_lidar_pub = this->create_publisher<PointCloud2>("/lidar/filtered", 10);

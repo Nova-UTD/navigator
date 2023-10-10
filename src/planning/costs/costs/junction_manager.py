@@ -36,7 +36,7 @@ from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Joy
-
+from std_msgs.msg import Bool
 
 import matplotlib.pyplot as plt
 
@@ -47,6 +47,8 @@ class JunctionManager(Node):
 
     def __init__(self):
         super().__init__('junction_manager')
+
+        self.target_speed = 0.0
 
         self.current_occupancy_grid = None
         self.junction_grid = None
@@ -72,14 +74,18 @@ class JunctionManager(Node):
         Clock, '/clock', self.clockCb, 1)
 
         self.joy_sub = self.create_subscription(
-            Joy, '/joy', self.joyCb, 10)
+            Joy, '/joy', self.buttonCb, 10)
 
         # Pubs
         self.stateful_grid_pub = self.create_publisher(
             OccupancyGrid, '/grid/stateful_junction', 1)
+        
+        target_speed_sub = self.create_subscription(CarlaSpeedometer, '/planning/target_speed', self.targetSpeedCb,1)
 
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/node_statuses', 1)
+        
+        self.is_waiting_pub = self.create_publisher(Bool, '/planning/is_waiting', 1)
 
         
 
@@ -117,6 +123,10 @@ class JunctionManager(Node):
 
         # This creates a binary array, where each cell is simply "is occupied" or "is not occupied"
         self.current_occupancy_grid = occupancy_grid > 80.0
+
+    def targetSpeedCb(self, msg: CarlaSpeedometer):
+        self.target_speed = msg.speed
+        # self.get_logger().info(f"TARGET SPEED: {self.target_speed}")
 
     def junctionIsOccupied(self, occupancy, junction) -> bool:
         # Erode the occupancy grid slightly.
@@ -179,6 +189,18 @@ class JunctionManager(Node):
             # Checks if Xbox button is pressed
             if(self.button != 0.0):
                 can_enter = True
+                print("You can now enter junction.")
+
+                is_waiting = Bool()
+                is_waiting.data = False
+                self.is_waiting_pub.publish(is_waiting)
+
+            elif self.target_speed < 0.0:
+                print("Waiting for button")
+
+                is_waiting = Bool()
+                is_waiting.data = True
+                self.is_waiting_pub.publish(is_waiting)
 
         if not can_enter:
             eroded_junction = binary_erosion(junction, square(2))

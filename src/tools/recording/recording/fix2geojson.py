@@ -33,8 +33,8 @@ class FixToGeoJSONNode(Node):
     def __init__(self):
         super().__init__("FixToGeoJSONNode")
 
-        fix_sub = self.create_subscription(NavSatFix, "/gnss/fix", self.fixCb, 1)
-        # odom_sub = self.create_subscription(Odometry, "/gnss/odometry", self.odomCb, 1)
+        # fix_sub = self.create_subscription(NavSatFix, "/gnss/fix", self.fixCb, 1)
+        odom_sub = self.create_subscription(Odometry, "/gnss/odometry", self.odomCb, 1)
         self.coordinates = []
 
     def close(self):

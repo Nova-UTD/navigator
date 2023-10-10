@@ -2,7 +2,7 @@
 # See: https://github.com/ros-drivers/velodyne/tree/foxy-devel/velodyne_driver
 /**:
   ros__parameters:
-    calibration: "/home/nova/navigator/data/VLP16db.yaml" # The path to the calibration file for the particular device. There are a set of default calibration files to start with in the "params" subdirectory in this package. Defaults to the empty string.
+    calibration: "/navigator/data/VLP16db.yaml" # The path to the calibration file for the particular device. There are a set of default calibration files to start with in the "params" subdirectory in this package. Defaults to the empty string.
     model: VLP16
     min_range: 0.9 # The minimum range in meters that a point must be to be added to the resulting point cloud. Points closer than this are discarded. Must be between 0.1 and 10.0. Defaults to 0.9.
     max_range: 130.0 # The maximum range in meters that a point must be to be added to the resulting point cloud. Points further away than this are discarded. Must be between 0.1 and 200.0. Defaults to 130.0.
