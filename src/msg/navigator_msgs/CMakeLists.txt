@@ -1,4 +1,4 @@
-# Package:   nova_msgs
+# Package:   navigator_msgs
 # Filename:  CMakeLists.txt
 # Author:    Joshua Williams
 # Email:     joshmackwilliams@protonmail.com
