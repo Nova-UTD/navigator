@@ -204,7 +204,7 @@ class GridSummationNode(Node):
                 msg, CURRENT_OCCUPANCY_SCALE)
             weighted_current_occ_arr = self.resizeOccupancyGrid(
                 weighted_current_occ_arr)
-            steering_cost += weighted_current_occ_arr
+            # steering_cost += weighted_current_occ_arr
             speed_cost += weighted_current_occ_arr
         elif stale:
             print("OCCUPANCY WAS STALE")

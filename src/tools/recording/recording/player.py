@@ -218,7 +218,7 @@ class player(Node):
     def __init__(self):
         super().__init__('player')
 
-        self.srcdir = '/navigator/recordings'
+        self.srcdir = '/replay'
         self.search_from = strptime('70-1-1_0-0-0', '%y-%m-%d_%H-%M-%S')
         self.search_to = strptime('30-1-1_0-0-0', '%y-%m-%d_%H-%M-%S')
         self.processArguments(sys.argv)

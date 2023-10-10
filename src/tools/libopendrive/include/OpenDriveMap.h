@@ -27,6 +27,7 @@ namespace odr
     typedef bg::model::point<float, 2, bg::cs::cartesian> point;
     typedef bg::model::box<point> box;
     typedef bg::model::polygon<point> polygon;
+    typedef bg::model::multi_polygon<polygon> multipolygon;
     typedef bg::model::ring<point> ring;
     typedef std::pair<box, unsigned> value;
     typedef std::pair<Lane, ring> LanePair;
