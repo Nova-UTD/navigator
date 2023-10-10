@@ -39,14 +39,14 @@ def generate_launch_description():
 
         # MISC
         # recorder,
-        carla_rviz,
+        #carla_rviz,
         # rqt,
         # camera_streamer,
 
         # PERCEPTION
         # image_segmentation,
         # semantic_projection,
-        carla_lidar_processor,
+        #carla_lidar_processor,
         ground_seg,
         static_grid,
         # prednet_inference,
