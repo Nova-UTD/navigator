@@ -20,7 +20,7 @@ from std_msgs.msg import String, Header, ColorRGBA
 from geometry_msgs.msg import PoseStamped, Point
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker, MarkerArray
-from nova_msgs.msg import CostedPaths, CostedPath, ZoneArray, Zone, Trajectory
+from navigator_msgs.msg import CostedPaths, CostedPath, ZoneArray, Zone, Trajectory
 import math
 
 class VizSubscriber(Node):

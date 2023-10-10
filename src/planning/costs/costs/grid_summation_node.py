@@ -20,7 +20,7 @@ from tf2_ros.transform_listener import TransformListener
 from carla_msgs.msg import CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
-from nova_msgs.msg import Egma
+from navigator_msgs.msg import Egma
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Float32

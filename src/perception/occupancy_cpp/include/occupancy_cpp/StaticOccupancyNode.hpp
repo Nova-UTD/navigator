@@ -12,7 +12,7 @@
 // Message definitions
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
-#include "nova_msgs/msg/masses.hpp"
+#include "navigator_msgs/msg/masses.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 
 #include <algorithm>
@@ -33,7 +33,7 @@
 using namespace std::chrono_literals;
 
 using nav_msgs::msg::OccupancyGrid;
-using nova_msgs::msg::Masses;
+using navigator_msgs::msg::Masses;
 using rosgraph_msgs::msg::Clock;
 using sensor_msgs::msg::PointCloud2;
 

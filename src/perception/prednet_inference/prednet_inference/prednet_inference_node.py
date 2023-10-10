@@ -31,8 +31,8 @@ from std_msgs.msg import Float32
 from sensor_msgs.msg import PointCloud2
 
 from nav_msgs.msg import OccupancyGrid
-from nova_msgs.msg import Masses
-from nova_msgs.msg import Egma
+from navigator_msgs.msg import Masses
+from navigator_msgs.msg import Egma
 
 
 import torch

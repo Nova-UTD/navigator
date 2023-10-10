@@ -8,13 +8,13 @@ Subscribes to:
 /tf
 
 Calls:
-/set_route (nova_msgs/srv/SetRoute, served by MapManager)
+/set_route (navigator_msgs/srv/SetRoute, served by MapManager)
 '''
 
 import math
 
 from geometry_msgs.msg import Point, PointStamped
-from nova_msgs.srv import SetRoute
+from navigator_msgs.srv import SetRoute
 from rclpy.node import Node
 import rclpy
 from tf2_ros import TransformException

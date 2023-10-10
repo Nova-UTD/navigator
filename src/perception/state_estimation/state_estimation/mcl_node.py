@@ -29,7 +29,7 @@ import time
 from carla_msgs.msg import CarlaSpeedometer
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid, Odometry
-from nova_msgs.srv import GetLandmarks
+from navigator_msgs.srv import GetLandmarks
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, PointCloud2

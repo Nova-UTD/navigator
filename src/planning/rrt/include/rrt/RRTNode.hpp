@@ -31,9 +31,9 @@
 #include <std_msgs/msg/header.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <builtin_interfaces/msg/time.hpp>
-#include <nova_msgs/msg/egma.hpp>
-#include <nova_msgs/msg/goal_position.hpp>
-#include <nova_msgs/msg/rrt_path.hpp>
+#include <navigator_msgs/msg/egma.hpp>
+#include <navigator_msgs/msg/goal_position.hpp>
+#include <navigator_msgs/msg/rrt_path.hpp>
 
 class TreeNode{
     public:
@@ -52,7 +52,7 @@ class TreeNode{
 class RRTNode : public rclcpp::Node {
 	public:
 		RRTNode();
-		void findPath(nova_msgs::msg::Egma::SharedPtr map);
+		void findPath(navigator_msgs::msg::Egma::SharedPtr map);
 
 	private:
 
@@ -73,24 +73,24 @@ class RRTNode : public rclcpp::Node {
         std::vector< TreeNode > finalRRTPath;
 
 		//messages
-		//nova_msgs::msg::RrtPath path;
-		//nova_msgs::msg::Egma egma;
-		//nova_msgs::msg::GoalPosition goal_position;
+		//navigator_msgs::msg::RrtPath path;
+		//navigator_msgs::msg::Egma egma;
+		//navigator_msgs::msg::GoalPosition goal_position;
 
 		//publishers and subscribers
-		//rclcpp::Publisher<nova_msgs::msg::Egma>::SharedPtr fakeCostMapPub;
-		//rclcpp::Publisher<nova_msgs::msg::GoalPosition>::SharedPtr fakeGoalPup;
-		//rclcpp::Publisher<nova_msgs::msg::RrtPath>::SharedPtr rrt_path_pub;
+		//rclcpp::Publisher<navigator_msgs::msg::Egma>::SharedPtr fakeCostMapPub;
+		//rclcpp::Publisher<navigator_msgs::msg::GoalPosition>::SharedPtr fakeGoalPup;
+		//rclcpp::Publisher<navigator_msgs::msg::RrtPath>::SharedPtr rrt_path_pub;
 		rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr rrt_path_publisher;
-		rclcpp::Subscription<nova_msgs::msg::GoalPosition>::SharedPtr goal_position_sub;
-		rclcpp::Subscription<nova_msgs::msg::Egma>::SharedPtr cost_map_sub;
+		rclcpp::Subscription<navigator_msgs::msg::GoalPosition>::SharedPtr goal_position_sub;
+		rclcpp::Subscription<navigator_msgs::msg::Egma>::SharedPtr cost_map_sub;
 		
 		//methods to be called from find_path
-		void createPaths(nova_msgs::msg::Egma::SharedPtr map);
-		void addNewRRTNode(nova_msgs::msg::Egma::SharedPtr map);
+		void createPaths(navigator_msgs::msg::Egma::SharedPtr map);
+		void addNewRRTNode(navigator_msgs::msg::Egma::SharedPtr map);
 		void findClosestState(TreeNode *head);
 		void findRandomPair(int gridSize_x, int gridSize_y);
-		void bestPath(TreeNode *head, float total, std::vector< TreeNode > tempPath, nova_msgs::msg::Egma::SharedPtr map);
+		void bestPath(TreeNode *head, float total, std::vector< TreeNode > tempPath, navigator_msgs::msg::Egma::SharedPtr map);
 
 	
 };

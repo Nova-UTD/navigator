@@ -22,7 +22,7 @@ import time
 from carla_msgs.msg import CarlaEgoVehicleControl
 from diagnostic_msgs.msg import DiagnosticStatus, DiagnosticArray, KeyValue
 from nav_msgs.msg import Path
-from nova_msgs.msg import Mode
+from navigator_msgs.msg import Mode
 import rclpy
 from rclpy.node import Node
 from dataclasses import dataclass

@@ -54,7 +54,7 @@
 #include "nav_msgs/msg/map_meta_data.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
-#include "nova_msgs/srv/set_route.hpp"
+#include "navigator_msgs/srv/set_route.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
 #include "std_msgs/msg/float32.hpp"
 
@@ -115,7 +115,7 @@ namespace navigator
             lemon::SmartDigraph::ArcMap<double> *costMap = nullptr;
 
             std::vector<odr::LaneKey> getTrueSuccessors(odr::LaneKey key);
-            // void setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response);
+            // void setRoute(const std::shared_ptr<navigator_msgs::srv::SetRoute::Request> request, std::shared_ptr<navigator_msgs::srv::SetRoute::Response> response);
             void setRouteFromClickedPt(const PointStamped clicked_pt);
             void recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target);
             void buildTrueRoutingGraph();
@@ -146,7 +146,7 @@ namespace navigator
             rclcpp::Subscription<PointStamped>::SharedPtr clicked_point_sub_; // For RViz interface
             void clickedPointCb(PointStamped::SharedPtr msg);
 
-            rclcpp::Service<nova_msgs::srv::SetRoute>::SharedPtr route_set_service_;
+            rclcpp::Service<navigator_msgs::srv::SetRoute>::SharedPtr route_set_service_;
 
             rclcpp::TimerBase::SharedPtr drivable_area_grid_pub_timer_;
             rclcpp::TimerBase::SharedPtr route_distance_grid_pub_timer_;

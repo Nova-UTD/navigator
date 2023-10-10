@@ -55,7 +55,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     clicked_point_sub_ = this->create_subscription<PointStamped>("/clicked_point", 1, bind(&MapManagementNode::clickedPointCb, this, std::placeholders::_1));
 
     // Services
-    // route_set_service_ = this->create_service<nova_msgs::srv::SetRoute>("set_route", bind(&MapManagementNode::setRoute, this, std::placeholders::_1, std::placeholders::_2));
+    // route_set_service_ = this->create_service<navigator_msgs::srv::SetRoute>("set_route", bind(&MapManagementNode::setRoute, this, std::placeholders::_1, std::placeholders::_2));
 
     route_timer_ = this->create_wall_timer(LOCAL_ROUTE_LS_FREQ, bind(&MapManagementNode::updateLocalRouteLinestring, this));
 
@@ -341,7 +341,7 @@ void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
 
 }
 
-// void MapManagementNode::setRoute(const std::shared_ptr<nova_msgs::srv::SetRoute::Request> request, std::shared_ptr<nova_msgs::srv::SetRoute::Response> response)
+// void MapManagementNode::setRoute(const std::shared_ptr<navigator_msgs::srv::SetRoute::Request> request, std::shared_ptr<navigator_msgs::srv::SetRoute::Response> response)
 // {
 //     if (request->route_nodes.size() < 2)
 //     {
