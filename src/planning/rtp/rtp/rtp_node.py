@@ -31,7 +31,7 @@ Minimum update rate: 2 Hz, ideally 5 Hz
 from matplotlib import pyplot as plt
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from nav_msgs.msg import OccupancyGrid, Odometry, Path
-from nova_msgs.msg import Mode
+from navigator_msgs.msg import Mode
 import numpy as np
 import ros2_numpy as rnp
 from rosgraph_msgs.msg import Clock

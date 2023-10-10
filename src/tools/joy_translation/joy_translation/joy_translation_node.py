@@ -48,7 +48,7 @@ import time
 
 from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
-from nova_msgs.msg import Mode
+from navigator_msgs.msg import Mode
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Joy

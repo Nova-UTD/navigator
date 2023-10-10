@@ -5,7 +5,7 @@
 # Will Heitman - Will.Heitman@utdallas.edu
 
 from typing import List
-from nova_msgs.msg import Trajectory, TrajectoryPoint, PeddlePosition, SteeringPosition
+from navigator_msgs.msg import Trajectory, TrajectoryPoint, PeddlePosition, SteeringPosition
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry

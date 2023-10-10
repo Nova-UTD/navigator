@@ -5,7 +5,7 @@ Author:    Will Heitman (w at heit.mn)
 
 Simple node that listens for safety events and plays matching audio alerts.
 '''
-from nova_msgs.msg import Mode
+from navigator_msgs.msg import Mode
 import rclpy
 from rclpy.node import Node
 import simpleaudio

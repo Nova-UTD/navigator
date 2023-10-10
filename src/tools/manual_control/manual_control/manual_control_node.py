@@ -31,7 +31,7 @@ from std_msgs.msg import Header
 from sensor_msgs.msg import Image # For cameras
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry # For GPS, ground truth
-from nova_msgs.msg import PeddlePosition, SteeringPosition
+from navigator_msgs.msg import PeddlePosition, SteeringPosition
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 

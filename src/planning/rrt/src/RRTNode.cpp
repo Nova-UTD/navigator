@@ -24,11 +24,11 @@ using geometry_msgs::msg::Vector3;
 using std_msgs::msg::Header;
 using nav_msgs::msg::Path;
 using builtin_interfaces::msg::Time;
-using nova_msgs::msg::Egma;
-using nova_msgs::msg::EvidentialGrid;
-using nova_msgs::msg::EvidentialGridOccupancy;
-using nova_msgs::msg::GoalPosition;
-using nova_msgs::msg::RrtPath;
+using navigator_msgs::msg::Egma;
+using navigator_msgs::msg::EvidentialGrid;
+using navigator_msgs::msg::EvidentialGridOccupancy;
+using navigator_msgs::msg::GoalPosition;
+using navigator_msgs::msg::RrtPath;
 using std::placeholders::_1;
 
 //Mock occupancy grid
