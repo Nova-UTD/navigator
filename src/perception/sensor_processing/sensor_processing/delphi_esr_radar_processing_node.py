@@ -22,6 +22,7 @@ from delphi_esr_msgs.msg import EsrTrack, EsrTrackMotionPowerTrack, EsrTrackMoti
 from derived_object_msgs.msg import ObjectWithCovarianceArray, ObjectWithCovariance
 from nova_msgs.msg import RadarSpotlight
 from visualization_msgs.msg import Marker, MarkerArray
+from builtin_interfaces.msg import Duration
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import PointCloud2
@@ -43,10 +44,12 @@ class DelphiESRRadarProcessingNode(Node):
         self.track_markers_cached = dict()
 
         for trackid in range(1,65):
-            self.power_cached[trackid] = -100
+            self.power_cached[trackid] = []
 
         self.clock = 0.0
         self.clock_msg = Clock()
+
+        self.f = open("radar_log_reflector.txt", "w")
 
         # self.objects_sub = self.create_subscription(
         #     ObjectWithCovarianceArray, '/radar_1/objects', self.objectsCb, 10)
@@ -95,11 +98,34 @@ class DelphiESRRadarProcessingNode(Node):
     def motionCb(self, msg: EsrTrackMotionPowerGroup):
         for track in msg.tracks:
             # grab out the power from this message to look up when EsrTrack message comes in
-            self.power_cached[track.id] = track.power
+            power = self.power_cached[track.id]
+            power.append(float(track.power))
+            if len(power) > 10: # user selectable number of power values to average
+                power = power[1:]
+            self.power_cached[track.id] = power
         return
+
+    def power_calc(self, track_id):
+        #return np.mean(amplitudes)
+        return max(self.power_cached[track_id])
 
     def trackCb(self, msg: EsrTrack):
         #self.get_logger().info('[%i] status:%i %1.2fm, %1.1fdeg, %1.2fdB %1.2f/%1.2f' % (msg.id,msg.status,msg.range,msg.angle,self.power_cached[msg.id],msg.range_rate,msg.range_accel))
+        #self.get_logger().info('%i' % (msg.status))
+
+        # only status = 3 or 4 indicate a prior track that continues being tracked
+        if msg.status == 0: # no target
+            self.power_cached[msg.id] = []
+            self.track_markers_cached[msg.id] = None
+            return
+        if msg.status in set([1,2,6,7,5]): # "new" target, 5 is a merged target
+            self.power_cached[msg.id] = []
+            self.track_markers_cached[msg.id] = None
+            return
+
+        if len(self.power_cached[msg.id]) == 0:
+            return
+        #self.get_logger().info('%1.2f' % (msg.range))
 
         marker = Marker()
         marker.header.frame_id = 'base_link'
@@ -107,12 +133,14 @@ class DelphiESRRadarProcessingNode(Node):
         marker.ns = 'trk'
         marker.id = msg.id
         marker.type = Marker.CYLINDER
+        marker.lifetime = Duration()
+        marker.lifetime.sec = 1
 
         marker.action = Marker.ADD
-        if msg.range > 50:
-            marker.action = Marker.DELETE
-        if self.power_cached[msg.id] < -3:
-            marker.action = Marker.DELETE
+        # if msg.range > 75:
+        #     marker.action = Marker.DELETE
+        # if self.power_cached[msg.id] < -3:
+        #     marker.action = Marker.DELETE
         
         # calculate xy position of track
         x = msg.range*np.cos(-msg.angle*np.pi/180.0)
@@ -127,7 +155,7 @@ class DelphiESRRadarProcessingNode(Node):
         # scale the marker by the dB power
         marker.scale.x = 0.25#0.5*np.power(10.0,self.power_cached[msg.id]/10.0/2.0)
         marker.scale.y = 0.25#0.5*np.power(10.0,self.power_cached[msg.id]/10.0/2.0)
-        marker.scale.z = 0.75*np.power(10.0,self.power_cached[msg.id]/10.0/2.0)
+        marker.scale.z = 0.75*np.power(10.0,self.power_calc(msg.id)/10.0/2.0)
 
         # choose color based on speed
         color = ColorRGBA()
@@ -148,27 +176,38 @@ class DelphiESRRadarProcessingNode(Node):
 
         self.track_markers_cached[msg.id] = marker
 
-        nearest_detection = 100
+        nearest_detection = 500
         nearest_detection_id = -1
-        nearest_detection_amplitude = -20
+        nearest_detection_amplitude = -21.0
         marker_array_msg = MarkerArray()
         for mid, mkr in self.track_markers_cached.items():
-            marker_array_msg.markers.append(mkr)
-            if np.abs(mkr.pose.position.y) < 2: # if object is within 2m of centerline
-                if mkr.pose.position.x < nearest_detection:
-                    nearest_detection_id = mkr.id
-                    nearest_detection = mkr.pose.position.x
-                    nearest_detection_amplitude = self.power_cached[mkr.id]
+            if mkr is not None and len(self.power_cached[mkr.id]) > 0:
+                marker_array_msg.markers.append(mkr)
+                if np.abs(mkr.pose.position.y) < 2: # if object is within 2m of centerline
+                    if mkr.pose.position.x < 65:
+                        power = self.power_calc(mkr.id) 
+                        #if power > nearest_detection_amplitude:
+                        if mkr.pose.position.x < nearest_detection:
+                            nearest_detection_id = mkr.id
+                            nearest_detection = mkr.pose.position.x
+                            nearest_detection_amplitude = power
 
         self.radar_pub.publish(marker_array_msg)
 
-        spotlight_msg = RadarSpotlight()
-        spotlight_msg.header.frame_id = 'base_link'
-        spotlight_msg.header.stamp = self.clock_msg.clock
-        spotlight_msg.track_id = nearest_detection_id
-        spotlight_msg.amplitude = nearest_detection_amplitude
+        # found a detection to spotlight
+        if nearest_detection_amplitude > -21.0:
+            spotlight_msg = RadarSpotlight()
+            spotlight_msg.header.frame_id = 'base_link'
+            spotlight_msg.header.stamp = self.clock_msg.clock
+            spotlight_msg.track_id = nearest_detection_id
+            spotlight_msg.amplitude = nearest_detection_amplitude
 
-        self.radar_spotlight_pub.publish(spotlight_msg)
+            if nearest_detection_amplitude >= 0:
+                self.get_logger().info('[%i] Amp: %1.2f @ %1.2fm' % (msg.id,nearest_detection_amplitude,nearest_detection))
+
+            self.f.write('%1.5f  %1.1f  %1.2f\n' % (self.clock,spotlight_msg.amplitude,nearest_detection))
+
+            self.radar_spotlight_pub.publish(spotlight_msg)
 
         # self.right_pcd_cached: np.array = rnp.numpify(msg)
         # self.right_pcd_cached = self.transformToBaseLink(self.right_pcd_cached, 'radar')
@@ -294,6 +333,7 @@ def main(args=None):
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
+    radar_processor.f.close()
     radar_processor.destroy_node()
     rclpy.shutdown()
 

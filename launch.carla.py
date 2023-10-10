@@ -23,7 +23,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         # CONTROL
-        carla_controller,
+        #carla_controller,
 
         # INTERFACE
         # leaderboard_liaison,
@@ -39,7 +39,6 @@ def generate_launch_description():
 
         # MISC
         # recorder,
-        carla_urdf_publisher,
         carla_rviz,
         # rqt,
         # camera_streamer,
@@ -55,7 +54,6 @@ def generate_launch_description():
 
         # PLANNING
         grid_summation,
-        #carla_route_reader, # <<---- needs to be moved to carla bridge docker? needs to import carla?
         junction_manager,
         rtp,
 

@@ -42,7 +42,7 @@ def generate_launch_description():
         clock,
         
         # recorder,
-        urdf_publisher,
+        hailbopp_urdf_publisher,
         # rviz,
 
         # PERCEPTION
