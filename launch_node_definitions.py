@@ -18,12 +18,6 @@ airbags = Node(
     executable='airbag_node'
 )
 
-# MOVE TO VEHICLE_INTERFACE
-camera = Node(
-    package='camera',
-    executable='camera_node'
-)
-
 camera_streamer = Node(
     package='web_video_server',
     executable='web_video_server'
@@ -52,14 +46,6 @@ driveable_area = Node(
     executable='driveable_area_node'
 )
 
-# MOVE TO VEHICLE_INTERFACE
-# I don't think we use this... maybe the old gps?
-# but we should keep it for broader vehicle interface...
-gps_node = Node(
-    package='nmea_navsat_driver',
-    executable='nmea_serial_driver'
-)
-
 grid_summation = Node(
     package='costs',
     executable='grid_summation_node'
@@ -74,15 +60,10 @@ ground_seg = Node(
 )
 
 guardian = Node(
-    package='guardian'it,
+    package='guardian',
     executable='guardian_node'
 )
 
-# MOVE TO VEHICLE_INTERFACE
-gnss = Node(
-    package='gnss',
-    executable='gnss_interface_node'
-)
 
 # ??? I think leave in Navigator (at least for now)
 gnss_processor = Node(
@@ -95,44 +76,10 @@ gnss_averager = Node(
     package='state_estimation',
     executable='gnss_averaging_node'
 )
-it
-# MOVE TO VEHICLE_INTERFACE
-hailbopp_epas = Node(
-    package='epas',
-    executable='epas_node'
-)
-
-# MOVE TO VEHICLE_INTERFACE
-hailbopp_linear_actuator = Node(
-    package='linear_actuator',
-    executable='linear_actuator_node'
-)
-
-# MOVE TO VEHICLE_INTERFACE
-hailbopp_mcu = Node(
-    package='mcu_interface',
-    executable='mcu_interface_node'
-)
-
-# MOVE TO VEHICLE_INTERFACE
-hailbopp_urdf_publisher = Node(
-    package='robot_state_publisher',
-    executable='robot_state_publisher',
-    arguments=[path.join(NAVIGATOR_DIR, "data", "hail_bopp.urdf")]
-)
 
 image_segmentation = Node(
     package='segmentation',
     executable='image_segmentation_node'
-)
-
-# MOVE TO VEHICLE_INTERFACE
-joy = Node(
-    package='joy_linux',
-    executable='joy_linux_node',
-    parameters=[
-    {"dev":"/dev/input/by-id/usb-©Microsoft_Corporation_Controller_061ABA4-joystick"}
-    ]
 )
 
 joy_translator = Node(
@@ -143,48 +90,6 @@ joy_translator = Node(
 junction_manager = Node(
     package='costs',
     executable='junction_manager'
-)
-
-# MOVE TO VEHICLE_INTERFACE
-lidar_driver_right = Node(
-    package='velodyne_driver',
-    executable='velodyne_driver_node',
-    parameters=[
-        "/navigator/param/perception/lidar_driver_right.param.yaml"],
-    namespace='velo_right'
-)
-
-# MOVE TO VEHICLE_INTERFACE
-lidar_driver_left = Node(
-    package='velodyne_driver',
-    executable='velodyne_driver_node',
-    parameters=[
-        "/navigator/param/perception/lidar_driver_left.param.yaml"],
-    namespace='velo_left'
-)
-
-# MOVE TO VEHICLE_INTERFACE
-lidar_pointcloud_left = Node(
-    package='velodyne_pointcloud',
-    executable='velodyne_transform_node',
-    parameters=[
-        "/navigator/param/perception/lidar_pointcloud_left.param.yaml"],
-    namespace='velo_left'
-)
-
-# MOVE TO VEHICLE_INTERFACE
-lidar_pointcloud_right = Node(
-    package='velodyne_pointcloud',
-    executable='velodyne_transform_node',
-    parameters=[
-        "/navigator/param/perception/lidar_pointcloud_right.param.yaml"],
-    namespace='velo_right'
-)
-
-# MOVE TO VEHICLE_INTERFACE
-lidar_processor = Node(
-    package='sensor_processing',
-    executable='dual_lidar_processing_node'
 )
 
 mcl = Node(
@@ -211,11 +116,6 @@ prednet_inference = Node(
     executable='prednet_inference_node'
 )
 
-# MOVE TO VEHICLE_INTERFACE
-radar_processor = Node(
-    package='sensor_processing',
-    executable='delphi_esr_radar_processing_node'
-)
 
 recorder = Node(
     package='recording',
@@ -233,7 +133,6 @@ rtp = Node(
     executable='rtp_node'
 )
 
-# COPY TO VEHICLE_INTERFACE?  Keep a copy here for later customization?
 rviz = Node(
     package='rviz2',
     namespace='',
