@@ -7,4 +7,4 @@ std_msgs/Header header
 int8 track_id
 
 # in decibels
-int8 amplitude
+float32 amplitude

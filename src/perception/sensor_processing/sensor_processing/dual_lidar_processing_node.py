@@ -48,7 +48,7 @@ class DualLidarProcessingNode(Node):
         )
 
         self.clean_lidar_pub = self.create_publisher(
-            PointCloud2, '/lidar/fused', 10
+            PointCloud2, '/lidar', 10
         )
 
         self.tf_buffer = Buffer()

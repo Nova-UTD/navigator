@@ -29,6 +29,6 @@ def generate_launch_description():
         lidar_processor,
         radar_processor,
         camera,
-        urdf_publisher,
+        hailbopp_urdf_publisher,
         rviz,
     ])

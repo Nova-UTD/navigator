@@ -101,7 +101,7 @@ class RecursiveTreePlanner(Node):
         current_mode_sub = self.create_subscription(
             Mode, '/guardian/mode', self.currentModeCb, 1)
         
-        self.target_speed_pub = self.create_publisher(CarlaSpeedometer, 'planning/target_speed', 1)
+        self.target_speed_pub = self.create_publisher(CarlaSpeedometer, '/planning/target_speed', 1)
 
         clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)

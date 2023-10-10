@@ -20,6 +20,6 @@ def generate_launch_description():
     return LaunchDescription([
         clock,
         radar_processor,
-        urdf_publisher,
+        hailbopp_urdf_publisher,
         rviz,
     ])
