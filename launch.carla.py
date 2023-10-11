@@ -62,6 +62,6 @@ def generate_launch_description():
         ##guardian,
 
         # STATE ESTIMATION
-        ## map_manager,  <<----- seems to have hard coded stuff for campus testing
+        map_manager,
         gnss_processor,
     ])

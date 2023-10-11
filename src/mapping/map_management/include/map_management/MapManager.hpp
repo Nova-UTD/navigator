@@ -43,7 +43,7 @@
 #include "tf2_ros/buffer.h"
 
 // Message includes
-#include "carla_msgs/msg/carla_route.hpp"
+#include "navigator_msgs/msg/carla_route.hpp"
 #include "carla_msgs/msg/carla_world_info.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
