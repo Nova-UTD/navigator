@@ -96,6 +96,7 @@ class RecursiveTreePlanner(Node):
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/node_statuses', 1)
 
+        # This is not really used
         odom_sub = self.create_subscription(
             Odometry, '/gnss/odometry_processed', self.odomCb, 1)
 
