@@ -64,14 +64,6 @@ guardian = Node(
     executable='guardian_node'
 )
 
-
-# ??? I think leave in Navigator (at least for now)
-gnss_processor = Node(
-    package='state_estimation',
-    executable='gnss_processing_node'
-)
-
-# ??? I think leave in Navigator (at least for now)
 gnss_averager = Node(
     package='state_estimation',
     executable='gnss_averaging_node'
@@ -106,6 +98,14 @@ map_manager = Node(
     ]
 )
 
+map_manager_carla = Node(
+    package='map_management',
+    executable='map_management_node',
+    parameters=[
+        {'from_file': False}
+    ]
+)
+
 odom2tf = Node(
     package='recording',
     executable='odom2tf'
@@ -116,10 +116,14 @@ prednet_inference = Node(
     executable='prednet_inference_node'
 )
 
-
 recorder = Node(
     package='recording',
     executable='recorder'
+)
+
+routing_monitor = Node(
+    package='helpers',
+    executable='routing_monitor'
 )
 
 rqt = Node(

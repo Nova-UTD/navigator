@@ -7,7 +7,8 @@ Code to establish safety zones around the car where the speed is limited.
 '''
 
 from matplotlib import pyplot as plt
-from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer
+from carla_msgs.msg import CarlaEgoVehicleControl
+from navigator_msgs.msg import CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
 import numpy as np

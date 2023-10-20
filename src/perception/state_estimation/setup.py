@@ -24,7 +24,6 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'gnss_processing_node = state_estimation.gnss_processing_node:main',
             'gnss_averaging_node = state_estimation.gnss_averaging_node:main',
             'mcl_node = state_estimation.mcl_node:main',
         ],

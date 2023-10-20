@@ -33,7 +33,6 @@ from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from nav_msgs.msg import OccupancyGrid, Odometry, Path
 from navigator_msgs.msg import Mode
 import numpy as np
-import ros2_numpy as rnp
 from rosgraph_msgs.msg import Clock
 import rclpy
 from rclpy.node import Node
@@ -53,11 +52,11 @@ from skimage.draw import line
 
 from matplotlib.patches import Rectangle
 
-N_BRANCHES: int = 11
-STEP_LEN: float = 6.0  # meters
-DEPTH: int = 3
+N_BRANCHES: int = 15
+STEP_LEN: float = 12.0  # meters
+DEPTH: int = 1
 
-# These are vdehicle constants for the GEM e6.
+# These are vehicle constants for the GEM e6.
 # The sim vehicle (Tesla Model 3) has similar constants.
 WHEEL_BASE: float = 3.5  # meters
 MAX_TURN_ANGLE = 0.2  # radians
@@ -87,8 +86,10 @@ class RecursiveTreePlanner(Node):
         self.speed_costmap = np.zeros((151, 151))
         self.origin = (44., 75.)
 
+        # steering_cost_map_sub = self.create_subscription(
+        #     OccupancyGrid, '/grid/route_distance', self.costMapCb, 1)
         steering_cost_map_sub = self.create_subscription(
-            OccupancyGrid, '/grid/route_distance', self.costMapCb, 1)
+            OccupancyGrid, '/grid/steering_cost', self.costMapCb, 1)
 
         speed_cost_map_sub = self.create_subscription(
             OccupancyGrid, '/grid/speed_cost', self.speedCostMapCb, 1)
@@ -96,9 +97,8 @@ class RecursiveTreePlanner(Node):
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/node_statuses', 1)
 
-        # This is not really used
         odom_sub = self.create_subscription(
-            Odometry, '/gnss/odometry_processed', self.odomCb, 1)
+            Odometry, '/gnss/odometry', self.odomCb, 1)
 
         current_mode_sub = self.create_subscription(
             Mode, '/guardian/mode', self.currentModeCb, 1)
@@ -127,7 +127,7 @@ class RecursiveTreePlanner(Node):
 
         self.previous_steer = 0.0
 
-        self.current_mode = Mode.DISABLED
+        self.current_mode = Mode.AUTO
 
     def currentModeCb(self, msg: Mode):
         self.current_mode = msg.mode
@@ -297,11 +297,13 @@ class RecursiveTreePlanner(Node):
             results.append(new_path)
             return
 
-        for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, num_branches):
-            if angle > 0:
-                adjusted_angle = np.power(angle, 1.5)
-            else:
-                adjusted_angle = np.power(abs(angle), 1.5) * -1
+        #for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, num_branches):
+        for angle in MAX_TURN_ANGLE*np.power(np.linspace(-1, 1, num_branches),3):
+            adjusted_angle = angle
+            # if angle > 0:
+            #     adjusted_angle = np.power(angle, 1.5)
+            # else:
+            #     adjusted_angle = np.power(abs(angle), 1.5) * -1
             self.generatePaths(depth-1, new_path, adjusted_angle, segment_length,
                                res, num_branches, results, result_costs, costmap)
 
@@ -434,6 +436,21 @@ class RecursiveTreePlanner(Node):
 
         return status
 
+    # def findPath(self,costmap, cost_threshold=20):
+        
+
+    # def costMapCb2(self, msg: OccupancyGrid):
+    #     if msg.info.height == 0 or msg.info.width == 0:
+    #         self.get_logger().warning("Incoming cost map dimensions were zero.")
+    #         return
+        
+    #     costmap = np.asarray(msg.data, dtype=np.int8).reshape(
+    #         msg.info.height, msg.info.width)
+        
+    #     lookahead_distance = 6.0 #min(max(self.speed * 3.0, 2.0), 20.) # meters
+
+
+
     def costMapCb(self, msg: OccupancyGrid):
         start = time.time()
 
@@ -487,6 +504,7 @@ class RecursiveTreePlanner(Node):
             path.cost = 0
             best_path = path
 
+        # convert poses from cost map grid to distances in meters in base_link
         poses_np = np.asarray(best_path.poses)
         poses_np_bl = np.copy(poses_np)
         poses_np_bl[:,0] -= (self.origin[0] + 5)
@@ -496,7 +514,7 @@ class RecursiveTreePlanner(Node):
         max_curvature = np.max(np.abs(poses_np[:,2]))
         # print(max_curvature)
 
-        lookahead_distance = min(max(self.speed * 3.0, 2.0), 20.) # meters
+        lookahead_distance = 6.0 #min(max(self.speed * 3.0, 2.0), 20.) # meters
 
         # print(lookahead_distance)
             
@@ -551,19 +569,24 @@ class RecursiveTreePlanner(Node):
         # x = np.sum((np.asarray(best_path.poses)[1:11,2] * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])))/10.0
         # command.steer = (x * -1.5)**3 - 1.6*x
         
-        target_steer = np.arctan2(lookahead_pose[1], lookahead_pose[0]) * -1 / 0.46
+        #target_steer = np.arctan2(lookahead_pose[1], lookahead_pose[0]) * -1 / 0.46
+
+        target_steer = np.arctan2(-lookahead_pose[1], lookahead_pose[0])
+        
+        # target_steer should be within the feasible turning of the vehicle, normalize between -1,1
+        target_steer = max( min(target_steer,MAX_TURN_ANGLE), -MAX_TURN_ANGLE ) / MAX_TURN_ANGLE
 
         DT = 0.2 # s
-        ALPHA = min(10 - 1 * self.speed, 10.0)
+        ALPHA = 1.0 # min(10 - 1 * self.speed, 10.0)
 
-        # command.steer = self.previous_steer + ALPHA * (target_steer - self.previous_steer) * DT
+        command.steer = self.previous_steer + ALPHA * (target_steer - self.previous_steer) * DT
 
         command.steer = target_steer
 
-        if command.steer > 1.0:
-            command.steer = 1.0
-        elif command.steer < -1.0:
-            command.steer = -1.0
+        # if command.steer > 1.0:
+        #     command.steer = 1.0
+        # elif command.steer < -1.0:
+        #     command.steer = -1.0
 
         
 
@@ -571,7 +594,7 @@ class RecursiveTreePlanner(Node):
 
         
 
-        MAX_SPEED = 5.0
+        MAX_SPEED = 0.5 #5.0
 
         distance_from_barrier -= 7
 
@@ -583,7 +606,7 @@ class RecursiveTreePlanner(Node):
 
         MAX_SPEED = min(MAX_SPEED, 5.0-max_curvature * 2)
 
-        target_speed = MAX_SPEED # m/s, ~10mph
+        target_speed = 1.5 # MAX_SPEED # m/s, ~10mph
 
         target_speed_msg = VehicleSpeed()
         target_speed_msg.speed = target_speed
@@ -594,8 +617,11 @@ class RecursiveTreePlanner(Node):
         # print(f"Speed: {self.speed} / {target_speed}")
         if pid_error > 0:
             command.throttle = min(pid_error *0.5, 0.6)
-        else:
-            command.brake = pid_error *0.6 *-1
+            command.brake = 0.0
+        #else:
+        elif pid_error <= -1:
+            command.brake = pid_error *0.6 *-1.0
+            command.throttle = 0.0
             
         # print(f"Brake: {command.brake}")
         # if pid_error > 3.0:
@@ -631,7 +657,6 @@ class RecursiveTreePlanner(Node):
             self.command_pub.publish(command)
 
         self.previous_steer = command.steer
-        
 
         self.path_pub.publish(result_msg)
 
@@ -639,6 +664,30 @@ class RecursiveTreePlanner(Node):
         self.last_status_time = time.time()
 
         # print(f"Done in {time.time() - start}!")
+
+    def goForward(self, msg: OccupancyGrid):
+        command = VehicleControl()
+        command.header.stamp = self.clock
+        command.steer = 0.0
+        
+        target_speed = 1.5 # MAX_SPEED # m/s, ~10mph
+
+        target_speed_msg = VehicleSpeed()
+        target_speed_msg.speed = target_speed
+        self.target_speed_pub.publish(target_speed_msg)
+
+        pid_error = target_speed - self.speed
+        if pid_error > 0:
+            command.throttle = min(pid_error *0.5, 0.6)
+            command.brake = 0.0
+        elif pid_error <= -1:
+            command.brake = pid_error *0.6 *-1.0
+            command.throttle = 0.0
+        else:
+            command.throttle = 0.0
+            command.brake = 0.0
+
+        self.command_pub.publish(command)
 
     def odomCb(self, msg: Odometry):
 

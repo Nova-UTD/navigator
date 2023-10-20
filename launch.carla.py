@@ -4,9 +4,9 @@ import sys
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import IncludeLaunchDescription
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.actions import ExecuteProcess
+from launch.actions import RegisterEventHandler, LogInfo, DeclareLaunchArgument, ExecuteProcess
 from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessStart
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -22,46 +22,52 @@ def generate_launch_description():
     ## lines indicate these were originally uncommented
 
     return LaunchDescription([
-        # CONTROL
-        #carla_controller,
+        map_manager_carla,
+        RegisterEventHandler(
+            OnProcessStart(
+                target_action=map_manager_carla,
+                on_start=[
+                    LogInfo(msg='Map Manager Started... launching the rest of Navigator...'),
+                    # CONTROL
+                    #carla_controller,
 
-        # INTERFACE
-        # leaderboard_liaison,
-        # web_bridge,
-        ##joy_linux,
-        ##joy_translation,
+                    # INTERFACE
+                    # leaderboard_liaison,
+                    # web_bridge,
+                    ##joy_linux,
+                    ##joy_translation,
 
-        # LOCALIZATION
-        # gnss_averager,
-        # mcl,
+                    # LOCALIZATION
+                    # gnss_averager,
+                    # mcl,
 
-        # MAPPING
+                    # MAPPING
 
-        # MISC
-        # recorder,
-        #carla_rviz,
-        # rqt,
-        # camera_streamer,
+                    # MISC
+                    # recorder,
+                    #carla_rviz,
+                    # rqt,
+                    # camera_streamer,
 
-        # PERCEPTION
-        # image_segmentation,
-        # semantic_projection,
-        #carla_lidar_processor,
-        ground_seg,
-        static_grid,
-        # prednet_inference,
-        # driveable_area,
+                    # PERCEPTION
+                    # image_segmentation,
+                    # semantic_projection,
+                    #carla_lidar_processor,
+                    ground_seg,
+                    static_grid,
+                    # prednet_inference,
+                    # driveable_area,
 
-        # PLANNING
-        grid_summation,
-        junction_manager,
-        rtp,
+                    # PLANNING
+                    routing_monitor,
+                    grid_summation,
+                    junction_manager,
+                    rtp,
 
-        # SAFETY
-        ##airbags,
-        ##guardian,
-
-        # STATE ESTIMATION
-        map_manager,
-        gnss_processor,
+                    # SAFETY
+                    ##airbags,
+                    ##guardian,
+                ]
+            )
+        )
     ])

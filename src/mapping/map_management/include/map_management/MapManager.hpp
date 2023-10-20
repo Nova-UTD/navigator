@@ -65,7 +65,7 @@ using namespace nav_msgs::msg;
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
 
-using carla_msgs::msg::CarlaRoute;
+using navigator_msgs::msg::CarlaRoute;
 using carla_msgs::msg::CarlaWorldInfo;
 using PointMsg = geometry_msgs::msg::Point;
 using geometry_msgs::msg::Point32;
@@ -97,8 +97,9 @@ namespace navigator
         private:
             // Parameters
             // TODO: Convert to ros params
-            std::chrono::milliseconds GRID_PUBLISH_FREQUENCY = 200ms;
-            std::chrono::milliseconds LOCAL_ROUTE_LS_FREQ = 300ms;
+            std::chrono::milliseconds GRID_PUBLISH_FREQUENCY = 3000ms;
+            std::chrono::milliseconds LOCAL_ROUTE_LS_FREQ = 1000ms; 
+            std::chrono::milliseconds SMOOTH_ROUTE_LS_FREQ = 1000ms;
             const int GRID_RANGE = 30;
             const float GRID_RES = 0.4;
 
@@ -106,6 +107,7 @@ namespace navigator
             TransformStamped getEgoTf();
             void drivableAreaGridPubTimerCb();
             void publishRefinedRoute();
+            void publishSmoothRoute();
             void updateRouteWaypoints(Path::SharedPtr msg);
             std::vector<odr::LaneKey> calculateRoute(odr::LaneKey start, odr::LaneKey end);
             lemon::SmartDigraph *g = nullptr;
@@ -115,7 +117,7 @@ namespace navigator
             lemon::SmartDigraph::ArcMap<double> *costMap = nullptr;
 
             std::vector<odr::LaneKey> getTrueSuccessors(odr::LaneKey key);
-            // void setRoute(const std::shared_ptr<navigator_msgs::srv::SetRoute::Request> request, std::shared_ptr<navigator_msgs::srv::SetRoute::Response> response);
+            void setRoute(const std::shared_ptr<navigator_msgs::srv::SetRoute::Request> request, std::shared_ptr<navigator_msgs::srv::SetRoute::Response> response);
             void setRouteFromClickedPt(const PointStamped clicked_pt);
             void recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target);
             void buildTrueRoutingGraph();
@@ -151,6 +153,7 @@ namespace navigator
             rclcpp::TimerBase::SharedPtr drivable_area_grid_pub_timer_;
             rclcpp::TimerBase::SharedPtr route_distance_grid_pub_timer_;
             rclcpp::TimerBase::SharedPtr route_timer_;
+            rclcpp::TimerBase::SharedPtr smooth_route_timer_;
 
             std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;

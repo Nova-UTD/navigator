@@ -24,6 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'routing_listener = helpers.routing_listener:main',
+            'routing_monitor = helpers.routing_monitor:main'
         ],
     },
 )
