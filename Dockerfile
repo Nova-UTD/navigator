@@ -84,7 +84,7 @@ RUN apt-get update && apt update && apt upgrade -y && \
         python3-scipy \
         #
         ros-humble-ament-cmake* \
-        #
+        # needed for ros2_numpy package (maybe others)
         ros-humble-ament-cmake-nose \
         #
         ros-humble-async-web-server-cpp \

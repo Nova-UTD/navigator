@@ -27,7 +27,7 @@ from time import sleep, strftime, strptime, time
 import numpy as np
 import rclpy
 # Message definitions
-from carla_msgs.msg import CarlaSpeedometer
+from navigator_msgs.msg import CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import MapMetaData, OccupancyGrid, Odometry

@@ -24,7 +24,6 @@ Publishes:
 
 import math
 import rclpy
-import ros2_numpy as rnp
 import numpy as np
 import matplotlib.pyplot as plt
 from rclpy.node import Node
@@ -32,7 +31,7 @@ from builtin_interfaces.msg import Time
 from tf2_ros import TransformBroadcaster
 
 # Message definitions
-from carla_msgs.msg import CarlaSpeedometer
+from navigator_msgs.msg import CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus
 from geometry_msgs.msg import PoseStamped, TransformStamped, Vector3
 from nav_msgs.msg import Odometry

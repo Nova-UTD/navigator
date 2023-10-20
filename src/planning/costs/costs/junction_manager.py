@@ -31,7 +31,7 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
 # Message definitions
-from carla_msgs.msg import CarlaSpeedometer
+from navigator_msgs.msg import CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
 from rosgraph_msgs.msg import Clock

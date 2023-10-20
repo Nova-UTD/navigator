@@ -26,7 +26,7 @@ import struct
 import time
 
 # Message definitions
-from carla_msgs.msg import CarlaSpeedometer
+from navigator_msgs.msg import CarlaSpeedometer
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid, Odometry
 from navigator_msgs.srv import GetLandmarks
