@@ -2,10 +2,11 @@
 layout: default
 title: Troubleshooting
 nav_order: 5
-parent: Contributing
 ---
 # Troubleshooting
 {: .no_toc }
+ 
+*Maintained by Nova members*
  
 ## Table of contents
 {: .no_toc .text-delta }
