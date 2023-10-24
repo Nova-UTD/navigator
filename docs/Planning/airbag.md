@@ -30,7 +30,7 @@ Code to establish safety zones around the car where the speed is limited.
 ---
 
 ### speedCb
-Updates current_speed with new speep.
+Updates current_speed with new speed.
 
 ### distanceToSpeedLimit
 Maps distance to max speed, limiting speed as little as possible.
@@ -39,5 +39,5 @@ Maps distance to max speed, limiting speed as little as possible.
 Considers points in front of the car and not too far off to the side. It assume car is 2 meters wide.
 
 ### commandCb
-Checks if current speed is greater than speed limit, prints warning and applyes brake proportionally to speed over limit.
+Checks if current speed is greater than speed limit, prints warning and applies brake proportionally to speed over limit.
 
