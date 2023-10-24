@@ -4,6 +4,8 @@ FROM ros:humble
 # This variable tells future scripts that user input isn't available during the Docker build.
 ENV DEBIAN_FRONTEND noninteractive
 
+LABEL maintainer="Nova"
+
 # Get wget first so we can get the NVIDIA keys
 #RUN apt-get install -y wget
 
