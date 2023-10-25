@@ -20,3 +20,7 @@ This node controls the behavior of the car in a junction (Intersection). Given a
 *   '/grid/stateful_junction' ([OccupancyGrid](https://docs.ros2.org/foxy/api/nav_msgs/msg/OccupancyGrid.html)): Defines the current junction cost
 *   '/node_statuses' ([DiagnosticStatus](https://docs.ros2.org/galactic/api/diagnostic_msgs/msg/DiagnosticStatus.html)): Sends out the diagnostic status of the car
 
+![Examples of cost maps](asset/cost_maps.png)
+
+
+Top right image shows the junction cost generated due to a stop sign.

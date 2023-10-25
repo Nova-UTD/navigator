@@ -218,7 +218,7 @@
   },"31": {
     "doc": "Junction Manager",
     "title": "Subscribers and Publishers",
-    "content": "Subscribers . | ‘/grid/occupancy/current’ (OccupancyGrid): Shows the current grid that is being occupied by the car | ‘/grid/junction’ (OccupancyGrid): Shows the grid of the junction | ‘/carla/hero/speedometer’ (CarlaSpeedometer): Keeps track of current speed of the car | . Publishers . | ‘/grid/stateful_junction’ (OccupancyGrid): Defines the current junction cost | ‘/node_statuses’ (DiagnosticStatus): Sends out the diagnostic status of the car | . ",
+    "content": "Subscribers . | ‘/grid/occupancy/current’ (OccupancyGrid): Shows the current grid that is being occupied by the car | ‘/grid/junction’ (OccupancyGrid): Shows the grid of the junction | ‘/carla/hero/speedometer’ (CarlaSpeedometer): Keeps track of current speed of the car | . Publishers . | ‘/grid/stateful_junction’ (OccupancyGrid): Defines the current junction cost | ‘/node_statuses’ (DiagnosticStatus): Sends out the diagnostic status of the car | . Top right image shows the junction cost generated due to a stop sign. ",
     "url": "/navigator/planning/junction_manager.html#subscribers-and-publishers",
     
     "relUrl": "/planning/junction_manager.html#subscribers-and-publishers"
