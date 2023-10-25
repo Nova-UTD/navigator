@@ -8,7 +8,7 @@ Code to establish safety zones around the car where the speed is limited.
 
 from matplotlib import pyplot as plt
 from carla_msgs.msg import CarlaEgoVehicleControl
-from navigator_msgs.msg import CarlaSpeedometer
+from navigator_msgs.msg import CarlaSpeedometer, VehicleControl
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
 import numpy as np
@@ -42,7 +42,7 @@ class AirbagNode(Node):
 
         # Publishes corrected, limited commands
         self.command_pub = self.create_publisher(
-            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 1)
+            VehicleControl, '/vehicle/control', 1)
 
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/status/airbags', 1)
