@@ -20,7 +20,7 @@ and the
 for planning purposes.
 
 The **occupancy grid** is generated using 
-[Dempster-Shafer Thoery (DST)](https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory) 
+[Dempster-Shafer Theory (DST)](https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory) 
 with a process which roughly consists of three steps:
 - Ray-tracing free space toward occupied space
 - Filling the remaining grid with free space, also using ray-tracing
