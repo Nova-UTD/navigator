@@ -1,11 +1,11 @@
 ---
 layout: default
-title: grid summation node
+title: Grid Summation
 nav_order: 1
-parent: planning
+parent: Planning
 ---
 
-# \<Node Title\>
+# Grid Summation Node
 {: .no_toc }
 
 *Maintained by Nova*
