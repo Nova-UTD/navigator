@@ -153,7 +153,7 @@ Disadvantages:
 
 Psuedo Code: Source [3]:
 
-![bpc_rrt_algo](/navigator/assets/res/bpc_rrt*_algo.png)
+![bpc_rrt_algo](/navigator/assets/res/bpc_rrt2_algo.png)
 
 
 Approach 3:
@@ -167,7 +167,7 @@ Given a cost map, we could build off it in the following manner:
 To expand tree: souce [5]
 1. Sample a pposition uniformly at random and then sample two dimenssionaly gaussian distribution centered at the around intial path. 
 
-![bpc_rrt*_algo](/navigator/assets/res/bpc_rrt_cost.png)
+![bpc_rrt2_algo](/navigator/assets/res/bpc_rrt_cost.png)
 
 
 Approach 4: CL-RRT
