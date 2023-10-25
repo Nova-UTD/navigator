@@ -202,461 +202,503 @@
     
     "relUrl": "/interface/interface-overview.html"
   },"29": {
+    "doc": "Junction Manager",
+    "title": "Junction Manager",
+    "content": "Maintained by Ayush Sharma . ",
+    "url": "/navigator/planning/junction_manager.html",
+    
+    "relUrl": "/planning/junction_manager.html"
+  },"30": {
+    "doc": "Junction Manager",
+    "title": "Overview",
+    "content": "This node controls the behavior of the car in a junction (Intersection). Given a junction grid (where each cell is either within an intersection or not), plus the current ego speed and occupancy grid, this node publishes a map that either includes the junction cost or not. This basically switches a junction’s cost on or off, hence allowing or blocking entrance into junctions based on perception data. ",
+    "url": "/navigator/planning/junction_manager.html#overview",
+    
+    "relUrl": "/planning/junction_manager.html#overview"
+  },"31": {
+    "doc": "Junction Manager",
+    "title": "Subscribers and Publishers",
+    "content": "Subscribers . | ‘/grid/occupancy/current’ (OccupancyGrid): Shows the current grid that is being occupied by the car | ‘/grid/junction’ (OccupancyGrid): Shows the grid of the junction | ‘/carla/hero/speedometer’ (CarlaSpeedometer): Keeps track of current speed of the car | . Publishers . | ‘/grid/stateful_junction’ (OccupancyGrid): Defines the current junction cost | ‘/node_statuses’ (DiagnosticStatus): Sends out the diagnostic status of the car | . ",
+    "url": "/navigator/planning/junction_manager.html#subscribers-and-publishers",
+    
+    "relUrl": "/planning/junction_manager.html#subscribers-and-publishers"
+  },"32": {
     "doc": "Localization and Mapping",
     "title": "Localization and Mapping",
     "content": "Maintained by Will Heitman . ",
     "url": "/navigator/perception/mapping.html",
     
     "relUrl": "/perception/mapping.html"
-  },"30": {
+  },"33": {
     "doc": "Localization and Mapping",
     "title": "Table of contents",
     "content": ". | TOC | . ",
     "url": "/navigator/perception/mapping.html#table-of-contents",
     
     "relUrl": "/perception/mapping.html#table-of-contents"
-  },"31": {
+  },"34": {
     "doc": "Localization and Mapping",
     "title": "Octomap Module",
     "content": "Using the open-source Octomap library in conjunction with a particle filter, this module aims to provide a long-term, simultaneous localization and mapping solution. Target . | Translational accuracy of $\\pm 1.0$ meters at worst, $\\pm 0.25$ meters nominal in urban environment. | Heading accuracy of $\\pm 30 \\degree$ at worst, $\\pm 10\\degree$ nominal in urban environment. | Above worst-case accuracy only occurs 1% of the time. | Able to operate in case of loss from GNSS and/or IMU. | . Behavior . | On start, the module should attempt to load an existing map using the map name from /carla/world_info. | If no file exists, create an empty Octree and save this. | . | When new odometry is received (such as from an IMU), store this as an accumulated offset $(\\Delta x, \\Delta y, \\Delta \\theta)$. Update the stored Odometry message and publish it with the new offset. | When a new LiDAR point cloud is received, feed this into the particle filter. | Update all particles using the accumulated offset and Gaussian noise in a motion update. | Evaluate the probability of each particle in an observation update. | Resample all particles using their probabilities. | Compute a new robot pose using the mean and covariance of the particles. | Publish the pose as an Odometry message. | . | After the pose is updated from the LiDAR cloud, this cloud should be added to the map. | Steps 2-4 should be repeated in a loop. | A timer should prompt a visualization_msgs/Marker to be published periodically that visualizes the voxel map. | Upon termination, the octree map should be saved to a file using the name from (1). | . Progressive resolution of visualization . Assumptions . | The robot will only move along a 2D plane. That is, only 3-DOF motion will be assumed, and the localization will be calculated accordingly. | . ",
     "url": "/navigator/perception/mapping.html#octomap-module",
     
     "relUrl": "/perception/mapping.html#octomap-module"
-  },"32": {
+  },"35": {
     "doc": "Maps",
     "title": "Maps",
     "content": "Maintained by Will Heitman . ",
     "url": "/navigator/planning/maps.html",
     
     "relUrl": "/planning/maps.html"
-  },"33": {
+  },"36": {
     "doc": "Maps",
     "title": "Table of contents",
     "content": ". | TOC | . ",
     "url": "/navigator/planning/maps.html#table-of-contents",
     
     "relUrl": "/planning/maps.html#table-of-contents"
-  },"34": {
+  },"37": {
     "doc": "Maps",
     "title": "Grid maps",
     "content": "All grid maps are in the base_link (vehicle) reference frame. The semantic grid extends 40 meters ahead, 20 meters behind, and 30 meters to either side of the car. ",
     "url": "/navigator/planning/maps.html#grid-maps",
     
     "relUrl": "/planning/maps.html#grid-maps"
-  },"35": {
+  },"38": {
     "doc": "Maps",
     "title": "Semantic map",
     "content": "This is a general-purpose grid map drawn from OpenDRIVE map data, where each cell is tagged with an appropriate class. | ID | Description | Class | Name | Included? | . | 0 | None/unknown. Grass, buildings, and other regions not described in the OpenDRIVE map. |   | ✅ |   | . | 1 | Driving lane | Lane | ✅ |   | . | 2 | Shoulder | Lane | ✅ |   | . | 3 | Curb | Lane | ✅ |   | . | 4 | Sidewalk | Lane | ✅ |   | . | 5 | Median | Lane | ✅ |   | . | 6 | Parking | Lane | ✅ |   | . | 11 | Stop sign | Signal | Sign_Stop |   | . | 12 | Speed limit sign | Object | Speed_30, Speed_60, Speed_90 |   | . | 13 | Traffic light | Signal | Signal_3Light_Post01 |   | . | 21 | Crosswalk | Object | CContinentalCrosswalk |   | . ",
     "url": "/navigator/planning/maps.html#semantic-map",
     
     "relUrl": "/planning/maps.html#semantic-map"
-  },"36": {
+  },"39": {
     "doc": "OpenDrivePy",
     "title": "OpenDrivePy",
     "content": "Maintained by Will Heitman . ",
     "url": "/navigator/opendrivepy.html",
     
     "relUrl": "/opendrivepy.html"
-  },"37": {
+  },"40": {
     "doc": "OpenDrivePy",
     "title": "Table of contents",
     "content": ". | TOC | . ",
     "url": "/navigator/opendrivepy.html#table-of-contents",
     
     "relUrl": "/opendrivepy.html#table-of-contents"
-  },"38": {
+  },"41": {
     "doc": "OpenDrivePy",
     "title": "Element tree",
     "content": "Map ├── get_route(): Lane[] ├── header: Header (contains north, x0, and other geo ref data) ├── shapes: STRTree ├── shapes: STRTree ├── shapes: STRTree ├── roads: Road[] │ └── Road 1 │ ├── name: str │ ├── id: int │ ├── length: float │ ├── junction: int │ ├── speed_limit: float (m/s, should convert otherwise) │ ├── type: RoadType │ ├── next: Road | Junction │ ├── prev: Road | Junction │ ├── refline: LineString │ ├── lane_offset: LineString │ └── sections: [LaneSection] │ ├── s: float │ ├── signals: Signal[] (speed limit signs, traffic lights, ...) │ └── lanes: Lane[] │ ├── Lane A │ │ ├── id: int │ │ ├── lsec: LaneSection (parent reference) │ │ ├── road: Road (grandparent reference) │ │ ├── type: LaneType (\"shoulder\", \"sidewalk\", \"driving\", ...) │ │ ├── predecessors: Lane[] │ │ ├── successors: Lane[] │ │ └── shape: Polygon │ └── Lane B │ └── ... ├── controllers: Controller[] └── junctions: Junction[] . Above: Lane polygons. Errors with the rendering of curved lanes and lane ocause some imperfection. Above: Drivable map using prepared geometry . Above: Drivable map using STRTree . ",
     "url": "/navigator/opendrivepy.html#element-tree",
     
     "relUrl": "/opendrivepy.html#element-tree"
-  },"39": {
+  },"42": {
     "doc": "Perception",
     "title": "Perception overview",
     "content": "Maintained by Ragib Arnab . ",
     "url": "/navigator/perception/perception-overview.html#perception-overview",
     
     "relUrl": "/perception/perception-overview.html#perception-overview"
-  },"40": {
+  },"43": {
     "doc": "Perception",
     "title": "Table of contents",
     "content": ". | darknet_inference | obstacle_detection_3d | obstacle_classes | obstacle_drawer | lidar_fusion | lidar_obstacle_detector | . The perception component of the system takes the data from various sensors and extracts meaningful information for downstream components such as planning. Some of the tasks that are core parts of the perception include, but not limited to: . | Localization and state estimation | Obstacle and scene classifiation | Obstacle tracking and prediction | . In this page we will go each individual packages that is part of the perception component. A lot of the packages within perception are “in-progress” just as with most other packages within our system. As this project progresses, we will update the existing packages as well as add new ones to meet the growing demands of our autonomous system. ",
     "url": "/navigator/perception/perception-overview.html#table-of-contents",
     
     "relUrl": "/perception/perception-overview.html#table-of-contents"
-  },"41": {
+  },"44": {
     "doc": "Perception",
     "title": "darknet_inference",
     "content": "The darknet_inference package contains Python tools to build and run Darknet-based object detection models in ROS 2. The standard model that is used is YOLOv4 which can achieve real-time inference on a modern GPU with good overall accuracy. There is also an option to use the YOLOv4-tiny model to increase the inference rate but with a sacrifice to accuracy. The node for this package subscribes to a RGB image message topic and outputs 2D bounding box predictions for each class of object in its own message formats. In this current version of navigator, all the detections for the vehicle is performed in this node, which includes detecting cars and pedestrians as well as finding landmarks such as stop signs and fire hydrants. All these detections are also processed within the node itself by using parameters such as object confidence threshold and non-maximum suppression (NMS) threshold to filter out the unwanted detections. ",
     "url": "/navigator/perception/perception-overview.html#darknet_inference",
     
     "relUrl": "/perception/perception-overview.html#darknet_inference"
-  },"42": {
+  },"45": {
     "doc": "Perception",
     "title": "obstacle_detection_3d",
     "content": "This package takes as input the 2D detections along with 3D sensing data from lidars and depth camera to output 3D bounding boxes. 3D detection are required for behavior and planning components of our system. Currently the code simply backprojects the 2D bounding boxes into 3D using information and extends the boxes into a cuboid based on the object’s class. This is a naive approach given that the orientation information of the cuboids will be the same as the vehicle and that the lengths of the objects are fixed. The algorithm is a placeholder and will be replaced by an actual 3-D object detection algorithm in the future. ",
     "url": "/navigator/perception/perception-overview.html#obstacle_detection_3d",
     
     "relUrl": "/perception/perception-overview.html#obstacle_detection_3d"
-  },"43": {
+  },"46": {
     "doc": "Perception",
     "title": "obstacle_classes",
     "content": "Contains the enumeration definition for the different classes of obstacles. ",
     "url": "/navigator/perception/perception-overview.html#obstacle_classes",
     
     "relUrl": "/perception/perception-overview.html#obstacle_classes"
-  },"44": {
+  },"47": {
     "doc": "Perception",
     "title": "obstacle_drawer",
     "content": "A simple visualization package that takes the 3D bounding box outputs and produces visualization messages that can be depicted in RViz. ",
     "url": "/navigator/perception/perception-overview.html#obstacle_drawer",
     
     "relUrl": "/perception/perception-overview.html#obstacle_drawer"
-  },"45": {
+  },"48": {
     "doc": "Perception",
     "title": "lidar_fusion",
     "content": "This package fuses the 2 different lidar sources within our system into a single point cloud that will be registered into the same frame (base-link) within the system transform tree. The package also performs basic point cloud filtering. ",
     "url": "/navigator/perception/perception-overview.html#lidar_fusion",
     
     "relUrl": "/perception/perception-overview.html#lidar_fusion"
-  },"46": {
+  },"49": {
     "doc": "Perception",
     "title": "lidar_obstacle_detector",
     "content": "This package is tasked with detecting low-level obstacles around the vehicle for the purpose of collision prevention. The node takes as input a point cloud and output zones around the vehicle for low-level obstacles. ",
     "url": "/navigator/perception/perception-overview.html#lidar_obstacle_detector",
     
     "relUrl": "/perception/perception-overview.html#lidar_obstacle_detector"
-  },"47": {
+  },"50": {
     "doc": "Perception",
     "title": "Perception",
     "content": " ",
     "url": "/navigator/perception/perception-overview.html",
     
     "relUrl": "/perception/perception-overview.html"
-  },"48": {
+  },"51": {
     "doc": "Perception and Prediction Design Document (draft)",
     "title": "Perception and Prediction Design Document (draft)",
     "content": "Maintained by Ashwin . ",
     "url": "/navigator/perception/perception_new.html",
     
     "relUrl": "/perception/perception_new.html"
-  },"49": {
+  },"52": {
     "doc": "Perception and Prediction Design Document (draft)",
     "title": "Table of contents",
     "content": ". | System Overview . | Current System: . | Prediction: | . | Planned System: . | Perception: | Prediction: | . | Proposed structures for Phase 1: . | 3D/2D bounding boxes: | System overview for Dynamic Environment Prediction | Proposed structure for Dynamic Environment Prediction | . | . | . ",
     "url": "/navigator/perception/perception_new.html#table-of-contents",
     
     "relUrl": "/perception/perception_new.html#table-of-contents"
-  },"50": {
+  },"53": {
     "doc": "Perception and Prediction Design Document (draft)",
     "title": "System Overview",
     "content": "Current System: . Prediction: . - Zones in place of dynamic object detection - Acts as a safety net cast over objects in view of the vehicle - Car \"reacts\" to zone/wall proximity and zone speed argument - Slows down to minimum speed argument, regardless if there are multiple zones - Primitive - Unable to further expand implementation - Zone algorithm highlighted more in depth in behavior planning and control document . Planned System: . Perception: . Phase 1: . | 3D/2D bounding boxes (tracked) . | Static occupancy grid . | . Phase 2: . | Landmark detection (Stop lights priority) . | Semantic encoding . | Map masks: Stop lines, Cross walks . | . Phase 3: . | Tune models within simulator . | Eventually deploy and test on vehicle . | . Prediction: . Phase 1: . | Physics-based prediction implemented . | Treats cars like particles (acceleration &amp; velocity) . | Dynamic occupancy grid . | . Phase 2: . | ML-based occupancy grid (from physics-based) . | Non-sequential learning . | Sequential learning . | Recurrent Neural Nets . | . Dynamic Bayesian Network . Phase 3: . | ML refined . | Map priors . | Deployed and tested on vehicle . | . **** Insert first image ** . Proposed structures for Phase 1: . 3D/2D bounding boxes: . 3D: . Estimating 3D bounding boxes based on 2D images: . A method for 3D object detection using 2D images. This method involves utilizing a deep convolutional network to obtain relatively stable 3D object properties, and utilize this along with some geometric constraints provided by a 2d bounding box (would probably need to figure this out using something like YOLOv3) in order to construct a 3D bounding box for the corresponding object. Given the pose of the object in the camera coordinate frame (R, T) ∈ SE(3) and the camera intrinsic matrix K, the projection of a 3D point Xo = [X, Y, Z, 1]^T in the object’s coordinate frame into the image x = [x, y, 1]T is: x = K [R T] Xo [1] . 2D: . 2D object detection from a BEV representation (Bird’s Eye View, looking down from the Z axis) of our pseudo-lidar point cloud data may be more efficient than processing a generic 3D convolution. This architecture may also include semantic segmentation, effectively enabling us to accomplish landmark detection as well without any additional computation. Can be a solution for stereo-images. Depth correction w/ existing LiDAR sensors . 2D BEVDetNet Object Detection . Pseudo-LiDAR . System overview for Dynamic Environment Prediction . Our system uses point clouds for dynamic environment prediction. We use a ConvLSTM architecture intended for video frame prediction to instead predict the local environment surrounding an autonomous agent across future time steps. For this purpose, we adapt the PredNet architecture designed for video frame prediction in autonomous driving scenes. The ConvLSTM is expected to learn an internal representation of the dynamics within the local environment from occupancy grid data. The grid inputs are generated from LiDAR measurement recordings in the KITTI dataset taken across a variety of urban scenes [1]. Proposed structure for Dynamic Environment Prediction . Inputs for Dynamic Environment Prediction . | Point Cloud | . Produces for Dynamic Environment Prediction . | Ground Segmentation . | Occupancy grid and DOGMA . | PredNet (Neural Network Architecture) . | . Dynamic Environment Prediction does not handle… . | More research needed… | . Dynamic Environment Prediction: Ground Segmentation . Prior to generating an occupancy grid, the ground must be segmented and removed from the LiDAR point cloud. Markov Random Field (MRF) algorithm that exploits local spatial relationships, avoiding the assumption of a planar ground [2][1]. Dynamic Environment Prediction: Dynamic Occupancy Grid Maps (DOGMas) . A DOGMa is an evidential grid containing both occupancy and dynamic state information (e.g., velocity). We generate DOGMas via the procedure outlined by Nuss et al. [4]. There are two parallel processes that occur: occupancy grid updates and cell-wise velocity estimates [1]. Occupancy Grids . We consider DST-based occupancy grids computed from LiDAR measurements as detailed by Nuss et al. [4]. DST deals with a set of exhaustive hypotheses formed from a frame of discernment and the associated belief masses. In the case of an occupancy grid, our frame of discernment is: Ω = {F, O}, where F is free space and O is occupied space. Thus, the set of hypotheses is: {∅, {F }, {O}, {F, O}}. The null set ∅ is impossible in this context as a cell physically cannot be neither occupied nor unoccupied. Thus, our exhaustive set of hypotheses is: {{F }, {O}, {F, O}}. The sum of the belief masses over the possible hypotheses for each individual cell must equal one by definition, akin to probabilities [1]. Velocity Estimation . To incorporate dynamics, we estimate the velocity for each cell. The velocity estimates use a DST approximation for a probability hypothesis density filter with multi-instance Bernoulli (PHD/MIB) [5]. DST allows for the particle filter to run more efficiently by initializing particles only in cells with occupied masses above a specified threshold, avoiding occluded regions without measurements[1]. Dynamic Environment Prediction: Neural Network Architecture . We repurpose the PredNet architecture to learn the spatial and temporal representation of the environment by training it on occupancy grids instead of images. The convolutional layers exploit contextual information to correlate the occupied cells, removing the cell independence assumption [6]. The self-supervised nature of sequential data prediction is advantageous as human-labeled LiDAR data is expensive to obtain [6]. In this framework, the labels are simply the input environment representation (grids) at a later time instance. Although the original PredNet model was designed for video data, we demonstrate that the architecture can be re-used in the LiDAR setting [1]. Dynamic Environment Prediction: Experiments . | Dataset Generation . | LiDAR Measurement Grids . | The KITTI HDL-64E Velodyne LiDAR dataset was augmented for use in occu- pancy grid prediction [7]. The dataset contains a variety of urban road scenes in Karlsruhe, Germany. We use 35, 417 frames (138 driving sequences) for training, 496 frames (3 driving sequences) for validation, and 2, 024 frames (7 driving sequences) for testing. Velodyne LiDAR point cloud measurements are obtained at 10 Hz. | Each LiDAR point cloud is filtered to remove the points corresponding to the ground as described in Section II. Then, a simple form of ray-tracing is performed to determine the free space between a LiDAR measurement and the ego vehicle. Each resulting local grid is centered at the ego vehicle GPS coordinate position. The shorter grid range is acceptable for slower speeds in urban settings, as is the case in the KITTI dataset [7][1]. | Dynamic Occupancy Grid Maps . | Dynamic Occupancy Grid Maps: The DOGMa’s occupancy and velocity information is computed from the LiDAR data as outlined in Section II. The velocities are then filtered to remove static measurements according to the cell-wise Mahalanobis distance: τ = vT P v, where v is the velocity vector and P is the cell’s covariance matrix as computed from the particles [21]. Cells with occupancy masses below a threshold are also removed. The velocities are then normalized to the range [−1, 1] and stacked with either (1) the pignistic probability (Eq. (5)) or (2) the DST mass (Eq. (2) and Eq. (3)) occupancy grids, forming the input to the network. [1] | . | . | PredNet Experiments . | PredNet was trained and tested on an NVIDIA GeForce GTX 1070 GPU. At test time, one sequence (15 predictions totaling 1.5 s ahead) took on average 0.1 s to run. [1] | . | . ",
     "url": "/navigator/perception/perception_new.html#system-overview",
     
     "relUrl": "/perception/perception_new.html#system-overview"
-  },"51": {
+  },"54": {
     "doc": "Planning",
     "title": "Costmaps",
     "content": "Here are the costmaps that we should calculate at minimum, along with their justification: . ",
     "url": "/navigator/planning/planning-overview.html#costmaps",
     
     "relUrl": "/planning/planning-overview.html#costmaps"
-  },"52": {
+  },"55": {
     "doc": "Planning",
     "title": "Drivable area",
     "content": "This describes a surface that the car is allowed to drive over, mainly lanes, parking spaces, and intersections. We can expand this drivable area if the car’s current options are exhausted. For example, the default drivable area may only include lanes that match the car’s current driving direction, but this region can be expanded to include lanes with oncoming traffic if the current region is blocked. Justification: The car should only be allowed to drive on “drivable” surfaces: no sidewalks, lawns, etc. Suggested format: 0.4m cell size, 40m range. Above: Example where drivable region expansion may be useful. Credit: CARLA Leaderboard. ",
     "url": "/navigator/planning/planning-overview.html#drivable-area",
     
     "relUrl": "/planning/planning-overview.html#drivable-area"
-  },"53": {
+  },"56": {
     "doc": "Planning",
     "title": "Predicted occupancy",
     "content": "Occupancy grids are a common concept in robotics used to describe obstacles. The world is divided into cells. If a given cell contains an obstacle, then it is marked as occupied. Using machine learning, we can generate occupancy grids not just for the present ($t=0$), but also for the future (such as $t=3s$). For a simple costmap that compresses all temporal considerations into the present, we can simply add the predicted occupancies across all frames, creating a single costmap for both the current and future occupancies. Justification: The car should not run into anything. Suggested format: 0.4m, 20m range minimum, 40m ideal. ",
     "url": "/navigator/planning/planning-overview.html#predicted-occupancy",
     
     "relUrl": "/planning/planning-overview.html#predicted-occupancy"
-  },"54": {
+  },"57": {
     "doc": "Planning",
     "title": "Distance to route &amp; goal",
     "content": "This is a combined costmap that describes both how far the car is from the route and from the goal. Justification: The car should drive along the route until the goal is reached. ",
     "url": "/navigator/planning/planning-overview.html#distance-to-route--goal",
     
     "relUrl": "/planning/planning-overview.html#distance-to-route--goal"
-  },"55": {
+  },"58": {
     "doc": "Planning",
     "title": "Costmap specifications",
     "content": ". | All costmaps should be in the base_link frame, centered on the vehicle. | All costmaps should have resolutions (cell sizes) that are multiples of the same base resolution. Example: 0.4, 0.8, and 1.6 meters. This allows them to be cleanly scaled. | The costmaps do not necessarily need to share an origin nor size, though their sum will only be accurate in the region where they align. | . ",
     "url": "/navigator/planning/planning-overview.html#costmap-specifications",
     
     "relUrl": "/planning/planning-overview.html#costmap-specifications"
-  },"56": {
+  },"59": {
     "doc": "Planning",
     "title": "Planning",
     "content": "The car should follow three instructions, in order of priority: . | Don’t run into anything. | Drive forward along a route until the goal is reached. | Obey traffic laws. | . The car should be rewarded for obeying these three instructions, and the Planning system’s objective should be to maximize this reward. To help the car make appropriate decisions, we can feed it “costmaps” that represent the reward that the car will receive if it drives through a given spot on the map. Each costmap might represent a specific quality (the drivable surfaces near the car, for example), and we can simply take the weighted sum of each costmap to generate a hollistic overview for the car. Keep in mind that “cost” and “reward” are really the same concept. The car’s goal is to select a path that moves through regions of the greatest reward, a.k.a. of the least cost. The more costmaps we sum together and the more carefully we select the weights for the sum, the better our car will be at making decisions. ",
     "url": "/navigator/planning/planning-overview.html",
     
     "relUrl": "/planning/planning-overview.html"
-  },"57": {
+  },"60": {
+    "doc": "Routes",
+    "title": "Routes",
+    "content": "Maintained by Will Heitman . A route is a sequence of poses that our AV is encouraged to follow. At its simplest, a route constitutes the start and goal poses. However, routes can contain many poses in between. The AV’s goal is to loosely follow the poses contained in the route. How loosely? That depends on the priorities given to the downstream motion planner. In general, though, we consider that the AV has reached a pose along the route when it is within about 10 meters. That means that if we drive through the lane adjacent to the pose, or if we park the vehicle near the goal pose, for example, the route is still satisfied. This loose approach is in contrast to the specific path that the downstream motion planner calculates. That path, which factors in the route as well as occupancy and other perception data, serves as a precise target for the car. In other words, the car does not have to drive over the route, but it should drive over the motion planner’s path. As an example, consider making a turn at an intersection. The route planner will set the route to be the precise centerline of the turn lane, but human drivers will follow a curve that bends slightly away from the center, creating a smoother ride. We want to give Navigator the flexibility to make these kinds of adjustments. ",
+    "url": "/navigator/planning/routes.html",
+    
+    "relUrl": "/planning/routes.html"
+  },"61": {
+    "doc": "Routes",
+    "title": "Route format",
+    "content": "Let’s define some operational constraints on the route. First, the route will be formatted as a standard ROS Path message, where each pose is stamped with a timestamp reflecting the general goal arrival time. For example, the final pose in the Path message (that is, the goal pose of the route) may have a timestamp set to fifteen minutes past the current time for a neighborhood route four miles long. Second, these goal timestamps should be taken lightly. Unlike the timestamp from the motion planner, these should serve as loose targets, just like the poses themselves. Third, the route should be updated routinely to ensure that any poses already reached are removed from the route. In other words, all poses in the latest route should be ahead of the car in terms of route progression. Fourth, the route should be divided into a refined and a rough section. In the rough section, the route poses have no maximum spacing. The rough section should have the goal pose as its final point, and it should always succeed the refined section. The refined section extends from the car’s current position to the area immediately ahead in the route, with the section’s length determined by a “lookahead distance” set as a node parameter. In the refined section, the route poses should have a spacing of between 0.5-10 meters (see the table below). As the car progresses along the route, the refined section will move with it, refining more and more of the route. When the goal pose is sufficiently close, the refined section will cover the entirety of the remaining route, and the rough section will be empty. Message . # Path.msg containing the route std_msgs/Header header geometry_msgs/PoseStamped[] poses . Parameters . | Parameter | Worst case | Best case | . | Spacing between refined section as crow flies | 10m (seen along straight roads) | 0.5 meters (seen along tight turns) | . |   |   |   | . |   |   |   | . ",
+    "url": "/navigator/planning/routes.html#route-format",
+    
+    "relUrl": "/planning/routes.html#route-format"
+  },"62": {
+    "doc": "Routes",
+    "title": "Route generation",
+    "content": ". | Receive rough route from CARLA | Get closest route point to car | Trim all points not within interval (closestPoint, goalPoint), where the goal point is the final point in the list | While distanceFromCar &lt; some param, insert refined points. using HD map data for lane centerlines | . ",
+    "url": "/navigator/planning/routes.html#route-generation",
+    
+    "relUrl": "/planning/routes.html#route-generation"
+  },"63": {
     "doc": "Schematics",
     "title": "Schematics",
     "content": " ",
     "url": "/navigator/interface/schematics.html",
     
     "relUrl": "/interface/schematics.html"
-  },"58": {
+  },"64": {
     "doc": "Schematics",
     "title": "Main Nova Schematic",
     "content": ". ",
     "url": "/navigator/interface/schematics.html#main-nova-schematic",
     
     "relUrl": "/interface/schematics.html#main-nova-schematic"
-  },"59": {
+  },"65": {
     "doc": "Schematics",
     "title": "Power Source Schematics",
     "content": ". ",
     "url": "/navigator/interface/schematics.html#power-source-schematics",
     
     "relUrl": "/interface/schematics.html#power-source-schematics"
-  },"60": {
+  },"66": {
     "doc": "Schematics",
     "title": "USB Hub Schematics",
     "content": ". ",
     "url": "/navigator/interface/schematics.html#usb-hub-schematics",
     
     "relUrl": "/interface/schematics.html#usb-hub-schematics"
-  },"61": {
+  },"67": {
     "doc": "Schematics",
     "title": "Adafruit Grand Central Schematics",
     "content": ". ",
     "url": "/navigator/interface/schematics.html#adafruit-grand-central-schematics",
     
     "relUrl": "/interface/schematics.html#adafruit-grand-central-schematics"
-  },"62": {
+  },"68": {
     "doc": "Schematics",
     "title": "CAN Bus Systems",
     "content": ". ",
     "url": "/navigator/interface/schematics.html#can-bus-systems",
     
     "relUrl": "/interface/schematics.html#can-bus-systems"
-  },"63": {
+  },"69": {
     "doc": "Schematics",
     "title": "EPAS",
     "content": ". ",
     "url": "/navigator/interface/schematics.html#epas",
     
     "relUrl": "/interface/schematics.html#epas"
-  },"64": {
+  },"70": {
     "doc": "Semantic segmentation",
     "title": "Semantic segmentation",
     "content": "Maintained by Will Heitman . ",
     "url": "/navigator/perception/segmentation.html",
     
     "relUrl": "/perception/segmentation.html"
-  },"65": {
+  },"71": {
     "doc": "Semantic segmentation",
     "title": "Table of contents",
     "content": ". | TOC | . ",
     "url": "/navigator/perception/segmentation.html#table-of-contents",
     
     "relUrl": "/perception/segmentation.html#table-of-contents"
-  },"66": {
+  },"72": {
     "doc": "Semantic segmentation",
     "title": "Class dictionary",
     "content": "Our semantic segmentation model is trained on the Cityscapes Dataset. | Description | Class ID (int) | RGB | Unpacked | . | Road | 0 | (128, 64, 128) | 4286595200 | . | Sidewalk | 1 | (244, 35, 232) | 4294190056 | . | Building (overwritten by wall) | 2 |   |   | . | Wall | 3 | (102,102,156) | ? | . | Fence (overwritten by wall) | 4 |   |   | . | Pole | 5 | (153, 153, 153) | 4288256409 | . | Traffic light | 6 | (250, 170, 30) | 4294617630 | . | Traffic sign | 7 | (220, 220, 0) | 4292664320 | . | Vegetation | 8 | (107, 142, 35) | ? | . | Terrain | 9 | (145, 170, 100) | 4287736420 | . | Sky | 10 | (70, 130, 180) | ? | . | Person | 11 | (220, 20, 60) | ? | . | Rider (overwritten by Car) | 12 |   |   | . | Car | 13 | (0, 0, 142) | 4278190222 | . | Truck (overwritten by Car) | 14 |   |   | . | Bus (overwritten by Car) | 15 |   |   | . | Train (overwritten by Car) | 16 |   |   | . | Motorcycle (overwritten by Bicycle) | 17 |   |   | . | Bicycle | 18 | (119, 11, 32) | 4285991711 | . import struct r,g,b = 119,11,31 a = 255 # always unpacked = struct.unpack('I', struct.pack('BBBB', b, g, r, a))[0] # 4285991711 . ",
     "url": "/navigator/perception/segmentation.html#class-dictionary",
     
     "relUrl": "/perception/segmentation.html#class-dictionary"
-  },"67": {
+  },"73": {
     "doc": "Sensing",
     "title": "Sensing overview",
     "content": " ",
     "url": "/navigator/sensing/sensing-overview.html#sensing-overview",
     
     "relUrl": "/sensing/sensing-overview.html#sensing-overview"
-  },"68": {
+  },"74": {
     "doc": "Sensing",
     "title": "Table of contents",
     "content": ". The Sensing system is responsible for processing raw sensor data into a usable form for the Perception system. For example, raw LiDAR data from our front and rear sensors is merged into a single reference frame, downsampled, and cropped to remove points along the vehicle itself (points of our vehicle’s doors, for example). More info to come! But our filters aren’t reinvinting the wheel. ",
     "url": "/navigator/sensing/sensing-overview.html#table-of-contents",
     
     "relUrl": "/sensing/sensing-overview.html#table-of-contents"
-  },"69": {
+  },"75": {
     "doc": "Sensing",
     "title": "Sensing",
     "content": " ",
     "url": "/navigator/sensing/sensing-overview.html",
     
     "relUrl": "/sensing/sensing-overview.html"
-  },"70": {
+  },"76": {
     "doc": "Simulation",
     "title": "Simulation overview",
     "content": "Maintained by Connor Scally &amp; Daniel Vayman . ",
     "url": "/navigator/simulation/simulation-overview.html#simulation-overview",
     
     "relUrl": "/simulation/simulation-overview.html#simulation-overview"
-  },"71": {
+  },"77": {
     "doc": "Simulation",
     "title": "Table of contents",
     "content": ". | Simulation Enviroment | Launching the simulator &amp; running Navigator: | Using the Simulator: | Troubleshooting: | Sourcing Foxy Automatically in Bash: | . Before demonstrating our codebase on the vehicle, in the real world, we must first test our stack in a virtual one. The following documentation outlines essential CARLA usage and syntax, to allow for simulating our stack in a virtual enviroment. Nova utilizes CARLA for virtualization. For further information on CARLA, and to learn more about advanced usage, please see the following links: . | https://carla.org/ | https://carla.readthedocs.io/en/latest/ | . ",
     "url": "/navigator/simulation/simulation-overview.html#table-of-contents",
     
     "relUrl": "/simulation/simulation-overview.html#table-of-contents"
-  },"72": {
+  },"78": {
     "doc": "Simulation",
     "title": "Simulation Enviroment",
     "content": ". | Prerequisites: . | CARLA Simulator: Please follow the instructions in the above links to install CARLA on your chosen operating system | Navigator: Please see our GitHub page for the latest releases of Navigator | RVIZ (Or an equivalent ROS visualizer) | ROS2 | Dependencies for the above: Self-explanatory, Navigator comes with most of what you need, CARLA may not, do not forget to check! | . | . ",
     "url": "/navigator/simulation/simulation-overview.html#simulation-enviroment",
     
     "relUrl": "/simulation/simulation-overview.html#simulation-enviroment"
-  },"73": {
+  },"79": {
     "doc": "Simulation",
     "title": "Launching the simulator &amp; running Navigator:",
     "content": ". | Launching CARLA: . | Your first step should be to navigate to your CARLA directory and launch CARLA with the CARLAUE4.sh script with the -RenderOffScreen flag. If you are on a unix system, the command will look like this: | . $ /home/share/carla/CarlaUE4.sh -RenderOffscreen . | The “RenderOffscreen” flag hides the rendering window, which saves some resources. See here for more details . | Launching RVIZ (within our Docker container): . | Open a new terminal window. | Navigate to the root directory of Navigator . | Enable Docker to launch GUI programs . $ xhost + . | Run our docker container start script. (If first time running container, refer to step 3) . $ ./start.sh . | Source the setup script via a command like: . install/setup.bash . | Run: rviz2 | Select File followed by Open Config Select default.rviz from the share folder. It is recommended that you have your own copy of this as well for your own configuration. | . | Launching Navigator: . | Open a new terminal window. | Navigate to the root directory of Navigator. | Run the docker container ./start.sh . | Run source /install/setup.bash (if you have bash sourcing ROS automatically (see below), that works too) . | Run ros2 launch carla_interface carla-lite.launch.py . | Check RVIZ and terminal output. The sim_bridge will publish sensor data just as if you were driving on campus, and it will similary accept commands from our standard topics. As of writing, our custom bridge publishes: . | . | GNSS (GPS) | IMU | Front and rear Lidar (not fully functional) | Front RGB camera | Front depth camera | CARLA ground truths for | Car’s odometry (position, orientation, speed) | CARLA virtual bird’s-eye camera (/carla/birds_eye_rgb) | . The most up-to-date information on our bridge’s capabilities can be found at the top of the script itself. | . ",
     "url": "/navigator/simulation/simulation-overview.html#launching-the-simulator--running-navigator",
     
     "relUrl": "/simulation/simulation-overview.html#launching-the-simulator--running-navigator"
-  },"74": {
+  },"80": {
     "doc": "Simulation",
     "title": "Using the Simulator:",
     "content": ". | You can control our ego vehicle with ros2 run manual_control manual_control_node . | At the moment, this only supports keyboard control through NoMachine or similar, not SSH. | If you get a “pynput” error, try running pip3 install pynput. | . | You can change a number of simulation settings by editing our script’s contants (here). | Don’t forget to rebuild the package or use colcon build --symlink-install (recommended). | ROS param support in the works. | . | . ",
     "url": "/navigator/simulation/simulation-overview.html#using-the-simulator",
     
     "relUrl": "/simulation/simulation-overview.html#using-the-simulator"
-  },"75": {
+  },"81": {
     "doc": "Simulation",
     "title": "Troubleshooting:",
     "content": ". | If you get a “pynput” error, try running pip3 install pynput. | If you get a CARLA segmentation fault, it’s likely you just need to restart CARLA. This will be fixed… eventually. This should only happen after starting the bridge 10 times or so, and should not happen while the bridge is running. | If CARLA gives you a SIGFAULT error attach the -carla-rpc-port=N where N = your favorite (Not in use) port number. | . ",
     "url": "/navigator/simulation/simulation-overview.html#troubleshooting",
     
     "relUrl": "/simulation/simulation-overview.html#troubleshooting"
-  },"76": {
+  },"82": {
     "doc": "Simulation",
     "title": "Sourcing Foxy Automatically in Bash:",
     "content": ". | Open your terminal | Write the command –&gt; gedit ~/.bashrc (or nano, whatever really) | Go under the last line line and write –&gt; source /opt/ros/foxy/setup.bash | Save and exit | Now with every new shell you open, it will source automatically | . ",
     "url": "/navigator/simulation/simulation-overview.html#sourcing-foxy-automatically-in-bash",
     
     "relUrl": "/simulation/simulation-overview.html#sourcing-foxy-automatically-in-bash"
-  },"77": {
+  },"83": {
     "doc": "Simulation",
     "title": "Simulation",
     "content": " ",
     "url": "/navigator/simulation/simulation-overview.html",
     
     "relUrl": "/simulation/simulation-overview.html"
-  },"78": {
+  },"84": {
     "doc": "System overview",
     "title": "System overview",
     "content": "Maintained by Will Heitman . ",
     "url": "/navigator/system-overview.html",
     
     "relUrl": "/system-overview.html"
-  },"79": {
+  },"85": {
     "doc": "System overview",
     "title": "Table of contents",
     "content": ". | Design . | About nodes and topics | . | Subsystems | Cost maps | Topics | . ",
     "url": "/navigator/system-overview.html#table-of-contents",
     
     "relUrl": "/system-overview.html#table-of-contents"
-  },"80": {
+  },"86": {
     "doc": "System overview",
     "title": "Design",
     "content": "Navigator is designed to be: . | Simple, with components that are easy to use an extend . | When a more powerful but complex algorithm is used, a simpler alternative should also be present | . | Modular, with nodes that can be swapped, added, and updated with the help of ROS2 . | Since nodes are all built using standard C++ and Python libraries, code is future-proofed. | . | Open source, with all of our code licensed under the highly permissable MIT license . | Our dependencies are also open-source | . | . About nodes and topics . Navigator is built upon ROS2, a communications framework where individual executables called “nodes” exchange messages throguh “topics.” A node can either subscribe to a topic or publish to it. In this fashion, individual nodes form a dense network where everything from camera streams to steering commands are passed from one node to the next. Nodes can be grouped into packages. Packages are then grouped in workspaces. Navigator itself is a ROS workspace. It contains many packages, and each package contains at least one node. Using ROS2, one node can gather raw LiDAR data from a sensor, where it publishes the pointcloud as a PointCloud2 message to a topic called /lidar/raw. Another node can then subscribe to /lidar/raw, filter the data, and publish the result to /lidar/filtered. To learn more about ROS, watch this lecture by Katherine Scott, a developer advocate at Open Robotics. &lt;!– ## Subsystems . Navigator is split into five main subsystems: . | Sensing, where raw sensor data from cameras, GNSS, and more is filtered before being passed along | Perception, which uses the filtered sensor data to build a rich understanding of the car’s surroundings | Planning, which uses this rich understanding, plus the desired destination, to decide how the car should act on a high level | Controls, where the desired action is compared to the car’s current state and low-level action is calculated | Interface, where the low-level action is sent to the steering wheel and pedals. –&gt; | . ",
     "url": "/navigator/system-overview.html#design",
     
     "relUrl": "/system-overview.html#design"
-  },"81": {
+  },"87": {
     "doc": "System overview",
     "title": "Subsystems",
     "content": "We can divide Navigator’s nodes into four groups. The sensing subsystem takes raw sensor data and publishes them as Image messages, PointCloud2 messages, Imu messages, and so on. This subsystem also include sensor filters, which subscribe to raw data and publish their filtered results. The perception subsystem draws inferences from the sensor data, including the location of pedestrians, our position on the map, and the predicted motion of surrounding vehicles. Nodes in this subsystem often publish their results as cost maps. The planning subsystem takes our perception results and decides what our vehicle should do. This subsystem handles both high-level decisions (Should we pass a car that’s stopped in the road?) and low-level ones (How far should we press the throttle pedal to reach our desired speed?). The interface subsystem is the link between our software and hardware. It includes nodes that communicate with our steering hardware, our microcontroller, and more. Both the sensing and interface subsystems are vehicle-specific, which means that they need to be configured to suite each individual vehicle. At Nova, we have separate configurations for simulated driving and real-world use. ",
     "url": "/navigator/system-overview.html#subsystems",
     
     "relUrl": "/system-overview.html#subsystems"
-  },"82": {
+  },"88": {
     "doc": "System overview",
     "title": "Cost maps",
     "content": "During execution, Navigator calculates several cost maps, which are grid-based maps of our surrounding area that describe where our car should or should not drive. Each cell in the grid is assigned a cost. The higher the cost, the less likely our car will generate a path that moves through the cell. This results in paths that weave their way through only low-cost cells. If no low-cost cells are available, the car stops and waits. We calculate and use multiple cost maps, each one representing a unique factor to consider. For example: . | Our occupancy grid generator describes the location of objects (cars, people, curbs). | Our prediction network (PredNet) node describes the future location of obstacles. | Our red light detector marks intersections as high-cost regions if the light is red. | Our map manager assigns costs based on how far a cell is from the route and from the goal. | . We add as many of these layers together to form a single, holisitic costmap that our motion planner uses as its input. Above: Cost map dimensions . Cost maps should be in the base_link (vehicle) reference frame. They should extend 40 meters in front and to the side of the car and 20 meters behind, forming a total area of 80 x 60 meters. Cells should have a side length of either 0.2, 0.4, 0.8, or 1.6 meters. In the above example, each image is 200 x 150 pixels, representing a cost map layer with a resolution of 0.4 meters/cell. Clockwise from top left: Current occupancy, junction cost (due to a stop sign), route distance, and drivable area. ",
     "url": "/navigator/system-overview.html#cost-maps",
     
     "relUrl": "/system-overview.html#cost-maps"
-  },"83": {
+  },"89": {
     "doc": "System overview",
     "title": "Topics",
     "content": ". | /lidar/fused: Raw LiDAR fused together to create a 360-degree picture. Otherwise unfiltered. | /lidar/filtered: Filtered LiDAR, with ground points removed. | /grid/drivable | /grid/route_distance | /grid/occupancy/current: Only the current occupancy grid. | /grid/occupancy/combined: Both the current and all future prediction occupancy grids, summed together. | . ",
     "url": "/navigator/system-overview.html#topics",
     
     "relUrl": "/system-overview.html#topics"
-  },"84": {
+  },"90": {
     "doc": "Tricks",
     "title": "Tricks",
     "content": "Maintained by Nova members . ",
     "url": "/navigator/contributing/tricks.html",
     
     "relUrl": "/contributing/tricks.html"
-  },"85": {
+  },"91": {
     "doc": "Tricks",
     "title": "Table of contents",
     "content": ". | TOC | . ",
     "url": "/navigator/contributing/tricks.html#table-of-contents",
     
     "relUrl": "/contributing/tricks.html#table-of-contents"
-  },"86": {
+  },"92": {
     "doc": "Tricks",
     "title": "Tools",
     "content": ". | You can get the publishing frequency of a topic with $ ros2 topic hz [topic_name] | Show a graph of all current topics and nodes with $ rqt_graph | VS Code’s “Remote - SSH” extension is a good way to develop remotely on the Quad. Files, terminals, and more all appear as though you were working locally on the Quad. | Other useful VS Code extensions include Prettier, GitLens, Doxygen Documenttion Generator (C++), autoDocstring (Python), and the C/C++ entension pack. | . ",
     "url": "/navigator/contributing/tricks.html#tools",
     
     "relUrl": "/contributing/tricks.html#tools"
-  },"87": {
+  },"93": {
     "doc": "Tricks",
     "title": "Other",
     "content": ". | ROS Services are alternatives to publishers/subscribers. They return results only when requested by a Client. | . ",
     "url": "/navigator/contributing/tricks.html#other",
     
     "relUrl": "/contributing/tricks.html#other"
-  },"88": {
+  },"94": {
     "doc": "Troubleshooting",
     "title": "Troubleshooting",
     "content": "Maintained by Nova members . ",
     "url": "/navigator/contributing/troubleshooting.html",
     
     "relUrl": "/contributing/troubleshooting.html"
-  },"89": {
+  },"95": {
     "doc": "Troubleshooting",
     "title": "Table of contents",
     "content": ". | “New publisher discovered on this topic, offering incompatible QoS” . | Solution | . | “RuntimeError: trying to create rpc server for traffic manager…” | When running the leaderboard evaluator: “No module named ‘agent’” . | Solution: Ensure that there isn’t a typo in the --agent flag to leaderboard_evaluator.py. As of writing, this is in leaderboard.bash. | . | “The RMW implementation has been specified as…” . | Solution | . | . “New publisher discovered on this topic, offering incompatible QoS” . [WARN] [1669075701.737584987] [leaderboard_node]: New publisher discovered on this topic, offering incompatible QoS. No messages will be received from it. Last incompatible policy: DURABILITY_QOS_POLICY . A warning similar to the above example will appear when a publisher and subscriber attempt to exchange messages with incompatible quality of service QoS policies. Solution . Edit the QoS policy of either the relevant publisher or subscriber so that the two can “speak” to each other. For more information on QoS in ROS2, including compatibility between policies, see here. “RuntimeError: trying to create rpc server for traffic manager…” ... File \"/workspace/leaderboard/leaderboard/leaderboard_evaluator.py\", line 83, in __init__ self.traffic_manager = self.client.get_trafficmanager(args.traffic_manager_port) RuntimeError: trying to create rpc server for traffic manager; but the system failed to create because of bind error. This is caused when a CARLA client attempts to connect to CARLA on a port that is already being used. This is either because: . | Another user is currently using the simulator . | In which case you should change your port by using the --traffic_manager_port or similar, depending on which script you’re running | . | An earlier CARLA client has died before it freed its port, and so there is some orphaned Python process on the system that is using up the RPC port. One brute force method is to run sudo pkill -9 python, but this is a very ugly solution. | . When running the leaderboard evaluator: “No module named ‘agent’” . As of 12 Nov ‘22 . # ./leaderboard.bash Starting the CARLA evaluation script. This may take some time. Sit tight! Traceback (most recent call last): ... ModuleNotFoundError: No module named 'agent' . Solution: Ensure that there isn’t a typo in the --agent flag to leaderboard_evaluator.py. As of writing, this is in leaderboard.bash. “The RMW implementation has been specified as…” . As of 11 Nov ‘22 . CMake Error at /opt/ros/foxy/share/rmw_implementation/cmake/rmw_implementation-extras.cmake:54 (message): The RMW implementation has been specified as 'rmw_cyclonedds_cpp' via environment variable 'RMW_IMPLEMENTATION', but it is not available at this time. Currently available middlewares: 'rmw_fastrtps_cpp' . Solution . Navigator uses a slightly modified ROS Middleware (RMW) implementation called CycloneDDS. In order for ROS and its nodes to use it, our custom version must be built and sourced, just like any other ROS workspace. Docker includes the CycloneDDS workspace under /opt/cyclone_ws, and this workspace should be sourced automatically as part of the Docker entrypoint.sh. If you receive the above error, CycloneDDS was either not properly built or sourced. You can verify that the CycloneDDS is loaded properly using the command # ros2 doctor --report, which should show: ... processor : x86_64 RMW MIDDLEWARE middleware name : rmw_cyclonedds_cpp ... ",
     "url": "/navigator/contributing/troubleshooting.html#table-of-contents",
     
     "relUrl": "/contributing/troubleshooting.html#table-of-contents"
-  },"90": {
+  },"96": {
     "doc": "Writing documentation",
     "title": "System overview",
     "content": " ",
     "url": "/navigator/writing-documentation.html#system-overview",
     
     "relUrl": "/writing-documentation.html#system-overview"
-  },"91": {
+  },"97": {
     "doc": "Writing documentation",
     "title": "Table of contents",
     "content": ". | Testing locally | Editing online | . This documentation site is built off of Navigator’s dev branch. All files within the /doc directory are remapped to nova-utd.github.io. Adding to the site is easy. Here are two good options: . ",
     "url": "/navigator/writing-documentation.html#table-of-contents",
     
     "relUrl": "/writing-documentation.html#table-of-contents"
-  },"92": {
+  },"98": {
     "doc": "Writing documentation",
     "title": "Testing locally",
     "content": "To test locally, cd into /docs and run . docker run --rm --volume=\"$PWD:/srv/jekyll:Z\" -p 8083:8083 jekyll/jekyll jekyll serve --port 8083 . Use a browser to view localhost:8083. Refresh the page to show the latest updates. See the official Docker README for more info. ",
     "url": "/navigator/writing-documentation.html#testing-locally",
     
     "relUrl": "/writing-documentation.html#testing-locally"
-  },"93": {
+  },"99": {
     "doc": "Writing documentation",
     "title": "Editing online",
     "content": "On GitHub, move to the /docs directory on the dev branch (here), then press the period key on your keyboard. This will open GitHub’s web editor. See here for more info. ",
     "url": "/navigator/writing-documentation.html#editing-online",
     
     "relUrl": "/writing-documentation.html#editing-online"
-  },"94": {
+  },"100": {
     "doc": "Writing documentation",
     "title": "Writing documentation",
     "content": " ",
