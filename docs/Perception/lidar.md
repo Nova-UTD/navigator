@@ -1,15 +1,15 @@
 
-<Node lidar processing node>
+# \<Node lidar processing node\> 
 
 {: .no_toc }
 
 Maintained by Nova
 
-Overview
+### Overview
 
 This node responsible for processing LiDAR data. It is assigned to perform various tasks related to LiDAR data, including preprocessing and filtering.
 
-In:
+### In:
 
 <lidar_sub><PointCloud2>
 Purpose: This subscriber is responsible for receiving raw LiDAR data from the /carla/hero/lidar topic.
@@ -24,7 +24,7 @@ Purpose: This subscriber is used to keep track of time by receiving Clock messag
 Example: clock_sub subscribes to /clock and receives Clock messages.
 
 
-Out:
+### Out:
 
 <clean_lidar_pub> <PointCloud2>
 Purpose: This publisher is responsible for disseminating processed LiDAR data after transformations and filtering.
@@ -39,10 +39,10 @@ Purpose: This publisher is responsible for broadcasting an OccupancyGrid message
 Example: occupancy_grid_pub publishes an OccupancyGrid message.
 
 
-Individual Function 1
+### Individual Function 1
 
 blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla blabla bla bla blabla blablabla blabla bla bla blabla blablabla
 
-Individual Function 2
+### Individual Function 2
 
 blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla blabla bla bla blabla blablabla blabla bla bla blabla blablabla
