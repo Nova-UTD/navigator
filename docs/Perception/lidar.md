@@ -1,7 +1,7 @@
 ---
-layout: default
-title: Junction Manager
-parent: Perception
+Layout: default
+Title: Junction Manager
+Parent: Perception
 ---
 # \<Node lidar processing node\> 
 
