@@ -89,7 +89,7 @@ class GridSummationNode(Node):
         self.route_dist_grid = None
 
         speed_cost_map_sub = self.create_subscription(
-            Path, '/planning/smooth_route', self.routeCb, 1)
+            Path, '/planning/route', self.routeCb, 1)
         self.route = None
 
         self.junction_occupancy_pub = self.create_publisher(
