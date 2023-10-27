@@ -45,7 +45,6 @@ def generate_launch_description():
 
                     # MISC
                     # recorder,
-                    #carla_rviz,
                     # rqt,
                     # camera_streamer,
 
@@ -67,6 +66,7 @@ def generate_launch_description():
                     # SAFETY
                     ##airbags,
                     ##guardian,
+                    rviz,
                 ]
             )
         )

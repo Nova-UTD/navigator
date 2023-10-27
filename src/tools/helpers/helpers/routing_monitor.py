@@ -38,7 +38,7 @@ class RoutingMonitor(Node):
         # currently doing this so that the fast republishing does not need to lie with the map manager
         smooth_route_sub = self.create_subscription(Path, '/planning/smoothed_route', self.smooth_routeCb, 1)
         self.smooth_route_msg = None
-        self.smooth_route_pub = self.create_publisher(Path, '/planning/smooth_route', 1)
+        self.smooth_route_pub = self.create_publisher(Path, '/planning/route', 1)
 
         self.routing_client = self.create_client(SetRoute, '/set_route')
 

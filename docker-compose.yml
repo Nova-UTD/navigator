@@ -1,7 +1,14 @@
 version: '2.3'
 name: navigator
 services:
-    navigator_quad:
+    navigator:
+        image: navigator
+        container_name: navigator_${USER}
+        build:
+          context: .
+          dockerfile: Dockerfile
+
+    navigator_carla:
         privileged: true
         stdin_open: true
         tty: true

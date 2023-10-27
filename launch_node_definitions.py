@@ -142,7 +142,7 @@ rviz = Node(
     namespace='',
     executable='rviz2',
     name='rviz2',
-    arguments=['-d' + '/navigator/data/real_world.rviz'],
+    arguments=['-d' + '/navigator/data/navigator_default.rviz'],
     respawn=True
 )
 
