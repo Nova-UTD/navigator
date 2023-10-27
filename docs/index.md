@@ -41,9 +41,9 @@ $ cd navigator
 > Nova Members: A Docker image for Navigator already exists on the Quad, so there is no need to rebuild it (unless you've changed it!).
 > Other Users: Some customization of the `docker-compose.yml` file may be needed to link it up with your installation of Carla. You should be able to build the image without doing that first.
 ```
-$ docker compose build navigator_carla
+$ docker compose build navigator
 ```
-5. Run the Docker image.
+5. Run the Docker image. Here we are specifically launching the container so it is configured to run with the CARLA simulator:
 ```
 $ docker compose run navigator_carla
 ```
