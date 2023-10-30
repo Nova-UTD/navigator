@@ -36,19 +36,63 @@ occupied and free probability values obtained via generation of the mass grid.
 ---
 
 ### In:
-- **clock_sub** [*Clock*](https://docs.ros2.org/galactic/api/rosgraph_msgs/msg/Clock.html)
-- **pcd_sub** [*PointCloud2*](https://docs.ros2.org/galactic/api/sensor_msgs/msg/PointCloud2.html)
+- **/clock** [*Clock*](https://docs.ros2.org/galactic/api/rosgraph_msgs/msg/Clock.html)
+- **/lidar/filtered** [*PointCloud2*](https://docs.ros2.org/galactic/api/sensor_msgs/msg/PointCloud2.html)
 
 ### Out:
-- **occupancy_grid_pub** [*OccupancyGrid*](https://docs.ros2.org/galactic/api/nav_msgs/msg/OccupancyGrid.html)
-- **masses_pub** [*Masses*](https://github.com/Nova-UTD/navigator/blob/documentation/src/msg/navigator_msgs/msg/Masses.msg)
+- **/grid/occupancy/current** [*OccupancyGrid*](https://docs.ros2.org/galactic/api/nav_msgs/msg/OccupancyGrid.html)
+- **/grid/masses** [*Masses*](https://github.com/Nova-UTD/navigator/blob/documentation/src/msg/navigator_msgs/msg/Masses.msg)
 
 ---
 
-### Individual Function 1
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
-blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+### `void createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &cloud)`
+Returns a grid using [Dempster-Shafer Theory (DST)](https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory) by performing the following steps:
+1. Ray-traces free space towards recorded points (occupied space)
+2. Fills the rest of the grid with free space using same ray-tracing algorithms (can combine steps 1 and 2?)
+3. Adds occupied space representing the vehicle
 
-### Individual Function 2
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
-blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+### `void add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> &cloud)`
+Fills and adds points to the DST grid by projecting the pcl points onto the 2D occupancy grid.
+
+### `void add_free_spaces_to_the_DST()`
+Adds unoccupied spaces to the DST using ray tracing.
+
+### `void addEgoMask()`
+Adds the vehicle shape to the occupied/unoccupied zones.
+
+### `void publishOccupancyGrid()`
+Publishes the occupancy and mass grids based on the current probabilities generated via DST.
+
+### `void update_previous()`
+Sets the "previous" occupied and free zones to the values of the current occupied and free zones.
+
+### `void mass_update()`
+Updates the current grids with the previous grid values, applied with a decay factor.
+
+### `void update_of()`
+Updates the current probabilities using a [Bayes filter](https://en.wikipedia.org/wiki/Recursive_Bayesian_estimation),
+taking into account both measured and predicted probability values.
+
+### `std::vector<std::vector<float>> getGridCellProbabilities()`
+Computes the average of the updated occupancy and free values and returns the resulting cell probabilities.
+
+### `void ray_tracing_approximation_y_increment(int x2, int y2, int flip_x, int flip_y, bool inclusive)`
+Performs approximate raytracing from the origin to the given x2 and y2 coordinates, incrementing the origin y coordinate according to a slope error given by the distance between the starting and ending y coordinates. Optionally includes the destination coordinate.
+
+### `void ray_tracing_approximation_x_increment(int x2, int y2, int flip_x, int flip_y, bool inclusive)`
+Performs approximate raytracing from the origin to the given x2 and y2 coordinates, incrementing the origin x coordinate according to a slope error given by the distance between the starting and ending x coordinates. Optionally includes the destination coordinate.
+
+### `void ray_tracing_vertical(int x2)`
+Performs vertical raytracing along the positive vertical direction (+x), tracing from the origin to the given point.
+
+### `void ray_tracing_vertical_n(int x1)`
+Performs vertical raytracing along the negative vertical direction (-x), tracing from the given point to the origin.
+
+### `void ray_tracing_horizontal(int y2)`
+Performs horizontal raytracing along the positive horizontal direction (+y), tracing from the origin to the given point.
+
+### `void ray_tracing_horizontal_n(int y1)`
+Performs horizontal raytracing along the negative horizontal direction (-y), tracing from the given point to the origin.
+
+### `void clear()`
+Clears the occupied and free zones.
