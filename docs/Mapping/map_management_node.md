@@ -1,0 +1,42 @@
+---
+layout: default
+title: map_management_node
+nav_order: 2
+parent: Mapping
+---
+
+# Map Management
+{: .no_toc }
+
+*Maintained by Nova*
+
+## Overview
+blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
+blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+
+---
+
+### In:
+- **clock_sub** [*Clock*](https://docs.ros2.org/galactic/api/rosgraph_msgs/msg/Clock.html)
+- **clicked_point_sub_** [*PointStamped*](https://docs.ros2.org/latest/api/geometry_msgs/msg/PointStamped.html)
+- **world_info_sub** *CarlaWorldInfo*
+
+### Out:
+- **drivable_grid_pub_** [*OccupancyGrid*](https://docs.ros2.org/foxy/api/nav_msgs/msg/OccupancyGrid.html)
+- **junction_grid_pub_** [*OccupancyGrid*](https://docs.ros2.org/foxy/api/nav_msgs/msg/OccupancyGrid.html)
+- **route_path_pub_** [*Path*](https://docs.ros2.org/latest/api/nav_msgs/msg/Path.html)
+- **goal_pose_pub_** [*PoseStamped*](https://docs.ros2.org/latest/api/geometry_msgs/msg/PoseStamped.html)
+
+---
+
+### MapManagementNode::publishSmoothRoute
+Once a route is requested and the `route_linestring_` variable is defined, this method will regularly publish the global smoothed route.
+
+### MapManagementNode::publishGrids
+**General steps**
+- Query the map-wide R-tree to find all lanes within range
+- Creates a second, local R-tree and insert all nearby lanes, which were found from the query
+- For each row j and column i, query the local R-tree to see if that cell (i,j) is within a lane's bounding box
+  - If yes, find out if it is within the actual lane, not just its bounding box. R-trees only calculate for bounding boxes.
+    - If yes again, the cell is truly occupied. Append '100' ("occupied") to OccupancyGrid. Otherwise '0'.
+- Set OccupancyGrid metadata and return.
