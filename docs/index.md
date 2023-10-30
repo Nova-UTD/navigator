@@ -27,31 +27,34 @@ Navigator is our answer to this delimma. It's built on standard technologies, is
 
 1. [Install Docker](https://www.docker.com/get-started/). 
 > Nova Members: Docker is already installed on the Quad.
+
 2. Choose a number between 0-100 and use this for your user-wide ROS_DOMAIN_ID environment variable. Add the following line to your `.bashrc` file 
 ```
 export ROS_DOMAIN_ID=57
 ```
 3. Clone our repository (checkout the `dev` branch if you plan to do development, or `main` if you want the most recently release)
-> Any contributor: If simply running the stack is the goal, then checking out `dev` or `main` can make sense. If you aim to contribute, you should create your own fork of the `dev` branch and check that repository out instead. More details about contributing [can be found here](contributing/contributing-overview.md).
 ```
 $ git clone -b dev git@github.com:Nova-UTD/navigator.git
 $ cd navigator
 ```
+> Any contributor: If simply running the stack is the goal, then checking out `dev` or `main` can make sense. If you aim to contribute, you should create your own fork of the `dev` branch and check that repository out instead. More details about contributing [can be found here](contributing/contributing-overview.md).
+
 4. Build our Docker container. The sequence of commands used to build the container is given in the `Dockerfile` file and the build and run parameters are specified in the `docker-compose.yml` file.
-> Nova Members: A Docker image for Navigator already exists on the Quad, so there is no need to rebuild it (unless you've changed it!).
-> Other Users: Some customization of the `docker-compose.yml` file may be needed to link it up with your installation of Carla. You should be able to build the image without doing that first.
 ```
 $ docker compose build navigator
 ```
+> Nova Members: A Docker image for Navigator already exists on the Quad, so there is no need to rebuild it (unless you've changed it!).
+> Other Users: Some customization of the `docker-compose.yml` file may be needed to link it up with your installation of Carla. You should be able to build the image without doing that first.
+
 5. Run the Docker image. Here we are specifically launching the container so it is configured to run with the CARLA simulator:
 ```
 $ docker compose run navigator_carla
 ```
+
 6.  Now that you're in the container, build the navigator ROS workspace:
 ```
 # colcon build --symlink-install
 ``` 
-That's it!
 > Note that if you've build the workspace outside the container or want to start with a fresh build, you can delete the `build`, `install`, and `log` directories and call `colcon build` with the following extra flag:
 ```
 # rm -r -f build
@@ -75,17 +78,19 @@ alias runcarla="/home/share/carla/CarlaUE4.sh -carla-rpc-port=$CARLA_PORT -Rende
 
 ### CARLA-ROS2 Bridge
 The current CARLA-ROS2 bridge, that allows ROS to communicate with the CARLA simulator is compatible with ROS2 Foxy, not the ROS2 Humble we use for Navigator.  We use a second Docker container to run the CARLA-ROS2 bridge.
+
 3. The docker files and ROS packages that act as the interface between Navigator and CARLA are located in the `carla_interface` repository. Clone this repository using a new terminal window:
 ```
 $ git clone -b dev git@github.com:Nova-UTD/carla_interface.git
 $ cd carla_interface
 ```
-4. Similar to Navigator, the `Dockerfile` and `docker-compose.yml` files in the repository let you build the image:
 
+4. Similar to Navigator, the `Dockerfile` and `docker-compose.yml` files in the repository let you build the image:
 ```
 $ docker compose build carla_bridge
 ```
 > Nova Members: The Quad should already have an image for this Docker container built.
+
 5. Run the Docker container:
 ```
 $ docker compose run carla_bridge
