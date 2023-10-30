@@ -11,7 +11,7 @@ parent: Planning
 *Maintained by Nova*
 
 ## Overview
-This node subscribes to cost maps, calcualtes the weighted sum, and publishes the final cost map. The different grids include futureOccupancy, currentOccupancy, and others, which encompass the driveable surface and the route distance. The grids have to be fresh, so a method in this node checks the grids to make sure they are less than .4 seconds old. The occupancy grid is then weighted and resized, and then turned into a cost map which is published.  
+This node subscribes to cost maps, calculates the weighted sum, and publishes the final cost map. The different grids include futureOccupancy, currentOccupancy, and others, which encompass the driveable surface and the route distance. The grids have to be fresh, so a method in this node checks the grids to make sure they are less than .4 seconds old. The occupancy grid is then weighted and resized, and then turned into a cost map which is published.  
 
 ---
 
@@ -35,12 +35,23 @@ This node subscribes to cost maps, calcualtes the weighted sum, and publishes th
 
 ---
 
-### Individual Function 1
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
-blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+### checkForStaleness
+Checks the grid to see if it's old. It gets the timestamp on the grid and converts it into seconds, then measures it against the staleness tolerance. If it is, it checks the next layer to determine if more than one layer is stale. 
 
-### Individual Function 2
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
-blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+
+### fastForward
+This method manipulates the occupancy grid by resizing it, transforming it, changing the metadata of the grid, and then returning it. The grid is converted into a numpy array and then resized depending on the original grid's size. The method then tries to find transformations between the frames, then extracts rotation angles, and calculates new coordinates. From this information, a new occupancy grid is made and returned. 
+
+### buildRouteCostmap
+This method creates a costmap for the given route. It then transforms the route points to a specific frame and updates the grid with these points. The modified costmap is then returned. 
+
+### getWeightedArray
+This method converts the occupancy grid into a numpy array and then multiplies it by scale. 
+
+### resizeOccupancyGrid
+This method resizes the occupancy grid by removing every sixth row and every sixth column. It then takes three columns off and returns the final grid. 
+
+### createCostMap
+createCostMap computes steering and speed cost maps for a navigation system. It starts by initializing two grids for steering and speed costs. It then processes several types of grids and combines their weighted contributions into the steering and speed cost maps. Additionally, it incorporates a route cost map into the steering cost. These cost maps are then formatted into OccupancyGrid messages and published.
 
 
