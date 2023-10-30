@@ -3,14 +3,14 @@ Layout: default
 Title: Junction Manager
 Parent: Perception
 ---
-# \<Node lidar processing node\> 
+# \<Dual lidar processing node\> 
 
 
 Maintained by Nova(Vindhya Kaushal)
 
 ## Overview
 
-This node responsible for processing LiDAR data. It is assigned to perform various tasks related to LiDAR data, including preprocessing and filtering.
+This node responsible for processing LiDAR data. It is a ROS2 node for fusing, filtering, and processing LiDAR data from two sensors. The node subscribes to two PointCloud2 messages, one from each LiDAR sensor. It then transforms the point clouds into the base_link frame of the vehicle, removes ground points, and publishes the fused and filtered point cloud to the /lidar topic.
 
 ### In:
 
