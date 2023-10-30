@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Node Template
+title: GnssInterfaceNode
 nav_order: 1
 parent: Perception
 ---
@@ -16,20 +16,45 @@ The `GnssInterfaceNode` is a ROS 2 node responsible for interfacing with a GNSS 
 ---
 
 ### In:
-- **clock_sub** [*Clock*](https://docs.ros2.org/galactic/api/rosgraph_msgs/msg/Clock.html)
+- **/clock** [*Clock*](https://docs.ros2.org/galactic/api/rosgraph_msgs/msg/Clock.html)
+  - This message provides the current time. The node subscribes to this topic and updates its internal clock based on this message.
 
 ### Out:
-- **speed_pub** [*CarlaSpeedometer*](https://github.com/Nova-UTD/navigator/blob/dev/src/msg/navigator_msgs/msg/CarlaSpeedometer.msg)
-- **status_pub** [*DiagnosticStatus*](https://docs.ros2.org/galactic/api/diagnostic_msgs/msg/DiagnosticStatus.html)
-- **odom_pub** [*Odometry*](https://docs.ros2.org/foxy/api/nav_msgs/msg/Odometry.html)
-- **navsat_pub** [*NavSatFix*](https://docs.ros2.org/latest/api/sensor_msgs/msg/NavSatFix.html)
+- **/speed** [*VehicleSpeed*](https://github.com/Nova-UTD/navigator/blob/dev/src/msg/navigator_msgs/msg/VehicleSpeed.msg)
+  - This message represents the vehicle's speed. The node publishes this message to the /speed topic, giving the current speed of the vehicle based on GNSS data for other nodes to use.
+- **/node_statuses** [*DiagnosticStatus*](https://docs.ros2.org/galactic/api/diagnostic_msgs/msg/DiagnosticStatus.html)
+  - This message provides diagnostic status information about the node. It includes details about the node's health and status.
+- **/gnss/odometry** [*Odometry*](https://docs.ros2.org/foxy/api/nav_msgs/msg/Odometry.html)
+  - This message contains information about the vehicle's position, orientation, and velocity based on GNSS information.
+- **/gnss/fix** [*NavSatFix*](https://docs.ros2.org/latest/api/sensor_msgs/msg/NavSatFix.html)
+  - This message represents the latitude, longitude, and altitude from the GNSS receiver. 
 
 ---
 
-### Individual Function 1
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
-blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+### toRadians(degrees: float)
+Converts degrees to radians.
 
-### Individual Function 2
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
-blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+### latToScale(lat: float)
+Calculates the UTM projection scale based on latitude.
+
+### publishTf(self)
+Publishes a transformation (TF) message from a map coordinate frame to a base_link coordinate frame. Uses the TransformBroadcaster to send the transformation.
+
+### getData(self)
+Reads data from the GNSS receiver, processes it, and publishes relevant ROS messages. Handles GNSS sentences of types GGA and VTG.
+
+### latlonToMercator(self, lat: float, lon: float, scale: float)
+Converts geodetic coordinates (latitude and longitude) to UTM (Universal Transverse Mercator) coordinates in meters.
+
+### getOdomMsg(self, lat: float, lon: float)
+Constructs and returns an Odometry message based on latitude and longitude data.
+
+### connectToPort(self)
+Attempts to connect to the GNSS receiver through a serial port. It initializes a serial connection and reports the status.
+
+### initStatusMsg(self)
+Constructs and returns a DiagnosticStatus message with basic information.
+
+### clockCb(self, msg: Clock)
+Updates the node's internal clock based on the received Clock message.
+
