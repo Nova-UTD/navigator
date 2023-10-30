@@ -61,8 +61,17 @@ That's it!
 
 ## CARLA Simulator
 1. Make sure you've installed Navigator using the steps above.
-2. On the host, start CARLA: `./CarlaUE4.sh` See the [CARLA docs](https://carla.readthedocs.io/en/latest/start_quickstart/#running-carla) for more info. Note that CARLA runs natively on the host, while Navigator and the CARLA-ROS2 bridge run in (separate) containers.
-> Nova Members: On the Quad, CARLA is installed at `/home/share/carla/`, so you can add an alias to the `.bashrc` file with the line `alias runcarla="/home/share/carla/CarlaUE4.sh"`.
+2. On the host, start CARLA: `./CarlaUE4.sh` See the [CARLA docs](https://carla.readthedocs.io/en/latest/start_quickstart/#running-carla) for more info. Note that CARLA runs natively on the host, while Navigator and the CARLA-ROS2 bridge run in (separate) containers. Currently it is standard for Carla to output the following, which looks a bit like an error, but is fine:
+```
+chmod: changing permissions of '/home/share/carla/CarlaUE4/Binaries/Linux/CarlaUE4-Linux-Shipping': Operation not permitted
+4.26.2-0+++UE4+Release-4.26 522 0
+Disabling core dumps.
+```
+> Nova Members: On the Quad, CARLA is installed at `/home/share/carla/`, so you can add an alias to the `.bashrc` file with the line `alias runcarla="/home/share/carla/CarlaUE4.sh"`. The preferred way to interact with the simulator is to run it offline and also on a unique port. You can add the following lines to your `.bashrc` file to make this the default (notice that this uses your ROS_DOMAIN_ID to make the port unique):
+```
+export CARLA_PORT=$(($ROS_DOMAIN_ID+2000))
+alias runcarla="/home/share/carla/CarlaUE4.sh -carla-rpc-port=$CARLA_PORT -RenderOffScreen"
+```
 
 ### CARLA-ROS2 Bridge
 The current CARLA-ROS2 bridge, that allows ROS to communicate with the CARLA simulator is compatible with ROS2 Foxy, not the ROS2 Humble we use for Navigator.  We use a second Docker container to run the CARLA-ROS2 bridge.
@@ -84,16 +93,19 @@ $ docker compose run carla_bridge
 The `entrypoint.sh` script (in the `/docker` directory) sources ROS2 (Foxy) and sets environment variables needed for the bridge.
 
 ### Launching a Demo
-6. The bridge can be run using the following line within the CARLA-ROS2 bridge container:
+Launching a demo requires three terminal windows. Recall `$` are commands run on the host and `#` are commands run in a container.
+1. In the first terminal window, launch Carla using `runcarla` (assumes you set up the alias described above).
+2. In the second terminal window, run the CARLA-ROS2 bridge container (should be in the `carla_interface` respository root directory) and then launch the carla interface nodes:
 ```
+$ docker compose run carla_interface
 # ros2 launch launch.carla_interface.py
 ```
-7. Then, in the Navigator container, run the following command to start the Navigator stack.
+3. In the third terminal window, run the Navigator container (should be in the `navigator` respository root directory) and then launch the Navigator stack:
 ```
+$ docker compose run navigator_carla
 # ros2 launch launch.carla.py
 ```
 > Note: The node definitions for the Navigator launch script are located in the file `launch_node_definitions.py`.
-8. Both or either of the launch files can include rviz to visualize the simulation.
 
 ## Real-world use
 To run in the real-world, you'll need to provide your own LiDAR stream, map data, and throttle/brake/steering interface. We provide our own interface, for use with our specific hardware, as an example.
