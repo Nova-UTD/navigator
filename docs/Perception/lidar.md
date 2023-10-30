@@ -39,8 +39,23 @@ Purpose: Publishes a PointCloud2 message containing the fused and filtered point
 
 ### Individual Function 1
 
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+The remove_ground_points() function removes points below a certain height from the input point cloud. This is done to reduce the amount of data that needs to be processed and to improve the accuracy of the fused point cloud.
+It filters out the z coordinate values less than the specified height.
+It inputs an array of the pointclouds , and outputs the points belwo the speicfied height.
+
 
 ### Individual Function 2
 
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+The transformToBaseLink() function transforms the input point cloud into the base_link frame of the vehicle. It does this by using the tf2_ros.TransformListener class to lookup the transform between the two frames.It performs both translation and rotation operations to align the point cloud data with the coordinate system of the vehicle.
+
+
+### Individual Function 3
+
+The remove_nearby_points() function removes points from a point cloud that are within a certain distance of the origin. This is useful for removing points that are close to the LiDAR sensor.
+
+The function works by first converting the point cloud to a numpy array. It then uses the np.logical_and() function to combine two conditions. The first condition checks if the point's x-coordinate and y-coordinate are within a certain distance of the origin. The second condition checks if the point's z-coordinate is greater than a certain height.
+
+
+### Individual Function 4
+
+The remove_points_above() function removes points from a point cloud that are above a specific height.It operates on a numpy array representing the incoming point cloud  and returns a modified array with points above the specified height removed. 
