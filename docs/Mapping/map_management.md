@@ -11,8 +11,7 @@ parent: Mapping
 *Maintained by Nova*
 
 ## Overview
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
-blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+Routinely publishes a `drivable_grid` and `junction_grid` that is centered around the car. Uses the map information from either the `world_info` topic or a parameter to form the grids. Also, publishes a `goal_pose` (rotation) and `route_path` (path) for the car to follow. 
 
 ---
 
