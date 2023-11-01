@@ -3,9 +3,7 @@ layout: default
 ---
 
 {: .fs-6 }
-Temporary Documentation Branch
-
-Navigator is a simple, extensible, and open-source autonomous driving framework.
+Navigator is a simple, end-to-end, and open-source autonomous driving framework.
 
 [System overview](/navigator/system-overview){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 } [View it on GitHub](https://github.com/nova-utd/navigator){: .btn .fs-5 .mb-4 .mb-md-0 }
 
@@ -55,6 +53,7 @@ $ docker compose run navigator_carla
 ```
 # colcon build --symlink-install
 ``` 
+That's it!
 > Note that if you've build the workspace outside the container or want to start with a fresh build, you can delete the `build`, `install`, and `log` directories and call `colcon build` with the following extra flag:
 ```
 # rm -r -f build
