@@ -28,7 +28,7 @@ Navigator is designed to be:
     - Our dependencies are also open-source
 
 ### About nodes and topics
-Navigator is built upon ROS2, a communications framework where individual executables called "nodes" exchange messages throguh "topics." A node can either subscribe to a topic or publish to it. In this fashion, individual nodes form a dense network where everything from camera streams to steering commands are passed from one node to the next.
+Navigator is built upon ROS2, a communications framework where individual executables called "nodes" exchange messages through "topics." A node can either subscribe to a topic or publish to it. In this fashion, individual nodes form a dense network where everything from camera streams to steering commands are passed from one node to the next.
 
 Nodes can be grouped into packages. Packages are then grouped in workspaces. Navigator itself is a ROS workspace. It contains many packages, and each package contains at least one node.
 
@@ -36,31 +36,21 @@ Nodes can be grouped into packages. Packages are then grouped in workspaces. Nav
 Using ROS2, one node can gather raw LiDAR data from a sensor, where it publishes the pointcloud as a `PointCloud2` message to a topic called `/lidar/raw`. Another node can then subscribe to `/lidar/raw`, filter the data, and publish the result to `/lidar/filtered`.
 
 To learn more about ROS, watch [this lecture by Katherine Scott](https://www.youtube.com/watch?v=FTA4Ia2vLS8), a developer advocate at Open Robotics.
-<!-- ## Subsystems
-![Navigator's general structure](assets/res/v1_2_structure.drawio.png)
 
-Navigator is split into five main subsystems:
-- [**Sensing**](/navigator/sensing/sensing-overview), where raw sensor data from cameras, GNSS, and more is filtered before being passed along
-- [**Perception**](/navigator/planning/planning-overview), which uses the filtered sensor data to build a rich understanding of the car's surroundings
-- [**Planning**](/navigator/planning/planning-overview), which uses this rich understanding, plus the desired destination, to decide how the car should act on a high level
-- [**Controls**](/navigator/controls/controls-overview), where the desired action is compared to the car's current state and low-level action is calculated
-- [**Interface**](/navigator/interface/interface-overview), where the low-level action is sent to the steering wheel and pedals. -->
-
-<!-- We also have some important code to support testing, visualization, and simulation. Simulation plays a big role in our development, and you can find an overview of it [here](/navigator/simulation/simulation-overview). -->
-
-<!-- #### Example
-Our **sensing** system takes in a red blob from our front camera and does some white balancing to make the image more clear. The **perception** system identifies this red blob as a stop sign and generates a bounding box with the coordinates of the stop sign relative to the car. The **planning** system determines that we must set our speed to zero at the stop sign. The **controls** system notes that our car is still moving, and calculates that we must decelerate a certain amount. Finally, our **actuation** system converts this desired deceleration into a brake pedal command, which is sent out to the pedal's motor. -->
+![Navigator's general structure](assets/res/navigator_diagram.jpg)
 
 ## Subsystems
 We can divide Navigator's nodes into four groups.
 
-The **sensing** subsystem takes raw sensor data and publishes them as [`Image`](https://docs.ros.org/en/indigo/api/sensor_msgs/html/msg/Image.html) messages, [`PointCloud2`](https://docs.ros.org/en/indigo/api/sensor_msgs/html/msg/PointCloud2.html) messages, [`Imu`](https://docs.ros.org/en/indigo/api/sensor_msgs/html/msg/Imu.html) messages, and so on. This subsystem also include sensor filters, which subscribe to raw data and publish their filtered results.
+The **perception** subsystem interfaces with our sensor hardware (Lidars, radar, cameras, IMU, etc), handles any formatting and filtering, and publishes that data for our planning subsystem. This subsystem also handles object detection, classification, and tracking. Some types we use here are [`Image`](https://docs.ros.org/en/indigo/api/sensor_msgs/html/msg/Image.html) messages, [`PointCloud2`](https://docs.ros.org/en/indigo/api/sensor_msgs/html/msg/PointCloud2.html) messages, [`Imu`](https://docs.ros.org/en/indigo/api/sensor_msgs/html/msg/Imu.html) messages, and so on. We also produce [`OccupancyGrid`](https://docs.ros2.org/foxy/api/nav_msgs/msg/OccupancyGrid.html) and other [**cost map**](#cost-maps) messages as an insightful tool for path planning.
 
-The **perception** subsystem draws inferences from the sensor data, including the location of pedestrians, our position on the map, and the predicted motion of surrounding vehicles. Nodes in this subsystem often publish their results as [**cost maps**](#cost-maps).
+The **prediction** system uses our perception output to predict future events. We use machine learning models, either pre-trained our trained in-house on our server, to achieve accurate, insightful, and usable prediction data. Some examples of what we'd predict are position of nearby vehicles, parking lot behavior, lane mergers, and pedestrian/VRU actions. 
 
-The **planning** subsystem takes our perception results and decides what our vehicle should do. This subsystem handles both high-level decisions (Should we pass a car that's stopped in the road?) and low-level ones (How far should we press the throttle pedal to reach our desired speed?).
+The **mapping** systems holds any nodes we use for *mapping*, *routing*, and *localization*. We pull geometry from pre-drawn, local map data to output routes, waypoints, and [**cost maps**](#cost-maps) for use by our planning subsystem. While we currently rely on our nifty GNSS RTK hardware for precise localization, we plan to implement Simultaneous Localization and Mapping (SLAM) as an algorithmic solution.
 
-The **interface** subsystem is the link between our software and hardware. It includes nodes that communicate with our steering hardware, our microcontroller, and more. Both the sensing and interface subsystems are **vehicle-specific**, which means that they need to be configured to suite each individual vehicle. At Nova, we have separate configurations for simulated driving and real-world use.
+The **planning** subsystem takes our *perception* and *mapping* results and decides what our vehicle should do. This subsystem handles both high-level decisions (Should we pass a car that's stopped in the road?) and low-level ones (How far should we press the throttle pedal to reach our desired speed?). Our path planner traverses our [**cost maps**](#cost-maps) to form precise trajectories.
+
+The **controls** subsystem is the link between our software and hardware. It includes nodes that communicate with our steering hardware, our microcontroller, and more. Both the *perception* and *controls* subsystems, specifically the nodes in our [vehicle_interface](https://github.com/Nova-UTD/vehicle_interface) repository, are **vehicle-specific**, which means that they need to be configured to suite each individual vehicle. At Nova, we have separate configurations for simulated driving and real-world use.
 
 ## Cost maps
 During execution, Navigator calculates several cost maps, which are grid-based maps of our surrounding area that describe where our car should or should not drive.
