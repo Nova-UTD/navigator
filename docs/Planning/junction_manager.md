@@ -19,3 +19,12 @@ This node controls the behavior of the car in a junction (Intersection). Given a
 ### Publishers
 *   '/grid/stateful_junction' ([OccupancyGrid](https://docs.ros2.org/foxy/api/nav_msgs/msg/OccupancyGrid.html)): Defines the current junction cost
 *   '/node_statuses' ([DiagnosticStatus](https://docs.ros2.org/galactic/api/diagnostic_msgs/msg/DiagnosticStatus.html)): Sends out the diagnostic status of the car
+
+## Methods
+resizeOccupancyGrid(): This method resizes the received occupancy grid to match the expected size and format. It downsamples and trims the grid to ensure it has the correct dimensions.
+
+junctionIsOccupied(): This method checks if a junction is occupied based on the occupancy and junction grids. It erodes both grids to denoise them and then checks for overlap to determine if the junction is occupied.
+
+egoCanEnter(): This method determines if the ego vehicle can enter a junction. It considers various conditions, including if the ego vehicle has recently stopped, if the junction is occupied, and if the joystick button is pressed.
+
+getWeightedArray(): This method converts an OccupancyGrid message into a numpy array and scales it by a given factor, returning the resulting array.
