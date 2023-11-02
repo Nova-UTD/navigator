@@ -74,11 +74,3 @@ Cost maps should be in the `base_link` (vehicle) reference frame. They should ex
 ![Examples of cost maps](assets/res/cost_maps.png)
 
 In the above example, each image is 200 x 150 pixels, representing a cost map layer with a resolution of 0.4 meters/cell. Clockwise from top left: Current occupancy, junction cost (due to a stop sign), route distance, and drivable area.
-
-## Topics
-- `/lidar/fused`: Raw LiDAR fused together to create a 360-degree picture. Otherwise unfiltered.
-- `/lidar/filtered`: Filtered LiDAR, with ground points removed.
-- `/grid/drivable`
-- `/grid/route_distance`
-- `/grid/occupancy/current`: Only the current occupancy grid.
-- `/grid/occupancy/combined`: Both the current and all future prediction occupancy grids, summed together. 
