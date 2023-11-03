@@ -1,12 +1,14 @@
 ---
-Layout: default
-Title: Junction Manager
-Parent: Perception
+layout: default
+title: Lidar Processor
+nav_order: 2
+parent: Perception
 ---
-# \<Dual lidar processing node\> 
+
+# Lidar processing node
 
 
-Maintained by Nova(Vindhya Kaushal)
+Maintained by Nova
 
 ## Overview
 
