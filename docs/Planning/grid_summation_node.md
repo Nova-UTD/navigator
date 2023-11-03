@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Grid Summation
-nav_order: 1
+nav_order: 2
 parent: Planning
 ---
 

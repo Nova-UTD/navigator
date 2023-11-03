@@ -1,6 +1,8 @@
 ---
 layout: default
 title: Junction Manager
+nav_order: 3
+parent: Planning
 ---
 
 # Junction Manager
