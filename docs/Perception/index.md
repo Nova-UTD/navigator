@@ -12,14 +12,15 @@ has_children: true
 
 ---
 
-The perception component of the system takes the data from various sensors and extracts meaningful information for downstream components such as planning.
+## The perception subsystem of Navigator takes the data from various sensors and extracts meaningful information for downstream components.
 
-Some of the tasks that are core parts of the perception include, but not limited to:
-- Localization and state estimation
+Some of the tasks that are core parts of perception include, but are not limited to:
+- LiDAR/Camera/Radar/GNSS processing and transformaation
 - Obstacle and scene classifiation
-- Obstacle tracking and prediction
+- Obstacle tracking
+- Occupancy grid production
 
-In this page we will go each individual packages that is part of the perception component. A lot of the packages within perception are "in-progress" just as with most other packages within our system. As this project progresses, we will update the existing packages as well as add new ones to meet the growing demands of our autonomous system.
+Each section here is an individual node within our perception component. Many of the packages/nodes within perception are "in-progress". As Navigator progresses, we will update, add, or remove documentation.
 
 
 
