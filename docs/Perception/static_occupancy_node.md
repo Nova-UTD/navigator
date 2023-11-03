@@ -1,17 +1,17 @@
 ---
 layout: default
-title: Node Template
+title: Static Occupancy
 nav_order: 2
 parent: Perception
 ---
 
-# static_occupancy_node
+# Static Occupancy Node
 {: .no_toc }
 
 *Maintained by Nova*
 
 ## Overview
-The `StaticOccupancyNode` is a ROS 2 node responsible for generating static occupancy and mass grids based on ground-segmented pointclouds provided by the 
+The `StaticOccupancyNode` is responsible for generating static occupancy and mass grids based on ground-segmented pointclouds provided by the 
 [`ground_segmentation_node`](https://github.com/jpahm/navigator/blob/documentation/docs/Perception/ground_segmentation_node.md). 
 These grids are then consumed by the 
 [`junction_manager`](https://github.com/jpahm/navigator/blob/documentation/docs/Planning/junction_manager.md) 
@@ -20,7 +20,7 @@ and the
 for planning purposes.
 
 The **occupancy grid** is generated using 
-[Dempster-Shafer Theory (DST)](https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory) 
+[Dempster-Shafer Theory (DST)](https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory) and [Bresenhaum's Line Algorithm](https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm)
 with a process which roughly consists of three steps:
 - Ray-tracing free space toward occupied space
 - Filling the remaining grid with free space, also using ray-tracing
@@ -41,58 +41,58 @@ occupied and free probability values obtained via generation of the mass grid.
 
 ### Out:
 - **/grid/occupancy/current** [*OccupancyGrid*](https://docs.ros2.org/galactic/api/nav_msgs/msg/OccupancyGrid.html)
-- **/grid/masses** [*Masses*](https://github.com/Nova-UTD/navigator/blob/documentation/src/msg/navigator_msgs/msg/Masses.msg)
+- **/grid/masses** [*Masses*](../messages.md#masses)
 
 ---
 
-### `void createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &cloud)`
+### `createOccupancyGrid(pcl::PointCloud<pcl::PointXYZI> &cloud)`
 Returns a grid using [Dempster-Shafer Theory (DST)](https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory) by performing the following steps:
 1. Ray-traces free space towards recorded points (occupied space)
 2. Fills the rest of the grid with free space using same ray-tracing algorithms (can combine steps 1 and 2?)
 3. Adds occupied space representing the vehicle
 
-### `void add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> &cloud)`
+### `add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> &cloud)`
 Fills and adds points to the DST grid by projecting the pcl points onto the 2D occupancy grid.
 
-### `void add_free_spaces_to_the_DST()`
+### `add_free_spaces_to_the_DST()`
 Adds unoccupied spaces to the DST using ray tracing.
 
-### `void addEgoMask()`
+### `addEgoMask()`
 Adds the vehicle shape to the occupied/unoccupied zones.
 
-### `void publishOccupancyGrid()`
+### `publishOccupancyGrid()`
 Publishes the occupancy and mass grids based on the current probabilities generated via DST.
 
-### `void update_previous()`
+### `update_previous()`
 Sets the "previous" occupied and free zones to the values of the current occupied and free zones.
 
-### `void mass_update()`
+### `mass_update()`
 Updates the current grids with the previous grid values, applied with a decay factor.
 
-### `void update_of()`
+### `update_of()`
 Updates the current probabilities using a [Bayes filter](https://en.wikipedia.org/wiki/Recursive_Bayesian_estimation),
 taking into account both measured and predicted probability values.
 
 ### `std::vector<std::vector<float>> getGridCellProbabilities()`
 Computes the average of the updated occupancy and free values and returns the resulting cell probabilities.
 
-### `void ray_tracing_approximation_y_increment(int x2, int y2, int flip_x, int flip_y, bool inclusive)`
+### `ray_tracing_approximation_y_increment(int x2, int y2, int flip_x, int flip_y, bool inclusive)`
 Performs approximate raytracing from the origin to the given x2 and y2 coordinates, incrementing the origin y coordinate according to a slope error given by the distance between the starting and ending y coordinates. Optionally includes the destination coordinate.
 
-### `void ray_tracing_approximation_x_increment(int x2, int y2, int flip_x, int flip_y, bool inclusive)`
+### `ray_tracing_approximation_x_increment(int x2, int y2, int flip_x, int flip_y, bool inclusive)`
 Performs approximate raytracing from the origin to the given x2 and y2 coordinates, incrementing the origin x coordinate according to a slope error given by the distance between the starting and ending x coordinates. Optionally includes the destination coordinate.
 
-### `void ray_tracing_vertical(int x2)`
+### `ray_tracing_vertical(int x2)`
 Performs vertical raytracing along the positive vertical direction (+x), tracing from the origin to the given point.
 
-### `void ray_tracing_vertical_n(int x1)`
+### `ray_tracing_vertical_n(int x1)`
 Performs vertical raytracing along the negative vertical direction (-x), tracing from the given point to the origin.
 
-### `void ray_tracing_horizontal(int y2)`
+### `ray_tracing_horizontal(int y2)`
 Performs horizontal raytracing along the positive horizontal direction (+y), tracing from the origin to the given point.
 
-### `void ray_tracing_horizontal_n(int y1)`
+### `ray_tracing_horizontal_n(int y1)`
 Performs horizontal raytracing along the negative horizontal direction (-y), tracing from the given point to the origin.
 
-### `void clear()`
+### `clear()`
 Clears the occupied and free zones.
