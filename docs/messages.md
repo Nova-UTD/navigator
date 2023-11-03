@@ -9,6 +9,8 @@ nav_order: 2
 
 Maintained by Daniel Vayman, last updated November 2nd, 2023
 
+## [Here's a link](https://github.com/Nova-UTD/navigator/tree/dev/src/msg/navigator_msgs/msg) to our custom messages directory within Navigator if you need more details.
+
 ### BoundingBox3D
 - [Pose](https://docs.ros2.org/latest/api/geometry_msgs/msg/Pose.html)
 - [Point](https://docs.ros2.org/latest/api/geometry_msgs/msg/Point.html)
