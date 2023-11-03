@@ -117,14 +117,14 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 - Trajectories ([Trajectory](#trajectory)[])
 
 ### VehicleControl
-- Header
-- Throttle [0., 1.]
-- Steer [-1., 1.]
-- Brake [0., 1.]
-- ~~Hand Brake (0/1)~~
-- Reverse (0/1)
-- ~~Gear~~
-- ~~Manual Gear Shift (0/1)~~
+- [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- Throttle (float) [0., 1.]
+- Steer (float) [-1., 1.]
+- Brake (float) [0., 1.]
+- ~~Hand Brake (bool)~~
+- Reverse (bool)
+- ~~Gear (int)~~
+- ~~Manual Gear Shift (bool)~~
 
 ### VehicleSpeed
 - [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
