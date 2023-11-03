@@ -1,18 +1,131 @@
 ---
 layout: default
-title: Message Types
-nav_order: 9
+title: Navigator Messages
+nav_order: 2
 ---
 
-# Custom ROS Message Types for Navigator
+# Navigator's Custom ROS Messages
 {: .no_toc }
 
-*Maintained by Nova*
+Maintained by Daniel Vayman, last updated November 2nd, 2023
 
-### Message type 1
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
-blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+### BoundingBox3D
+- [Pose](https://docs.ros2.org/latest/api/geometry_msgs/msg/Pose.html)
+- [Point](https://docs.ros2.org/latest/api/geometry_msgs/msg/Point.html)
+- [Vector3](https://docs.ros2.org/galactic/api/geometry_msgs/msg/Vector3.html)
 
-### Message type 2
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
-blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+### CarlaGnssRoute
+- Road Options [VOID (-1), LEFT (1), RIGHT (2), STRAIGHT (3), LANEFOLLOW (4), CHANGELANELEFT (5), CHANGELANERIGHT (6)]
+- Coordinates ([NavSatFix](https://docs.ros2.org/latest/api/sensor_msgs/msg/NavSatFix.html))
+
+### CarlaRoute
+- Road Options [VOID (-1), LEFT (1), RIGHT (2), STRAIGHT (3), LANEFOLLOW (4), CHANGELANELEFT (5), CHANGELANERIGHT (6)]
+- Coordinates ([Pose](https://docs.ros2.org/latest/api/geometry_msgs/msg/Pose.html))
+
+### CarlaSpeedometer
+- [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- Speed (float)
+
+### CostedPath
+- Points ([Point](https://docs.ros2.org/latest/api/geometry_msgs/msg/Point.html))
+- Safety Cost (float)
+- Routing Cost (float)
+
+### CostedPaths
+- [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- Paths ([CostedPath](#costedpath)[])
+
+### Egma (Evidential Grid Map Array)
+- Egma ([OccupancyGrid](https://docs.ros2.org/foxy/api/nav_msgs/msg/OccupancyGrid.html))
+- [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- Goal Point ([Point](https://docs.ros2.org/latest/api/geometry_msgs/msg/Point.html))
+
+### FinalPath
+- Points ([Point](https://docs.ros2.org/latest/api/geometry_msgs/msg/Point.html)[])
+- Speeds (float[])
+
+### GPSDiagnostic
+- Nano (int)
+- GPS Fix (uint)
+- Valid Date (bool)
+- Valid Time (bool)
+- Fully Resolved (bool)
+- GPS Fix Ok (bool)
+- Diff Soln (bool)
+- Wknset (bool)
+- Towset (bool)
+- Head Veh Valid (bool)
+
+### Masses
+- [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- Occupied cells (float[])
+- Free cells (float[])
+- Width (int)
+- Height (int)
+
+### Mode
+- Mode [Disabled (0), Manual (1), Auto (2)]
+
+### Obstacle3D
+- Label [CAR (0), BIKE (1), PEDESTRIAN (2), OTHER (99)]
+- ID (int)
+- Confidence (float) [0, 1]
+- Velocity ([Vector3](https://docs.ros2.org/galactic/api/geometry_msgs/msg/Vector3.html))
+- Bounding Box [BoundingBox3D](#boundingbox3d)
+
+### Obstacle3DArray
+- [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- Obstacles ([Obstacle3D](#obstacle3d)[])
+
+### PedalPosition
+- Data (float) [0.0, 1.0] *1.0 is fully depressed*
+
+### PolygonArray
+- [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- Polygons ([Polygon](https://docs.ros2.org/latest/api/geometry_msgs/msg/Polygon.html)[])
+### Prediction
+- Prediction ([OccupancyGrid](https://docs.ros2.org/foxy/api/nav_msgs/msg/OccupancyGrid.html)[])
+
+### RadarSpotlight
+- [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- Track ID (int)
+- Amplitude (float)
+
+### RouteCost
+- Lane ID (int)
+- Cost (float)
+
+### RouteCosts
+- [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- Costs ([RouteCost](#routecost)[])
+
+### SteeringPosition
+- Data (float) [.78, -.78] *radians*
+
+### TrajectoryPoint
+- X (float)
+- Y (float)
+- vx (float)
+- vy (float)
+
+### Trajectory
+- ID (uint)
+- Selected (uint)
+- Points ([TrajectoryPoint](#trajectorypoint)[])
+
+### Trajectories
+- Trajectories ([Trajectory](#trajectory)[])
+
+### VehicleControl
+- Header
+- Throttle [0., 1.]
+- Steer [-1., 1.]
+- Brake [0., 1.]
+- ~~Hand Brake (0/1)~~
+- Reverse (0/1)
+- ~~Gear~~
+- ~~Manual Gear Shift (0/1)~~
+
+### VehicleSpeed
+- [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- Speed (float)
