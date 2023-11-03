@@ -1,17 +1,17 @@
 ---
 layout: default
-title: GnssInterfaceNode
+title: Gnss Interface
 nav_order: 1
 parent: Perception
 ---
 
-# gnss_interface_node
+# GNSS Interface Node
 {: .no_toc }
 
 *Maintained by Nova*
 
 ## Overview
-The `GnssInterfaceNode` is a ROS 2 node responsible for interfacing with a GNSS (Global Navigation Satellite System) receiver in a robotic or autonomous system. It reads GNSS data, processes it, and publishes critical information in the form of ROS messages. These messages include vehicle speed, diagnostic status, odometry (position and velocity), and GNSS position data (latitude, longitude, and altitude). The node ensures that the GNSS data is accurately integrated into the ROS 2 ecosystem, enabling other components and nodes to utilize this information for navigation and situational awareness.
+The `GnssInterfaceNode` is responsible for interfacing with our GNSS (Global Navigation Satellite System) RTK receiver on Hail Bopp. It reads GNSS data, processes it, and publishes critical information. These messages include vehicle speed, diagnostic status, odometry (position and velocity), and GNSS position data (latitude, longitude, and altitude).
 
 ---
 
@@ -20,7 +20,7 @@ The `GnssInterfaceNode` is a ROS 2 node responsible for interfacing with a GNSS 
   - This message provides the current time. The node subscribes to this topic and updates its internal clock based on this message.
 
 ### Out:
-- **/speed** [*VehicleSpeed*](https://github.com/Nova-UTD/navigator/blob/dev/src/msg/navigator_msgs/msg/VehicleSpeed.msg)
+- **/speed** [*VehicleSpeed*](../messages.md#vehiclespeed)
   - This message represents the vehicle's speed. The node publishes this message to the /speed topic, giving the current speed of the vehicle based on GNSS data for other nodes to use.
 - **/node_statuses** [*DiagnosticStatus*](https://docs.ros2.org/galactic/api/diagnostic_msgs/msg/DiagnosticStatus.html)
   - This message provides diagnostic status information about the node. It includes details about the node's health and status.
