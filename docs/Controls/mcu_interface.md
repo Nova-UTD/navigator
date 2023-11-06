@@ -11,13 +11,13 @@ parent: Controls
 *Maintained by Nova*
 
 ## Overview
-Serves as our interface between Navigator (ROS) and our Adafruit Grand Central M4 microcontroller (MCU). `vehicle/control` messages are parsed and converted into throttle messages to be sent via serial.
+Serves as our interface between Navigator (ROS) and our Adafruit Grand Central M4 microcontroller (MCU). [`vehicle/control`](../messages.md#vehiclecontrol) messages are parsed and converted into throttle messages to be sent via serial.
 
 ---
 
 ### In:
-- **vehicle_command_sub** *VehicleControl*
-- **current_mode_sub** *Mode*
+- **/carla/hero/vehicle_control_cmd** [*VehicleControl*](../messages.md#vehiclecontrol)
+- **/guardian/mode** [*Mode*](../messages.md#mode)
 
 ### Out:
 - Serial: Throttle \[0, 0.8\]
@@ -25,10 +25,8 @@ Serves as our interface between Navigator (ROS) and our Adafruit Grand Central M
 
 ---
 
-### Individual Function 1
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
-blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+### main(args=None)
+Other than initializing the ROS node, it attempts to establish a serial connection to the MCU
 
-### Individual Function 2
-blabla bla bla blabla blablabla blabla bla bla blabla blablablablabla bla bla blabla blablabla
-blabla bla bla blabla blablabla blabla bla bla blabla blablabla
+### publishCommand(self)
+Using an inputted throttle command via the */carla/hero/vehicle_control_cmd* topic, it parses, encodes, and writes the throttle value into serial. The format we use is `"s{throttle}e\r"`
