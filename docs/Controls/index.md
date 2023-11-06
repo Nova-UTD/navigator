@@ -12,8 +12,6 @@ has_children: true
 
 ---
 
-## Our controls subsystem is the final step of Navigator. The controller inputs a trajectory from our [planning subsystem]() and outputs to 
+## Our controls subsystem is the final subsystem of Navigator. The controller inputs a trajectory from our [planning subsystem](../Planning/index.md) and outputs to our vehicle actuation nodes which interface with our hardware.
 
- subsystem takes real-time *perception* and *mapping* data and determines what our vehicle should do. 
-
-Our planning architecture relies on a unique layering of [cost maps](../system-overview.md#cost-maps) to traverse a representation of our environment and produce a "cost-effective" trajectory which ultimately translates to real-world actuation.
+Our controller takes into consideration the physical constraints of our vehicle (speed, acceleration, turn radius, braking strength) and outputs appropriate actuation commands to correct for any gaps between planned trajectory and vehicle driving capability while still staying on target.

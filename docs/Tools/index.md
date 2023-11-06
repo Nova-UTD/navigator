@@ -12,6 +12,4 @@ has_children: true
 
 ---
 
-
-
-
+## The tools section holds any nodes we consider "tools." Many of these are helpers. Some are for debugging/testing. Others are third-party services we use that aren't related to central navigator functionality.
