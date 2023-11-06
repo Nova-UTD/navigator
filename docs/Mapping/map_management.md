@@ -1,11 +1,11 @@
 ---
 layout: default
-title: map_management_node
+title: Map Management
 nav_order: 2
 parent: Mapping
 ---
 
-# Map Management
+# Map Management Node
 {: .no_toc }
 
 *Maintained by Nova*
@@ -16,15 +16,15 @@ Routinely publishes a `drivable_grid` and `junction_grid` that is centered aroun
 ---
 
 ### In:
-- **clock_sub** [*Clock*](https://docs.ros2.org/galactic/api/rosgraph_msgs/msg/Clock.html)
-- **clicked_point_sub_** [*PointStamped*](https://docs.ros2.org/latest/api/geometry_msgs/msg/PointStamped.html)
-- **world_info_sub** *CarlaWorldInfo*
+- **/clock** [*Clock*](https://docs.ros2.org/galactic/api/rosgraph_msgs/msg/Clock.html)
+- **/clicked_point** [*PointStamped*](https://docs.ros2.org/latest/api/geometry_msgs/msg/PointStamped.html)
+- **/carla/world_info** *CarlaWorldInfo*
 
 ### Out:
-- **drivable_grid_pub_** [*OccupancyGrid*](https://docs.ros2.org/foxy/api/nav_msgs/msg/OccupancyGrid.html)
-- **junction_grid_pub_** [*OccupancyGrid*](https://docs.ros2.org/foxy/api/nav_msgs/msg/OccupancyGrid.html)
-- **route_path_pub_** [*Path*](https://docs.ros2.org/latest/api/nav_msgs/msg/Path.html)
-- **goal_pose_pub_** [*PoseStamped*](https://docs.ros2.org/latest/api/geometry_msgs/msg/PoseStamped.html)
+- **/grid/drivable** [*OccupancyGrid*](https://docs.ros2.org/foxy/api/nav_msgs/msg/OccupancyGrid.html)
+- **/grid/junction** [*OccupancyGrid*](https://docs.ros2.org/foxy/api/nav_msgs/msg/OccupancyGrid.html)
+- **/planning/smoothed_route** [*Path*](https://docs.ros2.org/latest/api/nav_msgs/msg/Path.html)
+- **/planning/goal_pose** [*PoseStamped*](https://docs.ros2.org/latest/api/geometry_msgs/msg/PoseStamped.html)
 
 ---
 
@@ -39,3 +39,5 @@ Once a route is requested and the `route_linestring_` variable is defined, this 
   - If yes, find out if it is within the actual lane, not just its bounding box. R-trees only calculate for bounding boxes.
     - If yes again, the cell is truly occupied. Append '100' ("occupied") to OccupancyGrid. Otherwise '0'.
 - Set OccupancyGrid metadata and return.
+
+## *CURRENTLY BEING ABSTRACTED TO SMALLER NODES*
