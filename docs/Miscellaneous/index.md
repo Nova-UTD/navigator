@@ -12,6 +12,4 @@ has_children: true
 
 ---
 
-
-
-
+## This section holds any nodes that don't fit into any particular subsystem. These nodes can have roles in diagnostics, safety, infrastructure management, visualization, etc.

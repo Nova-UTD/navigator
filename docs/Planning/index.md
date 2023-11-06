@@ -12,8 +12,8 @@ has_children: true
 
 ---
 
-## The planning subsystem takes real-time *perception* and *mapping* data and determines what our vehicle should do. 
+## The planning subsystem takes real-time [*perception*](../Perception/index.md) and [*mapping*](../Mapping/index.md) data and determines what our vehicle should do. 
 
-Our planning architecture relies on a unique layering of [cost maps](../system-overview.md#cost-maps) to traverse a representation of our environment and produce a "cost-effective" trajectory which ultimately translates to real-world actuation.
+Our planning architecture relies on a unique layering of [cost maps](../system-overview.md#cost-maps) to traverse a representation of our environment and produce a "cost-effective" trajectory which eventually translates to real-world actuation.
 
 
