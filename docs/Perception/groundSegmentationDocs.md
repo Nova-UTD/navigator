@@ -1,11 +1,11 @@
 ---
 layout: default
-title: Ground Segementation Node
+title: Ground Segmentation
 nav_order: 1
 parent: Perception
 ---
 
-# \<Node Title\>
+# Ground Segmentation Node
 {: .no_toc }
 
 *Maintained by Nova*
@@ -17,10 +17,13 @@ The code establishes a ROS node which processes LiDAR input, removes ground poin
 
 ### In:
 
-- **clock_sub** [*Clock*] (https://docs.ros2.org/bouncy/api/rclcpp/classrclcpp_1_1_clock.html)
+- **/clock** [*Clock*](https://docs.ros2.org/bouncy/api/rclcpp/classrclcpp_1_1_clock.html)
 
- **raw_lidar_sub** [*PointCloud2*](https://docs.ros2.org/latest/api/sensor_msgs/msg/PointCloud.html)
+- **/lidar** [*PointCloud2*](https://docs.ros2.org/latest/api/sensor_msgs/msg/PointCloud.html)
 
 ### Out:
 
-- **filtered_lidar_pub** [*PointCloud2*](https://docs.ros2.org/latest/api/sensor_msgs/msg/PointCloud.html)
+- **/lidar/filtered** [*PointCloud2*](https://docs.ros2.org/latest/api/sensor_msgs/msg/PointCloud.html)
+
+---
+
