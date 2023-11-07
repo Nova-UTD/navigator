@@ -3,7 +3,7 @@ layout: default
 ---
 
 {: .fs-6 }
-Navigator is a simple, extensible, and open-source autonomous driving framework.
+Navigator is a simple, end-to-end, and open-source autonomous driving framework.
 
 [System overview](/navigator/system-overview){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 } [View it on GitHub](https://github.com/nova-utd/navigator){: .btn .fs-5 .mb-4 .mb-md-0 }
 
@@ -24,105 +24,92 @@ Navigator is our answer to this delimma. It's built on standard technologies, is
 > Note: Lines with "$" are on host, while lines with "#" are within the container.
 
 1. [Install Docker](https://www.docker.com/get-started/). 
-> Note: Docker is already installed on the quad.
+> Nova Members: Docker is already installed on the Quad.
+
 2. Choose a number between 0-100 and use this for your user-wide ROS_DOMAIN_ID environment variable. Add the following line to your `.bashrc` file 
 ```
 export ROS_DOMAIN_ID=57
 ```
-3. Clone our repository
+3. Clone our repository (checkout the `dev` branch if you plan to do development, or `main` if you want the most recently release)
 ```
-$ git clone --recursive https://github.com/Nova-UTD/navigator
+$ git clone -b dev git@github.com:Nova-UTD/navigator.git
 $ cd navigator
 ```
+> Any contributor: If simply running the stack is the goal, then checking out `dev` or `main` can make sense. If you aim to contribute, you should create your own fork of the `dev` branch and check that repository out instead. More details about contributing [can be found here](contributing/contributing-overview.md).
+
 4. Build our Docker container. The sequence of commands used to build the container is given in the `Dockerfile` file and the build and run parameters are specified in the `docker-compose.yml` file.
-> Note: A Docker image for Navigator already exists on the Quad, so there is no need to rebuild it (unless you've changed it!).
 ```
 $ docker compose build navigator
 ```
-5. Run the Docker image.
+> Nova Members: A Docker image for Navigator already exists on the Quad, so there is no need to rebuild it (unless you've changed it!).
+> Other Users: Some customization of the `docker-compose.yml` file may be needed to link it up with your installation of Carla. You should be able to build the image without doing that first.
+
+5. Run the Docker image. Here we are specifically launching the container so it is configured to run with the CARLA simulator:
 ```
-$ docker compose run navigator
-```
-which gives:
-```
-[username]@justingpu:~/navigator$ ./docker.sh 
-=====================================================================
-▀█▄   ▀█▀                   ██                    ▄                   
- █▀█   █   ▄▄▄▄   ▄▄▄▄ ▄▄▄ ▄▄▄    ▄▄▄ ▄  ▄▄▄▄   ▄██▄    ▄▄▄   ▄▄▄ ▄▄  
- █ ▀█▄ █  ▀▀ ▄██   ▀█▄  █   ██   ██ ██  ▀▀ ▄██   ██   ▄█  ▀█▄  ██▀ ▀▀ 
- █   ███  ▄█▀ ██    ▀█▄█    ██    █▀▀   ▄█▀ ██   ██   ██   ██  ██     
-▄█▄   ▀█  ▀█▄▄▀█▀    ▀█    ▄██▄  ▀████▄ ▀█▄▄▀█▀  ▀█▄▀  ▀█▄▄█▀ ▄██▄    
-                                ▄█▄▄▄▄▀                               
-=====================================================================
-Developed by Nova, a student-run autonomous driving group at UT Dallas
-Find out more at https://nova-utd.github.io/navigator
-🐢 Sourcing ROS2 Humble...
-🧭 Sourcing Navigator...
-❗ Finished environment setup
-root@justingpu:/navigator# 
-```
-4.  Now that you're in the container, build the navigator ROS workspace:
-```
-$ colcon build --symlink-install
-``` 
-That's it!
-> Note that if you've build the workspace outside the container or want to start with a fresh build, you can delete the `build` and `install` directories and call `colcon build` with the following extra flag:
-```
-$ rm -r -f build
-$ rm -r -f install
-$ colcon build --symlink-install --cmake-clean-cache
+$ docker compose run navigator_carla
 ```
 
+6.  Now that you're in the container, build the navigator ROS workspace:
+```
+# colcon build --symlink-install
+``` 
+That's it!
+> Note that if you've build the workspace outside the container or want to start with a fresh build, you can delete the `build`, `install`, and `log` directories and call `colcon build` with the following extra flag:
+```
+# rm -r -f build
+# rm -r -f install
+# colcon build --symlink-install --cmake-clean-cache
+```
 
 ## CARLA Simulator
 1. Make sure you've installed Navigator using the steps above.
-2. On the host, start CARLA: `./CarlaUE4.sh` See the [CARLA docs](https://carla.readthedocs.io/en/latest/start_quickstart/#running-carla) for more info.
-> Note: On the Quad, CARLA is installed at `/home/share/carla/`, so you can add an alias to the `.bashrc` file with the line `alias runcarla="/home/share/carla/CarlaUE4.sh"`.
+2. On the host, start CARLA: `./CarlaUE4.sh` See the [CARLA docs](https://carla.readthedocs.io/en/latest/start_quickstart/#running-carla) for more info. Note that CARLA runs natively on the host, while Navigator and the CARLA-ROS2 bridge run in (separate) containers. Currently it is standard for Carla to output the following, which looks a bit like an error, but is fine:
+```
+chmod: changing permissions of '/home/share/carla/CarlaUE4/Binaries/Linux/CarlaUE4-Linux-Shipping': Operation not permitted
+4.26.2-0+++UE4+Release-4.26 522 0
+Disabling core dumps.
+```
+> Nova Members: On the Quad, CARLA is installed at `/home/share/carla/`, so you can add an alias to the `.bashrc` file with the line `alias runcarla="/home/share/carla/CarlaUE4.sh"`. The preferred way to interact with the simulator is to run it offline and also on a unique port. You can add the following lines to your `.bashrc` file to make this the default (notice that this uses your ROS_DOMAIN_ID to make the port unique):
+```
+export CARLA_PORT=$(($ROS_DOMAIN_ID+2000))
+alias runcarla="/home/share/carla/CarlaUE4.sh -carla-rpc-port=$CARLA_PORT -RenderOffScreen"
+```
 
 ### CARLA-ROS2 Bridge
 The current CARLA-ROS2 bridge, that allows ROS to communicate with the CARLA simulator is compatible with ROS2 Foxy, not the ROS2 Humble we use for Navigator.  We use a second Docker container to run the CARLA-ROS2 bridge.
-3. The `Dockerfile` and `docker-compose.yml` for the CARLA-ROS2 bridge container is located in `navigator/docker/carla-ros-bridge`. Navigate to this directory and build this Docker image:
+
+3. The docker files and ROS packages that act as the interface between Navigator and CARLA are located in the `carla_interface` repository. Clone this repository using a new terminal window:
+```
+$ git clone -b dev git@github.com:Nova-UTD/carla_interface.git
+$ cd carla_interface
+```
+
+4. Similar to Navigator, the `Dockerfile` and `docker-compose.yml` files in the repository let you build the image:
 ```
 $ docker compose build carla_bridge
 ```
-> Note: The Quad should already have an image for this Docker container built.
-4. Run the Docker container:
+> Nova Members: The Quad should already have an image for this Docker container built.
+
+5. Run the Docker container:
 ```
 $ docker compose run carla_bridge
 ```
-The `entrypoint.sh` script sources ROS2 (Foxy) and sets environment variables needed for the bridge.
+The `entrypoint.sh` script (in the `/docker` directory) sources ROS2 (Foxy) and sets environment variables needed for the bridge.
 
 ### Launching a Demo
-5. The bridge can be run using the following line within the CARLA-ROS2 bridge container:
+Launching a demo requires three terminal windows. Recall `$` are commands run on the host and `#` are commands run in a container.
+1. In the first terminal window, launch Carla using `runcarla` (assumes you set up the alias described above).
+2. In the second terminal window, run the CARLA-ROS2 bridge container (should be in the `carla_interface` respository root directory) and then launch the carla interface nodes:
 ```
-# ros2 launch carla_ros_bridge carla_ros_bridge.launch.py
+$ docker compose run carla_interface
+# ros2 launch launch.carla_interface.py
 ```
-6. Run the following commands to start our system and connect it to CARLA:
+3. In the third terminal window, run the Navigator container (should be in the `navigator` respository root directory) and then launch the Navigator stack:
 ```
-$ ./docker.sh
-...
-root@yourhost:/navigator# ./navigator
-root@yourhost:/navigator# ros2 launch carla_interface carla.launch.py
+$ docker compose run navigator_carla
+# ros2 launch launch.carla.py
 ```
-This should start a series of ROS nodes, spawning an ego vehicle in the simulator along with a number of sensors:
-```
-[INFO] [launch]: All log files can be found below /root/.ros/log/2022-11-05-01-09-18-915839-justingpu-55
-[INFO] [launch]: Default logging verbosity is set to INFO
-[WARNING] [launch_ros.actions.node]: Parameter file path is not a file: /navigator/param/planning/motion_planner.param.yaml
-[INFO] [unified_controller_node-1]: process started with pid [57]
-[INFO] [sim_bridge_node-2]: process started with pid [59]
-[INFO] [ukf_node-3]: process started with pid [61]
-...
-```
-7. Visualize the output by starting Rviz2. You can run Rviz2 directly from a second container instance:
-```
-$ xhost + # Authorize Docker to launch GUI programs
-$ ./docker.sh
-...
-root@yourhost:/navigator# rviz2
-```
+> Note: The node definitions for the Navigator launch script are located in the file `launch_node_definitions.py`.
 
 ## Real-world use
 To run in the real-world, you'll need to provide your own LiDAR stream, map data, and throttle/brake/steering interface. We provide our own interface, for use with our specific hardware, as an example.
-
-To use, run `./docker.sh` to enter the container, then source Navigator with `. install/setup.bash`, and finally launch the real-world script with `ros2 launch main.launch.py`. If you haven't built the workspace yet, run `colcon build --symlink-install` after sourcing.

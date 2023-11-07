@@ -2,20 +2,12 @@
 layout: default
 title: Tricks
 nav_order: 5
+parent: Contributing
 ---
 
 # Tricks
 
 {: .no_toc }
-
-_Maintained by Nova members_
-
-## Table of contents
-
-{: .no_toc .text-delta }
-
-1. TOC
-   {:toc}
 
 ---
 
