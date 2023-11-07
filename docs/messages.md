@@ -9,7 +9,7 @@ nav_order: 2
 
 Maintained by Daniel Vayman, last updated November 2nd, 2023
 
-## [Here's a link](https://github.com/Nova-UTD/navigator/tree/dev/src/msg/navigator_msgs/msg) to our custom messages directory within Navigator if you need more details.
+## [Here's a link](https://github.com/Nova-UTD/navigator/tree/dev/src/msg/navigator_msgs/msg) to our custom messages directory within Navigator if you need all the details.
 
 ### BoundingBox3D
 - [Pose](https://docs.ros2.org/latest/api/geometry_msgs/msg/Pose.html)
@@ -17,11 +17,13 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 - [Vector3](https://docs.ros2.org/galactic/api/geometry_msgs/msg/Vector3.html)
 
 ### CarlaGnssRoute
-- Road Options [VOID (-1), LEFT (1), RIGHT (2), STRAIGHT (3), LANEFOLLOW (4), CHANGELANELEFT (5), CHANGELANERIGHT (6)]
+- Road Options
+  - VOID (-1), LEFT (1), RIGHT (2), STRAIGHT (3), LANEFOLLOW (4), CHANGELANELEFT (5), CHANGELANERIGHT (6)
 - Coordinates ([NavSatFix](https://docs.ros2.org/latest/api/sensor_msgs/msg/NavSatFix.html))
 
 ### CarlaRoute
-- Road Options [VOID (-1), LEFT (1), RIGHT (2), STRAIGHT (3), LANEFOLLOW (4), CHANGELANELEFT (5), CHANGELANERIGHT (6)]
+- Road Options
+  - VOID (-1), LEFT (1), RIGHT (2), STRAIGHT (3), LANEFOLLOW (4), CHANGELANELEFT (5), CHANGELANERIGHT (6)
 - Coordinates ([Pose](https://docs.ros2.org/latest/api/geometry_msgs/msg/Pose.html))
 
 ### CarlaSpeedometer
@@ -66,12 +68,15 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 - Height (int)
 
 ### Mode
-- Mode [Disabled (0), Manual (1), Auto (2)]
+- Mode
+  - Disabled (0), Manual (1), Auto (2)
 
 ### Obstacle3D
-- Label [CAR (0), BIKE (1), PEDESTRIAN (2), OTHER (99)]
+- Label
+  - CAR (0), BIKE (1), PEDESTRIAN (2), OTHER (99)
 - ID (int)
-- Confidence (float) [0, 1]
+- Confidence (float)
+  - [0, 1]
 - Velocity ([Vector3](https://docs.ros2.org/galactic/api/geometry_msgs/msg/Vector3.html))
 - Bounding Box [BoundingBox3D](#boundingbox3d)
 
@@ -80,7 +85,8 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 - Obstacles ([Obstacle3D](#obstacle3d)[])
 
 ### PedalPosition
-- Data (float) [0.0, 1.0] *1.0 is fully depressed*
+- Data (float)
+  - [0.0, 1.0] *1.0 is fully depressed*
 
 ### PolygonArray
 - [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
@@ -102,7 +108,8 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 - Costs ([RouteCost](#routecost)[])
 
 ### SteeringPosition
-- Data (float) [.78, -.78] *radians*
+- Data (float)
+  - [.78, -.78] *radians*
 
 ### TrajectoryPoint
 - X (float)
@@ -120,9 +127,12 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 
 ### VehicleControl
 - [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
-- Throttle (float) [0., 1.]
-- Steer (float) [-1., 1.]
-- Brake (float) [0., 1.]
+- Throttle (float)
+  - [0., 1.]
+- Steer (float)
+  - [-1., 1.]
+- Brake (float)
+  - [0., 1.]
 - ~~Hand Brake (bool)~~
 - Reverse (bool)
 - ~~Gear (int)~~
