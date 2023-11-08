@@ -23,10 +23,12 @@ Adding to the site is easy. Here are two good options:
 To test locally, cd into `/docs` and run 
 
 ```text
-docker run --rm --volume="$PWD:/srv/jekyll:Z" -p 8083:8083 jekyll/jekyll jekyll serve --port 8083
+./docs.sh
 ```
+*This build script won't run unless you're exporting a* [``ROS_DOMAIN_ID``](../index.md#installation) *environment variable.*
 
- Use a browser to view `localhost:8083`. Refresh the page to show the latest updates. See the [official Docker README](https://github.com/envygeeks/jekyll-docker/blob/master/README.md) for more info.
+
+ Use a browser to view `localhost:(8000 + ROS_DOMAIN_ID)`. Refresh the page to show the latest updates. See the [official Docker README](https://github.com/envygeeks/jekyll-docker/blob/master/README.md) for more info.
 
 ## Editing online
 On GitHub, move to the `/docs` directory on the `dev` branch ([here](https://github.com/Nova-UTD/navigator/tree/dev/docs)), then press the period key on your keyboard. This will open GitHub's web editor. See [here](https://code.visualstudio.com/Docs/languages/markdown#_markdown-preview) for more info.
