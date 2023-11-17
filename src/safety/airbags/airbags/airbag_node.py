@@ -7,7 +7,7 @@ Code to establish safety zones around the car where the speed is limited.
 '''
 
 from matplotlib import pyplot as plt
-from carla_msgs.msg import CarlaEgoVehicleControl
+from carla_msgs.msg import VehicleControl
 from navigator_msgs.msg import CarlaSpeedometer, VehicleControl
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
@@ -35,7 +35,7 @@ class AirbagNode(Node):
             PointCloud2, '/lidar/filtered', self.lidarCb, 1)
 
         self.command_sub = self.create_subscription(
-            CarlaEgoVehicleControl, '/control/unlimited', self.commandCb, 1)
+            VehicleControl, '/control/unlimited', self.commandCb, 1)
 
         self.speed_sub = self.create_subscription(
             CarlaSpeedometer, '/carla/hero/speedometer', self.speedCb, 1)
@@ -100,7 +100,7 @@ class AirbagNode(Node):
 
         self.speed_limit = self.distanceToSpeedLimit(closest_x)
 
-    def commandCb(self, msg: CarlaEgoVehicleControl):
+    def commandCb(self, msg: VehicleControl):
 
         if self.current_speed > self.speed_limit:
             speed_over_limit = self.current_speed - self.speed_limit
