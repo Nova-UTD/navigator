@@ -16,7 +16,7 @@ The Electric Power Assisted Steering (EPAS) node provides an interface between R
 ---
 
 ### In:
-- **/carla/hero/vehicle_control_cmd** [*VehicleControl*](../messages.md#vehiclecontrol)
+- **/vehicle/control** [*VehicleControl*](../messages.md#vehiclecontrol)
 - **/clock** [*Clock*](https://docs.ros2.org/galactic/api/rosgraph_msgs/msg/Clock.html)
 - **/guardian/mode** [*Mode*](../messages.md#mode)
 
