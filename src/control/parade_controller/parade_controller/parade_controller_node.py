@@ -6,7 +6,7 @@ Author:    Daniel Vayman
 Controller for the hoco parade that follows our flag
 '''
 
-from carla_msgs.msg import VehicleControl
+from navigator_msgs.msg import VehicleControl
 from geometry_msgs.msg import TransformStamped
 from rosgraph_msgs.msg import Clock
 from rclpy.node import Node
