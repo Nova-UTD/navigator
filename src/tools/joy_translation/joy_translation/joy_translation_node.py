@@ -39,14 +39,14 @@ Subscribes to:
  /joy (sensor_msgs/Joy)
 
 Publishes to:
-/carla/hero/vehicle_control_cmd (CarlaEgoVehicleControl)
+/vehicle/control (VehicleControl)
 '''
 
 import numpy as np
 from rosgraph_msgs.msg import Clock
 import time
 
-from carla_msgs.msg import CarlaEgoVehicleControl
+from navigator_msgs.msg import VehicleControl
 from navigator_msgs.msg import CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from navigator_msgs.msg import Mode
@@ -71,7 +71,7 @@ class joy_translation_node(Node):
             Clock, '/clock', self.clockCb, 10)
 
         self.command_pub = self.create_publisher(
-            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
+            VehicleControl, '/vehicle/control', 10)
 
         self.requested_mode_pub = self.create_publisher(
             Mode, '/requested_mode', 1)
@@ -137,7 +137,7 @@ class joy_translation_node(Node):
         return steer
 
     def joyCb(self, msg: Joy):
-        command_msg = CarlaEgoVehicleControl()
+        command_msg = VehicleControl()
 
         self.status = self.initStatusMsg()
 

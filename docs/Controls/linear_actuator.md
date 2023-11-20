@@ -16,7 +16,7 @@ This node's responsible for our brake system. It communicates via CAN bus with a
 ---
 
 ### In:
-- **/carla/hero/vehicle_control_cmd** [*VehicleControl*](../messages.md#vehiclecontrol)
+- **/vehicle/control** [*VehicleControl*](../messages.md#vehiclecontrol)
 - **/clock** [*Clock*](https://docs.ros2.org/galactic/api/rosgraph_msgs/msg/Clock.html)
 - **/guardian/mode** [*Mode*](../messages.md#mode)
 
@@ -29,7 +29,7 @@ This node's responsible for our brake system. It communicates via CAN bus with a
 ### connectToBus(self)
 Attempts to establish a connection to the CAN bus that controls our linear actuator.
 
-### sendBrakeControl(self, msg: CarlaEgoVehicleControl)
+### sendBrakeControl(self, msg: VehicleControl)
 Calculates a position command from an inputted brake value and calls [`sendToPosition()`](#sendtopositionself-pos-float-bus-canbus).
 
 ### enableClutch(self, bus: can.Bus)

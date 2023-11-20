@@ -19,7 +19,7 @@ import numpy as np
 from rosgraph_msgs.msg import Clock
 import time
 
-from carla_msgs.msg import CarlaEgoVehicleControl
+from navigator_msgs.msg import VehicleControl
 from diagnostic_msgs.msg import DiagnosticStatus, DiagnosticArray, KeyValue
 from nav_msgs.msg import Path
 from navigator_msgs.msg import Mode

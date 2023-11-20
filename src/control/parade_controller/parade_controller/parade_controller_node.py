@@ -6,7 +6,7 @@ Author:    Daniel Vayman
 Controller for the hoco parade that follows our flag
 '''
 
-from carla_msgs.msg import CarlaEgoVehicleControl
+from navigator_msgs.msg import VehicleControl
 from geometry_msgs.msg import TransformStamped
 from rosgraph_msgs.msg import Clock
 from rclpy.node import Node
@@ -45,7 +45,7 @@ class ParadeController(Node):
 
         # Publisher
         self.throttle_pub = self.create_publisher(
-            CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
+            VehicleControl, '/vehicle/control', 10)
         
         # Debug publisher
         self.transformed_lidar_pub = self.create_publisher(PointCloud2, '/lidar_tfed', 1)
@@ -118,7 +118,7 @@ class ParadeController(Node):
         steer = self.Kp_Steer * error_y
 
         # Set msg fields and publish throttle value
-        throttle_msg = CarlaEgoVehicleControl()
+        throttle_msg = VehicleControl()
 
         if throttle < 0.:
             throttle = 0.
