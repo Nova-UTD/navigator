@@ -40,7 +40,7 @@ from dataclasses import dataclass
 import random
 import time
 from geometry_msgs.msg import PoseStamped, Quaternion, Point
-#from carla_msgs.msg import CarlaEgoVehicleControl, CarlaSpeedometer
+#from carla_msgs.msg import VehicleControl, CarlaSpeedometer
 from navigator_msgs.msg import VehicleControl, VehicleSpeed
 from std_msgs.msg import String, ColorRGBA
 from sensor_msgs.msg import Imu

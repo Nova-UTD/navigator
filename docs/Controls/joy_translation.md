@@ -23,7 +23,7 @@ Converts [*joy*](https://docs.ros.org/en/api/sensor_msgs/html/msg/Joy.html) mess
 - **/guardian/mode** [*Mode*](../messages.md#mode)
 
 ### Out:
-- **/carla/hero/vehicle_control_cmd** [*VehicleControl*](../messages.md#vehiclecontrol)
+- **/vehicle/control** [*VehicleControl*](../messages.md#vehiclecontrol)
 - **/requested_mode** [*Mode*](../messages.md#mode)
 - **/node_statuses** [*DiagnosticStatus*](https://docs.ros2.org/galactic/api/diagnostic_msgs/msg/DiagnosticStatus.html)
 
