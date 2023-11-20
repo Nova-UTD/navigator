@@ -34,8 +34,9 @@ class AirbagNode(Node):
         self.lidar_sub = self.create_subscription(
             PointCloud2, '/lidar/filtered', self.lidarCb, 1)
 
-        self.command_sub = self.create_subscription(
-            VehicleControl, '/control/unlimited', self.commandCb, 1)
+        # Don't konw what this topic is
+        #self.command_sub = self.create_subscription(
+        #   VehicleControl, '/control/unlimited', self.commandCb, 1)
 
         self.speed_sub = self.create_subscription(
             CarlaSpeedometer, '/carla/hero/speedometer', self.speedCb, 1)
