@@ -18,12 +18,21 @@ The code establishes a ROS node which processes LiDAR input, removes ground poin
 ### In:
 
 - **/clock** [*Clock*](https://docs.ros2.org/bouncy/api/rclcpp/classrclcpp_1_1_clock.html)
+  - Receives synchronization data from CARLA's simulation clock.
 
 - **/lidar** [*PointCloud2*](https://docs.ros2.org/latest/api/sensor_msgs/msg/PointCloud.html)
+  - Receives raw LiDAR point cloud data.
+
 
 ### Out:
 
 - **/lidar/filtered** [*PointCloud2*](https://docs.ros2.org/latest/api/sensor_msgs/msg/PointCloud.html)
+  - Publishes LiDAR data with ground points removed.
 
 ---
 
+### pointCloudCb(msg: PointCloud2::SharedPtr)
+Processes raw LiDAR data by removing ground points and then publishes the filtered version.
+
+### removeGround(raw_cloud: pcl::PointCloud<pcl::PointXYZI>)
+Removes ground points from raw LiDAR data using the Markov Random Field method..
