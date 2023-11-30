@@ -25,7 +25,7 @@ services:
             source: /home/share/carla
             target: /carla
           - type: bind
-            source: /home/share/bags
+            source: /storage/bags
             target: /bags
           - type: bind
             source: ${HOME}/.Xauthority
