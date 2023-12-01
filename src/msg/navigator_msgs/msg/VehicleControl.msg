@@ -4,7 +4,7 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 #
-# This represents a vehicle control message sent by Navigator (taken directly from Carla's VehicleControl.msg)
+# This represents a vehicle control message sent by Navigator (taken directly from Carla's CarlaEgoVehicleControl.msg)
 
 std_msgs/Header header
 
