@@ -12,4 +12,4 @@ geometry_msgs/Accel acceleration
 geometry_msgs/Quaternion orientation
 
 # the current control values, as reported by Carla
-VehicleControl control
+CarlaEgoVehicleControl control
