@@ -35,4 +35,4 @@ def try_get_launch_description_from_include(file_path: str) -> LaunchDescription
         launch_descrption = included_launch.get_sub_entities()[0]
         return launch_descrption
     except IndexError:
-        raise IncludeError(f"launch description '{file_path}' not found. Ensure the perception launch file is configured properly.")
+        raise IncludeError(f"launch description '{file_path}' not found. Ensure the launch file is configured properly.")
