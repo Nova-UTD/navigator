@@ -5,7 +5,7 @@ on: pull_request
 
 jobs:
   build_and_test:
-    runs-on: quad
+    runs-on: ubuntu-latest # UNTIL SELF-HOSTED RUNNER SETUP ON QUAD
     steps:
       # Checks-out the repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
