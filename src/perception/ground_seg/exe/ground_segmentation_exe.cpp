@@ -10,7 +10,7 @@
 #include <iostream>
 #include <memory> // std::make_shared
 #include "rclcpp/rclcpp.hpp"
-#include "occupancy_cpp/GroundSegmentationNode.hpp"
+#include "ground_seg/GroundSegmentationNode.hpp"
 
 int main(int argc, char **argv)
 {

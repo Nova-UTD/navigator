@@ -7,7 +7,7 @@
  * License:   MIT License
  */
 
-#include "occupancy_cpp/GroundSegmentationNode.hpp"
+#include "ground_seg/GroundSegmentationNode.hpp"
 
 using namespace navigator::perception;
 using namespace std::chrono_literals;
