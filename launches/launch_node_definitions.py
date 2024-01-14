@@ -43,7 +43,7 @@ grid_summation = Node(
 )
 
 ground_seg = Node(
-    package='occupancy_cpp',
+    package='ground_seg',
     executable='ground_segmentation_exe',
     parameters=[
         {'sensitivity': 0.13},
