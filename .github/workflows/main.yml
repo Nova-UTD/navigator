@@ -18,7 +18,6 @@ jobs:
       - name: Build Navigator using latest Docker image
         run: |
           docker run \
-            -it \
             --rm \
             -v $PWD:/navigator \
             --net=host \
