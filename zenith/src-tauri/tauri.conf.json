@@ -1,0 +1,91 @@
+{
+	"$schema": "../node_modules/@tauri-apps/cli/schema.json",
+	"build": {
+		"beforeBuildCommand": "npm run build",
+		"beforeDevCommand": "npm run dev",
+		"devPath": "http://localhost:5173",
+		"distDir": "../build"
+	},
+	"package": {
+		"productName": "zenith",
+		"version": "0.1.0"
+	},
+	"tauri": {
+		"allowlist": {
+			"shell": {
+				"execute": true,
+				"open": true,
+				"scope": [
+					{
+						"name": "bin/ros2-querier",
+						"sidecar": true
+					},
+					{
+						"name": "list-all",
+						"cmd": "ls",
+						"args": ["-a"]
+					},
+					{
+						"name": "bash-ros2-pkg-executables",
+						"cmd": "bash",
+						"args": ["-c", "\"source -c install/setup.bash && ros2 pkg executables\""]
+					},
+					{
+						"name": "ros2",
+						"cmd": "ros2",
+						"args": ["pkg", "executables"]
+					}
+				],
+				"sidecar": true
+			}
+		},
+		"bundle": {
+			"active": true,
+			"category": "DeveloperTool",
+			"copyright": "",
+			"deb": {
+				"depends": []
+			},
+			"externalBin": ["bin/ros2-querier"],
+			"icon": [
+				"icons/32x32.png",
+				"icons/128x128.png",
+				"icons/128x128@2x.png",
+				"icons/icon.icns",
+				"icons/icon.ico"
+			],
+			"identifier": "com.tauri.dev",
+			"longDescription": "",
+			"macOS": {
+				"entitlements": null,
+				"exceptionDomain": "",
+				"frameworks": [],
+				"providerShortName": null,
+				"signingIdentity": null
+			},
+			"resources": [],
+			"shortDescription": "",
+			"targets": "all",
+			"windows": {
+				"certificateThumbprint": null,
+				"digestAlgorithm": "sha256",
+				"timestampUrl": ""
+			}
+		},
+		"security": {
+			"csp": null
+		},
+		"updater": {
+			"active": false
+		},
+		"windows": [
+			{
+				"fullscreen": false,
+				"height": 600,
+				"resizable": true,
+				"title": "Zenith",
+				"width": 800
+			}
+		]
+	}
+}
