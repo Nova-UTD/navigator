@@ -36,7 +36,7 @@ def load_model(model_name):
   model = tf.saved_model.load(str(model_dir))
   return model
  
-PATH_TO_LABELS = 'models/research/object_detection/data/mscoco_label_map.pbtxt'
+PATH_TO_LABELS = '/models/research/object_detection/data/mscoco_label_map.pbtxt'
 category_index = label_map_util.create_category_index_from_labelmap(PATH_TO_LABELS, use_display_name=True)
  
 model_name = 'ssd_inception_v2_coco_2017_11_17'
@@ -94,9 +94,9 @@ def show_inference(model, frame):
       line_thickness=5)
  
   return(image_np)
-"""
-object_detection_directory = "models/research/object_detection/"
-cap = cv2.VideoCapture( object_detection_directory + "cabc30fc-e7726578.mov")
+
+#object_detection_directory = ""
+cap = cv2.VideoCapture("cabc30fc-e7726578.mov")
 
 if (cap.isOpened() == False):
     print("Error opening video stream or file")
@@ -117,7 +117,7 @@ while True:
         break
 cap.release()
 cv2.destroyAllWindows()
-"""
+
 
 
 

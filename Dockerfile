@@ -220,7 +220,56 @@ RUN usermod -a -G tty root
 
 ENV ROS_VERSION 2
 
-WORKDIR /navigator
+#WORKDIR /navigator
+
+# TESTING
+# Use Ubuntu as the base image
+#FROM ubuntu:latest
+
+# Update package lists and install necessary packages 	
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set the working directory in the container
+RUN mkdir -p /test
+
+# Install required Python packages   object_detection
+RUN pip3 install tensorflow pillow Cython lxml jupyter matplotlib contextlib2 tf_slim opencv-python protobuf==3.20
+
+
+# Set environment variables
+ENV PYTHONPATH="/app/models:${PYTHONPATH}"
+
+# Compile protos and install object detection API
+RUN apt-get update && \
+    apt-get install -y git && \
+    git clone https://github.com/tensorflow/models.git
+
+ADD https://github.com/protocolbuffers/protobuf/releases/download/v25.1/protoc-25.1-linux-x86_64.zip models/research/
+    #tar -xJC && \
+    #make -C all && \
+RUN apt-get install unzip
+RUN cd models/research/ && \
+	unzip protoc-25.1-linux-x86_64.zip -d protoc-25.1-linux-x86_64/ && \
+    protoc object_detection/protos/*.proto --python_out=. 
+    #&& \
+    #pip3 install .
+RUN apt-get install ffmpeg libsm6 libxext6  -y
+
+# Adding files used locally
+#ADD src/perception/object_detection/test.sh models/
+#ADD src/perception/object_detection/detection.py models/research/object_detection/
+#ADD src/perception/object_detection/objDec.py models/research/object_detection/
+#ADD src/perception/object_detection/cabc30fc-e7726578.mov models/research/object_detection/
+
+
+# TESTING
+
+#COPY /models navigator/src/perception
 COPY ./docker/entrypoint.sh /opt/entrypoint.sh
 
 ENTRYPOINT [ "/opt/entrypoint.sh" ]

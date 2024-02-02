@@ -35,7 +35,8 @@ echo "🔧 Setting up aliases..."
 echo "alias navigator=\"python3 /navigator/navigator.py\"" >> ~/.bashrc
 
 echo "👍 Finished environment setup"
-
+#export PYTHONPATH=$PYTHONPATH:"/models/research":"/models/research/slim"
+export PYTHONPATH="/models":"/models/research":$PYTHONPATH
 if [ -z ${@+x} ]; then
     exec bash
 else 
