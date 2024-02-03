@@ -16,6 +16,13 @@ from PIL import Image
 from IPython.display import display
 import time
 
+# Ros packages
+from cv_bridge import CvBridge
+from rosgraph_msgs.msg import Clock
+from sensor_msgs.msg import Image
+import rclpy
+from rclpy.node import Node
+
 from object_detection.utils import ops as utils_ops
 from object_detection.utils import label_map_util
 from object_detection.utils import visualization_utils as vis_util
@@ -95,28 +102,59 @@ def show_inference(model, frame):
  
   return(image_np)
 
-#object_detection_directory = ""
-cap = cv2.VideoCapture("cabc30fc-e7726578.mov")
-
-if (cap.isOpened() == False):
-    print("Error opening video stream or file")
-    exit()
 
 # ~0.044 seconds
+class objectDetection(Node):
 
-while True:
-    # Capture frame-by-frame
-    re,frame = cap.read()
+    def __init__(self):
+        super().__init__('Object_detection')
 
-    t1 = time.time()
-    Imagenp=show_inference(detection_model, frame)
-    t2 = time.time()
-    print(t2-t1)
-    cv2.imshow('object detection', cv2.resize(Imagenp, (1400,1000)))
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-cap.release()
-cv2.destroyAllWindows()
+        camera_sub = self.create_subscription(
+            Image, '/cameras/camera0', self.cameraCb, 1)
+
+        # Subscribes to clock for headers
+        self.clock_sub = self.create_subscription(
+            Clock, '/clock', self.clockCb, 10)
+
+        self.result_pub = self.create_publisher(Image, "/cameras/objectDetection", 1)
+
+        self.current_image: Image = None
+
+        self.cv_bridge = CvBridge()
+
+
+    def clockCb(self, msg: Clock):
+        self.clock = msg.clock
+        
+
+    def cameraCb(self, image):
+        self.current_image = image
+        frame = self.cv_bridge.imgmsg_to_cv2(self.current_image)
+        t1 = time.time()
+        Imagenp = show_inference(detection_model, frame)
+        Imagenp = self.cv_bridge.cv2_to_imgmsg(Imagenp)
+        self.result_pub.publish(Imagenp)
+        t2 = time.time()
+        print(t2 - t1)
+        
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    objectDetectionNode = objectDetection()
+    rclpy.spin(objectDetectionNode)
+
+    # Destroy the node explicitly
+    # (optional - otherwise it will be done automatically
+    # when the garbage collector destroys the node object)
+    tracking_node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+
+
 
 
 
