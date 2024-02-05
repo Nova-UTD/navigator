@@ -1,25 +1,27 @@
-from os import name, path, environ
+"""This module contains the launch description for the vehicle."""
+
+from os import path
 import sys
 
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.actions import IncludeLaunchDescription
 from launch import LaunchDescription
-from launch.actions import RegisterEventHandler, LogInfo, DeclareLaunchArgument, ExecuteProcess
-from launch.conditions import IfCondition
+from launch.actions import RegisterEventHandler, LogInfo
 from launch.event_handlers import OnProcessStart
-from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
-
-from ament_index_python import get_package_share_directory
 
 sys.path.append(path.abspath('/navigator/'))
-from launch_node_definitions import *
+from launches.launch_node_definitions import *
+from launches.utils import err_fatal, try_get_launch_description_from_include, IncludeError
 
-NAVIGATOR_DIR = "/navigator/"
 
 def generate_launch_description():
+    """Vehicle launch file description."""
 
-    ## lines indicate these were originally uncommented
+    # Include perception launch file and extract launch entities for reuse.
+    try:
+        perception_launch_description = try_get_launch_description_from_include('launches/launch.perception.py')
+    except IncludeError as e:
+        err_fatal(e)
+
+    perception_launch_entities = perception_launch_description.describe_sub_entities()
 
     return LaunchDescription([
         map_manager_carla,
@@ -42,20 +44,13 @@ def generate_launch_description():
                     # mcl,
 
                     # MAPPING
-
                     # MISC
                     # recorder,
                     # rqt,
                     # camera_streamer,
 
                     # PERCEPTION
-                    # image_segmentation,
-                    # semantic_projection,
-                    #carla_lidar_processor,
-                    ground_seg,
-                    static_grid,
-                    # prednet_inference,
-                    # driveable_area,
+                    *perception_launch_entities,
 
                     # PLANNING
                     routing_monitor,
