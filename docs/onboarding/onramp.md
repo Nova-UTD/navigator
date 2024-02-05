@@ -1,3 +1,9 @@
+---
+layout: default
+title: Onramp Task
+nav_order: 2
+parent: Onboarding
+---
 Navigator relies on ROS2 - the Robot Operating System. Before you can contribute to Navigator, you'll need to become familiar with developing for ROS. Our stack currently uses ROS2 Humble. Below is a concrete task that will require you to learn many of the fundamental elements of ROS as well as Docker, since we use Docker quite heavily as well. It will likely also require a fair bit of reading, learning, and exploration - all things Navigator is going to require of you too.  Good luck!
 
 [Here is a video](turtlesim_demo.mp4) that shows what the final product should look like.
