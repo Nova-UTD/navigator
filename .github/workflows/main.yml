@@ -16,8 +16,8 @@ jobs:
           echo Workspace directory: $(pwd)
 
       - name: Build Navigator using latest Docker image
-        run: docker run \
-            -it \
+        run: |
+          docker run \
             --rm \
             -v $PWD:/navigator \
             --net=host \
