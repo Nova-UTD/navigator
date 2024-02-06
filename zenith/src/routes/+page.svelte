@@ -11,7 +11,7 @@ async function testCmd() {
 }
 </script>
 
-<p>
+<p class="">
     {#await cmdPromise}
        Running cmd... 
     {:then cmd} 
