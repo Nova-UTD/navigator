@@ -1,7 +1,9 @@
 # Automatically build and test all packages in our workspace
 name: Build and Test
 
-on: pull_request
+on:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build_and_test:
@@ -15,6 +17,10 @@ jobs:
           cd $GITHUB_WORKSPACE
           echo Workspace directory: $(pwd)
 
+      - name: Build Navigator Docker image
+        run: |
+          docker build -t navigator -f Dockerfile .
+
       - name: Build Navigator using latest Docker image
         run: |
           docker run \
@@ -22,5 +28,5 @@ jobs:
             -v $PWD:/navigator \
             --net=host \
             -e="DISPLAY" \
-            novautd/navigator:latest \
+            navigator \
             "colcon build --packages-select cyclonedds --cmake-clean-cache && . install/setup.bash && colcon build --cmake-clean-cache"
