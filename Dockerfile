@@ -189,9 +189,9 @@ RUN pip3 install \
     #
     transforms3d \
     #
-    xmlschema==1.0.18
+    xmlschema==1.0.18 \
     # distro \
-    # torch==1.12.0 \
+    torch \
     # torchvision \
     # openmim \
     # mmcv-full==1.6.0 \
@@ -204,7 +204,17 @@ RUN pip3 install \
     # wcwidth \
     # six>=1.5 \
     # mmcls \
+    easydict
+
 RUN pip3 install --upgrade numpy && pip3 install --upgrade scipy
+
+
+# install mmdetection3d for 3d object detection
+RUN pip3 install -U openmim
+RUN mim install mmengine
+RUN mim install 'mmcv>=2.0.0rc4'
+RUN mim install 'mmdet>=3.0.0'
+RUN mim install "mmdet3d>=1.1.0"
 
 # https://stackoverflow.com/questions/66669735/ubuntu-20-04-cant-find-pcl-because-of-incorrect-include-directory-after-install
 RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10/pcl /lib/x86_64-linux-gnu/cmake/pcl/include/pcl
