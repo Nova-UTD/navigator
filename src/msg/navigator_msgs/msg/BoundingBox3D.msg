@@ -1,21 +1,13 @@
-# Center pose of the box
-geometry_msgs/Pose center
+#        ^ z   x     6 ------ 5
+#        |   /      / |     / |
+#        |  /      2 -|---- 1 |   
+# y      | /       |  |     | | 
+# <------|o        | 7 -----| 4
+#                  |/   o   |/    
+#                  3 ------ 0 
 
-#      1 ------- 2
-#     /.        /|
-#    0 ------- 3 |
-#    | .       | |
-#    | 5.......| 6
-#    |.        |/
-#    4 ------- 7
-geometry_msgs/Point[8] corners # DEPRECATED 3/2/21 WSH
 
-# A vector from the box center to a corner.
-# The box's dimensions are equal to twice the value of each component.
-# Ex: size.x is half the length,
-#     size.y is half the width,
-#     size.z is half the height.
-#
-# This vector is independent of the coordinate frame.
-# The pose (above) is dependent on the coordinate frame.
-geometry_msgs/Vector3 size 
+geometry_msgs/Point[8] corners
+
+# (x, y, z, x_size, y_size, z_size, yaw)
+float64[7] coordinates 
