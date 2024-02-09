@@ -191,7 +191,7 @@ RUN pip3 install \
     #
     xmlschema==1.0.18 \
     # distro \
-    torch \
+    torch==2.1.2 \
     # torchvision \
     # openmim \
     # mmcv-full==1.6.0 \
@@ -207,7 +207,6 @@ RUN pip3 install \
     easydict
 
 RUN pip3 install --upgrade numpy && pip3 install --upgrade scipy
-
 
 # install mmdetection3d for 3d object detection
 RUN pip3 install -U openmim

@@ -6,6 +6,7 @@ import numpy as np
 from mmdet3d.apis import init_model, inference_detector
 from navigator_msgs.msg import Object3D, Object3DArray
 from geometry_msgs.msg import Point
+import random
 
 
 CLASS2LABEL = {
@@ -30,6 +31,7 @@ class LidarObjectDetector3DNode(Node):
         config_path = self.get_parameter("config_path").get_parameter_value().string_value
         checkpoint_path = self.get_parameter("checkpoint_path").get_parameter_value().string_value
         device = self.get_parameter("device").get_parameter_value().string_value
+        self.translate_height = self.get_parameter("translate_height").get_parameter_value().double_value
 
         self.model = init_model(config=config_path, checkpoint=checkpoint_path, device=device)
 
@@ -48,7 +50,7 @@ class LidarObjectDetector3DNode(Node):
 
     def lidar_callback(self, lidar_msg: PointCloud2):
         pcd = rnp.numpify(lidar_msg)
-        #pcd = pcd[::2]   # this reduces the rings to 64, it appears to work when running against the parade bag
+        pcd = pcd[::2]   # this reduces the rings to 64, it appears to work when running against the parade bag
         pcd = np.array([ pcd['x'].flatten(), pcd['y'].flatten(), pcd['z'].flatten(), pcd['reflectivity'].flatten()]).T
         pcd[:, 3] /= 255.0
         pcd[:, 2] += self.translate_height
@@ -66,12 +68,13 @@ class LidarObjectDetector3DNode(Node):
             x, y, z, x_size, y_size, z_size, yaw = bounding_box
             object_instance.bounding_box.coordinates[0] = float(x)
             object_instance.bounding_box.coordinates[1] = float(y)
-            object_instance.bounding_box.coordinates[2] = float(z)
+            object_instance.bounding_box.coordinates[2] = float(z) - self.translate_height
             object_instance.bounding_box.coordinates[3] = float(x_size)
             object_instance.bounding_box.coordinates[4] = float(y_size)
-            object_instance.bounding_box.coordinates[5] = float(z_size) - self.translate_height
+            object_instance.bounding_box.coordinates[5] = float(z_size)
             object_instance.bounding_box.coordinates[6] = float(yaw)
 
+            corners[:,2] -= self.translate_height
             x0y0z0, x0y0z1, x0y1z1, x0y1z0, x1y0z0, x1y0z1, x1y1z1, x1y1z0 = corners
             object_instance.bounding_box.corners[3] = Point(x=float(x0y0z0[0]), y=float(x0y0z0[1]), z=float(x0y0z0[2]))
             object_instance.bounding_box.corners[2] = Point(x=float(x0y0z1[0]), y=float(x0y0z1[1]), z=float(x0y0z1[2]))
@@ -84,6 +87,7 @@ class LidarObjectDetector3DNode(Node):
 
             object_instance.label = CLASS2LABEL[self.model.dataset_meta['classes'][label]]
             object_instance.confidence_score = float(score)
+            object_instance.id = random.randint(0, 2**16-1)
             object_instance_array.objects.append(object_instance)
 
         object_instance_array.header.stamp = lidar_msg.header.stamp
