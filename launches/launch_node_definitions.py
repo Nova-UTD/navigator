@@ -50,6 +50,11 @@ ground_seg = Node(
     ]
 )
 
+ground_seg_py = Node(
+    package='ground_seg_py',
+    executable='ground_seg_py_node'
+)
+
 guardian = Node(
     package='guardian',
     executable='guardian_node'

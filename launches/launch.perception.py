@@ -13,7 +13,8 @@ def generate_launch_description():
     return LaunchDescription([
         # image_segmentation,
         # semantic_projection,
-        ground_seg,
+        # ground_seg,
+        ground_seg_py,
         static_grid,
         # prednet_inference,
         # driveable_area,
