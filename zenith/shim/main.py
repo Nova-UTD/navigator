@@ -4,7 +4,7 @@ import sys
 from subsystem import SubsystemMap
 from launch import LaunchFileFromExisting, Metadata, LaunchFileNode
 
-from command_handlers import create
+from command_handlers import create, list
 
 parser = argparse.ArgumentParser(
     prog="navigator",
@@ -30,6 +30,9 @@ launch_create_subparser.add_argument("path", help="path of launch file to create
 launch_create_subparser.add_argument("metadata", help=f"JSON of metadata: {Metadata.help()}")
 launch_create_subparser.add_argument("nodes", help=f"JSON node list: [{LaunchFileNode.help()}]")
 
+launch_list_parser = launch_subparser.add_parser("list", help="load a launch file")
+launch_list_parser.add_argument("dir", help="directory of launch files")
+
 launch_load_parser = launch_subparser.add_parser("load", help="load a launch file")
 launch_load_parser.add_argument("file", help="path to launch file")
 
@@ -42,7 +45,7 @@ def main():
         if args.launch_action == "create":
             create(args.path, args.metadata, args.nodes)
         if args.launch_action == "list":
-            print("load ")
+            list(args.dir)
         if args.launch_action == "add-node":
             print("add-node")
         elif args.launch_action == "remove-node":
