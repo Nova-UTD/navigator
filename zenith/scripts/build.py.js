@@ -2,7 +2,8 @@
 import { execa } from 'execa';
 import fs from 'fs';
 
-const OUT_BINARY_NAME = 'ros2-querier';
+const OUT_BINARY_NAME = 'zenith-cli';
+const PY_BUILD_DIR = 'build-py';
 const OUT_DIR = 'src-tauri/bin/';
 
 // Append exe if on Windows.
@@ -13,19 +14,7 @@ if (process.platform === 'win32') {
 
 // Build the Python binary using PyInstaller.
 async function build() {
-	return execa('pyinstaller', [
-		'--onefile',
-		'shim/main.py',
-		'--name',
-		OUT_BINARY_NAME,
-		'--workpath',
-		'build-py',
-		'--distpath',
-		OUT_DIR,
-		'--specpath',
-		'spec/',
-		'--clean'
-	]);
+	return execa('. shim/venv/bin/activate && python3 shim/setup.py build', { shell: true });
 }
 
 // Append the target triple to the binary name.
@@ -38,10 +27,11 @@ async function appendTargetTriple() {
 	}
 
 	// Rename the binary to include the target triple.
-	const pathWithExtension = `${OUT_DIR}/${OUT_BINARY_NAME}${extension}`;
+	const pathWithExtension = `${PY_BUILD_DIR}/${OUT_BINARY_NAME}${extension}`;
 	const pathWithTargetTriple = `${OUT_DIR}/${OUT_BINARY_NAME}-${targetTriple}${extension}`;
 	try {
 		fs.renameSync(pathWithExtension, pathWithTargetTriple);
+		fs.renameSync(`${PY_BUILD_DIR}/lib`, `${OUT_DIR}/lib`);
 	} catch (e) {
 		throw new Error(`failed to rename ${pathWithExtension} -> ${pathWithTargetTriple}`);
 	}
