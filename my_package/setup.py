@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'object_detection'
+package_name = 'my_package'
 
 setup(
     name=package_name,
@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'my_node = my_package.my_node:main'
         ],
     },
 )

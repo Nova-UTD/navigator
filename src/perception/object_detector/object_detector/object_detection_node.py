@@ -6,8 +6,6 @@ import tarfile
 import tensorflow as tf
 import zipfile
 import pathlib
-import numpy
-import os
 import cv2
 from collections import defaultdict
 from io import StringIO
@@ -15,6 +13,7 @@ from matplotlib import pyplot as plt
 from PIL import Image
 from IPython.display import display
 import time
+import json
 
 # Ros packages
 from cv_bridge import CvBridge
@@ -22,6 +21,7 @@ from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Image
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import String
 
 from object_detection.utils import ops as utils_ops
 from object_detection.utils import label_map_util
@@ -100,14 +100,14 @@ def show_inference(model, frame):
       use_normalized_coordinates=True,
       line_thickness=5)
  
-  return(image_np)
+  return(image_np), output_dict
 
 
 # ~0.044 seconds
 class objectDetection(Node):
 
     def __init__(self):
-        super().__init__('Object_detection')
+        super().__init__('object_detection_node')
 
         camera_sub = self.create_subscription(
             Image, '/cameras/camera0', self.cameraCb, 1)
@@ -117,6 +117,7 @@ class objectDetection(Node):
             Clock, '/clock', self.clockCb, 10)
 
         self.result_pub = self.create_publisher(Image, "/cameras/objectDetection", 1)
+        self.output_dict_pub = self.create_publisher(String, "/cameras/objectDetection/outputDict", 1)
 
         self.current_image: Image = None
 
@@ -130,12 +131,17 @@ class objectDetection(Node):
     def cameraCb(self, image):
         self.current_image = image
         frame = self.cv_bridge.imgmsg_to_cv2(self.current_image)
-        t1 = time.time()
-        Imagenp = show_inference(detection_model, frame)
+        Imagenp,output_dict = show_inference(detection_model, frame)
+        new_output_dict = {"detection_classes": output_dict["detection_classes"].tolist(),
+        		   "detection_scores" : output_dict["detection_scores"].tolist(),
+        		   "detection_boxes" : output_dict["detection_boxes"].tolist()
+        		   }
+        encoded_string = json.dumps(new_output_dict)
+        msg = String()
+        msg.data = encoded_string
         Imagenp = self.cv_bridge.cv2_to_imgmsg(Imagenp)
         self.result_pub.publish(Imagenp)
-        t2 = time.time()
-        print(t2 - t1)
+        self.output_dict_pub.publish(msg)
         
 
 def main(args=None):

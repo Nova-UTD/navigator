@@ -50,6 +50,11 @@ ground_seg = Node(
     ]
 )
 
+object_detector = Node(
+    package = 'object_detector',
+    executable = 'object_detection_node'
+)
+
 guardian = Node(
     package='guardian',
     executable='guardian_node'
