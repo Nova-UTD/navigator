@@ -273,7 +273,7 @@ class LaunchFileFromExisting(LaunchFileBuffer):
             raw_launch_list = self.buffer.read_until(MARKER) # Read until the end of the launch list.
             raw_launch_list = raw_launch_list.strip("[]\n ") # Strip brackets and whitespace.
             raw_nodes = raw_launch_list.split(")")
-            return [LaunchFileNode.from_string(raw_node) for raw_node in raw_nodes if raw_node.strip() != ""]
+            return [LaunchFileNode.from_string(raw_node) for raw_node in raw_nodes if "Node" in raw_node]
         except ValueError:
             return None
         

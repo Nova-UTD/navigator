@@ -29,6 +29,8 @@ async function appendTargetTriple() {
 	// Rename the binary to include the target triple.
 	const pathWithExtension = `${PY_BUILD_DIR}/${OUT_BINARY_NAME}${extension}`;
 	const pathWithTargetTriple = `${OUT_DIR}/${OUT_BINARY_NAME}-${targetTriple}${extension}`;
+	fs.rmSync(OUT_DIR, { recursive: true, force: true });
+	fs.mkdirSync(OUT_DIR, { recursive: true });
 	try {
 		fs.renameSync(pathWithExtension, pathWithTargetTriple);
 		fs.renameSync(`${PY_BUILD_DIR}/lib`, `${OUT_DIR}/lib`);
