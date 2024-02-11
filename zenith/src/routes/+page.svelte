@@ -4,7 +4,7 @@ import {Command} from '@tauri-apps/api/shell'
 let cmdPromise = testCmd();
 
 async function testCmd() {
-    const cmd = Command.sidecar('bin/ros2-querier');
+    const cmd = Command.sidecar('bin/zenith-cli');
     const child = await cmd.execute();
     console.log("done?")
     return child.stdout;

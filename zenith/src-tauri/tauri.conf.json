@@ -17,18 +17,13 @@
 				"open": true,
 				"scope": [
 					{
-						"name": "bin/ros2-querier",
+						"name": "bin/zenith-cli",
 						"sidecar": true
 					},
 					{
 						"name": "list-all",
 						"cmd": "ls",
 						"args": ["-a"]
-					},
-					{
-						"name": "bash-ros2-pkg-executables",
-						"cmd": "bash",
-						"args": ["-c", "\"source -c install/setup.bash && ros2 pkg executables\""]
 					},
 					{
 						"name": "ros2",
@@ -46,7 +41,7 @@
 			"deb": {
 				"depends": []
 			},
-			"externalBin": ["bin/ros2-querier"],
+			"externalBin": ["bin/zenith-cli"],
 			"icon": [
 				"icons/32x32.png",
 				"icons/128x128.png",

@@ -1,6 +1,8 @@
 from __future__ import annotations
 import json
 
+import black
+
 from . import edit_buffer
 
 IMPORT_LIST = [
@@ -125,7 +127,7 @@ class LaunchFileBuffer:
         self._ensure_imports()
         self._inject_launch_list(nodes)
         self._inject_launch_list_insert()
-        return str(self.buffer)
+        return str(self)
     
     def _ensure_metadata(self, metadata: Metadata):
         """Ensures that the metadata section is present in the launch file. If the metadata section is missing, it is created. If the metadata section is present, it is updated.
@@ -236,7 +238,7 @@ class LaunchFileBuffer:
         return code
 
     def __str__(self):
-        return str(self.buffer)
+        return black.format_str(str(self.buffer), mode=black.FileMode())
     
 
 
