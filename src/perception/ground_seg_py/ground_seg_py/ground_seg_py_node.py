@@ -41,6 +41,10 @@ class GroundSegNode(Node):
             PointCloud2, '/lidar/filtered', 10
         )
 
+        self.ground_lidar_pub = self.create_publisher(
+            PointCloud2, '/lidar/ground', 10
+        )
+
 
     def clock_cb(self, msg: Clock):
         self.carla_clock = msg
@@ -55,24 +59,28 @@ class GroundSegNode(Node):
         #print(1)
         start1 = time.time()
         xyzi = rnp.point_cloud2.pointcloud2_to_array(msg)
+        #xyzi = np.array(list(map(list,xyzi)))
+        #point_range_filter(xyzi, [-cloud_range, -cloud_range, -max_height, cloud_range, cloud_range, max_height])
+        #xyzi = np.array(list(map(tuple,xyzi)))
         xyz = rnp.point_cloud2.get_xyz_points(xyzi)
-        point_range_filter(xyz, [-cloud_range, -cloud_range, -max_height, cloud_range, cloud_range, max_height])
         #print(2)
         end1 = time.time()
         length1 = start1 - end1
         start2 = time.time()
 
         ground_idxs = ground_estimator.estimate_ground(xyz)
-        #ground_pcl = xyzi[ground_idxs]
-        ground_pcl = np.delete(xyzi, ground_idxs)
+        ground_pcl = xyzi[ground_idxs]
+        not_ground_pcl = np.delete(xyzi, ground_idxs)
 
-        f_msg = pc2.create_cloud(msg.header, msg.fields, ground_pcl)
-        f_msg.header = msg.header
+        f_msg = pc2.create_cloud(msg.header, msg.fields, not_ground_pcl)
+        g_msg = pc2.create_cloud(msg.header, msg.fields, ground_pcl)
+        #f_msg.header = msg.header
         #print(3)
         end2 = time.time()
         length2 = start2 - end2
         print(length1, length2)
         self.filtered_lidar_pub.publish(f_msg)
+        self.ground_lidar_pub.publish(g_msg)
         #self.filtered_lidar_pub.publish(msg)
 
 def point_range_filter(pts, point_range=[0, -39.68, -3, 69.12, 39.68, 1]):
@@ -86,7 +94,8 @@ def point_range_filter(pts, point_range=[0, -39.68, -3, 69.12, 39.68, 1]):
     flag_x_high = pts[:, 0] < point_range[3]
     flag_y_high = pts[:, 1] < point_range[4]
     flag_z_high = pts[:, 2] < point_range[5]
-    keep_mask = flag_x_low & flag_y_low & flag_z_low & flag_x_high & flag_y_high & flag_z_high
+    flag_i = pts[:, 3] == True
+    keep_mask = (flag_x_low & flag_y_low & flag_z_low & flag_x_high & flag_y_high & flag_z_high & flag_i)
     pts = pts[keep_mask]
     return pts
 
