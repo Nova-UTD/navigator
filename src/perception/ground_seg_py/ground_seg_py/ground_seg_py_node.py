@@ -12,11 +12,12 @@ from tf2_ros.transform_listener import TransformListener
 
 # Message definitions
 from rosgraph_msgs.msg import Clock
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointCloud2, PointField
 from std_msgs.msg import Float32
 
 import image_geometry
 import matplotlib.pyplot as plt
+import sensor_msgs_py.point_cloud2 as pc2
 
 import struct
 
@@ -44,98 +45,50 @@ class GroundSegNode(Node):
     def clock_cb(self, msg: Clock):
         self.carla_clock = msg
 
-
     def point_cloud_cb(self, msg: PointCloud2):
-        #self.filtered_lidar_pub.publish(msg)
-        data = rnp.numpify(msg)
-        #print(data)
-        filtered_pcd = []
-    
-        lidar_height = 0.0
+        from pygroundsegmentation import GroundPlaneFitting
+        ground_estimator = GroundPlaneFitting() #Instantiate one of the Estimators
+
         cloud_range = 80.0
-        sens = 0.2
-        res = 0.4  # Grid cell size, in meters
         max_height = 2.5  # Exclude points above this height, in meters
 
-        grid_size = int(2 * math.ceil((cloud_range) / res) + 1)
-        grid = grid_size * [grid_size * [[]]]
+        #print(1)
+        start1 = time.time()
+        xyzi = rnp.point_cloud2.pointcloud2_to_array(msg)
+        xyz = rnp.point_cloud2.get_xyz_points(xyzi)
+        point_range_filter(xyz, [-cloud_range, -cloud_range, -max_height, cloud_range, cloud_range, max_height])
+        #print(2)
+        end1 = time.time()
+        length1 = start1 - end1
+        start2 = time.time()
 
-        center_x = int(math.ceil(cloud_range / res))
-        center_y = int(math.ceil(cloud_range / res))
+        ground_idxs = ground_estimator.estimate_ground(xyz)
+        #ground_pcl = xyzi[ground_idxs]
+        ground_pcl = np.delete(xyzi, ground_idxs)
 
-        for i in range(len(data)):
-            x = data[i][0]
-            y = data[i][1]
-            z = data[i][2]
+        f_msg = pc2.create_cloud(msg.header, msg.fields, ground_pcl)
+        f_msg.header = msg.header
+        #print(3)
+        end2 = time.time()
+        length2 = start2 - end2
+        print(length1, length2)
+        self.filtered_lidar_pub.publish(f_msg)
+        #self.filtered_lidar_pub.publish(msg)
 
-            if (abs(x) <= cloud_range) and (abs(y) <= cloud_range) and (z <= max_height):
-                grid[int(center_x + round(x / res))][int(center_y + round(y / res))].append(i)
-
-        #print(grid)
-
-        hG = grid_size * [grid_size * [None]]
-        hG[center_x][center_y] = -1 * lidar_height
-
-        gridSeg = grid_size * [grid_size * [0]]
-        gridSeg[center_x][center_y] = 1
-
-        outerIndex = [None, None]
-
-        for i in range(1, int(math.ceil(cloud_range / res)) + 1):
-            outerIndex[0] = -1 * i
-            outerIndex[1] = i
-
-            for index in outerIndex:
-                for k in range(-1 * i, i + 1):
-                    currentCircle = {(center_x + index, center_y + k)}
-
-                    if not ((k == -1 * i) or (k == i)):
-                        currentCircle.add((center_x + k, center_y + index))
-
-                    for pair in currentCircle:
-                        x = pair[0]
-                        y = pair[1]
-
-                        H = float('-inf')
-                        h = float('inf')
-
-                        if grid[x][y]:
-                            pcIndices = grid[x][y]
-
-                            for j in range(len(pcIndices)):
-                                H = max(data[pcIndices[j]][2], H)
-                                h = min(data[pcIndices[j]][2], h)
-
-                        hHatG = float('-inf')
-                        innerCircleIndex = i - 1
-
-                        xRelativeIndex = x - center_x
-                        yRelativeIndex = y - center_y
-
-                        for m in range(-1, 2):
-                            for n in range(-1, 2):
-                                xRelativeNew = abs(xRelativeIndex + m)
-                                yRelativeNew = abs(yRelativeIndex + n)
-
-                                if ((xRelativeNew == innerCircleIndex) and (yRelativeNew <= innerCircleIndex)):
-                                    hGTemp = hG[x + m][y + n]
-                                    hHatG = max(hGTemp, hHatG)
-
-                        if (H != float('-inf')) and (h != float('inf')) and ((H - h) < sens) and ((H - hHatG) < sens):
-                            gridSeg[x][y] = 1
-                            hG[x][y] = H
-                        else:
-                            hG[x][y] = hHatG
-
-                            if grid[x][y]:
-                                pcIndices = grid[x][y]
-
-                                for j in range(len(grid[x][y])):
-                                    filtered_pcd.append(data[pcIndices[j]])
-
-        #f_msg = rnp.msgify(PointCloud2, filtered_pcd)
-        self.filtered_lidar_pub.publish(msg)
-
+def point_range_filter(pts, point_range=[0, -39.68, -3, 69.12, 39.68, 1]):
+    '''
+    data_dict: dict(pts, gt_bboxes_3d, gt_labels, gt_names, difficulty)
+    point_range: [x1, y1, z1, x2, y2, z2]
+    '''
+    flag_x_low = pts[:, 0] > point_range[0]
+    flag_y_low = pts[:, 1] > point_range[1]
+    flag_z_low = pts[:, 2] > point_range[2]
+    flag_x_high = pts[:, 0] < point_range[3]
+    flag_y_high = pts[:, 1] < point_range[4]
+    flag_z_high = pts[:, 2] < point_range[5]
+    keep_mask = flag_x_low & flag_y_low & flag_z_low & flag_x_high & flag_y_high & flag_z_high
+    pts = pts[keep_mask]
+    return pts
 
 def main(args=None):
     rclpy.init(args=args)
