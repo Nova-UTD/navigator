@@ -15,8 +15,12 @@ Nova's open door policy is our way to allow motivated students to join Nova mid-
 ### Developers
 1. complete the [onramp exercise](https://nova-utd.github.io/navigator/onboarding/onramp.html) on your own (certainly help from Google, but no friends)
 2. make a pull request to Navigator that contains a substantive contribution
+3. notify us via email: [project.nova@utdallas.edu](mailto:project.nova@utdallas.edu)
 
 ### Vehicle Engineers (Hardware, Firmware, Electrical)
+1. email your resume and/or portfolio to [project.nova@utdallas.edu](mailto:project.nova@utdallas.edu), along with your reason for applying
+
+### Public Relations (PR), Marketing, Photography
 1. email your resume and/or portfolio to [project.nova@utdallas.edu](mailto:project.nova@utdallas.edu), along with your reason for applying
 
 then you will be considered for membership. These requests will be evaluated at any time by the Nova leadership, and we are also available to answer some questions.  
