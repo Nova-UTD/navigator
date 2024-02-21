@@ -1,0 +1,5 @@
+/**:
+    ros__parameters:
+      config_path: "/navigator/data/perception/configs/pointpillars_hv_secfpn_8xb6-160e_kitti-3d-3class.py"
+      checkpoint_path: "/navigator/data/perception/checkpoints/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class_20220301_150306-37dc2420.pth"
+      device: "cuda:0"
