@@ -18,7 +18,8 @@
 				"scope": [
 					{
 						"name": "bin/zenith-cli",
-						"sidecar": true
+						"sidecar": true,
+						"args": true
 					},
 					{
 						"name": "list-all",
@@ -58,7 +59,9 @@
 				"providerShortName": null,
 				"signingIdentity": null
 			},
-			"resources": [],
+			"resources": {
+				"bin/lib/": "lib/"
+			},
 			"shortDescription": "",
 			"targets": "all",
 			"windows": {
