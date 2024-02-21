@@ -50,18 +50,14 @@ def generate_launch_description():
                     # camera_streamer,
 
                     # PERCEPTION
-<<<<<<< HEAD:launches/launch.vehicle.py
                     *perception_launch_entities,
-=======
+
                     # image_segmentation,
                     # semantic_projection,
                     #carla_lidar_processor,
-                    ground_seg,
-                    static_grid,
+
                     # prednet_inference,
                     # driveable_area,
-                    object_detector,
->>>>>>> 4c2ace3e (Complete):launch.carla.py
 
                     # PLANNING
                     routing_monitor,

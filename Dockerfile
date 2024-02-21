@@ -220,7 +220,7 @@ RUN usermod -a -G tty root
 
 ENV ROS_VERSION 2
 
-#WORKDIR /navigator
+
 
 # TESTING
 # Use Ubuntu as the base image
@@ -269,7 +269,7 @@ RUN apt-get install ffmpeg libsm6 libxext6  -y
 
 # TESTING
 
-#COPY /models navigator/src/perception
+WORKDIR /navigator
 COPY ./docker/entrypoint.sh /opt/entrypoint.sh
 
 ENTRYPOINT [ "/opt/entrypoint.sh" ]

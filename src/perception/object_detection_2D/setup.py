@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'object_detector'
+package_name = 'object_detection_2D'
 
 setup(
     name=package_name,
@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'object_detection_node = object_detector.object_detection_node:main'
+            'object_detection_2D_node = object_detection_2D.object_detection_2D_node:main'
         ],
     },
 )

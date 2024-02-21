@@ -157,6 +157,11 @@ static_grid = Node(
     executable='static_grid_exe'
 )
 
+object_detection_2D = Node(
+    package='object_detection_2D',
+    executable='object_detection_2D_node'
+)
+
 web_bridge = Node(
     package='rosbridge_server',
     executable='rosbridge_websocket'
