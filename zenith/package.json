@@ -39,6 +39,11 @@
 	},
 	"type": "module",
 	"dependencies": {
-		"@tauri-apps/api": "^1.5.3"
+		"@tauri-apps/api": "^1.5.3",
+		"bits-ui": "^0.18.1",
+		"clsx": "^2.1.0",
+		"lucide-svelte": "^0.335.0",
+		"tailwind-merge": "^2.2.1",
+		"tailwind-variants": "^0.2.0"
 	}
 }

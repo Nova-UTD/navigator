@@ -1,9 +1,13 @@
+"""This module contains handlers for various CLI commands."""
+
 import sys
 import os
 import json
 
 from launch import Metadata, LaunchFileNode, LaunchFileBuilder, LaunchFileFromExisting
 
+# Base launch file used for launch file creation.
+# We currently assume launch_node_definitions.py will exist in the same directory as our launch file.
 LAUNCH_FILE_BASE = """
 from launch import LaunchDescription
 from launch.actions import RegisterEventHandler, LogInfo
@@ -26,6 +30,10 @@ def generate_launch_description():
     ])"""
 
 def _parse_create_args(raw_metadata: str, raw_nodes_list: str) -> tuple[Metadata, list[LaunchFileNode]]:
+    """Parse args passed in for the create command.
+    
+    Metadata and nodes are expected to be in JSON format. See launch/launch_file.py for from_json definitions of Metadata and LaunchFileNode.
+    """
     try:
         metadata = Metadata.from_json(json.loads(raw_metadata))
     except:
@@ -45,6 +53,11 @@ def _parse_create_args(raw_metadata: str, raw_nodes_list: str) -> tuple[Metadata
 
 
 def create(path: str, raw_metadata: str, raw_nodes_list: str):
+    """Create a launch files at path given JSON encoded metadata and nodes.
+
+    If args are invalid, command will error and exit with status code 1. See _parse_create_args for more details.
+    If the file already exists, it is overwritten.
+    """
     metadata, nodes = _parse_create_args(raw_metadata, raw_nodes_list)
     builder = LaunchFileBuilder(LAUNCH_FILE_BASE).set_metadata(metadata).set_nodes(nodes)
     launch_file_contents = builder.generate_file()
