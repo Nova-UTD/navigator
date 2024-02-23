@@ -1,4 +1,3 @@
-
 # BUILD COMMANDS
 colcon build --symlink-install
 Flags:
@@ -28,3 +27,8 @@ colcon build --symlink-install
 rm -rf build/ install/
 colcon build --symlink-install --cmake-clean-cache
 . install/setup.bash
+
+### TESTING SEQUENCE
+launch carla
+launch carla_bridge (carla_interface repo)
+launch navigator
