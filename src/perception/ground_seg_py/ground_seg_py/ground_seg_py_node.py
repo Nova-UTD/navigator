@@ -50,20 +50,19 @@ class GroundSegNode(Node):
         self.carla_clock = msg
 
     def point_cloud_cb(self, msg: PointCloud2):
+        start0 = time.time()
         from pygroundsegmentation import GroundPlaneFitting
         ground_estimator = GroundPlaneFitting() #Instantiate one of the Estimators
 
         cloud_range = 80.0
         max_height = 2.5  # Exclude points above this height, in meters
 
-        #print(1)
         start1 = time.time()
         xyzi = rnp.point_cloud2.pointcloud2_to_array(msg)
-        #xyzi = np.array(list(map(list,xyzi)))
-        #point_range_filter(xyzi, [-cloud_range, -cloud_range, -max_height, cloud_range, cloud_range, max_height])
-        #xyzi = np.array(list(map(tuple,xyzi)))
+        xyzi = np.array(list(map(list,xyzi)))
+        point_range_filter(xyzi, [-cloud_range, -cloud_range, -max_height, cloud_range, cloud_range, max_height])
+        xyzi = np.array(list(map(tuple,xyzi)))
         xyz = rnp.point_cloud2.get_xyz_points(xyzi)
-        #print(2)
         end1 = time.time()
         length1 = start1 - end1
         start2 = time.time()
@@ -78,7 +77,9 @@ class GroundSegNode(Node):
         #print(3)
         end2 = time.time()
         length2 = start2 - end2
-        print(length1, length2)
+        end0 = time.time()
+        length0 = start0 - end0
+        print(length0, length1, length2)
         self.filtered_lidar_pub.publish(f_msg)
         self.ground_lidar_pub.publish(g_msg)
         #self.filtered_lidar_pub.publish(msg)
