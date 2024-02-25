@@ -205,6 +205,7 @@ RUN pip3 install \
     # six>=1.5 \
     # mmcls \
 RUN pip3 install --upgrade numpy && pip3 install --upgrade scipy
+RUN pip install pygroundsegmentation
 
 # https://stackoverflow.com/questions/66669735/ubuntu-20-04-cant-find-pcl-because-of-incorrect-include-directory-after-install
 RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10/pcl /lib/x86_64-linux-gnu/cmake/pcl/include/pcl

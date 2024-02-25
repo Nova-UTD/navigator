@@ -56,7 +56,7 @@ def generate_launch_description():
                     routing_monitor,
                     grid_summation,
                     junction_manager,
-                    rtp,
+                    #rtp,
 
                     # SAFETY
                     ##airbags,
