@@ -147,7 +147,7 @@ sounds = Node(
     executable='sound_node'
 )
 
-static_grid = Node(
+static_grid_cpp = Node(
     package='occupancy_cpp',
     executable='static_grid_exe'
 )

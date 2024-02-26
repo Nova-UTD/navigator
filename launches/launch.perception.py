@@ -14,7 +14,7 @@ def generate_launch_description():
         # image_segmentation,
         # semantic_projection,
         ground_seg,
-        static_grid,
+        static_grid_cpp,
         # prednet_inference,
         # driveable_area,
     ])
