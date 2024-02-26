@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'static_occupancy_node_py = occupancy_py.static_occupancy_node.py:main'
         ],
     },
 )

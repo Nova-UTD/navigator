@@ -17,7 +17,7 @@ using namespace std::chrono_literals;
  * Subscribers: CARLA clock, Ground Segmented Pointcloud
  * Publishers: Static Occupancy Grid, Masses Grid
  */
-StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node")
+StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node_cpp")
 {
   //------Subscribers-------//
   // Subscribe to and use CARLA's clock

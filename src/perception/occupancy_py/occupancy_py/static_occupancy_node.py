@@ -6,9 +6,9 @@ from your_custom_msgs.msg import Masses  # Replace with the actual message type
 
 res = 1/3
 
-class static_occupancy(Node):
+class StaticOccupancyNodePy(Node):
     def __init__(self):
-        super().__init__('static_occupancy')
+        super().__init__('static_occupancy_node_py')
 
         # Subscribe to and use CARLA's clock
         self.clock = Clock()  # Initialize with an empty Clock message
@@ -357,7 +357,7 @@ class static_occupancy(Node):
     def main():
         rclpy.init()
 
-        node = static_occupancy()
+        node = StaticOccupancyNodePy()
         rclpy.spin(node)
 
         node.destroy_node()
