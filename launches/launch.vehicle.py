@@ -52,6 +52,13 @@ def generate_launch_description():
                     # PERCEPTION
                     *perception_launch_entities,
 
+                    # image_segmentation,
+                    # semantic_projection,
+                    #carla_lidar_processor,
+
+                    # prednet_inference,
+                    # driveable_area,
+
                     # PLANNING
                     routing_monitor,
                     grid_summation,
