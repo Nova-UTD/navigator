@@ -12,7 +12,29 @@ class StaticOccupancyNodePy(Node):
     def __init__(self):
         super().__init__('static_occupancy_node_py')
 
-        
+        self.vehicle_pos_x = vehicle_pos_x
+        self.vehicle_pos_y = vehicle_pos_y
+        self.prev_vehicle_pos_x = prev_vehicle_pos_x
+        self.prev_vehicle_pos_y = prev_vehicle_pos_y
+
+        # Initialize arrays
+        self.meas_grids = np.zeros((self.event_num, self.GRID_SIZE, self.GRID_SIZE), dtype=float)
+        self.measured_free = np.zeros((self.GRID_SIZE, self.GRID_SIZE), dtype=float)
+        self.measured_occ = np.zeros((self.GRID_SIZE, self.GRID_SIZE), dtype=float)
+        self.previous_free = np.zeros((self.GRID_SIZE, self.GRID_SIZE), dtype=float)
+        self.previous_occ = np.zeros((self.GRID_SIZE, self.GRID_SIZE), dtype=float)
+        self.updated_freeP = np.zeros((self.GRID_SIZE, self.GRID_SIZE), dtype=float)
+        self.updated_occP = np.zeros((self.GRID_SIZE, self.GRID_SIZE), dtype=float)
+        self.updated_free = np.zeros((self.GRID_SIZE, self.GRID_SIZE), dtype=float)
+        self.updated_occ = np.zeros((self.GRID_SIZE, self.GRID_SIZE), dtype=float)
+
+        # Masses measurement (probability distribution)
+        self.probabilities = np.zeros((self.GRID_SIZE, self.GRID_SIZE), dtype=float)
+        self.probabilities_plot = np.zeros((self.GRID_SIZE, self.GRID_SIZE), dtype=float)
+
+        # Angles array
+        self.angles = [False] * 360
+        self.first = True  # Assuming 'first' is a flag indicating the first iteration or a similar use case
 
         # Subscribe to and use CARLA's clock
         self.clock = Clock()  # Initialize with an empty Clock message
