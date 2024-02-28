@@ -91,6 +91,9 @@ class StaticOccupancyNodePy(Node):
         cloud_filtered = cloud[valid_points]
         x_grid_filtered = x_grid[valid_points]
         y_grid_filtered = y_grid[valid_points]
+
+        angles_rad = np.arctan2(y, x)
+        angles_deg = np.degrees(angles_rad)
         
         for point in cloud:
             x = point.x/res
@@ -243,16 +246,12 @@ class StaticOccupancyNodePy(Node):
 
 
     def update_previous(self):
-        for i in range(GRID_SIZE):
-            for j in range(GRID_SIZE):
-                previous_free[i][j] = updated_free[i][j]
-                previous_occ[i][j] = updated_occ[i][j]
+        self.previous_free[i][j] = self.updated_free[i][j]
+        self.previous_occ[i][j] = self.updated_occ[i][j]
 
     def mass_update(self):
-        for i in range(GRID_SIZE):
-            for j in range(GRID_SIZE):
-                updated_occP[i][j] = min(decay_factor * previous_occ[i][j], 1.0 - previous_free[i][j])
-                updated_freeP[i][j] = min(decay_factor * previous_free[i][j], 1.0 - previous_occ[i][j])
+        self.updated_occP = np.minimum(decay_factor * self.previous_occ, 1.0 - self.previous_free)
+        self.updated_freeP = np.minimum(decay_factor * self.previous_free, 1.0 - self.previous_occ)
 
         # Combine measurement and prediction to form posterior occupied and free masses.
         self.update_of()
@@ -382,10 +381,8 @@ class StaticOccupancyNodePy(Node):
 
 
     def clear(self):
-        for i in range(GRID_SIZE):
-            for j in range(GRID_SIZE):
-                measured_occ[i][j] = 0.0
-                measured_free[i][j] = 0.0
+        self.measured_occ.fill(0.0)
+        self.measured_free.fill(0.0)
 
 def main():
     rclpy.init()
