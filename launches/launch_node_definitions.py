@@ -50,6 +50,11 @@ ground_seg = Node(
     ]
 )
 
+object_detector = Node(
+    package = 'object_detector',
+    executable = 'object_detection_node'
+)
+
 guardian = Node(
     package='guardian',
     executable='guardian_node'
@@ -150,6 +155,11 @@ sounds = Node(
 static_grid_cpp = Node(
     package='occupancy_cpp',
     executable='static_grid_exe'
+)
+
+static_grid_py = Node(
+    package='occupancy_py',
+    executable='static_occupancy_node_py'
 )
 
 web_bridge = Node(
