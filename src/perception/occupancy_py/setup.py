@@ -13,14 +13,14 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='root',
-    maintainer_email='root@todo.todo',
+    maintainer='Daniel Vayman',
+    maintainer_email='daniel.vayman@utdallas.edu',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'static_occupancy_node_py = occupancy_py.static_occupancy_node.py:main'
+            'static_occupancy_node_py = occupancy_py.static_occupancy_node:main'
         ],
     },
 )

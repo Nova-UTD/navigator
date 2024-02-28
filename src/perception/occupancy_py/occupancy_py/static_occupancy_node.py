@@ -1,8 +1,9 @@
-from chrono import duration
+import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Clock, PointCloud2
+from sensor_msgs.msg import PointCloud2
+from rosgraph_msgs.msg import Clock
 from nav_msgs.msg import OccupancyGrid
-from your_custom_msgs.msg import Masses  # Replace with the actual message type
+from navigator_msgs.msg import Masses
 
 res = 1/3
 
@@ -216,12 +217,12 @@ class StaticOccupancyNodePy(Node):
                 previous_occ[i][j] = updated_occ[i][j]
 
     def mass_update(self):
-    for i in range(GRID_SIZE):
-        for j in range(GRID_SIZE):
-            updated_occP[i][j] = min(decay_factor * previous_occ[i][j], 1.0 - previous_free[i][j])
-            updated_freeP[i][j] = min(decay_factor * previous_free[i][j], 1.0 - previous_occ[i][j])
+        for i in range(GRID_SIZE):
+            for j in range(GRID_SIZE):
+                updated_occP[i][j] = min(decay_factor * previous_occ[i][j], 1.0 - previous_free[i][j])
+                updated_freeP[i][j] = min(decay_factor * previous_free[i][j], 1.0 - previous_occ[i][j])
 
-    # Combine measurement and prediction to form posterior occupied and free masses.
+        # Combine measurement and prediction to form posterior occupied and free masses.
         self.update_of()
 
 
@@ -354,14 +355,14 @@ class StaticOccupancyNodePy(Node):
                 measured_occ[i][j] = 0.0
                 measured_free[i][j] = 0.0
 
-    def main():
-        rclpy.init()
+def main():
+    rclpy.init()
 
-        node = StaticOccupancyNodePy()
-        rclpy.spin(node)
+    node = StaticOccupancyNodePy()
+    rclpy.spin(node)
 
-        node.destroy_node()
-        rclpy.shutdown()
+    node.destroy_node()
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
