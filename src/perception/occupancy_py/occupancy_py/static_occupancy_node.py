@@ -1,15 +1,18 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
+import ros2_numpy as rnp
+import numpy as np
 from rosgraph_msgs.msg import Clock
 from nav_msgs.msg import OccupancyGrid
 from navigator_msgs.msg import Masses
-
-res = 1/3
+from config import * # Constants
 
 class StaticOccupancyNodePy(Node):
     def __init__(self):
         super().__init__('static_occupancy_node_py')
+
+        
 
         # Subscribe to and use CARLA's clock
         self.clock = Clock()  # Initialize with an empty Clock message
@@ -18,7 +21,7 @@ class StaticOccupancyNodePy(Node):
 
         # Subscribe to the filtered lidar data
         self.pcd_sub = self.create_subscription(
-            PointCloud2, '/lidar/filtered', self.point_cloud_callback, 10)
+            PointCloud2, '/lidar/filtered', self.point_cloud_cb, 10)
 
         # Publishers
         self.occupancy_grid_pub = self.create_publisher(
@@ -30,15 +33,8 @@ class StaticOccupancyNodePy(Node):
         # Callback for clock subscriber
         self.clock = msg
 
-    def point_cloud_callback(self, msg):
-        # Callback for point cloud subscriber
-        # Implement your logic for processing the point cloud data
-        pass
-
     def point_cloud_cb(self, msg):
-        # Converts the PCL ROS message using pcl_conversions.
-        cloud = pcl.PointCloud()
-        pcl.fromROSMsg(msg, cloud)
+        cloud = rnp.numpify(lidar_msg)
 
         # 1. Convert new measurement into a DST grid.
         self.create_occupancy_grid(cloud)
@@ -62,6 +58,18 @@ class StaticOccupancyNodePy(Node):
         self.add_free_spaces_to_DST()
 
     def add_points_to_DST(self, cloud):
+        x_grid = cloud['x'] / res
+        y_grid = cloud['y'] / res
+        z_grid = cloud['z']
+
+        valid_points = (z_grid <= -0.5) & \
+                   (x_grid >= (-1 * HALF_SIZE)) & (x_grid < HALF_SIZE) & \
+                   (y_grid >= (-1 * HALF_SIZE)) & (y_grid < HALF_SIZE)
+
+        cloud_filtered = cloud[valid_points]
+        x_grid_filtered = x_grid[valid_points]
+        y_grid_filtered = y_grid[valid_points]
+        
         for point in cloud:
             x = point.x/res
             y = point.y/res
@@ -172,11 +180,13 @@ class StaticOccupancyNodePy(Node):
                 angles[int(angle)] = False
 
     def add_ego_mask(self):
-        # Vehicle shape.
-        for i in range(60, 68):
-            for j in range(62, 67):
-                measured_occ[i][j] = 1.0
-                measured_free[i][j] = 0.0
+        # Define the range for the vehicle shape
+        x_start, x_end = 60, 68  # x range
+        y_start, y_end = 62, 67  # y range
+
+        # Use slicing to set the values directly
+        self.measured_occ[x_start:x_end, y_start:y_end] = 1.0
+        self.measured_free[x_start:x_end, y_start:y_end] = 0.0
 
     def publish_occupancy_grid(self):
         # Occupancy Grid

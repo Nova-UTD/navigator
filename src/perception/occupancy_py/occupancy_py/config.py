@@ -1,0 +1,10 @@
+event_num = 2
+GRID_SIZE = 128
+HALF_SIZE = GRID_SIZE // 2
+res = 1. / 3.
+meas_mass = 0.95
+decay_factor = 0.9
+vehicle_pos_x = 0.0
+vehicle_pos_y = 0.0
+prev_vehicle_pos_x = 0.0
+prev_vehicle_pos_y = 0.0
