@@ -10,12 +10,13 @@
 	type $$Props = LaunchEditorProps;
 	export let subsystems: $$Props['subsystems'];
 	export let activeNodes: $$Props['activeNodes'];
+	export let onNodeChanged: $$Props['onNodeChanged'];
 
 	console.log(subsystems, activeNodes);
 </script>
 
 <div class="w-full h-full overflow-hidden">
-	Launch Editor
+	<h1>Launch Editor</h1>
 	<Accordion.Root class="w-full">
 		{#each subsystems as subsystem}
 			<Accordion.Item value={subsystem.name}>
@@ -33,7 +34,7 @@
 							<Label>{`${node.package}::${node.executable}`}</Label>
 							<Switch
 								checked={activeNodes.some((n) => isNodeEqual(node, n))}
-								onCheckedChange={console.log}
+								onCheckedChange={(checked) => onNodeChanged(node, checked)}
 								id={`${node.package}::${node.executable}`}
 							/>
 						</li>
