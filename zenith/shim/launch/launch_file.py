@@ -18,6 +18,10 @@ METADATA_MARKER = "metadata"
 LAUNCH_LIST_MARKER = "launch_list"
 LAUNCH_LIST_INSERT_MARKER = "launch__list_insert"
 
+
+class LaunchFileNodeParseError(Exception):
+    pass
+
 class LaunchFileNode:
     def __init__(self, package: str, executable: str):
         self.package = package
@@ -49,12 +53,15 @@ class LaunchFileNode:
         Node(package='joy_translation', executable='joy_translation_node')
         """
         try:
-            package_arg, executable_arg = str.split(",")
+            # Remove 'Node(' from the start of the string.
+            str = str[str.find('('):]
+            # Extract package and executable from the string.
+            package_arg, executable_arg = str.split(",") 
             package = package_arg.split("=")[1].strip("'\"\n() ")
             executable = executable_arg.split("=")[1].strip("'\"\n() ")
             return cls(package, executable)
         except (IndexError, ValueError):
-            return None
+            raise LaunchFileNodeParseError("Invalid LaunchFileNode string format.")
     
 class Metadata:
     def __init__(self, name: str = "") -> None:

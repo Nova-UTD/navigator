@@ -2,7 +2,7 @@
 	"$schema": "../node_modules/@tauri-apps/cli/schema.json",
 	"build": {
 		"beforeBuildCommand": "npm run build",
-		"beforeDevCommand": "npm run dev",
+		"beforeDevCommand": "npm run dev:web",
 		"devPath": "http://localhost:5173",
 		"distDir": "../build"
 	},
@@ -78,11 +78,11 @@
 		},
 		"windows": [
 			{
-				"fullscreen": false,
-				"height": 600,
+				"fullscreen": true,
+				"height": 800,
 				"resizable": true,
 				"title": "Zenith",
-				"width": 800
+				"width": 1440
 			}
 		]
 	}

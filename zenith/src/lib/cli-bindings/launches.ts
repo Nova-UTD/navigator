@@ -1,11 +1,16 @@
 import { Command } from '@tauri-apps/api/shell';
 
+export type Node = {
+	package: string;
+	executable: string;
+};
+
 type LaunchListRawResponse = {
 	[key: string]: {
 		metadata: {
 			name: string;
 		};
-		nodes: { package: string; executable: string }[];
+		nodes: Node[];
 	};
 };
 
@@ -14,7 +19,7 @@ export type LaunchListEntry = {
 	metadata: {
 		name: string;
 	};
-	nodes: { package: string; executable: string }[];
+	nodes: Node[];
 };
 
 export type LaunchListResponse = LaunchListEntry[];
