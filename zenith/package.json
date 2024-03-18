@@ -5,7 +5,8 @@
 	"scripts": {
 		"build_py": "node scripts/build.py.js",
 		"tauri": "tauri",
-		"dev": "npm run build_py && vite dev",
+		"dev:web": "vite",
+		"dev:all": "nodemon --legacy-watch --watch shim/ -e py --exec \"npm run build_py && tauri dev\"",
 		"build": "npm run build_py && vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -27,6 +28,7 @@
 		"eslint-config-prettier": "^9.1.0",
 		"eslint-plugin-svelte": "^2.35.1",
 		"execa": "^8.0.1",
+		"nodemon": "^3.1.0",
 		"postcss": "^8.4.34",
 		"prettier": "^3.1.1",
 		"prettier-plugin-svelte": "^3.1.2",

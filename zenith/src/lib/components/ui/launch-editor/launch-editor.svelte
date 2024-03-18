@@ -1,29 +1,43 @@
 <script lang="ts">
 	import * as Accordion from '$lib/components/ui/accordion';
-	import { Switch } from "$lib/components/ui/switch";
-	import { Label } from "$lib/components/ui/label";
+	import { Switch } from '$lib/components/ui/switch';
+	import { Label } from '$lib/components/ui/label';
+	import type { Node } from '$lib/cli-bindings';
 	import type { LaunchEditorProps } from '.';
+	import { LazyLoadedList } from '$lib/components/ui/lazy-loaded-list';
+	import { isNodeEqual } from '$lib/utils';
 
 	type $$Props = LaunchEditorProps;
 	export let subsystems: $$Props['subsystems'];
-	console.log(subsystems);
+	export let activeNodes: $$Props['activeNodes'];
+
+	console.log(subsystems, activeNodes);
 </script>
 
-<div class="w-full h-full overflow-y-scroll">
+<div class="w-full h-full overflow-hidden">
 	Launch Editor
 	<Accordion.Root class="w-full">
 		{#each subsystems as subsystem}
 			<Accordion.Item value={subsystem.name}>
 				<Accordion.Trigger>{subsystem.name}</Accordion.Trigger>
 				<Accordion.Content>
-					<ul>
-						{#each subsystem.packages.flatMap((pkg) => pkg.executables.map((exec) => `${pkg.name}::${exec}`) ) as pkgExecName}
-							<li class="flex flex-wrap gap-4">
-								<Label>{pkgExecName}</Label>
-								<Switch onCheckedChange={console.log} id={pkgExecName} />
-							</li>
-						{/each}
-					</ul>
+					<LazyLoadedList
+						ulClasses="overflow-x-hidden"
+						items={subsystem.packages.flatMap((pkg) =>
+							pkg.executables.map((exec) => ({ package: pkg.name, executable: exec }))
+						)}
+						itemsPerChunk={20}
+						let:item={node}
+					>
+						<li class="flex flex-wrap gap-4">
+							<Label>{`${node.package}::${node.executable}`}</Label>
+							<Switch
+								checked={activeNodes.some((n) => isNodeEqual(node, n))}
+								onCheckedChange={console.log}
+								id={`${node.package}::${node.executable}`}
+							/>
+						</li>
+					</LazyLoadedList>
 				</Accordion.Content>
 			</Accordion.Item>
 		{/each}

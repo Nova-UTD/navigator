@@ -2,6 +2,22 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { cubicOut } from 'svelte/easing';
 import type { TransitionConfig } from 'svelte/transition';
+import type { Node } from './cli-bindings';
+
+export function isNodeEqual(node: Node, otherNode: Node): boolean {
+	return node.package === otherNode.package && node.executable === otherNode.executable;
+}
+
+export function chunkArray<T>(array: T[], size: number): T[][] {
+	return Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>
+		array.slice(i * size, i * size + size)
+	);
+}
+
+// Generate sequential IDs.
+export function seqID(): string {
+	return (Date.now() + 1).toString(36);
+}
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
