@@ -1,8 +1,13 @@
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routers import subsystems, launches
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
+app.logger = logger
 
 app.add_middleware(
     CORSMiddleware,
