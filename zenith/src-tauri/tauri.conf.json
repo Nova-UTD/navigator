@@ -12,27 +12,9 @@
 	},
 	"tauri": {
 		"allowlist": {
-			"shell": {
-				"execute": true,
-				"open": true,
-				"scope": [
-					{
-						"name": "bin/zenith-cli",
-						"sidecar": true,
-						"args": true
-					},
-					{
-						"name": "list-all",
-						"cmd": "ls",
-						"args": ["-a"]
-					},
-					{
-						"name": "ros2",
-						"cmd": "ros2",
-						"args": ["pkg", "executables"]
-					}
-				],
-				"sidecar": true
+			"http": {
+				"all": true,
+				"request": true
 			}
 		},
 		"bundle": {
@@ -42,7 +24,6 @@
 			"deb": {
 				"depends": []
 			},
-			"externalBin": ["bin/zenith-cli"],
 			"icon": [
 				"icons/32x32.png",
 				"icons/128x128.png",

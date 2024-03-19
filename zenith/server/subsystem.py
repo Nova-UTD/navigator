@@ -1,11 +1,18 @@
+from __future__ import annotations
 import os
 import subprocess
-import sys
 import json
+import logging
 from collections import defaultdict
 
 # Alias for a map of package -> list of executables.
 PkgMap = defaultdict[str, list[str]]
+
+logger = logging.getLogger(__name__)
+
+
+class ROS2CommandException(Exception):
+    pass
 
 
 class SubsystemMap:
@@ -13,15 +20,19 @@ class SubsystemMap:
 
     subsystems: defaultdict[str, PkgMap]
 
-    def __init__(self) -> None:
-        self.subsystems = defaultdict(lambda: defaultdict(list))
-
+    @staticmethod
+    def get() -> SubsystemMap:
+        sm = SubsystemMap()
         # Get all executables and the packages they belong to.
         pkg_map = get_ros2_pkg_map()
         # Add each package and its executables to the subsystem map.
         for pkg, executables in pkg_map.items():
             subsystem = get_pkg_subsystem(pkg)
-            self._add_executables(subsystem, pkg, executables)
+            sm._add_executables(subsystem, pkg, executables)
+        return sm
+
+    def __init__(self) -> None:
+        self.subsystems = defaultdict(lambda: defaultdict(list))
 
     def _add_executables(
         self, subsystem: str, pkg: str, executables: list[str]
@@ -33,16 +44,12 @@ class SubsystemMap:
         """
         self.subsystems[subsystem][pkg] = executables
 
-    def to_json(self) -> str:
-        """! Convert the subsystem map to JSON.
-        @return str  The JSON string."""
-        return json.dumps(self.subsystems, indent=4)
-
 
 def get_ros2_pkg_map() -> PkgMap:
     """! Get all executables and the packages they belong to.
     @return PkgMap   Mapping from package -> list of executables.
     """
+    pkg_map: PkgMap = defaultdict(list)
     try:
         # Sample command output:
         #  pkg1 exec1
@@ -63,18 +70,16 @@ def get_ros2_pkg_map() -> PkgMap:
         )
 
         # Mapping from package -> list of executables.
-        pkg_map: PkgMap = defaultdict(list)
         for line in pkg_executables:
             pkg, executable = line.split()
             pkg_map[pkg].append(executable)
-
-        return pkg_map
     except subprocess.CalledProcessError as e:
-        print(
-            f"Zenith shim error: 'ros2 pkg executables' failed with exit code: {e.returncode}: '{e.output}'. Ensure that ROS2 is installed and sourced",
-            file=sys.stderr,
+        logging.error(f'Failed to run "ros2 pkg executables" command: {e.output}')
+        raise ROS2CommandException(
+            f'Failed to run "ros2 pkg executables" command: {e.output}. Ensure that ROS2 is installed and sourced'
         )
-        sys.exit(1)
+
+    return pkg_map
 
 
 def find_directory(component: str, root: str = ".") -> str | None:

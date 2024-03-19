@@ -2,7 +2,7 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { cubicOut } from 'svelte/easing';
 import type { TransitionConfig } from 'svelte/transition';
-import type { Node } from './cli-bindings';
+import type { Node } from './api';
 
 export function isNodeEqual(node: Node, otherNode: Node): boolean {
 	return node.package === otherNode.package && node.executable === otherNode.executable;

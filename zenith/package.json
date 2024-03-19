@@ -3,11 +3,10 @@
 	"version": "0.0.1",
 	"private": true,
 	"scripts": {
-		"build_py": "node scripts/build.py.js",
 		"tauri": "tauri",
+		"dev:api": ". server/venv/bin/activate && uvicorn api:app --app-dir server --reload --reload-dir=server --log-config=server/log_conf.yaml",
 		"dev:web": "vite",
-		"dev:all": "nodemon --legacy-watch --watch shim/ -e py --exec \"npm run build_py && tauri dev\"",
-		"build": "npm run build_py && vite build",
+		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
