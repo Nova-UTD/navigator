@@ -10,8 +10,6 @@ from fastapi.routing import APIRoute
 from pydantic import BaseModel
 
 from launch import (
-    LaunchFileFromExisting,
-    LaunchFileFromScratch,
     LaunchFileNode,
     Metadata as LaunchMetadata,
 )
@@ -91,25 +89,25 @@ def root(dir: str) -> list[LaunchEntry]:
         for filename in filenames:
             if filename.endswith(".py"):
                 path = os.path.join(dirpath, filename)
-                with open(path) as f:
-                    launch_file = LaunchFileFromExisting(f.read())
-                    if not launch_file.valid():
-                        continue
 
-                    abs_path = os.path.abspath(path)
+                launch_file = builder.LaunchFileBuilder(path)
+                if not launch_file.valid():
+                    continue
 
-                    response.append(
-                        LaunchEntry(
-                            metadata=Metadata(name=launch_file.metadata.name),
-                            path=abs_path,
-                            nodes=[
-                                LaunchNode(
-                                    package=node.package, executable=node.executable
-                                )
-                                for node in launch_file.nodes
-                            ],
-                        )
+                abs_path = os.path.abspath(path)
+                name = launch_file.get_metadata().name
+                nodes = launch_file.get_nodes()
+
+                response.append(
+                    LaunchEntry(
+                        metadata=Metadata(name=name),
+                        path=abs_path,
+                        nodes=[
+                            LaunchNode(package=node.package, executable=node.executable)
+                            for node in nodes
+                        ],
                     )
+                )
 
     return response
 
@@ -148,16 +146,20 @@ def create_launch(launch: LaunchCreate):
     """
     try:
         launch_file = builder.LaunchFileBuilder(launch.path)
+    except OSError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    try:
         launch_file.set_metadata(LaunchMetadata(name=launch.metadata.name)).set_nodes(
             [
                 LaunchFileNode(package=node.package, executable=node.executable)
                 for node in launch.nodes
             ]
-        ).build()
+        ).build_and_write(overwrite=False)
     except builder.UnableToOverwrite as e:
         raise HTTPException(status_code=HTTPStatus.CONFLICT, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
     return {"path": os.path.abspath(launch.path)}
 
@@ -177,7 +179,7 @@ class UpdateLaunch(BaseModel):
 @router.patch("/launches", status_code=204)
 def update_launch(update: UpdateLaunch):
     try:
-        launch_builder = builder.LaunchFileBuilder(update.path, overwrite=True)
+        launch_builder = builder.LaunchFileBuilder(update.path)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -191,6 +193,6 @@ def update_launch(update: UpdateLaunch):
             )
 
     try:
-        launch_builder.build()
+        launch_builder.build_and_write(overwrite=True)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
