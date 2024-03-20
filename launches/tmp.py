@@ -18,12 +18,9 @@ from launch_node_definitions import map_manager_carla
 LAUNCH_LIST = [
     Node(package="rviz", executable="rviz"),
     Node(package="joy_translation1", executable="joy_translation_node"),
-    Node(package="clock", executable="clock_node"),
     Node(package="helpers", executable="routing_listener"),
     Node(package="helpers", executable="routing_monitor"),
-    Node(package="airbags", executable="airbag_node"),
-    Node(package="guardian", executable="guardian_node"),
-    Node(package="guardian", executable="sound_node"),
+    Node(package="clock", executable="clock_node"),
 ]
 # ---
 """END OF GENERATED SECTION"""
