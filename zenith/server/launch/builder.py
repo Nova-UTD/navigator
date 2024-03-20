@@ -55,6 +55,10 @@ class LaunchFileBuilder:
         self.nodes = nodes
         return self
 
+    def set_path(self, path: str) -> None:
+        self.path = path
+        return self
+
     def valid(self) -> bool:
         return self.buffer.valid()
 
@@ -63,6 +67,9 @@ class LaunchFileBuilder:
 
     def get_nodes(self) -> list[LaunchFileNode]:
         return self.nodes
+
+    def get_path(self) -> str:
+        return self.path
 
     def build_and_write(self, overwrite=False) -> None:
         if not overwrite and os.path.exists(self.path):
