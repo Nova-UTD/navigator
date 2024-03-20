@@ -7,10 +7,10 @@
 	export let onLaunchSelect: $$Props['onLaunchSelect'];
 </script>
 
-<ul>
-	<li class="">
-		{#each launches as { name, selected }, i}
+<ul class="flex flex-col gap-y-2">
+	{#each launches as { name, selected }, i}
+		<li>
 			<LaunchItem index={i} onClick={onLaunchSelect} {name} {selected} />
-		{/each}
-	</li>
+		</li>
+	{/each}
 </ul>

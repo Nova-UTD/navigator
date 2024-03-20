@@ -40,8 +40,9 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@square/svelte-store": "^1.0.18",
 		"@tauri-apps/api": "^1.5.3",
-		"bits-ui": "^0.18.1",
+		"bits-ui": "^0.18.6",
 		"clsx": "^2.1.0",
 		"lucide-svelte": "^0.335.0",
 		"tailwind-merge": "^2.2.1",
