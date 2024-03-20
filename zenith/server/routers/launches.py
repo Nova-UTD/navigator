@@ -16,7 +16,7 @@ from launch import (
 from launch import builder
 
 
-class PrometheusRoute(APIRoute):
+class TracebackRoute(APIRoute):
     def get_route_handler(self) -> Callable:
         original_route_handler = super().get_route_handler()
 
@@ -33,7 +33,7 @@ class PrometheusRoute(APIRoute):
         return custom_route_handler
 
 
-router = APIRouter(route_class=PrometheusRoute)
+router = APIRouter(route_class=TracebackRoute)
 
 
 class LaunchNode(BaseModel):
