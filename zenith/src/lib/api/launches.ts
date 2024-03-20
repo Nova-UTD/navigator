@@ -13,7 +13,7 @@ export type LaunchListEntry = {
 
 export type LaunchListResponse = LaunchListEntry[];
 
-export async function launchList(launchDirectory: string): Promise<LaunchListResponse> {
+export async function getLaunchList(launchDirectory: string): Promise<LaunchListResponse> {
 	const response: Promise<LaunchListResponse> = fetch(
 		`http://127.0.0.1:8000/launches?dir=${launchDirectory}`
 	).then((r) => r.json());
@@ -21,19 +21,21 @@ export async function launchList(launchDirectory: string): Promise<LaunchListRes
 	return response;
 }
 
-export type PackageInfo = {
-	name: string;
-	executables: string[];
+export type UpdateLaunchEntry = {
+	path: string;
+	metadata?: {
+		name: string;
+	};
+	add_nodes?: Node[];
+	remove_nodes?: Node[];
 };
 
-export type SubsystemInfo = {
-	name: string;
-	packages: PackageInfo[];
-};
-
-export type SubsystemResponse = SubsystemInfo[];
-
-export async function subsystemList(): Promise<SubsystemResponse> {
-	const response = fetch('http://127.0.0.1:8000/subsystems').then((r) => r.json());
-	return response;
+export async function updateLaunchList(launch: UpdateLaunchEntry): Promise<void> {
+	fetch('http://127.0.0.1:8000/launches', {
+		method: 'PATCH',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify(launch)
+	}).then(console.log);
 }

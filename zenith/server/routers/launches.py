@@ -7,7 +7,7 @@ from http import HTTPStatus
 
 from fastapi import APIRouter, HTTPException, Response, Request
 from fastapi.routing import APIRoute
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from launch import (
     LaunchFileNode,
@@ -172,8 +172,13 @@ class UpdateLaunch(BaseModel):
     """
 
     path: str
-    metadata: Metadata | None
-    nodes: list[LaunchNode] | None
+    metadata: Metadata | None = Field(None, description="New launch metadata.")
+    add_nodes: list[LaunchNode] | None = Field(
+        None, description="Launch nodes to append."
+    )
+    remove_nodes: list[LaunchNode] | None = Field(
+        None, description="Launch nodes to remove"
+    )
 
 
 @router.patch("/launches", status_code=204)
@@ -186,11 +191,21 @@ def update_launch(update: UpdateLaunch):
     if update.metadata:
         launch_builder.set_metadata(LaunchMetadata(name=update.metadata.name))
 
-    if update.nodes:
-        for node in update.nodes:
+    if update.add_nodes:
+        for node in update.add_nodes:
             launch_builder.add_node(
                 LaunchFileNode(package=node.package, executable=node.executable)
             )
+
+    if update.remove_nodes:
+        for node in update.remove_nodes:
+            try:
+                launch_builder.remove_node(
+                    LaunchFileNode(package=node.package, executable=node.executable)
+                )
+            except ValueError as e:
+                # Node is not in the list.
+                raise HTTPException(status_code=400, detail=str(e)) from e
 
     try:
         launch_builder.build_and_write(overwrite=True)
