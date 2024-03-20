@@ -1,22 +1,33 @@
 <script lang="ts">
-	import { launchList, subsystemList, type Node, type SubsystemInfo } from '$lib/api';
+	import {
+		getLaunchList,
+		updateLaunchList,
+		subsystemList,
+		type Node,
+		type SubsystemInfo
+	} from '$lib/api';
 	import { LaunchList, LaunchListSkeleton } from '$lib/components/ui/launch-list';
 	import { LaunchEditor } from '$lib/components/ui/launch-editor';
+	import { isNodeEqual } from '$lib/utils';
 
-	let launchListPromise = launchList('../launches');
+	let launchListPromise = getLaunchList('../launches');
 	let subsystemPromise = subsystemList();
 	let selectedIndex = 0;
 
 	let launchEditorState: Promise<{
 		subsystems: SubsystemInfo[];
 		activeNodes: Node[];
+		launchPath: string;
 	}>;
+
 	$: launchEditorState = Promise.allSettled([
 		subsystemPromise,
-		launchListPromise.then((launchList) => launchList[selectedIndex].nodes)
-	]).then(([subsystemsResponse, activeNodesResponse]) => ({
+		launchListPromise.then((launchList) => launchList[selectedIndex].nodes),
+		launchListPromise.then((launchList) => launchList[selectedIndex].path)
+	]).then(([subsystemsResponse, activeNodesResponse, path]) => ({
 		subsystems: subsystemsResponse.status === 'fulfilled' ? subsystemsResponse.value : [],
-		activeNodes: activeNodesResponse.status === 'fulfilled' ? activeNodesResponse.value : []
+		activeNodes: activeNodesResponse.status === 'fulfilled' ? activeNodesResponse.value : [],
+		launchPath: path.status === 'fulfilled' ? path.value : ''
 	}));
 </script>
 
@@ -39,7 +50,19 @@
 	</article>
 	{#await launchEditorState then launchEditor}
 		<LaunchEditor
-			onNodeChanged={(node, checked) => {}}
+			onNodeChanged={(node, checked) => {
+				if (checked) {
+					updateLaunchList({
+						add_nodes: [node],
+						path: launchEditor.launchPath
+					});
+				} else {
+					updateLaunchList({
+						remove_nodes: [node],
+						path: launchEditor.launchPath
+					});
+				}
+			}}
 			subsystems={launchEditor.subsystems}
 			activeNodes={launchEditor.activeNodes}
 		/>

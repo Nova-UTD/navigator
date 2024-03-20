@@ -40,9 +40,7 @@
 				"providerShortName": null,
 				"signingIdentity": null
 			},
-			"resources": {
-				"bin/lib/": "lib/"
-			},
+			"resources": {},
 			"shortDescription": "",
 			"targets": "all",
 			"windows": {
