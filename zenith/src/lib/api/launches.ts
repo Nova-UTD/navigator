@@ -21,6 +21,16 @@ export async function getLaunchList(launchDirectory: string): Promise<LaunchList
 	return response;
 }
 
+export async function createLaunchFile(launch: LaunchListEntry): Promise<void> {
+	fetch('http://127.0.0.1:8000/launches', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify(launch)
+	});
+}
+
 export type UpdateLaunchEntry = {
 	path: string;
 	metadata?: {

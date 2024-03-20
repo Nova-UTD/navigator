@@ -1,5 +1,11 @@
 import { asyncWritable, type WritableLoadable } from '@square/svelte-store';
-import { getLaunchList, updateLaunchList, type LaunchListEntry, type Node } from '$lib/api';
+import {
+	getLaunchList,
+	updateLaunchList,
+	createLaunchFile,
+	type LaunchListEntry,
+	type Node
+} from '$lib/api';
 import { derived, get } from 'svelte/store';
 import { isNodeEqual } from '$lib/utils';
 
@@ -14,14 +20,27 @@ export const launchStore: WritableLoadable<LaunchState> = asyncWritable(
 		const launches = await getLaunchList('../launches');
 		return { launches, selectedLaunch: 0 };
 	},
-	async (newLaunch) => {
-		return newLaunch;
+	async (newState) => {
+		return newState;
 	}
 );
 
 export const selectedLaunchStore = derived(launchStore, ($launchStore) =>
 	$launchStore ? $launchStore.launches[$launchStore.selectedLaunch] : undefined
 );
+
+export function createLaunch(name: string, path: string) {
+	launchStore.update((state) => ({
+		...state,
+		launches: [...state.launches, { metadata: { name }, path, nodes: [] }]
+	}));
+
+	createLaunchFile({
+		path,
+		metadata: { name },
+		nodes: []
+	});
+}
 
 export function addNodes(newNodes: Node[]) {
 	const selectedLaunch = get(selectedLaunchStore);
