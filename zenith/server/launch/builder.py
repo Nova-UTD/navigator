@@ -18,7 +18,7 @@ class UnableToOverwrite(Exception):
 
 
 class LaunchFileBuilder:
-    def __init__(self, path: str, overwrite: bool = False):
+    def __init__(self, path: str):
         self.path = path
 
         try:
@@ -27,16 +27,12 @@ class LaunchFileBuilder:
                 self.metadata = Metadata()
                 self.nodes = []
             else:
-                if not overwrite:
-                    raise UnableToOverwrite(
-                        "Launch already exists, consider using an overwriteable method"
-                    )
                 file = open(path, "r")
                 self.buffer = LaunchFileBuffer(file.read())
                 self.metadata = self.buffer._read_metadata()
                 self.nodes = self.buffer._read_launch_list()
                 file.close()
-        except UnableToOverwrite as e:
+        except OSError as e:
             raise e
         except Exception as e:
             raise InitException(
@@ -59,7 +55,21 @@ class LaunchFileBuilder:
         self.nodes = nodes
         return self
 
-    def build(self) -> None:
+    def valid(self) -> bool:
+        return self.buffer.valid()
+
+    def get_metadata(self) -> Metadata:
+        return self.metadata
+
+    def get_nodes(self) -> list[LaunchFileNode]:
+        return self.nodes
+
+    def build_and_write(self, overwrite=False) -> None:
+        if not overwrite and os.path.exists(self.path):
+            raise UnableToOverwrite(
+                "Launch already exists, consider using an overwriteable method"
+            )
+
         try:
             file = open(self.path, "wt")
             file.write(self.buffer.generate_file(self.metadata, self.nodes))
