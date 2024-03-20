@@ -6,13 +6,16 @@
 	import { launchStore, selectedLaunchStore, addNodes, removeNodes } from '$lib/stores/launchStore';
 	import { subsystemStore } from '$lib/stores/subsystemStore';
 	import { loadAll } from '@square/svelte-store';
+	import LaunchCreateDialog from '$lib/components/ui/launch-list/launch-create-dialog.svelte';
 </script>
 
 <section class="w-full h-full overflow-hidden grid grid-cols-[1fr_2fr_1fr] gap-[5%]">
 	<section class="flex flex-col gap-5">
 		<article class="flex justify-between items-center">
 			<h1>Launch List</h1>
-			<Button variant="ghost"><PlusSquare /></Button>
+			<LaunchCreateDialog>
+				<Button variant="ghost"><PlusSquare /></Button>
+			</LaunchCreateDialog>
 		</article>
 		{#await launchStore.load()}
 			<LaunchListSkeleton />
