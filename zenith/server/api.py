@@ -1,8 +1,8 @@
 import logging
 
-from fastapi import FastAPI, Response, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import subsystems, launches
+from routers import subsystems, launches, term
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ app.add_middleware(
 
 app.include_router(subsystems.router)
 app.include_router(launches.router)
+app.include_router(term.router)
 
 
 @app.get("/")
