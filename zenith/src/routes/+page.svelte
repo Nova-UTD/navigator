@@ -7,9 +7,10 @@
 	import { subsystemStore } from '$lib/stores/subsystemStore';
 	import { loadAll } from '@square/svelte-store';
 	import LaunchCreateDialog from '$lib/components/ui/launch-list/launch-create-dialog.svelte';
+	import { Terminal } from '$lib/components/ui/terminal';
 </script>
 
-<section class="w-full h-full overflow-hidden grid grid-cols-[1fr_2fr_1fr] gap-[5%]">
+<section class="w-full h-full overflow-hidden grid grid-cols-[0.5fr_1fr_1fr] gap-[5%]">
 	<section class="flex flex-col gap-5">
 		<article class="flex justify-between items-center">
 			<h1>Launch List</h1>
@@ -30,7 +31,9 @@
 			/>
 		{/await}
 	</section>
-	{#await loadAll([launchStore, subsystemStore]) then}
+	{#await loadAll([launchStore, subsystemStore])}
+		<p>Loading...</p>
+	{:then}
 		{#if typeof $selectedLaunchStore != 'undefined'}
 			<LaunchEditor
 				onNodeChanged={(node, checked) => {
@@ -47,4 +50,8 @@
 	{:catch err}
 		Error: {err.message}
 	{/await}
+	<section class="w-full h-full overflow-hidden">
+		<h1>Launch Terminal</h1>
+		<Terminal />
+	</section>
 </section>
