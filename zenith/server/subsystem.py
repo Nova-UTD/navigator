@@ -1,7 +1,6 @@
 from __future__ import annotations
 import os
 import subprocess
-import json
 import logging
 from collections import defaultdict
 
@@ -98,7 +97,8 @@ def get_pkg_subsystem(pkg: str) -> str:
     @param pkg[str]  The package name.
     @return str      The subsystem name.
     """
-    pkg_path = find_directory(pkg, root="../src")
+    default_src = os.environ.get("NAVIGATOR_SRC", "../src")
+    pkg_path = find_directory(pkg, root=default_src)
     # If the package is not in the source directory, it must have been
     # installed externally.
     if pkg_path is None:
