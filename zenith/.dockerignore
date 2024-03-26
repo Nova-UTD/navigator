@@ -1,2 +1,7 @@
 **/node_modules/
 **/.svelte-kit/
+**/build/
+**/target/
+**/*.md 
+# server has its own Dockerfile
+server/

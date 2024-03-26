@@ -3,6 +3,11 @@ import { twMerge } from 'tailwind-merge';
 import { cubicOut } from 'svelte/easing';
 import type { TransitionConfig } from 'svelte/transition';
 import type { Node } from './api';
+import { invoke } from '@tauri-apps/api';
+
+export async function get_env(name: string, defaultValue: string = ''): Promise<string> {
+	return await invoke('get_env', { name, defaultValue });
+}
 
 export function isNodeEqual(node: Node, otherNode: Node): boolean {
 	return node.package === otherNode.package && node.executable === otherNode.executable;

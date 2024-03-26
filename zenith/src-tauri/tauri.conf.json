@@ -15,6 +15,9 @@
 			"http": {
 				"all": true,
 				"request": true
+			},
+			"shell": {
+				"execute": true
 			}
 		},
 		"bundle": {
@@ -31,7 +34,7 @@
 				"icons/icon.icns",
 				"icons/icon.ico"
 			],
-			"identifier": "com.tauri.dev",
+			"identifier": "com.navigator.zenith",
 			"longDescription": "",
 			"macOS": {
 				"entitlements": null,
@@ -50,7 +53,8 @@
 			}
 		},
 		"security": {
-			"csp": null
+			"csp": null,
+			"dangerousUseHttpScheme": true
 		},
 		"updater": {
 			"active": false

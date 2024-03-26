@@ -6,6 +6,7 @@ from launch import LaunchDescription
 # ---
 """END OF GENERATED SECTION"""
 
+
 from launch.actions import RegisterEventHandler, LogInfo
 from launch.event_handlers import OnProcessStart
 from launch_ros.actions import Node
