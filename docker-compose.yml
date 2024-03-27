@@ -25,8 +25,15 @@ services:
       - type: bind
         source: $PWD/src
         target: /navigator/src
+      - type: bind
+        source: ${HOME}/.Xauthority
+        target: /root/.Xauthority
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
     environment:
       - NAVIGATOR_SRC=/navigator/src
+      - DISPLAY=${DISPLAY}
     network_mode: "host"
 
   zenith:
