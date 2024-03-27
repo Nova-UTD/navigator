@@ -3,10 +3,17 @@
 	import { LaunchEditor } from '$lib/modules/launch-editor';
 	import { Button } from '$lib/ui/button';
 	import PlusSquare from 'lucide-svelte/icons/plus-square';
-	import { launchStore, selectedLaunchStore, addNodes, removeNodes } from '$lib/stores/launchStore';
+	import {
+		launchStore,
+		selectedLaunchStore,
+		addNodes,
+		removeNodes,
+		setSelectedLaunchIndex
+	} from '$lib/stores/launchStore';
 	import { subsystemStore } from '$lib/stores/subsystemStore';
 	import { loadAll } from '@square/svelte-store';
 	import { Terminal } from '$lib/ui/terminal';
+	import { LaunchTerminal } from '$lib/modules/launch-terminal';
 </script>
 
 <section class="w-full h-full overflow-hidden grid grid-cols-[0.5fr_1fr_1fr] gap-[5%]">
@@ -22,10 +29,10 @@
 			<p>Loading...</p>
 		{:then}
 			<LaunchList
-				onLaunchSelect={(index) => ($launchStore.selectedLaunch = index)}
+				onLaunchSelect={setSelectedLaunchIndex}
 				launches={$launchStore.launches.map((launch, index) => ({
 					name: launch.metadata.name,
-					selected: $launchStore.selectedLaunch === index
+					selected: $launchStore.selectedLaunchIndex === index
 				}))}
 			/>
 		{/await}
@@ -49,11 +56,12 @@
 	{:catch err}
 		Error: {err.message}
 	{/await}
-	<section class="w-full h-full overflow-hidden">
+	<!-- <section class="w-full h-full overflow-hidden">
 		<article class="flex justify-between items-center">
 			<h1>Launch List</h1>
 			<Button variant="secondary">Launch</Button>
 		</article>
 		<Terminal launchCommand={`ros2 launch ${$selectedLaunchStore?.path ?? ''}`} />
-	</section>
+	</section> -->
+	<LaunchTerminal />
 </section>
