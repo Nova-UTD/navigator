@@ -2,6 +2,7 @@
 	import LaunchItem from './launch-item.svelte';
 	import LaunchItemMenu from './launch-item-menu.svelte';
 	import type { LaunchListProps } from '.';
+	import { filenameFromPath } from '$lib/utils';
 
 	type $$Props = LaunchListProps;
 	export let launches: $$Props['launches'];
@@ -9,9 +10,9 @@
 </script>
 
 <ul class="flex flex-col gap-y-2">
-	{#each launches as { name, selected }, i}
+	{#each launches as { name, path, selected }, i}
 		<li>
-			<LaunchItemMenu>
+			<LaunchItemMenu {name} filename={filenameFromPath(path)}>
 				<LaunchItem index={i} onClick={onLaunchSelect} {name} {selected} />
 			</LaunchItemMenu>
 		</li>

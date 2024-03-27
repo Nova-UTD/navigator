@@ -55,7 +55,7 @@ class LaunchFileBuilder:
         self.nodes = nodes
         return self
 
-    def set_path(self, path: str) -> None:
+    def set_path(self, path: str) -> LaunchFileBuilder:
         self.path = path
         return self
 
