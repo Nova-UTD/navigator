@@ -1,4 +1,4 @@
-import LaunchEditor from './launch-editor.svelte';
+import LaunchEditorPanel from './launch-editor-panel.svelte';
 import type { SubsystemInfo, Node } from '$lib/api';
 
 export type LaunchEditorProps = {
@@ -7,4 +7,4 @@ export type LaunchEditorProps = {
 	onNodeChanged: (node: Node, selected: boolean) => void;
 };
 
-export { LaunchEditor };
+export { LaunchEditorPanel };
