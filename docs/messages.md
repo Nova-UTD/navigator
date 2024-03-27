@@ -12,9 +12,8 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 ## [Here's a link](https://github.com/Nova-UTD/navigator/tree/dev/src/msg/navigator_msgs/msg) to our custom messages directory within Navigator if you need all the details.
 
 ### BoundingBox3D
-- [Pose](https://docs.ros2.org/latest/api/geometry_msgs/msg/Pose.html)
-- [Point](https://docs.ros2.org/latest/api/geometry_msgs/msg/Point.html)
-- [Vector3](https://docs.ros2.org/galactic/api/geometry_msgs/msg/Vector3.html)
+- Corners ([Point](https://docs.ros2.org/latest/api/geometry_msgs/msg/Point.html)[8])
+- Coordinates (float64[7])
 
 ### CarlaGnssRoute
 - Road Options
@@ -71,18 +70,17 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 - Mode
   - Disabled (0), Manual (1), Auto (2)
 
-### Obstacle3D
-- Label
-  - CAR (0), BIKE (1), PEDESTRIAN (2), OTHER (99)
-- ID (int)
-- Confidence (float)
+### Object3D
+- Label (uint8)
+  - PEDESTRIAN (0), CYCLIST (1), CAR (2), OTHER (99)
+- ID (uint32)
+- Confidence Score (float32)
   - [0, 1]
-- Velocity ([Vector3](https://docs.ros2.org/galactic/api/geometry_msgs/msg/Vector3.html))
-- Bounding Box [BoundingBox3D](#boundingbox3d)
+- Bounding Box ([BoundingBox3D](#boundingbox3d))
 
-### Obstacle3DArray
+### Object3DArray
 - [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
-- Obstacles ([Obstacle3D](#obstacle3d)[])
+- Objects ([Object3D](#object3d)[])
 
 ### PedalPosition
 - Data (float)
