@@ -7,7 +7,7 @@ import {
 	type Node,
 	duplicateLaunchFile
 } from '$lib/api';
-import { filenameFromPath, get_env, isNodeEqual } from '$lib/utils';
+import { filenameFromPath, isNodeEqual } from '$lib/utils';
 import { envStore } from './envStore';
 
 export type LaunchState = {
@@ -37,6 +37,12 @@ export const selectedLaunchStore = derived(launchStore, ($launchStore) =>
 	$launchStore ? $launchStore.launches[$launchStore.selectedLaunchIndex] : undefined
 );
 
+export async function refreshLaunchList() {
+	const { launchDir } = get(envStore);
+	const launches = await getLaunchList(launchDir);
+	launchStore.set({ launches, selectedLaunchIndex: 0 });
+}
+
 export async function createLaunch(name: string, filename: string) {
 	const launchDir = get(envStore).launchDir;
 	const path = `${launchDir}/${filename}`;
@@ -62,8 +68,7 @@ export async function duplicateLaunch({
 	oldFilename: string;
 	newFilename: string;
 }) {
-	const launchDir = await get_env('LAUNCH_DIR', '../launches');
-
+	const { launchDir } = get(envStore);
 	launchStore.update((state) => {
 		const existingLaunch = state.launches.find(
 			(launch) => filenameFromPath(launch.path) === oldFilename
@@ -85,6 +90,35 @@ export async function duplicateLaunch({
 		newName,
 		oldPath: `${launchDir}/${oldFilename}`,
 		newPath: `${launchDir}/${newFilename}`
+	});
+}
+
+export function renameLaunch({
+	path,
+	newName,
+	newFilename
+}: {
+	path: string;
+	newName: string;
+	newFilename: string;
+}) {
+	launchStore.update((state) => {
+		const launch = state.launches.find((launch) => launch.path === path);
+		if (!launch) return state;
+
+		const newLaunch = { ...launch, metadata: { name: newName } };
+		return {
+			...state,
+			launches: state.launches.map((l) => (l.path === path ? newLaunch : l))
+		};
+	});
+
+	const { launchDir } = get(envStore);
+
+	updateLaunchList({
+		path,
+		metadata: { name: newName },
+		new_path: `${launchDir}/${newFilename}`
 	});
 }
 
