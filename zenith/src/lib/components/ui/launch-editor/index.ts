@@ -1,5 +1,5 @@
 import LaunchEditor from './launch-editor.svelte';
-import type { SubsystemInfo, Node } from '$lib/cli-bindings';
+import type { SubsystemInfo, Node } from '$lib/api';
 
 export type LaunchEditorProps = {
 	subsystems: SubsystemInfo[];
