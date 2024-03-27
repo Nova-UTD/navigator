@@ -14,9 +14,10 @@
 			<Button disabled variant="secondary" class="flex items-center justify-center">
 				<Loader2 class="w-4 h-4 animate-spin" />
 			</Button>
-		{:then selectedLaunch}
+		{:then}
 			<Button
-				on:click={() => terminal.runLaunchCommand(`ros2 launch ${selectedLaunch?.path ?? ''}`)}
+				on:click={() =>
+					terminal.runLaunchCommand(`ros2 launch ${$selectedLaunchStore?.path ?? ''}`)}
 				variant="secondary">Launch</Button
 			>
 		{/await}
