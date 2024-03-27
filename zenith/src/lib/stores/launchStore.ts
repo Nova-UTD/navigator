@@ -4,9 +4,10 @@ import {
 	updateLaunchList,
 	createLaunchFile,
 	type LaunchListEntry,
-	type Node
+	type Node,
+	duplicateLaunchFile
 } from '$lib/api';
-import { isNodeEqual } from '$lib/utils';
+import { filenameFromPath, get_env, isNodeEqual } from '$lib/utils';
 import { envStore } from './envStore';
 
 export type LaunchState = {
@@ -49,6 +50,41 @@ export async function createLaunch(name: string, filename: string) {
 		path,
 		metadata: { name },
 		nodes: []
+	});
+}
+
+export async function duplicateLaunch({
+	newName,
+	oldFilename,
+	newFilename
+}: {
+	newName: string;
+	oldFilename: string;
+	newFilename: string;
+}) {
+	const launchDir = await get_env('LAUNCH_DIR', '../launches');
+
+	launchStore.update((state) => {
+		const existingLaunch = state.launches.find(
+			(launch) => filenameFromPath(launch.path) === oldFilename
+		);
+
+		if (!existingLaunch) return state;
+
+		const newLaunch = {
+			...existingLaunch,
+			metadata: { ...existingLaunch.metadata, name: newName },
+			path: `${launchDir}/${newFilename}`
+		};
+		return {
+			...state,
+			launches: [...state.launches, newLaunch]
+		};
+	});
+	duplicateLaunchFile({
+		newName,
+		oldPath: `${launchDir}/${oldFilename}`,
+		newPath: `${launchDir}/${newFilename}`
 	});
 }
 

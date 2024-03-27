@@ -32,6 +32,7 @@
 				onLaunchSelect={setSelectedLaunchIndex}
 				launches={$launchStore.launches.map((launch, index) => ({
 					name: launch.metadata.name,
+					path: launch.path,
 					selected: $launchStore.selectedLaunchIndex === index
 				}))}
 			/>

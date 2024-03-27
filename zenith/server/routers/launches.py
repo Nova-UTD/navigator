@@ -214,7 +214,7 @@ def update_launch(update: UpdateLaunch):
 
 
 @router.post("/launches/copy", status_code=201)
-def copy_launch(old_path: str, new_path: str, overwrite: bool = True):
+def copy_launch(old_path: str, new_path: str, new_name: str, overwrite: bool = True):
     try:
         launch_builder = builder.LaunchFileBuilder(old_path)
     except Exception as e:
@@ -222,7 +222,9 @@ def copy_launch(old_path: str, new_path: str, overwrite: bool = True):
 
     try:
         # Set the new path and write the launch file.
-        launch_builder.set_path(new_path).build_and_write(overwrite)
+        launch_builder.set_path(new_path).set_metadata(
+            LaunchMetadata(name=new_name)
+        ).build_and_write(overwrite)
     except builder.UnableToOverwrite as e:
         raise HTTPException(status_code=HTTPStatus.CONFLICT, detail=str(e))
     except Exception as e:

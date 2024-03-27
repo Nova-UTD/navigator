@@ -31,6 +31,20 @@ export async function createLaunchFile(launch: LaunchListEntry): Promise<void> {
 	});
 }
 
+export type DuplicateLaunchParams = {
+	newName: string;
+	oldPath: string;
+	newPath: string;
+};
+export async function duplicateLaunchFile({
+	newName,
+	oldPath,
+	newPath
+}: DuplicateLaunchParams): Promise<void> {
+	const urlParams = `old_path=${oldPath}&new_path=${newPath}&new_name=${newName}`;
+	fetch(`http://127.0.0.1:8000/launches/copy?${urlParams}`, { method: 'POST' });
+}
+
 export type UpdateLaunchEntry = {
 	path: string;
 	metadata?: {

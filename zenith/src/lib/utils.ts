@@ -19,6 +19,10 @@ export function chunkArray<T>(array: T[], size: number): T[][] {
 	);
 }
 
+export function filenameFromPath(path: string): string {
+	return path.replace(/^.*[\\/]/, '');
+}
+
 // Generate sequential IDs.
 export function seqID(): string {
 	return (Date.now() + 1).toString(36);
