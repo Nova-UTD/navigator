@@ -1,3 +1,3 @@
-import LaunchTerminal from './launch-terminal.svelte';
+import LaunchTerminalPanel from './launch-terminal-panel.svelte';
 
-export { LaunchTerminal };
+export { LaunchTerminalPanel };
