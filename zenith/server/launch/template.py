@@ -6,7 +6,7 @@ from launch.actions import RegisterEventHandler, LogInfo
 from launch.event_handlers import OnProcessStart
 from launch_ros.actions import Node
 
-from launch_node_definitions import map_manager_carla
+from launches.launch_node_definitions import *
 
 def generate_launch_description():
     return LaunchDescription([
