@@ -179,6 +179,7 @@ class UpdateLaunch(BaseModel):
     remove_nodes: list[LaunchNode] | None = Field(
         None, description="Launch nodes to remove"
     )
+    new_path: str | None = Field(None, description="New path for the launch file.")
 
 
 @router.patch("/launches", status_code=204)
@@ -209,6 +210,8 @@ def update_launch(update: UpdateLaunch):
 
     try:
         launch_builder.build_and_write(overwrite=True)
+        if update.new_path:
+            os.rename(update.path, update.new_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 

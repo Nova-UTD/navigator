@@ -1,3 +1,7 @@
+export type LaunchMetadata = {
+	name: string;
+};
+
 export type Node = {
 	package: string;
 	executable: string;
@@ -5,9 +9,7 @@ export type Node = {
 
 export type LaunchListEntry = {
 	path: string;
-	metadata: {
-		name: string;
-	};
+	metadata: LaunchMetadata;
 	nodes: Node[];
 };
 
@@ -47,11 +49,10 @@ export async function duplicateLaunchFile({
 
 export type UpdateLaunchEntry = {
 	path: string;
-	metadata?: {
-		name: string;
-	};
+	metadata?: LaunchMetadata;
 	add_nodes?: Node[];
 	remove_nodes?: Node[];
+	new_path?: string;
 };
 
 export async function updateLaunchList(launch: UpdateLaunchEntry): Promise<void> {
