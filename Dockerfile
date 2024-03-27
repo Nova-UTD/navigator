@@ -189,6 +189,8 @@ RUN pip3 install \
     #
     transforms3d \
     #
+    pygroundsegmentation \
+    #
     xmlschema==1.0.18
     # distro \
     # torch==1.12.0 \

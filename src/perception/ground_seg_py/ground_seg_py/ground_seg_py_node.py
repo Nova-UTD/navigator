@@ -52,7 +52,15 @@ class GroundSegNode(Node):
 
     def point_cloud_cb(self, msg: PointCloud2):
         start0 = time.time()
-        ground_estimator = GroundPlaneFitting() #Instantiate one of the Estimators
+        ground_estimator = GroundPlaneFitting(
+            1,      # Divide evenly the point cloud into a number of segments
+            3,      # Number of iterations
+            250,    # number of points used to estimate the LPR
+            1.2,    # Threshold for points to be considered initial seeds
+            0.3,    # Threshold distance from the plane
+            1.7,      # LiDAR sensor height to ground
+            -1.5,
+        ) #Instantiate one of the Estimators
 
         cloud_range = 80.0
         max_height = 2.5  # Exclude points above this height, in meters
@@ -70,17 +78,23 @@ class GroundSegNode(Node):
         start2 = time.time()
 
         ground_idxs = ground_estimator.estimate_ground(xyz)
-        ground_pcl = xyzi[ground_idxs]
+        #ground_pcl = xyzi[ground_idxs]
         not_ground_pcl = np.delete(xyzi, ground_idxs)
 
-        f_msg = pc2.create_cloud(msg.header, msg.fields, not_ground_pcl)
-        g_msg = pc2.create_cloud(msg.header, msg.fields, ground_pcl)
+        #fields = [PointField(name='x', offset=0, datatype=7, count=1), PointField(name='y', offset=4, datatype=7, count=1), PointField(name='z', offset=8, datatype=7, count=1), PointField(name='intensity', offset=16, datatype=7, count=1), PointField(name='t', offset=20, datatype=6, count=1), PointField(name='reflectivity', offset=24, datatype=4, count=1), PointField(name='ring', offset=26, datatype=4, count=1), PointField(name='ambient', offset=28, datatype=4, count=1), PointField(name='range', offset=32, datatype=6, count=1)]
+
+        print(msg.header)
+        print(msg.fields)
+
+        #f_msg = pc2.create_cloud(msg.header, msg.fields, not_ground_pcl)
+        f_msg = rnp.point_cloud2.array_to_pointcloud2(not_ground_pcl, msg.header.stamp, msg.header.frame_id)
+        #g_msg = pc2.create_cloud(msg.header, msg.fields, ground_pcl)
         #f_msg.header = msg.header
         #print(3)
         end2 = time.time()
         length2 = start2 - end2
         self.filtered_lidar_pub.publish(f_msg)
-        self.ground_lidar_pub.publish(g_msg)
+        #self.ground_lidar_pub.publish(g_msg)
         #self.filtered_lidar_pub.publish(msg)
         end0 = time.time()
         length0 = start0 - end0
