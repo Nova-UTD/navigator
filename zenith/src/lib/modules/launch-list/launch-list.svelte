@@ -1,7 +1,7 @@
 <script lang="ts">
-	import LaunchItem from '$lib/components/launch-list/launch-item.svelte';
-	import type { LaunchListProps } from '.';
+	import LaunchItem from './launch-item.svelte';
 	import LaunchItemMenu from './launch-item-menu.svelte';
+	import type { LaunchListProps } from '.';
 
 	type $$Props = LaunchListProps;
 	export let launches: $$Props['launches'];

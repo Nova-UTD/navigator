@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as ContextMenu from '$lib/components/ui/context-menu';
+	import * as ContextMenu from '$lib/ui/context-menu';
 	import CopyPlusIcon from 'lucide-svelte/icons/copy-plus';
 	import FolderPenIcon from 'lucide-svelte/icons/folder-pen';
 	import RefreshIcon from 'lucide-svelte/icons/refresh-ccw';

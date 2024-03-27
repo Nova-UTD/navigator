@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Dot } from '$lib/components/ui/dot';
+	import { Dot } from '$lib/ui/dot';
 	import type { LaunchItemProps } from '.';
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from '$lib/ui/button';
 
 	type $$Props = LaunchItemProps;
 	export let name: $$Props['name'];
