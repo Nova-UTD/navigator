@@ -1,4 +1,4 @@
-import { asyncWritable, type WritableLoadable } from '@square/svelte-store';
+import { asyncWritable, derived, get, type WritableLoadable } from '@square/svelte-store';
 import {
 	getLaunchList,
 	updateLaunchList,
@@ -6,31 +6,40 @@ import {
 	type LaunchListEntry,
 	type Node
 } from '$lib/api';
-import { derived, get } from 'svelte/store';
 import { isNodeEqual } from '$lib/utils';
 import { envStore } from './envStore';
 
 export type LaunchState = {
 	launches: LaunchListEntry[];
-	selectedLaunch: number;
+	selectedLaunchIndex: number;
 };
 
 export const launchStore: WritableLoadable<LaunchState> = asyncWritable(
 	[envStore],
 	async ([envStore]) => {
 		const launches = await getLaunchList(envStore.launchDir);
-		return { launches, selectedLaunch: 0 };
+		return { launches, selectedLaunchIndex: 0 };
 	},
 	async (newState) => {
 		return newState;
 	}
 );
 
+export function setSelectedLaunchIndex(index: number) {
+	launchStore.update((state) => ({
+		...state,
+		selectedLaunchIndex: index
+	}));
+}
+
 export const selectedLaunchStore = derived(launchStore, ($launchStore) =>
-	$launchStore ? $launchStore.launches[$launchStore.selectedLaunch] : undefined
+	$launchStore ? $launchStore.launches[$launchStore.selectedLaunchIndex] : undefined
 );
 
-export function createLaunch(name: string, path: string) {
+export async function createLaunch(name: string, filename: string) {
+	const launchDir = get(envStore).launchDir;
+	const path = `${launchDir}/${filename}`;
+
 	launchStore.update((state) => ({
 		...state,
 		launches: [...state.launches, { metadata: { name }, path, nodes: [] }]
@@ -55,7 +64,7 @@ export function addNodes(newNodes: Node[]) {
 	launchStore.update((state) => ({
 		...state,
 		launches: state.launches.map((launch, i) =>
-			i == state.selectedLaunch ? { ...launch, nodes: [...launch.nodes, ...newNodes] } : launch
+			i == state.selectedLaunchIndex ? { ...launch, nodes: [...launch.nodes, ...newNodes] } : launch
 		)
 	}));
 }
@@ -72,7 +81,7 @@ export function removeNodes(nodesToRemove: Node[]) {
 	launchStore.update((state) => ({
 		...state,
 		launches: state.launches.map((launch, i) =>
-			i == state.selectedLaunch
+			i == state.selectedLaunchIndex
 				? {
 						...launch,
 						nodes: launch.nodes.filter((n) => !nodesToRemove.some((node) => isNodeEqual(n, node)))

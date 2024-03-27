@@ -4,11 +4,14 @@
 	import { Input } from '$lib/ui/input';
 	import { Button } from '$lib/ui/button';
 	import { createLaunch } from '$lib/stores/launchStore';
+	import { seqID } from '$lib/utils';
 
 	let open = false;
 	let name = '';
 	// TODO(gekevin): add actual file handling instead of string path
-	let path = '/';
+	let filename = `launch.${seqID()}.launch`;
+
+	$: name !== '' && (filename = `launch.${name}.py`);
 
 	function changeName(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -17,7 +20,7 @@
 
 	function changePath(event: Event) {
 		const target = event.target as HTMLInputElement;
-		path = target.value;
+		filename = target.value;
 	}
 </script>
 
@@ -33,15 +36,15 @@
 				<Input id="name" autofocus on:input={changeName} value={name} class="col-span-3" />
 			</div>
 			<div class="grid grid-cols-4 items-center gap-4">
-				<Label for="name" class="text-right">Directory Path</Label>
-				<Input id="name" on:input={changePath} value={path} class="col-span-3" />
+				<Label for="filename" class="text-right">Filename (exclude path)</Label>
+				<Input id="filename" on:input={changePath} value={filename} class="col-span-3" />
 			</div>
 		</div>
 		<Dialog.Footer>
 			<Button
 				on:click={() => {
 					open = false;
-					createLaunch(name, path);
+					createLaunch(name, filename);
 				}}
 				type="submit"
 				variant="secondary">Create</Button
