@@ -5,6 +5,7 @@
 	import { Button } from '$lib/ui/button';
 	import { createLaunch } from '$lib/stores/launchStore';
 	import { seqID } from '$lib/utils';
+	import XIcon from 'lucide-svelte/icons/x';
 
 	let open = false;
 	let name = '';
@@ -13,12 +14,19 @@
 
 	$: name !== '' && (filename = `launch.${name}.py`);
 
+	let showError = false;
+	let emptyError = false;
+
+	$: emptyError = name === '' || filename === '';
+
 	function changeName(event: Event) {
+		showError = false;
 		const target = event.target as HTMLInputElement;
 		name = target.value;
 	}
 
 	function changePath(event: Event) {
+		showError = false;
 		const target = event.target as HTMLInputElement;
 		filename = target.value;
 	}
@@ -40,9 +48,19 @@
 				<Input id="filename" on:input={changePath} value={filename} class="col-span-3" />
 			</div>
 		</div>
+		{#if showError && emptyError}
+			<div class="flex items-center gap-2 text-xs text-red-500">
+				<XIcon class="w-8 h-8" />
+				<p>Name and filename cannot be empty.</p>
+			</div>
+		{/if}
 		<Dialog.Footer>
 			<Button
 				on:click={() => {
+					if (emptyError) {
+						showError = true;
+						return;
+					}
 					open = false;
 					createLaunch(name, filename);
 				}}
