@@ -56,12 +56,5 @@
 	{:catch err}
 		Error: {err.message}
 	{/await}
-	<!-- <section class="w-full h-full overflow-hidden">
-		<article class="flex justify-between items-center">
-			<h1>Launch List</h1>
-			<Button variant="secondary">Launch</Button>
-		</article>
-		<Terminal launchCommand={`ros2 launch ${$selectedLaunchStore?.path ?? ''}`} />
-	</section> -->
 	<LaunchTerminal />
 </section>
