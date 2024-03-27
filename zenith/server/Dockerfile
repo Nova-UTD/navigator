@@ -1,16 +1,26 @@
 FROM navigator:latest
 
+# Set working directory to /navigator/zenith/server.
 RUN mkdir -p /navigator/zenith/server
-
 WORKDIR /navigator/zenith/server
 
-COPY ./requirements.txt ./
+# Install starship cli prompt.
+# Starship is used to prettify the terminal.
+ENV TERM=xterm-256color
+RUN curl -sS https://starship.rs/install.sh | sh -s -- -y
 
+# Setup starship configuration
+RUN mkdir -p /root/.config
+RUN echo 'command_timeout = 1000\nformat = """$directory$git_branch[❯](bold red)[❯](bold yellow)[❯](bold green) """' \
+    > /root/.config/starship.toml
+RUN echo 'eval "$(starship init bash)"' >> /root/.bashrc
+
+# Install Python dependencies.
+COPY ./requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy all files.
 COPY . .
-
-ENV TERM=xterm-256color
 
 # Source ROS2 and run server on port 8000.
 # Must be run with the following:
