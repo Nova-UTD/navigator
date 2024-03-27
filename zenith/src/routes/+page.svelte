@@ -12,7 +12,6 @@
 	} from '$lib/stores/launchStore';
 	import { subsystemStore } from '$lib/stores/subsystemStore';
 	import { loadAll } from '@square/svelte-store';
-	import { Terminal } from '$lib/ui/terminal';
 	import { LaunchTerminal } from '$lib/modules/launch-terminal';
 </script>
 
@@ -53,6 +52,10 @@
 				subsystems={$subsystemStore}
 				activeNodes={$selectedLaunchStore.nodes}
 			/>
+		{:else}
+			<p>
+				It seems that the launch editor couldn't load. Make sure you create a launch file first.
+			</p>
 		{/if}
 	{:catch err}
 		Error: {err.message}
