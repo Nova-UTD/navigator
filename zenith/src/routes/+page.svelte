@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { LaunchList, LaunchListSkeleton, LaunchCreateDialog } from '$lib/components/launch-list';
-	import { LaunchEditor } from '$lib/components/launch-editor';
-	import { Button } from '$lib/components/ui/button';
+	import { LaunchList, LaunchListSkeleton, LaunchCreateDialog } from '$lib/modules/launch-list';
+	import { LaunchEditor } from '$lib/modules/launch-editor';
+	import { Button } from '$lib/ui/button';
 	import PlusSquare from 'lucide-svelte/icons/plus-square';
 	import { launchStore, selectedLaunchStore, addNodes, removeNodes } from '$lib/stores/launchStore';
 	import { subsystemStore } from '$lib/stores/subsystemStore';
 	import { loadAll } from '@square/svelte-store';
-	import { Terminal } from '$lib/components/ui/terminal';
+	import { Terminal } from '$lib/ui/terminal';
 </script>
 
 <section class="w-full h-full overflow-hidden grid grid-cols-[0.5fr_1fr_1fr] gap-[5%]">

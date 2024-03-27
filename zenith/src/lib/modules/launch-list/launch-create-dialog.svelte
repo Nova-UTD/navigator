@@ -1,8 +1,8 @@
 <script lang="ts">
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { Label } from '$lib/components/ui/label';
-	import { Input } from '$lib/components/ui/input';
-	import { Button } from '$lib/components/ui/button';
+	import * as Dialog from '$lib/ui/dialog';
+	import { Label } from '$lib/ui/label';
+	import { Input } from '$lib/ui/input';
+	import { Button } from '$lib/ui/button';
 	import { createLaunch } from '$lib/stores/launchStore';
 
 	let open = false;

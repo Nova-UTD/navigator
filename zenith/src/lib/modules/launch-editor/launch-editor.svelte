@@ -1,9 +1,9 @@
 <script lang="ts">
-	import * as Accordion from '$lib/components/ui/accordion';
-	import { Switch } from '$lib/components/ui/switch';
-	import { Label } from '$lib/components/ui/label';
+	import * as Accordion from '$lib/ui/accordion';
+	import { Switch } from '$lib/ui/switch';
+	import { Label } from '$lib/ui/label';
 	import type { LaunchEditorProps } from '.';
-	import { LazyLoadedList } from '$lib/components/ui/lazy-loaded-list';
+	import { LazyLoadedList } from '$lib/ui/lazy-loaded-list';
 	import { isNodeEqual } from '$lib/utils';
 
 	type $$Props = LaunchEditorProps;
