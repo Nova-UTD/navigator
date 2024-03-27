@@ -4,10 +4,6 @@
 	import { Terminal } from 'xterm';
 	import { FitAddon } from 'xterm-addon-fit';
 	import 'xterm/css/xterm.css';
-	import type { TerminalProps } from '.';
-
-	type $$Props = TerminalProps;
-	export let launchCommand: $$Props['launchCommand'];
 
 	const term = new Terminal({
 		cursorBlink: true,
@@ -31,17 +27,21 @@
 		ws?.send(JSON.stringify(resizeMessage));
 	}
 
-	function runLaunchCommand() {
+	export function runLaunchCommand(launchCommand: string) {
 		if (!ws) return;
 
 		if (ws.readyState === ws.OPEN) {
-			const command = launchCommand + '\n';
 			const launchMessage: WSMessage = {
 				type: 'input',
 				key: launchCommand
 			};
 			ws.send(JSON.stringify(launchMessage));
-			term.writeln(command);
+
+			const enterMessage: WSMessage = {
+				type: 'input',
+				key: '\r'
+			};
+			ws.send(JSON.stringify(enterMessage));
 		}
 	}
 
