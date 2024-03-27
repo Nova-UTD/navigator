@@ -1,6 +1,7 @@
 import LaunchItem from './launch-item.svelte';
 import LaunchList from './launch-list.svelte';
 import LaunchListSkeleton from './launch-list-skeleton.svelte';
+import LaunchCreateDialog from './launch-create-dialog.svelte';
 
 export type LaunchListProps = {
 	launches: { name: string; selected: boolean }[];
@@ -14,4 +15,4 @@ export type LaunchItemProps = {
 	onClick: (index: number) => void;
 };
 
-export { LaunchItem, LaunchList, LaunchListSkeleton };
+export { LaunchItem, LaunchList, LaunchListSkeleton, LaunchCreateDialog };

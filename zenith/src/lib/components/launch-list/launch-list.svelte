@@ -1,5 +1,5 @@
 <script lang="ts">
-	import LaunchItem from '$lib/components/ui/launch-list/launch-item.svelte';
+	import LaunchItem from '$lib/components/launch-list/launch-item.svelte';
 	import type { LaunchListProps } from '.';
 	import LaunchItemMenu from './launch-item-menu.svelte';
 

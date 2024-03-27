@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { LaunchList, LaunchListSkeleton } from '$lib/components/ui/launch-list';
-	import { LaunchEditor } from '$lib/components/ui/launch-editor';
+	import { LaunchList, LaunchListSkeleton, LaunchCreateDialog } from '$lib/components/launch-list';
+	import { LaunchEditor } from '$lib/components/launch-editor';
 	import { Button } from '$lib/components/ui/button';
 	import PlusSquare from 'lucide-svelte/icons/plus-square';
 	import { launchStore, selectedLaunchStore, addNodes, removeNodes } from '$lib/stores/launchStore';
 	import { subsystemStore } from '$lib/stores/subsystemStore';
 	import { loadAll } from '@square/svelte-store';
-	import LaunchCreateDialog from '$lib/components/ui/launch-list/launch-create-dialog.svelte';
 	import { Terminal } from '$lib/components/ui/terminal';
 </script>
 
