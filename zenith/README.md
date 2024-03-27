@@ -7,6 +7,7 @@ Navigator's launch GUI.
 Run the following in `navigator` root.
 
 ```bash
+# xhost +local:root on Ubuntu to allow access to display server
 docker compose up zenith
 ```
 
@@ -40,7 +41,7 @@ source venv/bin/activate # Or OS equivalent (different for Windows and MacOS).
 # Install dependencies
 pip install -r requirements.txt
 # Run development server
-npm run dev:api
+NAVIGATOR_SRC=/CHANGE/navigator/src npm run dev:api
 ```
 
 2. Run Tauri GUI
@@ -50,7 +51,9 @@ cd zenith
 # Install dependencies
 npm install
 # Run GUI
-npm run tauri dev
+LAUNCH_DIR=/CHANGEME/navigator/launches npm run tauri dev
+
+# LAUNCH_DIR=/navigator/launches when running zenith_backend via Docker
 ```
 
 </details>
