@@ -7,7 +7,8 @@ import {
 	type Node
 } from '$lib/api';
 import { derived, get } from 'svelte/store';
-import { isNodeEqual, get_env } from '$lib/utils';
+import { isNodeEqual } from '$lib/utils';
+import { envStore } from './envStore';
 
 export type LaunchState = {
 	launches: LaunchListEntry[];
@@ -15,10 +16,9 @@ export type LaunchState = {
 };
 
 export const launchStore: WritableLoadable<LaunchState> = asyncWritable(
-	[],
-	async () => {
-		const defaultLaunchDir = await get_env('LAUNCH_DIR', '../launches');
-		const launches = await getLaunchList(defaultLaunchDir);
+	[envStore],
+	async ([envStore]) => {
+		const launches = await getLaunchList(envStore.launchDir);
 		return { launches, selectedLaunch: 0 };
 	},
 	async (newState) => {
@@ -63,7 +63,6 @@ export function addNodes(newNodes: Node[]) {
 export function removeNodes(nodesToRemove: Node[]) {
 	const selectedLaunch = get(selectedLaunchStore);
 	if (!selectedLaunch) return;
-	console.log(nodesToRemove);
 
 	updateLaunchList({
 		path: selectedLaunch.path,

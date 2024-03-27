@@ -4,6 +4,10 @@
 	import { Terminal } from 'xterm';
 	import { FitAddon } from 'xterm-addon-fit';
 	import 'xterm/css/xterm.css';
+	import type { TerminalProps } from '.';
+
+	type $$Props = TerminalProps;
+	export let launchCommand: $$Props['launchCommand'];
 
 	const term = new Terminal({
 		cursorBlink: true,
@@ -16,10 +20,36 @@
 
 	let ws: WebSocket | undefined;
 
+	function resizeTerminal() {
+		if (!terminalElement) return;
+		fitAddon.fit();
+		const resizeMessage: WSMessage = {
+			type: 'resize',
+			cols: term.cols,
+			rows: term.rows
+		};
+		ws?.send(JSON.stringify(resizeMessage));
+	}
+
+	function runLaunchCommand() {
+		if (!ws) return;
+
+		if (ws.readyState === ws.OPEN) {
+			const command = launchCommand + '\n';
+			const launchMessage: WSMessage = {
+				type: 'input',
+				key: launchCommand
+			};
+			ws.send(JSON.stringify(launchMessage));
+			term.writeln(command);
+		}
+	}
+
 	onMount(() => {
 		ws = new WebSocket('ws://localhost:8000/term/ws');
 		ws.onopen = () => {
 			if (terminalElement) term.open(terminalElement);
+
 			term.writeln(
 				[
 					'\x1b[32m.___.        , .  ', // prevent formating
@@ -27,17 +57,17 @@
 					'./__.(/,[ )| | [ )'
 				].join('\n\r')
 			);
-			fitAddon.fit();
-			const resizeMessage: WSMessage = {
-				type: 'resize',
-				cols: term.cols,
-				rows: term.rows
-			};
-			ws?.send(JSON.stringify(resizeMessage));
+			resizeTerminal();
+			window.addEventListener('resize', resizeTerminal);
 		};
 
 		ws.onmessage = (event) => {
 			term.write(event.data);
+		};
+
+		return () => {
+			ws?.close();
+			window.removeEventListener('resize', resizeTerminal);
 		};
 	});
 

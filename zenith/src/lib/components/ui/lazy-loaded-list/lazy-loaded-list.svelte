@@ -26,7 +26,6 @@
 		chunkIndex = 0;
 		renderChunks();
 	}
-	console.log(displayedItems);
 
 	function renderChunks() {
 		if (chunkIndex > chunks.length) return;
