@@ -67,7 +67,7 @@ services:
       #runtime: nvidia
 
     image: navigator
-    container_name: navigator_${USER}
+    container_name: navigator_carla_${USER}
 
     volumes:
       - type: bind
@@ -124,7 +124,7 @@ services:
     tty: true
 
     image: navigator
-    container_name: navigator_${USER}
+    container_name: navigator_obc_${USER}
 
     volumes:
       - type: bind
