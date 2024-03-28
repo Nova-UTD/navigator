@@ -42,6 +42,9 @@ docker compose run zenith_backend_dev
 python3 -m venv/bin/activate
 pip install -r requirements.txt
 
+# Source navigator build
+. /navigator/install/setup.bash
+
 # Run
 npm run dev:api
 
