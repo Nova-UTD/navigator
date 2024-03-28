@@ -1,9 +1,15 @@
 <script lang="ts">
 	import type { WSMessage } from '$lib/api';
+	import { cn } from '$lib/utils';
 	import { onMount } from 'svelte';
+	import type { HTMLAttributes } from 'svelte/elements';
 	import { Terminal } from 'xterm';
 	import { FitAddon } from 'xterm-addon-fit';
 	import 'xterm/css/xterm.css';
+
+	type $$Props = HTMLAttributes<HTMLDivElement>;
+	let className: $$Props['class'] = '';
+	export { className as class };
 
 	const term = new Terminal({
 		cursorBlink: true,
@@ -84,4 +90,4 @@
 	});
 </script>
 
-<div bind:this={terminalElement} id="terminal" class="w-full h-full"></div>
+<div bind:this={terminalElement} id="terminal" class={cn('w-full h-full', className)}></div>
