@@ -1,8 +1,7 @@
-from collections import defaultdict
-from dataclasses import dataclass
+"""This module contains /subsystems routes for the Zenith API."""
 
 from fastapi import APIRouter, HTTPException
-from subsystem import SubsystemMap, ROS2CommandException, PkgMap
+from subsystem import SubsystemMap, ROS2CommandException
 from pydantic import BaseModel
 
 

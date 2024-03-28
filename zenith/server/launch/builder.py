@@ -1,3 +1,5 @@
+"""Module for building and modifying launch files. Prefer this module over launch_file."""
+
 from __future__ import annotations
 import os
 
@@ -6,21 +8,40 @@ from .template import LAUNCH_FILE_TEMPLATE
 
 
 class InitException(Exception):
+    """Exception raised for errors in the initialization of the LaunchFileBuilder."""
     pass
 
 
 class BuildException(Exception):
+    """Exception raised for errors in the building of the launch file."""
     pass
 
 
 class UnableToOverwrite(Exception):
+    """Exception raised when trying to overwrite a file that already exists."""
     pass
 
 
 class LaunchFileBuilder:
+    """LaunchFileBuilder allows for parsing, creation, and modification of launch files. 
+
+    This should always be used instead of directly modifying the LaunchFileBuffer.
+    """
+
     def __init__(self, path: str):
+        """Initializes the LaunchFileBuilder.
+
+        Args:
+            path (str): The path to the launch file.
+
+        Raises:
+            InitException: If the launch file fails to initialize.
+            OSError: If the file cannot be read.
+        """
         self.path = path
 
+        # Try to read the file.
+        # If it doesn't exist, create a new one from the template.
         try:
             if not os.path.exists(path):
                 self.buffer = LaunchFileBuffer(LAUNCH_FILE_TEMPLATE)
@@ -72,6 +93,15 @@ class LaunchFileBuilder:
         return self.path
 
     def build_and_write(self, overwrite=False) -> None:
+        """Builds the launch file and writes it to the path.
+
+        Args:
+            overwrite (bool, optional): Whether to overwrite the file if it already exists. Defaults to False.
+        
+        Raises:
+            UnableToOverwrite: If the file already exists and overwrite is False.
+            BuildException: If the launch file fails to build.
+        """
         if not overwrite and os.path.exists(self.path):
             raise UnableToOverwrite(
                 "Launch already exists, consider using an overwriteable method"

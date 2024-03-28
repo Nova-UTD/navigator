@@ -1,3 +1,5 @@
+"""This module contains /launches routes for the Zenith API."""
+
 import sys
 import os
 import traceback
@@ -184,6 +186,22 @@ class UpdateLaunch(BaseModel):
 
 @router.patch("/launches", status_code=204)
 def update_launch(update: UpdateLaunch):
+    """
+    Sample requests:
+
+    Name change:
+    {
+        "path": "/navigator/launches/launch.x.py",
+        "metadata": { "name": "rawr" },
+    }
+
+    Add nodes and change path:
+    {
+        "path": "/navigator/launches/launch.x.py",
+        "new_path": "/navigator/launches/launch.x_changed.py"
+        "nodes": [ { "package": "p1", "executable": "e1" }, { "package": "p2", "executable": "e2" } ]
+    }
+    """
     try:
         launch_builder = builder.LaunchFileBuilder(update.path)
     except Exception as e:
@@ -218,6 +236,12 @@ def update_launch(update: UpdateLaunch):
 
 @router.post("/launches/copy", status_code=201)
 def copy_launch(old_path: str, new_path: str, new_name: str, overwrite: bool = True):
+    """
+    Duplicates existing launch file.
+
+    Sample request:
+    URI: /launches?old_path=/navigator/launch.x.py&new_path=/navigator/launch.z.py&new_name=z
+    """
     try:
         launch_builder = builder.LaunchFileBuilder(old_path)
     except Exception as e:

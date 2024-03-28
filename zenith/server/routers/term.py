@@ -1,3 +1,5 @@
+"""This module contains /term routes for interactive terminal access."""
+
 from __future__ import annotations
 
 import asyncio
@@ -20,20 +22,28 @@ router = APIRouter()
 
 
 class Terminal:
+    """Terminal wrapper around websocket connection."""
+
     def __init__(self, websocket: WebSocket):
         self.websocket = websocket
         self.master_fd = None
 
     async def spawn(self):
+        """! Spawn a shell with terminal output forwarding."""
+        # Fork the process
         child_pid, master_fd = pty.fork()
         self.master_fd = master_fd
         is_child = child_pid == 0
+
         if is_child:
+            # Spawn terminal in child.
             self._spawn_shell()
         else:
+            # Forward output to websocket.
             asyncio.create_task(self.forward_pty_output())
 
     async def forward_pty_output(self):
+        """! Shell output forwarding into websocket."""
         if not self.master_fd:
             raise Exception("Master fd not set")
 
@@ -49,7 +59,11 @@ class Terminal:
                 break
 
     def resize(self, rows: int, cols: int):
+        """! Resize terminal."""
+
         """
+        See: https://man7.org/linux/man-pages/man2/ioctl_tty.2.html
+        [C]:
         struct winsize {
             unsigned short ws_row;
             unsigned short ws_col;
@@ -61,32 +75,41 @@ class Terminal:
         fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, winsize)
 
     def write_to_pty(self, data: str):
+        """! Write to underlying shell."""
         os.write(self.master_fd, data.encode())
 
     def _spawn_shell(self):
+        """! Create shell process."""
         default_shell = os.environ.get("SHELL", "/bin/bash")
         subprocess.run(default_shell)
 
 
 TERM = None | Terminal
-TERM_LOCK = threading.Lock()
+TERM_LOCK = threading.Lock()  # Only one terminal can be spawned at a time.
 
 
 class ResizePayload(BaseModel):
+    """! WS payload for resize messages."""
+
     type: Literal["resize"]
     rows: int
     cols: int
 
 
 class InputMessage(BaseModel):
+    """! WS payload for input messages."""
+
     type: Literal["input"]
     key: str
 
 
+# Messages are differentiated by 'type' field.
 Message = Annotated[Union[InputMessage, ResizePayload], Field(discriminator="type")]
 
 
 class WSErrorMessage(BaseModel):
+    """! WS error response message."""
+
     error: str
 
 
