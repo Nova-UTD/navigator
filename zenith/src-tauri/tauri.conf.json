@@ -12,6 +12,17 @@
 	},
 	"tauri": {
 		"allowlist": {
+			"window": {
+				"all": false,
+				"close": true,
+				"hide": true,
+				"show": true,
+				"maximize": true,
+				"minimize": true,
+				"unmaximize": true,
+				"unminimize": true,
+				"startDragging": true
+			},
 			"http": {
 				"all": true,
 				"request": true
@@ -61,11 +72,13 @@
 		},
 		"windows": [
 			{
-				"fullscreen": true,
+				"fullscreen": false,
+				"width": 1440,
 				"height": 800,
 				"resizable": true,
 				"title": "Zenith",
-				"width": 1440
+				"decorations": false,
+				"maximized": true
 			}
 		]
 	}
