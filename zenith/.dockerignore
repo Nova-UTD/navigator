@@ -5,3 +5,4 @@
 **/*.md 
 # server has its own Dockerfile
 server/
+Dockerfile
