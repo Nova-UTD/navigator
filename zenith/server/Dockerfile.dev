@@ -1,5 +1,6 @@
 # Dockerfile for Zenith server development.
 # Simply installs dependencies and assumes that source code is mounted.
+# Requires Navigator image for ROS2 installation.
 FROM navigator:latest
 
 # Set working directory to /navigator/zenith/server.

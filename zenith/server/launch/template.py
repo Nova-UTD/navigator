@@ -1,3 +1,5 @@
+"""This module provides templates for launch files."""
+
 # Base launch file used for launch file creation.
 # We currently assume launch_node_definitions.py will exist in the same directory as our launch file.
 LAUNCH_FILE_TEMPLATE = """
