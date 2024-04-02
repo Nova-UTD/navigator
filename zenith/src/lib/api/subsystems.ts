@@ -1,3 +1,5 @@
+/* Typescript API bindings for /subsystems requests. */
+
 export type PackageInfo = {
 	name: string;
 	executables: string[];

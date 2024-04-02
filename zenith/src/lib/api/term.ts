@@ -1,3 +1,5 @@
+/* Typescript API bindings for /term requests. */
+
 export type InputMessage = {
 	type: 'input';
 	key: string;
