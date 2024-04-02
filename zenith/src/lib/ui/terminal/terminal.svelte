@@ -52,6 +52,7 @@
 	}
 
 	onMount(() => {
+		// TODO: Change to dynmaic URL.
 		ws = new WebSocket('ws://localhost:8000/term/ws');
 		ws.onopen = () => {
 			if (terminalElement) term.open(terminalElement);
