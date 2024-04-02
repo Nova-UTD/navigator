@@ -1,4 +1,5 @@
 /* Typescript API bindings for /launches requests. */
+// TODO: Change to dynamic URL
 
 export type LaunchMetadata = {
 	name: string;

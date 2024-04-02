@@ -1,4 +1,5 @@
 /* Typescript API bindings for /term requests. */
+// TODO: Change to dynamic URL
 
 export type InputMessage = {
 	type: 'input';
