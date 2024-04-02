@@ -12,6 +12,7 @@ docker compose up zenith
 ```
 
 ## Development (Quad)
+
 <details open>
 <summary>
 Pre-requisites
@@ -66,8 +67,6 @@ npm run tauri dev
 ```
 
 </details>
-
-
 
 ## Development (local)
 
@@ -130,8 +129,8 @@ Zenith uses simple client-server architecture. The server serves as a simple way
 ├── src                     # Web server
 │   ├── lib
 │   │   ├── api             # API bindings
-│   │   ├── components      # UI components
-│   │   │   └── ui
+│   │   ├── modules         # Large UI components (launch editor, list, terminal, etc.)
+│   │   ├── ui              # UI components library
 │   │   ├── stores          # Applications states
 │   │   └── utils.ts        # Utility functions
 │   └── routes              # Routes
