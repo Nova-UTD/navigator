@@ -1,3 +1,5 @@
+/* Typescript API bindings for /launches requests. */
+
 export type LaunchMetadata = {
 	name: string;
 };
