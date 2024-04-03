@@ -21,8 +21,43 @@ import collections
 
 class Controller(Node):
 
+    # Controller parameters
+    CONTROL_GAIN = 2.5 # time constant 1/s
+    SOFTENING_GAIN = 1.0 # m/s
+    YAW_RATE_GAIN = 0.0
+    STEERING_DAMP_GAIN = 0.0
+
+    MAX_SAFE_DECELERATION = 8 # m/s^2
+    MAX_COMFORTABLE_DECELERATION = 1 # m/s^2
+    MAX_COMFORTABLE_ACCELERATION = 1 
+    MIN_TIME_LOOKAHEAD = 10
+
+    MAX_STEERING_ANGLE = 0.58294 # radians
+    WHEELBASE = 0.0
+
+    cached_odometry: Odometry = Odometry()
+    cached_path: Trajectory = Trajectory()
+
     def __init__(self):
         super().__init__('controller_node')
+
+        # Path
+        self.path_sub = self.create_subscription(
+            Path,
+            '/planning/path',
+            self.paths_cb,
+            10
+        )
+
+
+
+    def paths_cb(self, msg: Trajectory):
+        self.cached_path = msg
+
+    def odom_cb(self, msg: Odometry):
+        self.cached_odometry = msg
+        
+
 
         
 
