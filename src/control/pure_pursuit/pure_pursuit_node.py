@@ -16,7 +16,6 @@ from std_msgs.msg import Header, ColorRGBA
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from geometry_msgs.msg import PoseStamped, Point, Twist, Quaternion, Pose, Point, Vector3
 
-
 # GLOBAL VARIABLES 
 xc = 0.0
 yc = 0.0
@@ -37,6 +36,9 @@ WB = 0.04
 pure_pursuit_flag = True
 show_animation = True
 
+# TODO
+# Set path subscriber here
+# /planning/trajectory
 def read_points():
 	"""
 	CHANGE THIS PATH TO WHERE YOU HAVE SAVED YOUR CSV FILES
@@ -115,8 +117,12 @@ def pure_pursuit():
 
 	# Initialize the message, subscriber and publisher
 	msg = Twist()
+
+    # TODO
+    # Change to navigator messages
+	# Message to subscribe I think -> /radar_1/can_viz_markers
 	rospy.Subscriber("/odom", Odometry, pose_callback) 
-	pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+	pub = rospy.Publisher('pure_pursuit/cmd_vel', Twist, queue_size=1)
 
 	cx = waypoints[:, 0]; cy = waypoints[:, 1]
 
@@ -145,10 +151,8 @@ def pure_pursuit():
 			print(f"NEAREST INDEX = {nearest_idx}, output = {velocity}, velocity desired = {v_desired}, current = {vel}")
 
 
-			"""
-			PURE PURSUIT CONTROLLER
-			"""
-
+			# PURE PURSUIT CONTROLLER
+		
 			# calculate alpha (angle between the goal point and the path point)
 			x_delta = target_x - xc
 			y_delta = target_y - yc
@@ -190,7 +194,7 @@ def pure_pursuit():
 			plt.pause(0.001)
 
 	except IndexError:
-	   print("PURE PURSUIT COMPLETE --> COMPLETED ALL WAYPOINTS")
+		print("PURE PURSUIT COMPLETE --> COMPLETED ALL WAYPOINTS")
 		
 
 if __name__=='__main__':
