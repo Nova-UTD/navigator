@@ -49,6 +49,17 @@ class Controller(Node):
             10
         )
 
+        # Odometry
+        self.odom_sub = self.create_subscription(
+            Odometry,
+            '/gnss/odometry',
+            self.odom_cb,
+            10
+        )
+
+        # Vehicle Control
+        self.control_pub = self.create_publisher()
+
 
 
     def paths_cb(self, msg: Trajectory):
