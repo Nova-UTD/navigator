@@ -5,12 +5,13 @@
 # Daniel Vayman - Daniel.Vayman@utdallas.edu
 
 from typing import List
-from navigator_msgs.msg import Trajectory, TrajectoryPoint, PeddlePosition, SteeringPosition
+from navigator_msgs.msg import VehicleControl
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 import math
 import numpy as np
+from libs import normalise_angle
 
 from std_msgs.msg import String, Header
 from geometry_msgs.msg import PoseStamped, Point, PoseWithCovarianceStamped, PointStamped, Quaternion, Vector3
@@ -36,7 +37,7 @@ class Controller(Node):
     WHEELBASE = 0.0
 
     cached_odometry: Odometry = Odometry()
-    cached_path: Trajectory = Trajectory()
+    cached_path: Path = Path()
 
     def __init__(self):
         super().__init__('controller_node')
@@ -58,16 +59,48 @@ class Controller(Node):
         )
 
         # Vehicle Control
-        self.control_pub = self.create_publisher()
+        self.control_pub = self.create_publisher(
+            VehicleControl,
+            '/vehicle/control',
+            1
+        )
 
 
 
-    def paths_cb(self, msg: Trajectory):
+    def paths_cb(self, msg: Path):
         self.cached_path = msg
+        self.stanley_control()
 
     def odom_cb(self, msg: Odometry):
         self.cached_odometry = msg
         
+    """ Finds the closest index on the path to the vehicle front axle """
+    def find_target_path_id(self):
+        # yaw = self.cached_odometry.pose.pose.orientation.z # Current vehicle yaw
+        ''' Front axle is at origin x,y '''
+        x = self.cached_odometry.pose.pose.position.x # Current vehicle position
+        y = self.cached_odometry.pose.pose.position.y # Current vehicle position
+
+        px = self.cached_path.poses.pose.position.x # Path positions
+        py = self.cached_path.poses.pose.position.y # Path positions
+
+        dx = px - x # List of lateral distances
+        dy = py - y # List of longitudinal distances
+
+        d = np.hypot(dx, dy) # List of distances
+        target_index = np.argmin(d) # Gets the smallest distance to path from ego
+
+        return target_index, dx[target_index], dy[target_index], d[target_index]
+
+    """ Finds yaw error from current yaw to target path index yaw"""
+    def calculate_yaw_term(self, target_index):
+        yaw_error = normalise_angle(self.cached_path.poses.pose.orientation.z[target_index] - self.cached_odometry.pose.pose.orientation.z)
+        return yaw_error
+
+
+    def stanley_control(self):
+        target_index, dx, dy, absolute_error = self.find_target_path_id()
+        yaw_error = self.calculate_yaw_term(target_index)
 
 
         
