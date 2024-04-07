@@ -536,7 +536,7 @@ class RecursiveTreePlanner(Node):
             if np.sqrt(pose[0]**2 + pose[1]**2) > lookahead_distance:
                 lookahead_pose = pose
                 break
-
+ 
         if lookahead_pose is None:
             lookahead_pose = poses_np_bl[-1]
 
