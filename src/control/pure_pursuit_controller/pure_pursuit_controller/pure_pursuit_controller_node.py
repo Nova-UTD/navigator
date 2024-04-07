@@ -13,6 +13,26 @@ class Constants:
     LD: float = 6.0  # lookahead distance in meters
     kf: float = 0.1  # look forward gain in meters
 
+def calculate_throttle_brake(current_speed, target_speed):
+
+    delta = 0.6 # Controls how steep throttle and acceleration will be
+    maxSpeed = 1.5 # MAX SPEED ~ 10mph
+
+    # Max speed is set to 1.5
+    if(target_speed > maxSpeed):
+        target_speed = maxSpeed
+
+    # PID logic sources from RTP node
+    pid_error = target_speed - current_speed
+
+    if pid_error > 0:
+        throttle = min(pid_error * 0.5, delta)
+        brake = 0.0
+    elif pid_error <= 0:
+        brake = pid_error * delta * -1.0
+        throttle = 0.0
+
+    return throttle, brake
 
 class VehicleState:
     def __init__(self):
