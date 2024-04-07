@@ -38,9 +38,12 @@ show_animation = True
 
 # PID Logic inferred from rtp_node.py
 # TODO
-# Update to newer PID logic
+# Update to newer PID logic and check for target_speed unit
+# Fine tuning
 def calculate_throttle(current_speed, target_speed):
 	#target_speed = 1.5 # MAX_SPEED # m/s, ~10mph
+
+	# Max speed check
 	if(target_speed > 1.5):
 		target_speed = 1.5
 
@@ -60,17 +63,19 @@ def calculate_throttle(current_speed, target_speed):
 # TODO
 # Set path subscriber here
 # /planning/path
-def read_points():
+def path_callback(data):
 	"""
 	CHANGE THIS PATH TO WHERE YOU HAVE SAVED YOUR CSV FILES
 	"""
-	r = rospkg.RosPack()
-	package_path = r.get_path('pure_pursuit')
-	file_name = 'wp_file.csv' #'racecar_walker.csv'
-	file_path = package_path + '/waypoints/' + file_name
-	with open(file_path) as f:
-		path_points = np.loadtxt(file_path, delimiter = ',')
-	return path_points
+	# r = rospkg.RosPack()
+	# package_path = r.get_path('pure_pursuit')
+	# file_name = 'wp_file.csv' #'racecar_walker.csv'
+	# file_path = package_path + '/waypoints/' + file_name
+	# with open(file_path) as f:
+	# 	path_points = np.loadtxt(file_path, delimiter = ',')
+	# return path_points
+
+	waypoints = data.poses
 
 def pose_callback(data):
 	"""
@@ -139,10 +144,8 @@ def pure_pursuit():
 	# Initialize the message, subscriber and publisher
 	msg = Twist()
 
-    # TODO
-    # Change to navigator messages
-	# Message to subscribe I think -> /radar_1/can_viz_markers
 	rospy.Subscriber("/gnss/odometry", Odometry, pose_callback) 
+	rospy.Subscriber("/planning/path", Path, path_callback)
 	pub = rospy.Publisher('/vehicle/control', Twist, queue_size=1)
 
 	cx = waypoints[:, 0]; cy = waypoints[:, 1]
@@ -227,7 +230,6 @@ if __name__=='__main__':
 	r = rospy.Rate(freqs)
 	print("RUNNING PURE-PURSUIT CODE.... \n\n")
 	time.sleep(2)
-	waypoints = read_points()
 	pure_pursuit()
 
 # path message (points x y) -> Steering angle, desired velocity
