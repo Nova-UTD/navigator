@@ -36,9 +36,30 @@ WB = 0.04
 pure_pursuit_flag = True
 show_animation = True
 
+# PID Logic inferred from rtp_node.py
+# TODO
+# Update to newer PID logic
+def calculate_throttle(current_speed, target_speed):
+	#target_speed = 1.5 # MAX_SPEED # m/s, ~10mph
+	if(target_speed > 1.5):
+		target_speed = 1.5
+
+	pid_error = target_speed - current_speed
+	# self.get_logger().info(f"Steer/Pose: {command.steer}/{((best_path.poses[4][2] + best_path.poses[5][2] + best_path.poses[6][2])/3.0)}")
+	# print(f"Speed: {self.speed} / {target_speed}")
+	if pid_error > 0:
+		command.throttle = min(pid_error *0.5, 0.6)
+		command.brake = 0.0
+	#else:
+	elif pid_error <= -1:
+		brake = pid_error *0.6 *-1.0
+		throttle = 0.0
+
+	return throttle, brake
+
 # TODO
 # Set path subscriber here
-# /planning/trajectory
+# /planning/path
 def read_points():
 	"""
 	CHANGE THIS PATH TO WHERE YOU HAVE SAVED YOUR CSV FILES
@@ -121,8 +142,8 @@ def pure_pursuit():
     # TODO
     # Change to navigator messages
 	# Message to subscribe I think -> /radar_1/can_viz_markers
-	rospy.Subscriber("/odom", Odometry, pose_callback) 
-	pub = rospy.Publisher('pure_pursuit/cmd_vel', Twist, queue_size=1)
+	rospy.Subscriber("/gnss/odometry", Odometry, pose_callback) 
+	pub = rospy.Publisher('/vehicle/control', Twist, queue_size=1)
 
 	cx = waypoints[:, 0]; cy = waypoints[:, 1]
 
@@ -150,7 +171,9 @@ def pure_pursuit():
 			v_prev_error = v_error
 			print(f"NEAREST INDEX = {nearest_idx}, output = {velocity}, velocity desired = {v_desired}, current = {vel}")
 
-
+			# Setting variables to publish
+			throttle, brake = calculate_throttle(vel, v_desired)
+			
 			# PURE PURSUIT CONTROLLER
 		
 			# calculate alpha (angle between the goal point and the path point)
@@ -175,8 +198,9 @@ def pure_pursuit():
 			steering_angle = -0.5
 
 			# Publish messages
-			msg.linear.x = velocity
-			msg.angular.z = steering_angle
+			msg.Steer = steering_angle
+			msg.Throttle = throttle
+			msg.Brake = brake
 			pub.publish(msg)
 
 			# Plot map progression
@@ -197,6 +221,7 @@ def pure_pursuit():
 		print("PURE PURSUIT COMPLETE --> COMPLETED ALL WAYPOINTS")
 		
 
+
 if __name__=='__main__':
 	rospy.init_node('pure_pursuit')
 	r = rospy.Rate(freqs)
@@ -204,3 +229,7 @@ if __name__=='__main__':
 	time.sleep(2)
 	waypoints = read_points()
 	pure_pursuit()
+
+# path message (points x y) -> Steering angle, desired velocity
+# pid -> desired 
+
