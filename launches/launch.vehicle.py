@@ -57,6 +57,7 @@ def generate_launch_description():
                     grid_summation,
                     junction_manager,
                     rtp,
+                    pure_pursuit_controller,
 
                     # SAFETY
                     ##airbags,
