@@ -15,7 +15,7 @@ class Constants:
 
 def calculate_throttle_brake(current_speed, target_speed):
 
-    delta = 0.6 # Controls how steep throttle and acceleration will be
+    delta = 0.6 # Controls max throttle and acceleration will be
     maxSpeed = 1.5 # MAX SPEED ~ 10mph
 
     # Max speed is set to 1.5
