@@ -12,27 +12,9 @@ from navigator_msgs.msg import VehicleControl, VehicleSpeed
 class Constants:
     LD: float = 6.0  # lookahead distance in meters
     kf: float = 0.1  # look forward gain in meters
+    THROTTLE_DELTA = 0.6  # Controls how steep throttle and acceleration will be
+    MAX_SPEED: float = 1.5  # Max speed ~ 10mph
 
-def calculate_throttle_brake(current_speed, target_speed):
-
-    delta = 0.6 # Controls how steep throttle and acceleration will be
-    maxSpeed = 1.5 # MAX SPEED ~ 10mph
-
-    # Max speed is set to 1.5
-    if(target_speed > maxSpeed):
-        target_speed = maxSpeed
-
-    # PID logic sources from RTP node
-    pid_error = target_speed - current_speed
-
-    if pid_error > 0:
-        throttle = min(pid_error * 0.5, delta)
-        brake = 0.0
-    elif pid_error <= 0:
-        brake = pid_error * delta * -1.0
-        throttle = 0.0
-
-    return throttle, brake
 
 class VehicleState:
     def __init__(self):
@@ -41,6 +23,34 @@ class VehicleState:
 
     def loaded(self) -> bool:
         return self.pose is not None and self.velocity is not None
+
+    def calc_throttle_brake(self) -> tuple[float, float] | None:
+        if not self.loaded():
+            return
+
+        # Our target speed is the max speed
+        pid_error = Constants.MAX_SPEED - self.velocity
+        if pid_error > 0:
+            throttle = min(pid_error * 0.5, Constants.THROTTLE_DELTA)
+            brake = 0.0
+        elif pid_error <= 0:
+            brake = pid_error * Constants.THROTTLE_DELTA * -1.0
+            throttle = 0.0
+
+        return throttle, brake
+
+    def calc_steer(self, target: tuple[float, float]) -> float:
+        if not self.loaded():
+            return
+
+        dx = target[0] - self.pose.position.x
+        dy = target[1] - self.pose.position.y
+
+        alpha = math.atan2(dy, dx) - self.pose.orientation.z
+        delta = math.atan2(
+            2.0 * Constants.WHEEL_BASE * math.sin(alpha), self.lookahead_distance()
+        )
+        return delta
 
     def lookahead_distance(self) -> float:
         return Constants.kf * self.velocity + Constants.LD
@@ -70,7 +80,7 @@ class PursuitPath:
                 min_dist = dist
                 min_index = i
 
-        return min_index 
+        return min_index
 
     def calc_target_point(self, vs: VehicleState) -> tuple[float, float] | None:
         if len(self.cx) == 0 or len(self.cy) == 0 or not vs.loaded():
@@ -84,6 +94,7 @@ class PursuitPath:
             if dist > vs.lookahead_distance():
                 self.prev_index = i
                 return [self.cx[i], self.cy[i]]
+
 
 class PursePursuitController(Node):
 
@@ -106,7 +117,12 @@ class PursePursuitController(Node):
             VehicleSpeed, "/speed", self.speed_callback, 1
         )
 
-        self.timer = self.create_timer(0.5, self.timer_callback)
+        self.command_publisher = self.create_publisher(
+            VehicleControl, "/control/vehicle_control", 1
+        )
+
+        self.waypoint_timer = self.create_timer(0.5, self.waypoint_callback)
+        self.control_timer = self.create_timer(0.1, self.control_callback)
 
     def route_callback(self, msg: Path):
         # Only use the first route for now. TODO: how will routes be updated in the future?
@@ -126,10 +142,22 @@ class PursePursuitController(Node):
     def speed_callback(self, msg: VehicleSpeed):
         self.vehicle_state.velocity = msg.speed
 
-    def timer_callback(self):
+    def waypoint_callback(self):
         self.target_waypoint = self.path.calc_target_point(self.vehicle_state)
         if self.target_waypoint is not None:
             self.get_logger().info(f"Target waypoint: {self.target_waypoint}")
+
+    def control_callback(self):
+        throttle_brake = self.vehicle_state.calc_throttle_brake()
+        if throttle_brake is not None:
+            throttle, brake = throttle_brake
+            # steer = self.vehicle_state.calc_steer(self.target_waypoint)
+            control_msg = VehicleControl()
+            control_msg.throttle = throttle
+            control_msg.brake = brake
+            # control_msg.steer = steer
+            self.get_logger().info(f"Control message: {control_msg}")
+            self.command_publisher.publish(control_msg)
 
 
 def main(args=None):
