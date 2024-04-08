@@ -12,7 +12,7 @@ from navigator_msgs.msg import VehicleControl, VehicleSpeed
 class Constants:
     LD: float = 6.0  # lookahead distance in meters
     kf: float = 0.1  # look forward gain in meters
-    THROTTLE_DELTA = 0.6  # Controls how steep throttle and acceleration will be
+    MAX_THROTTLE = 0.6  # Controls max throttle and acceleration will be
     MAX_SPEED: float = 1.5  # Max speed ~ 10mph
 
 
@@ -31,10 +31,10 @@ class VehicleState:
         # Our target speed is the max speed
         pid_error = Constants.MAX_SPEED - self.velocity
         if pid_error > 0:
-            throttle = min(pid_error * 0.5, Constants.THROTTLE_DELTA)
+            throttle = min(pid_error * 0.5, Constants.MAX_THROTTLE)
             brake = 0.0
         elif pid_error <= 0:
-            brake = pid_error * Constants.THROTTLE_DELTA * -1.0
+            brake = pid_error * Constants.MAX_THROTTLE * -1.0
             throttle = 0.0
 
         return throttle, brake
