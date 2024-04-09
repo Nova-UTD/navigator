@@ -11,9 +11,8 @@ services:
   navigator_carla:
     privileged: true
     stdin_open: true
-    tty:
-      true
-      #runtime: nvidia
+    tty: true
+    runtime: nvidia 
 
     image: navigator
     container_name: navigator_carla_${USER}
