@@ -177,7 +177,7 @@ RUN pip3 install \
     # Scientific Computing - used widely
     scipy \
     #
-    shapely==2.0.0 \
+    shapely==2.0.2 \
     #
     simple-pid \
     #
