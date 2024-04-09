@@ -10,14 +10,21 @@ from navigator_msgs.msg import VehicleControl, VehicleSpeed
 
 
 class Constants:
-    LD: float = 6.0  # lookahead distance in meters
-    kf: float = 0.1  # look forward gain in meters
-    MAX_THROTTLE = 0.6  # Controls max throttle and acceleration will be
-    MAX_SPEED: float = 1.5  # Max speed ~ 10mph
+    # Look ahead distance in meters
+    LD: float = 6.0
+    # Look forward gain in meters (gain in look ahead distance per m/s of speed)
+    kf: float = 0.1
+    # Wheel base (distance between front and rear wheels) in meter
+    WHEEL_BASE: float = 3.5
+    # Max throttle and acceleration
+    MAX_THROTTLE = 0.6
+    # Max speed in m/s
+    MAX_SPEED: float = 1.5
 
 
 class VehicleState:
-    def __init__(self):
+    def __init__(self, l):
+        self.l = l
         self.pose: Pose | None = None
         self.velocity: float | None = None
 
@@ -39,18 +46,23 @@ class VehicleState:
 
         return throttle, brake
 
-    def calc_steer(self, target: tuple[float, float]) -> float:
+    def calc_steer(self, target: tuple[float, float]) -> float | None:
         if not self.loaded():
             return
 
         dx = target[0] - self.pose.position.x
         dy = target[1] - self.pose.position.y
 
-        alpha = math.atan2(dy, dx) - self.pose.orientation.z
+        alpha = math.atan2(dy, dx)
+        self.l.info(
+            f"Target: {target}. (dx, dy): ({dx}, {dy}). Alpha: {alpha}. ZOrientation: {self.pose.orientation.z}"
+        )
         delta = math.atan2(
             2.0 * Constants.WHEEL_BASE * math.sin(alpha), self.lookahead_distance()
         )
-        return delta
+
+        # Normalize the steering angle from [-pi, pi] to [-1, 1]
+        return -delta / math.pi
 
     def lookahead_distance(self) -> float:
         return Constants.kf * self.velocity + Constants.LD
@@ -101,7 +113,7 @@ class PursePursuitController(Node):
     def __init__(self):
         super().__init__("pure_pursuit_controler")
 
-        self.vehicle_state = VehicleState()
+        self.vehicle_state = VehicleState(l=self.get_logger())
         self.path = PursuitPath()
         self.target_waypoint = None
 
@@ -144,22 +156,30 @@ class PursePursuitController(Node):
 
     def waypoint_callback(self):
         self.target_waypoint = self.path.calc_target_point(self.vehicle_state)
-        if self.target_waypoint is not None:
-            self.get_logger().info(f"Target waypoint: {self.target_waypoint}")
 
     def control_callback(self):
+        # If no target waypoint, do nothing.
+        if not self.target_waypoint:
+            return
+
+        # Calculate throttle, brake, and steer
         throttle_brake = self.vehicle_state.calc_throttle_brake()
-        if throttle_brake is not None:
-            throttle, brake = throttle_brake
-            # steer = self.vehicle_state.calc_steer(self.target_waypoint)
-            control_msg = VehicleControl()
-            control_msg.throttle = throttle
-            control_msg.brake = brake
-            # control_msg.steer = steer
-            self.get_logger().info(
-                f"Steer: {control_msg.steer} Throttle: {throttle} Brake: {brake}"
-            )
-            self.command_publisher.publish(control_msg)
+        steer = self.vehicle_state.calc_steer(self.target_waypoint)
+
+        # If vehicle state is not loaded, do nothing.
+        if not throttle_brake or not steer:
+            return
+
+        # Set throttle, brake, and steer and publish.
+        throttle, brake = throttle_brake
+        control_msg = VehicleControl()
+        control_msg.throttle = throttle
+        control_msg.brake = brake
+        control_msg.steer = steer
+        self.get_logger().info(
+            f"Steer: {control_msg.steer} Throttle: {throttle} Brake: {brake}"
+        )
+        self.command_publisher.publish(control_msg)
 
 
 def main(args=None):
