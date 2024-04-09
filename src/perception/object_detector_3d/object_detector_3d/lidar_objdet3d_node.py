@@ -50,7 +50,7 @@ class LidarObjectDetector3DNode(Node):
 
     def lidar_callback(self, lidar_msg: PointCloud2):
         pcd = rnp.numpify(lidar_msg)
-        pcd = pcd[::2]   # this reduces the rings to 64, it appears to work when running against the parade bag
+        pcd = pcd[::2]   # this reduces the vertical res to 64, it appears to work when running against the parade bag
         pcd = np.array([ pcd['x'].flatten(), pcd['y'].flatten(), pcd['z'].flatten(), pcd['reflectivity'].flatten()]).T
         pcd[:, 3] /= 255.0
         pcd[:, 2] += self.translate_height

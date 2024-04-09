@@ -10,6 +10,7 @@
   <depend>rclpy</depend>
   <depend>ros2_numpy</depend>
   <depend>sensor_msgs</depend>
+  <depend>torch</depend> 
   <depend>geometry_msgs</depend>
   <depend>navigator_msgs</depend>
 

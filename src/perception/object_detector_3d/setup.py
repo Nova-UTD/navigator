@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'lidar_object_detector_3d_node = object_detector_3d.lidar_objdet3d_node:main'
+            'lidar_object_detector_3d_node = object_detector_3d.lidar_objdet3d_node:main',
+            'lidar_detection_node = object_detector_3d.lidar_detection_node:main',
         ],
     },
 )
