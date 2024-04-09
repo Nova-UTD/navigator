@@ -118,7 +118,7 @@ class PursePursuitController(Node):
         )
 
         self.command_publisher = self.create_publisher(
-            VehicleControl, "/control/vehicle_control", 1
+            VehicleControl, "/vehicle/control", 1
         )
 
         self.waypoint_timer = self.create_timer(0.5, self.waypoint_callback)
@@ -156,7 +156,9 @@ class PursePursuitController(Node):
             control_msg.throttle = throttle
             control_msg.brake = brake
             # control_msg.steer = steer
-            self.get_logger().info(f"Control message: {control_msg}")
+            self.get_logger().info(
+                f"Steer: {control_msg.steer} Throttle: {throttle} Brake: {brake}"
+            )
             self.command_publisher.publish(control_msg)
 
 
