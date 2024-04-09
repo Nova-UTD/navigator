@@ -1,0 +1,55 @@
+FROM debian:12-slim
+
+RUN mkdir -p /navigator/zenith
+
+# Set working directory to /navigator/zenith.
+WORKDIR /navigator/zenith
+
+# Install curl
+RUN apt-get -y update && apt-get -y install curl
+
+# Install Node.js.
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs
+
+# Install Rust toolchain.
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install Tauri dependencies.
+# See: https://tauri.app/v1/guides/getting-started/prerequisites/#setting-up-linux
+RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
+    --mount=target=/var/cache/apt,type=cache,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && apt update -y \
+    && apt install -y libwebkit2gtk-4.0-dev \
+    build-essential \
+    curl \
+    wget \
+    file \
+    libssl-dev \
+    libgtk-3-dev \
+    libayatana-appindicator3-dev \
+    librsvg2-dev
+
+# Copy package.json and package-lock.json.
+# This is done before copying all files to cache npm install.
+COPY package.json ./
+COPY package-lock.json ./
+
+# Install dependencies.
+RUN npm install
+
+# Add Node installed binaries to $PATH.
+ENV PATH /navigator/zenith/node_modules/.bin:$PATH
+
+# Copy all files.
+COPY . .
+
+# Build Launch GUI.
+RUN npm run tauri build
+
+# Install GUI build.
+RUN apt install -y ./src-tauri/target/release/bundle/deb/zenith_0.1.0_amd64.deb
+
+ENTRYPOINT [ "zenith" ]
