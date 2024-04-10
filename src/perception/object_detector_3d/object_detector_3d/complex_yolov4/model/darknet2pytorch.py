@@ -14,9 +14,9 @@ import numpy as  np
 
 sys.path.append('../')
 
-from object_detector_3d.complex_yolo.yolo_layer import YoloLayer
-from object_detector_3d.complex_yolo.darknet_utils import parse_cfg, print_cfg, load_fc, load_conv_bn, load_conv
-from object_detector_3d.lidar_utils.torch_utils import to_cpu
+from object_detector_3d.complex_yolov4.model.yolo_layer import YoloLayer
+from object_detector_3d.complex_yolov4.model.darknet_utils import parse_cfg, print_cfg, load_fc, load_conv_bn, load_conv
+from object_detector_3d.complex_yolov4.utils.torch_utils import to_cpu
 
 
 class Mish(nn.Module):

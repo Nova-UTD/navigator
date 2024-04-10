@@ -9,7 +9,7 @@ import sys
 import torch
 
 sys.path.append('../')
-from object_detector_3d.lidar_utils.torch_utils import convert2cpu
+from object_detector_3d.complex_yolov4.utils.torch_utils import convert2cpu
 
 __all__ = ['parse_cfg', 'print_cfg', 'load_conv', 'load_conv_bn', 'save_conv', 'save_conv_bn', 'load_fc', 'save_fc']
 
