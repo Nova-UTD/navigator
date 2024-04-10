@@ -20,7 +20,7 @@ Nova's open door policy is our way to allow motivated students to join Nova mid-
 ### Vehicle Engineers (Hardware, Firmware, Electrical)
 1. email your resume and/or portfolio to [project.nova@utdallas.edu](mailto:project.nova@utdallas.edu), along with your reason for applying
 
-### Public Relations (PR), Marketing, Photography
+### Marketing, Graphic Design, Photography
 1. email your resume and/or portfolio to [project.nova@utdallas.edu](mailto:project.nova@utdallas.edu), along with your reason for applying
 
 then you will be considered for membership. These requests will be evaluated at any time by the Nova leadership, and we are also available to answer some questions.  
