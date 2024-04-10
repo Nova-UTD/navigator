@@ -1,0 +1,29 @@
+# Dockerfile for Zenith server development.
+# Simply installs dependencies and assumes that source code is mounted.
+# Requires Navigator image for ROS2 installation.
+FROM navigator:latest
+
+# Set working directory to /navigator/zenith/server.
+RUN mkdir -p /navigator/zenith/server
+WORKDIR /navigator/zenith/server
+
+# Install starship cli prompt.
+# Starship is used to prettify the terminal.
+ENV TERM=xterm-256color
+RUN curl -sS https://starship.rs/install.sh | sh -s -- -y
+
+# Setup starship configuration
+RUN mkdir -p /root/.config
+RUN echo 'command_timeout = 1000\nformat = """$directory$git_branch[❯](bold red)[❯](bold yellow)[❯](bold green) """' \
+    > /root/.config/starship.toml
+RUN echo 'eval "$(starship init bash)"' >> /root/.bashrc
+
+RUN apt update -y && apt install -y python3.10-venv
+
+# Install Node.js (some commands can be run via npm)G
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs
+
+
+ENTRYPOINT [ "bash" ]
+
