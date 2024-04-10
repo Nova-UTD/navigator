@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>traffic_light_detector</name>
+  <version>0.0.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="root@todo.todo">root</maintainer>
+  <license>TODO: License declaration</license>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <depend>torch</depend>
+  <depend>cv_bridge</depend>
+  <depend>torchvision</depend>
+  <depend>torchvision.transforms</depend>
+  <depend>navigator_msgs</depend>
+  <depend>sensor_msg</depend>
+  <depend>torchvision.models.detection</depend>
+  <depend>torchvision.models.detection.faster_rcnn</depend>
+  <depend>torchvision.ops</depend>
+
+
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
