@@ -192,7 +192,7 @@ RUN pip3 install \
     xmlschema==1.0.18 \
     # distro \
     torch==2.1.2 \
-    # torchvision \
+    torchvision \
     # openmim \
     # mmcv-full==1.6.0 \
     # packaging \

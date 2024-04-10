@@ -51,12 +51,13 @@ def generate_launch_description():
 
                     # PERCEPTION
                     *perception_launch_entities,
+                    traffic_light_detector,
 
                     # PLANNING
                     routing_monitor,
                     grid_summation,
                     junction_manager,
-                    rtp,
+                    # rtp,
 
                     # SAFETY
                     ##airbags,
