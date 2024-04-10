@@ -14,7 +14,7 @@ import numpy as np
 from time import time # DEBUG
 
 # Local Import
-from object_detector_3d.lidar_detection_model import LidarDetectionModel
+from object_detector_3d.complex_yolov4_model import ComplexYOLOv4Model
 
 # Ros Imports
 import rclpy
@@ -34,10 +34,6 @@ class LidarDetectionNode(Node):
         """! Initializes the node."""
         super().__init__("lidar_detection_node")
 
-        # Paths to pretrained model and config
-        model_path = './data/perception/checkpoints/complex_yolov4_mse_loss.pth'
-        config_file = './data/perception/configs/complex_yolov4.cfg'
-
         # Declare default ROS2 node parameters
         self.declare_parameter('device', 'cuda:1') # cpu | cuda:{gpu num}
         self.declare_parameter('conf_thresh', 0.4) # 0.0 - 1.0
@@ -55,8 +51,8 @@ class LidarDetectionNode(Node):
             .get_parameter_value().bool_value
         
         # Instantiates the model
-        self.model = LidarDetectionModel(self.device)
-        self.clock = Clock()
+        self.model = ComplexYOLOv4Model(self.device)
+        self.stamp = Time() # For published msgs
         
         # Subcribes to filtered lidar
         self.lidar_sub = self.create_subscription(
@@ -74,7 +70,6 @@ class LidarDetectionNode(Node):
         Updates the clock for message headers.
         @param msg[Clock]   The clock message.
         """
-        self.stamp = Time() 
         self.stamp.sec = msg.clock.sec
         self.stamp.nanosec = msg.clock.nanosec
 

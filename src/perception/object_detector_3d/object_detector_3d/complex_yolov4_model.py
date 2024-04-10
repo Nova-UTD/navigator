@@ -19,21 +19,21 @@ import ros2_numpy as rnp
 import torch
 
 # Local Import
-from object_detector_3d.complex_yolo.darknet2pytorch import Darknet
-from object_detector_3d.lidar_utils import kitti_bev_utils
-from object_detector_3d.lidar_utils.evaluation_utils import \
-    rescale_boxes, post_processing_v2
-import  object_detector_3d.lidar_utils.kitti_config as cnf
+from object_detector_3d.complex_yolov4.model.darknet2pytorch import Darknet
+from object_detector_3d.complex_yolov4.utils import kitti_bev_utils
+from object_detector_3d.complex_yolov4.utils.evaluation_utils import post_processing_v2
+import  object_detector_3d.complex_yolov4.utils.kitti_config as cnf
 
 # Message definitions
 from geometry_msgs.msg import Point
 from sensor_msgs.msg import PointCloud2
 from navigator_msgs.msg import BoundingBox3D, Object3D, Object3DArray
 
+# Paths to pretrained model and config
 config_file = './data/perception/configs/complex_yolov4.cfg'
 model_path = './data/perception/checkpoints/complex_yolov4_mse_loss.pth'
 
-class LidarDetectionModel():
+class ComplexYOLOv4Model():
     def __init__(self, device: torch.device, use_giou_loss: bool = True):
         """! Initializes the node.
         @param device[torch.device]  The device the model will run on
@@ -114,9 +114,9 @@ class LidarDetectionModel():
             to be published. Before publishing, the header needs to be 
             attached. 
         """
-        # Returns detections with shape: (x, y, w, l, im, re, object_conf, class_score, class_pred)
+        # Filters boxes under conf_thresh and over nms_thresh
         detections = post_processing_v2(predictions, conf_thresh=conf_thresh, 
-            nms_thresh=nms_thresh)[0]
+            nms_thresh=nms_thresh)[0]   # Returns: (x, y, w, l, im, re, object_conf, class_score, class_pred)
 
         # Skip if no detections made
         if detections is None:

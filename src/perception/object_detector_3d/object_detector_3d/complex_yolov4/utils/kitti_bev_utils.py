@@ -4,15 +4,12 @@
 # Refer: https://github.com/ghimiredhikura/Complex-YOLOv3
 """
 
-import math
 import sys
-
-import cv2
 import numpy as np
 
 sys.path.append('../')
 
-import object_detector_3d.lidar_utils.kitti_config as cnf
+import object_detector_3d.complex_yolov4.utils.kitti_config as cnf
 
 
 def removePoints(PointCloud, BoundaryCond):
@@ -76,25 +73,6 @@ def makeBVFeature(PointCloud_, Discretization, bc):
     return RGB_Map
 
 
-def read_labels_for_bevbox(objects):
-    bbox_selected = []
-    for obj in objects:
-        if obj.cls_id != -1:
-            bbox = []
-            bbox.append(obj.cls_id)
-            bbox.extend([obj.t[0], obj.t[1], obj.t[2], obj.h, obj.w, obj.l, obj.ry])
-            bbox_selected.append(bbox)
-
-    if len(bbox_selected) == 0:
-        labels = np.zeros((1, 8), dtype=np.float32)
-        noObjectLabels = True
-    else:
-        labels = np.array(bbox_selected, dtype=np.float32)
-        noObjectLabels = False
-
-    return labels, noObjectLabels
-
-
 # bev image coordinates format
 def get_corners(x, y, w, l, yaw):
     bev_corners = np.zeros((4, 2), dtype=np.float32)
@@ -118,7 +96,7 @@ def get_corners(x, y, w, l, yaw):
 
     return bev_corners
 
-# bev image coordinates format
+# From Nova, converts ComplexYolo 2D boxes into BoundingBox3D ros2 msg
 def get_corners_3d(x, y, z, w, l, h, yaw):
     bev_corners = np.zeros((8, 3), dtype=np.float64)
     cos_yaw = np.cos(yaw)
@@ -148,24 +126,6 @@ def get_corners_3d(x, y, z, w, l, h, yaw):
 
     return bev_corners
 
-def build_yolo_target(labels):
-    bc = cnf.boundary
-    target = []
-    for i in range(labels.shape[0]):
-        cl, x, y, z, h, w, l, yaw = labels[i]
-        # ped and cyc labels are very small, so lets add some factor to height/width
-        l = l + 0.3
-        w = w + 0.3
-        yaw = np.pi * 2 - yaw
-        if (bc["minX"] < x < bc["maxX"]) and (bc["minY"] < y < bc["maxY"]):
-            y1 = (y - bc["minY"]) / (bc["maxY"] - bc["minY"])  # we should put this in [0,1], so divide max_size  80 m
-            x1 = (x - bc["minX"]) / (bc["maxX"] - bc["minX"])  # we should put this in [0,1], so divide max_size  40 m
-            w1 = w / (bc["maxY"] - bc["minY"])
-            l1 = l / (bc["maxX"] - bc["minX"])
-            target.append([cl, y1, x1, w1, l1, math.sin(float(yaw)), math.cos(float(yaw))])
-
-    return np.array(target, dtype=np.float32)
-
 
 def inverse_yolo_target(targets, bc):
     labels = []
@@ -186,25 +146,3 @@ def inverse_yolo_target(targets, bc):
         labels.append([c, c_conf, x, y, z, w, l, h, - np.arctan2(im, re) - 2 * np.pi])
 
     return np.array(labels)
-
-
-# send parameters in bev image coordinates format
-def drawRotatedBox(img, x, y, w, l, yaw, color, text):
-    bev_corners = get_corners(x, y, w, l, yaw)
-    corners_int = bev_corners.reshape(-1, 1, 2).astype(int)
-    cv2.polylines(img, [corners_int], True, color, 2)
-    corners_int = corners_int.reshape(-1, 2)
-    cv2.line(img, (corners_int[0, 0], corners_int[0, 1]), (corners_int[3, 0], corners_int[3, 1]), (255, 255, 0), 2)
-    cv2.putText(img, text, (corners_int[0, 0], corners_int[0, 1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-
-
-def draw_box_in_bev(rgb_map, target):
-    for j in range(50):
-        if (np.sum(target[j, 1:]) == 0): continue
-        cls_id = int(target[j][0])
-        x = target[j][1] * cnf.BEV_WIDTH
-        y = target[j][2] * cnf.BEV_HEIGHT
-        w = target[j][3] * cnf.BEV_WIDTH
-        l = target[j][4] * cnf.BEV_HEIGHT
-        yaw = np.arctan2(target[j][5], target[j][6])
-        drawRotatedBox(rgb_map, x, y, w, l, yaw, cnf.colors[cls_id])
