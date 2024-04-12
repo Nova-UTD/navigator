@@ -127,20 +127,20 @@ def get_corners_3d(x, y, z, w, l, h, yaw):
     return bev_corners
 
 
-def inverse_yolo_target(targets, bc):
+def inverse_yolo_target(targets, img_size, bc):
     labels = []
     for t in targets:
-        c, c_conf, y, x, l, w, im, re = t
-        z, h = -0.55, 1.5
+        y, x, l, w, im, re, c_conf, *_, c = t # swaps x and y
+        z, h = 0.0, 1.5
         if c == 1:
             h = 1.8
         elif c == 2:
             h = 1.4
 
-        y = y * (bc["maxY"] - bc["minY"]) + bc["minY"]
-        x = x * (bc["maxX"] - bc["minX"]) + bc["minX"]
-        w = w * (bc["maxY"] - bc["minY"])
-        l = l * (bc["maxX"] - bc["minX"])
+        y = (y / img_size) * (bc["maxY"] - bc["minY"]) + bc["minY"]
+        x = (x / img_size) * (bc["maxX"] - bc["minX"]) + bc["minX"]
+        w = (w / img_size) * (bc["maxY"] - bc["minY"])
+        l = (l / img_size) * (bc["maxX"] - bc["minX"])
         w -= 0.3
         l -= 0.3
         labels.append([c, c_conf, x, y, z, w, l, h, - np.arctan2(im, re) - 2 * np.pi])

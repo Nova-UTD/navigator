@@ -1,11 +1,11 @@
 """
 Package:   object_detector_3d
-Filename:  lidar_detection_model.py
+Filename:  complex_yolov4_model.py
 Author:    Gueren Sanford
 Email:     guerensanford@gmail.com
 Copyright: 2021, Nova UTD
 License:   MIT License
-Use this class to make object detections with LiDAR data in the format 
+Use the ComplexYOLOv4Model class to make object detections with LiDAR data in the format 
 [x,y,z,intensity]. We use the model Complex Yolo to make the 
 predictions, which requires a birds eye view map of the LiDAR data. 
 With the predictions, feed it into the postprocess to filter out and 
@@ -18,42 +18,40 @@ import numpy as np
 import ros2_numpy as rnp
 import torch
 
-# Local Import
+# Model Imports
 from object_detector_3d.complex_yolov4.model.darknet2pytorch import Darknet
 from object_detector_3d.complex_yolov4.utils import kitti_bev_utils
 from object_detector_3d.complex_yolov4.utils.evaluation_utils import post_processing_v2
 import  object_detector_3d.complex_yolov4.utils.kitti_config as cnf
 
-# Message definitions
+# Message Imports
 from geometry_msgs.msg import Point
 from sensor_msgs.msg import PointCloud2
 from navigator_msgs.msg import BoundingBox3D, Object3D, Object3DArray
 
 # Paths to pretrained model and config
-config_file = './data/perception/configs/complex_yolov4.cfg'
-model_path = './data/perception/checkpoints/complex_yolov4_mse_loss.pth'
+config_path = './data/perception/configs/complex_yolov4.cfg'
+checkpoint_path = './data/perception/checkpoints/complex_yolov4_mse_loss.pth'
 
 class ComplexYOLOv4Model():
-    def __init__(self, device: torch.device, use_giou_loss: bool = True):
+    def __init__(self, device: torch.device):
         """! Initializes the node.
         @param device[torch.device]  The device the model will run on
-        @param use_giou_loss[bool]   Use generalized intersection over 
-            union as a loss function
         """
         self.img_size = 608 # Determined by the birds eye view setup
         self.device = device
 
         # Setup for the Complex Yolo model
-        self.model = Darknet(cfgfile=config_file, 
-            use_giou_loss=use_giou_loss)
-        self.model.load_state_dict(torch.load(model_path, 
+        self.model = Darknet(cfgfile=config_path, 
+            use_giou_loss=True) # generalized intersection over union
+        self.model.load_state_dict(torch.load(checkpoint_path, 
             map_location=self.device))
         self.model.to(device=self.device)
 
     def preprocess(self, lidar_msg: PointCloud2):
         """! Converts ROS LiDAR message into the bird's eye view input 
-            tensor for the model.
-        @param lidar_msg[PointCloud2]   The ros2 lidar dmessage data
+            tensor for the model. 
+        @param lidar_msg[PointCloud2]   The ros2 lidar message data
             formatted as a PointCloud2 message.
         @return torch.Tensor   A 608 x 608 birds eye view image of the
             point cloud data. Red = Intensity, Green = Height, Blue = 
@@ -70,7 +68,7 @@ class ComplexYOLOv4Model():
             lidar_np['y'].flatten(), 
             lidar_np['z'].flatten(), 
             lidar_np['reflectivity'].flatten()])
-        # Tranforms array to shape [(x y z r), n]
+        # Tranforms array to shape [n, (x y z r)]
         lidar_pcd = np.transpose(lidar_pcd)
         lidar_pcd[:, 3] /= 255.0 # Normalizes refl.
         
@@ -80,29 +78,29 @@ class ComplexYOLOv4Model():
         # Turns the point cloud into a bev rgb map
         rgb_map = kitti_bev_utils.makeBVFeature(reduced_lidar, 
             cnf.DISCRETIZATION, cnf.boundary)
+        # Turned into a tensor for the model
+        inputs = torch.tensor(rgb_map, device=self.device).float() \
+            .unsqueeze(0)
         
-        return rgb_map
+        return inputs
 
-    def predict(self, input_bev: torch.Tensor):
+    def predict(self, inputs: torch.Tensor):
         """! Uses the tensor from the preprocess fn to return the 
             bounding boxes for the objects.
-        @param input_bev[torch.Tensor]  The result of the preprocess 
+        @param inputs[torch.Tensor]  The result of the preprocess 
             function.
         @return torch.Tensor  The output of the model in the shape
             [1, boxes, x y w l classes], where the classes are Car, 
             Pedestrian, Cyclist, Van, Person_sitting.
         """
         # The model outputs [1, boxes, x y w l classes]
-        return self.model(input_bev)
+        return self.model(inputs)
 
-    def postprocess(self, rgb_map: torch.Tensor, 
-            predictions: torch.Tensor, conf_thresh: int, 
+    def postprocess(self, predictions: torch.Tensor, conf_thresh: int, 
             nms_thresh: int):
-        """! 
-        NEEDS OPTIMIZATION
-
-        @param input_bev[torch.Tensor]   The result of the preprocess 
-            function.
+        """! Converts the model's predictions into a ROS2 message, and filters
+            out boxes below the confidence threshold and above the intersection
+            over union threshold.
         @param predictions[torch.Tensor]   The output of the model in 
             the shape [1, boxes, x y w l classes], where the classes 
             are Car, Pedestrian, Cyclist, Van, Person_sitting.
@@ -110,9 +108,8 @@ class ComplexYOLOv4Model():
             for bounding boxes.
         @param nms_thresh[int]   The maximum accepted intersection over
             union value for bounding boxes. 
-        @return navigator_msgs.msg.Object3DArray  A ros2 message ready 
-            to be published. Before publishing, the header needs to be 
-            attached. 
+        @return Object3DArray  A ros2 message ready to be published. 
+            Before publishing, the header needs to be attached. 
         """
         # Filters boxes under conf_thresh and over nms_thresh
         detections = post_processing_v2(predictions, conf_thresh=conf_thresh, 
@@ -122,13 +119,8 @@ class ComplexYOLOv4Model():
         if detections is None:
             return None
 
-        predictions = []
-        for x, y, w, l, im, re, cls_conf, *_, cls_pred in detections:
-            predictions.append([cls_pred, cls_conf, x / self.img_size, y / self.img_size, 
-                w / self.img_size, l / self.img_size, im, re])
-
         # Returns shape [c, c_conf, x, y, z, w, l, h, yaw]
-        predictions = kitti_bev_utils.inverse_yolo_target(np.array(predictions), cnf.boundary) # IMPROVE
+        predictions = kitti_bev_utils.inverse_yolo_target(detections, self.img_size, cnf.boundary)
 
         # Turns the predictions into array of Object3D msg types
         object_3d_array = Object3DArray()
@@ -141,7 +133,7 @@ class ComplexYOLOv4Model():
             bounding_box.coordinates = prediction[2:]
 
             # Returns the corners in the order specified by BoundingBox3D msg
-            corners_3d = kitti_bev_utils.get_corners_3d(*bounding_box.coordinates) # IMPROVE get_corners
+            corners_3d = kitti_bev_utils.get_corners_3d(*bounding_box.coordinates)
             # Fills the Point corners array
             for i, corner_3d in enumerate(corners_3d):
                 bounding_box.corners[i] = Point(x=corner_3d[0], y=corner_3d[1], z=corner_3d[2])
