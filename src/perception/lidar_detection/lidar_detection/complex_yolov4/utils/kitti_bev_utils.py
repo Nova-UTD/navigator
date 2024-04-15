@@ -9,7 +9,7 @@ import numpy as np
 
 sys.path.append('../')
 
-import object_detector_3d.complex_yolov4.utils.kitti_config as cnf
+import lidar_detection.complex_yolov4.utils.kitti_config as cnf
 
 
 def removePoints(PointCloud, BoundaryCond):

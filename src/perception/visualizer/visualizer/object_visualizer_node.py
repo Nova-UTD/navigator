@@ -16,14 +16,19 @@ class ObjectVisualizerNode(Node):
     def __init__(self):
         super().__init__('object_visualizer_node')
 
+        # Declare ROS2 parameters
+        self.declare_parameter('topic', '/tracked/objects3d') # or /detected/objects3d
+        sub_topic = self.get_parameter('topic').get_parameter_value().string_value
+        pub_topic = sub_topic if sub_topic[0] != '/' else sub_topic[1:]
+
         self.subscription = self.create_subscription(
             msg_type = Object3DArray,
-            topic = '/detected/objects3d', # NEEDS MORE CHOICES
+            topic = sub_topic,
             callback = self.visualize_objects,
             qos_profile = 1
         )
 
-        self.visualization_publisher = self.create_publisher(MarkerArray, 'objdet3d_viz', 10)
+        self.visualization_publisher = self.create_publisher(MarkerArray, f"viz/{pub_topic}", 10)
 
 
     def visualize_objects(self, msg: Object3DArray):

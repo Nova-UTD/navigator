@@ -5,7 +5,7 @@ from shapely.geometry import Polygon
 
 sys.path.append('../')
 
-from object_detector_3d.complex_yolov4.utils.kitti_bev_utils import get_corners
+from lidar_detection.complex_yolov4.utils.kitti_bev_utils import get_corners
 
 
 def cvt_box_2_polygon(box):

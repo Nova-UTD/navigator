@@ -1,29 +1,28 @@
 """
-Package:   object_detector_3d
+Package:   lidar_detection
 Filename:  lidar_detection_node.py
 Author:    Gueren Sanford
 Email:     guerensanford@gmail.com
 Copyright: 2021, Nova UTD
 License:   MIT License
-Description of what this file does, what inputs it takes and what it outputs or accomplishes
+Subscribes to raw lidar pointcloud data and publishes an array 3D object predictions. The 
+model for the predictions can be chosen using the model parameter. The predictions can be
+filtered using the node's prediction confidence threshold and the non-maximum supression
+threshold (limits the intersection of boxes). 
 """
 
 # Python Imports
-import torch, math
-import numpy as np
-from time import time # DEBUG
+import torch
 
 # Local Import
-from object_detector_3d.complex_yolov4_model import ComplexYOLOv4Model
-from object_detector_3d.mmdetection3d_model import MMDetection3DModel
+from lidar_detection.complex_yolov4_model import ComplexYOLOv4Model
+from lidar_detection.mmdetection3d_model import MMDetection3DModel
 
 # Ros Imports
 import rclpy
-import ros2_numpy as rnp
 from rclpy.node import Node
-import sensor_msgs_py.point_cloud2 as pc2
 
-# Message definitions
+# Message Imports
 from rosgraph_msgs.msg import Clock
 from builtin_interfaces.msg import Time
 from sensor_msgs.msg import PointCloud2
@@ -32,14 +31,23 @@ from navigator_msgs.msg import Object3DArray
 class LidarDetectionNode(Node):
 
     def __init__(self):
-        """! Initializes the node."""
+        """! Initializes the node.
+        @param device[str]   The device the model will run on. Choices:
+            'cpu' (DEFAULT) | 'cuda:{NUMBER}'
+        @param model[str]   The type of model making the detections. Choices:
+            'mmdetection3d' (DEFAULT) | 'complex_yolo'
+        @param conf_thresh[float]   The mininum confidence value accepted
+            for bounding boxes. Choices: 0.7 (DEFAULT) | 0.0 - 1.0 
+        @param nms_thresh[float]   The maximum accepted intersection accepted
+            for bounding boxes. Choices 0.2 (DEFAULT) | 0.0 - 1.0 
+        """
         super().__init__("lidar_detection_node")
 
         # Declare default ROS2 node parameters
-        self.declare_parameter('device', 'cuda:1') # cpu | cuda:{gpu num}
-        self.declare_parameter('model', 'mmdetection3d') # mmdetection3d | complex_yolo
-        self.declare_parameter('conf_thresh', 0.7) # 0.0 - 1.0
-        self.declare_parameter('nms_thresh', 0.2) # 0.0 - 1.0
+        self.declare_parameter('device', 'cuda:0')
+        self.declare_parameter('model', 'mmdetection3d')
+        self.declare_parameter('conf_thresh', 0.7) 
+        self.declare_parameter('nms_thresh', 0.2)
 
         # Get ROS2 parameters
         self.device = torch.device(self.get_parameter('device') \

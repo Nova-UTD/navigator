@@ -19,8 +19,8 @@ import torch.nn.functional as F
 
 sys.path.append('../')
 
-from object_detector_3d.complex_yolov4.utils.torch_utils import to_cpu
-from object_detector_3d.complex_yolov4.model.model_utils import iou_pred_vs_target_boxes, iou_rotated_boxes_targets_vs_anchors, \
+from lidar_detection.complex_yolov4.utils.torch_utils import to_cpu
+from lidar_detection.complex_yolov4.model.model_utils import iou_pred_vs_target_boxes, iou_rotated_boxes_targets_vs_anchors, \
     get_polygons_areas_fix_xy
 
 
