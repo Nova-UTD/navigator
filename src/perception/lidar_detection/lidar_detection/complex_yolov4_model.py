@@ -1,5 +1,5 @@
 """
-Package:   object_detector_3d
+Package:   lidar_detection
 Filename:  complex_yolov4_model.py
 Author:    Gueren Sanford
 Email:     guerensanford@gmail.com
@@ -19,10 +19,10 @@ import ros2_numpy as rnp
 import torch
 
 # Model Imports
-from object_detector_3d.complex_yolov4.model.darknet2pytorch import Darknet
-from object_detector_3d.complex_yolov4.utils import kitti_bev_utils
-from object_detector_3d.complex_yolov4.utils.evaluation_utils import post_processing_v2
-import  object_detector_3d.complex_yolov4.utils.kitti_config as cnf
+from lidar_detection.complex_yolov4.model.darknet2pytorch import Darknet
+from lidar_detection.complex_yolov4.utils import kitti_bev_utils
+from lidar_detection.complex_yolov4.utils.evaluation_utils import post_processing_v2
+import  lidar_detection.complex_yolov4.utils.kitti_config as cnf
 
 # Message Imports
 from geometry_msgs.msg import Point
@@ -93,7 +93,6 @@ class ComplexYOLOv4Model():
             [1, boxes, x y w l classes], where the classes are Car, 
             Pedestrian, Cyclist, Van, Person_sitting.
         """
-        # The model outputs [1, boxes, x y w l classes]
         return self.model(inputs)
 
     def postprocess(self, predictions: torch.Tensor, conf_thresh: int, 
@@ -104,9 +103,9 @@ class ComplexYOLOv4Model():
         @param predictions[torch.Tensor]   The output of the model in 
             the shape [1, boxes, x y w l classes], where the classes 
             are Car, Pedestrian, Cyclist, Van, Person_sitting.
-        @param conf_thresh[int]   The mininum confidence value accepted
+        @param conf_thresh[float]   The mininum confidence value accepted
             for bounding boxes.
-        @param nms_thresh[int]   The maximum accepted intersection over
+        @param nms_thresh[float]   The maximum accepted intersection over
             union value for bounding boxes. 
         @return Object3DArray  A ros2 message ready to be published. 
             Before publishing, the header needs to be attached. 

@@ -1,5 +1,5 @@
 """
-Package:   object_detector_3d
+Package:   lidar_detection
 Filename:  mmdetection3d_model.py
 Author:    Gueren Sanford, Ragib Arnab
 Email:     guerensanford@gmail.com
@@ -15,11 +15,11 @@ format the results.
 import random
 import numpy as np
 import ros2_numpy as rnp
-from mmcv.ops import nms_rotated
 
 # Model Imports
 from mmdet3d.apis import init_model, inference_detector
 from mmdet3d.structures.det3d_data_sample import Det3DDataSample
+from mmcv.ops import nms_rotated
 
 # Message Imports
 from geometry_msgs.msg import Point
@@ -96,9 +96,9 @@ class MMDetection3DModel():
             over union threshold.
         @param predictions[Det3DDataSample]   The output from the ppredict 
             function.
-        @param conf_thresh[int]   The mininum confidence value accepted
+        @param conf_thresh[float]   The mininum confidence value accepted
             for bounding boxes.
-        @param nms_thresh[int]   The maximum accepted intersection over
+        @param nms_thresh[float]   The maximum accepted intersection over
             union value for bounding boxes. 
         @return Object3DArray  A ros2 message ready to be published. 
             Before publishing, the header needs to be attached. 

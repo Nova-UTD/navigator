@@ -78,14 +78,14 @@ class MultiObjectTracker3DNode(Node):
 
         self.objects_subscription = self.create_subscription(
             msg_type = Object3DArray,
-            topic = 'objdet3d_raw',
+            topic = '/detected/objects3d',
             callback = self.detection_callback, 
             qos_profile = 10
         )
 
         self.tracked_objects_publisher = self.create_publisher(
             msg_type = Object3DArray,
-            topic = 'objdet3d_tracked',
+            topic = '/tracked/objects3d',
             qos_profile = 10
         )
 
