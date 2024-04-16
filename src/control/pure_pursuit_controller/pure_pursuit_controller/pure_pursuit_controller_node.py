@@ -1,7 +1,9 @@
 import math
 
 import rclpy
+
 from rclpy.node import Node
+from tf_transformer import euler_from_quaternion
 
 from nav_msgs.msg import Path, Odometry
 from geometry_msgs.msg import Pose, PoseStamped, Point
@@ -53,10 +55,16 @@ class VehicleState:
         dx = target[0] - self.pose.position.x
         dy = target[1] - self.pose.position.y
 
-        alpha = math.atan2(dy, dx)
-        self.l.info(
-            f"Target: {target}. (dx, dy): ({dx}, {dy}). Alpha: {alpha}. ZOrientation: {self.pose.orientation.z}"
+        _, _, yaw = euler_from_quaternion(
+            [
+                self.pose.orientation.x,
+                self.pose.orientation.y,
+                self.pose.orientation.z,
+                self.pose.orientation.w,
+            ]
         )
+
+        alpha = math.atan2(dy, dx) - yaw
         delta = math.atan2(
             2.0 * Constants.WHEEL_BASE * math.sin(alpha), self.lookahead_distance()
         )
