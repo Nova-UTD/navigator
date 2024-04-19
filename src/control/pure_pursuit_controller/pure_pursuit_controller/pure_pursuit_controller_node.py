@@ -3,7 +3,7 @@ import math
 import rclpy
 
 from rclpy.node import Node
-from tf_transformer import euler_from_quaternion
+from tf_transformations import euler_from_quaternion
 
 from nav_msgs.msg import Path, Odometry
 from geometry_msgs.msg import Pose, PoseStamped, Point
@@ -13,7 +13,7 @@ from navigator_msgs.msg import VehicleControl, VehicleSpeed
 
 class Constants:
     # Look ahead distance in meters
-    LD: float = 6.0
+    LD: float = 3.0
     # Look forward gain in meters (gain in look ahead distance per m/s of speed)
     kf: float = 0.1
     # Wheel base (distance between front and rear wheels) in meter
@@ -70,7 +70,7 @@ class VehicleState:
         )
 
         # Normalize the steering angle from [-pi, pi] to [-1, 1]
-        return -delta / math.pi
+        return -delta / (math.pi / 2)
 
     def lookahead_distance(self) -> float:
         return Constants.kf * self.velocity + Constants.LD
