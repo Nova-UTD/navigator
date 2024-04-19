@@ -83,19 +83,18 @@ class VehicleState:
 
 
 class PursuitPath:
-    def __init__(self, cx: list[float] = [], cy: list[float] = []):
-        self.cx = cx
-        self.cy = cy
+    def __init__(self, path: list[tuple[float, float]] = []):
+        self.path = path
         self.prev_index: int | None = None
 
     def _calc_nearest_index(self, vs: VehicleState) -> int:
-        if len(self.cx) == 0 or len(self.cy) == 0 or not vs.loaded():
+        if len(self.path) == 0 or not vs.loaded():
             return
 
         min_dist = float("inf")
         min_index = 0
-        for i in range(len(self.cx)):
-            dist = vs._calc_distance(self.cx[i], self.cy[i])
+        for i, (x, y) in enumerate(self.path):
+            dist = vs._calc_distance(x, y)
             if dist < min_dist:
                 min_dist = dist
                 min_index = i
@@ -103,17 +102,17 @@ class PursuitPath:
         return min_index
 
     def calc_target_point(self, vs: VehicleState) -> tuple[float, float] | None:
-        if len(self.cx) == 0 or len(self.cy) == 0 or not vs.loaded():
+        if len(self.path) == 0 or not vs.loaded():
             return
 
         if self.prev_index is None:
             self.prev_index = self._calc_nearest_index(vs)
 
-        for i in range(self.prev_index, len(self.cx)):
-            dist = vs._calc_distance(self.cx[i], self.cy[i])
+        for i, (x, y) in enumerate(self.path[self.prev_index :]):
+            dist = vs._calc_distance(x, y)
             if dist > vs.lookahead_distance():
-                self.prev_index = i
-                return [self.cx[i], self.cy[i]]
+                self.prev_index += i
+                return (x, y)
 
 
 class PursePursuitController(Node):
@@ -149,12 +148,11 @@ class PursePursuitController(Node):
         if self.first_route is None:
             self.first_route = msg
             route = [
-                [pose_stamped.pose.position.x, pose_stamped.pose.position.y]
+                (pose_stamped.pose.position.x, pose_stamped.pose.position.y)
                 for pose_stamped in msg.poses
             ]
             self.get_logger().info(f"Route: {route}\n")
-            self.path.cx = [pose_stamped.pose.position.x for pose_stamped in msg.poses]
-            self.path.cy = [pose_stamped.pose.position.y for pose_stamped in msg.poses]
+            self.path.path = route
 
     def odometry_callback(self, msg: Odometry):
         self.vehicle_state.pose = msg.pose.pose
