@@ -32,7 +32,7 @@ def generate_launch_description():
         name = 'lidar_detection_node',
         parameters=[
             {'model': 'mmdetection3d'},
-            {'device': 'cuda:1'},
+            {'device': 'cuda:0'},
             {'conf_thresh': 0.4}
         ],
     )
