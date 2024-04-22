@@ -231,7 +231,7 @@ RUN apt-get update && \
 # Set the working directory in the container
 RUN mkdir -p /test
 
-# Install required Python packages   object_detection
+# Install required Python packages object_detection
 RUN pip3 install tensorflow pillow Cython lxml jupyter matplotlib contextlib2 tf_slim opencv-python protobuf==3.20
 
 
