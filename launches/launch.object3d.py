@@ -50,9 +50,7 @@ def generate_launch_description():
         package = 'multi_object_tracker_3d',
         executable = 'multi_object_tracker_3d_node',
         name = 'multi_object_tracker_3d_node',
-        parameters=[
-            (path.join(param_dir, "perception/mot3d_params.yaml")),
-        ],
+        parameters=[],
     )
 
     object_viz_tracked_node = Node(
@@ -66,7 +64,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         complex_yolo_model,
-        mmdetection3d_model,
+        # mmdetection3d_model,
         object_viz_deteced_node,
         multi_object_tracker_3d_node,
         object_viz_tracked_node,

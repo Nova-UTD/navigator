@@ -28,7 +28,7 @@ from navigator_msgs.msg import BoundingBox3D, Object3D, Object3DArray
 
 # Paths to pretrained model and config
 config_path = './data/perception/configs/pointpillars_hv_secfpn_8xb6-160e_kitti-3d-3class.py'
-checkpoint_path = './data/perception/checkpoints/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class_20220301_150306-37dc2420.pth'
+checkpoint_path = './data/perception/models/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class_20220301_150306-37dc2420.pth'
 
 # dict of class/label association
 CLASS2LABEL = { 'Pedestrian': 0, 'Cyclist': 1, 'Car': 2 }
