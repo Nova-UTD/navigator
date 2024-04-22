@@ -31,7 +31,7 @@ from navigator_msgs.msg import BoundingBox3D, Object3D, Object3DArray
 
 # Paths to pretrained model and config
 config_path = './data/perception/configs/complex_yolov4.cfg'
-checkpoint_path = './data/perception/checkpoints/complex_yolov4_mse_loss.pth'
+checkpoint_path = './data/perception/models/complex_yolov4_mse_loss.pth'
 
 class ComplexYOLOv4Model():
     def __init__(self, device: torch.device):

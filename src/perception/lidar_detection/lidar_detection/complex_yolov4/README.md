@@ -8,4 +8,4 @@ Most files are taken (some modified) from the GitHub Repo: [https://github.com/m
 
 Follow the instrucitons below to ensure the model is setup properly:
 1. Click [here](https://drive.google.com/drive/folders/16zuyjh0c7iiWRSNKQY7CnzXotecYN5vc) and download the `complex_yolov4_mse_loss.pth` file
-2. Move `complex_yolov4_mse_loss.pth` into the directory `navigator/data/perception/checkpoints/complex_yolov4_mse_loss.pth`
+2. Move `complex_yolov4_mse_loss.pth` into the directory `navigator/data/perception/models/complex_yolov4_mse_loss.pth`
