@@ -98,6 +98,8 @@ RUN apt-get update && apt update && apt upgrade -y && \
         ros-humble-joy-linux \
         #
         ros-humble-lgsvl-msgs \
+        # Nav2 stack - used for path planning
+        ros-humble-navigation2 \
         #
         ros-humble-pcl-conversions \
         #

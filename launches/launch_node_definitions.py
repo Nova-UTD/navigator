@@ -37,6 +37,11 @@ driveable_area = Node(
     executable='driveable_area_node'
 )
 
+grid_route_costmap = Node(
+    package='costs',
+    executable='route_costmap_node'
+)
+
 grid_summation = Node(
     package='costs',
     executable='grid_summation_node'
@@ -97,6 +102,11 @@ map_manager_carla = Node(
     ]
 )
 
+nav2_path_planner = Node(
+    package='nav2_path_planner',
+    executable='nav2_path_planner_node'
+)
+
 odom2tf = Node(
     package='recording',
     executable='odom2tf'
@@ -134,7 +144,8 @@ rviz = Node(
     executable='rviz2',
     name='rviz2',
     arguments=['-d' + '/navigator/data/navigator_default.rviz'],
-    respawn=True
+    respawn=False,
+    output={'both': 'log'}
 )
 
 semantic_projection = Node(

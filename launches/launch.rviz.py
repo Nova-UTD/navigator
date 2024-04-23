@@ -21,22 +21,15 @@ def generate_launch_description():
     except IncludeError as e:
         err_fatal(e)
 
-    # Include nav2 launch file and extract launch entities for reuse.
-    try:
-        nav2_launch_description = try_get_launch_description_from_include('launches/launch.nav2.py')
-    except IncludeError as e:
-        err_fatal(e)
-
     perception_launch_entities = perception_launch_description.describe_sub_entities()
-    nav2_launch_entities = nav2_launch_description.describe_sub_entities()
 
     return LaunchDescription([
-        map_manager_carla,
-        RegisterEventHandler(
-            OnProcessStart(
-                target_action=map_manager_carla,
-                on_start=[
-                    LogInfo(msg='Map Manager Started... launching the rest of Navigator...'),
+        # map_manager_carla,
+        # RegisterEventHandler(
+        #     OnProcessStart(
+        #         target_action=map_manager_carla,
+        #         on_start=[
+                    #LogInfo(msg='Map Manager Started... launching the rest of Navigator...'),
                     # CONTROL
                     #carla_controller,
 
@@ -57,22 +50,20 @@ def generate_launch_description():
                     # camera_streamer,
 
                     # PERCEPTION
-                    *perception_launch_entities,
-                    
+                    # *perception_launch_entities,
+
                     # PLANNING
-                    routing_monitor,
-                    grid_route_costmap,
-                    grid_summation,
-                    junction_manager,
+                    #routing_monitor,
+                    # grid_summation,
+                    # junction_manager,
                     #rtp,
-                    *nav2_launch_entities,
-                    nav2_path_planner,
+                    #nav2_path_planner,
 
                     # SAFETY
                     ##airbags,
                     ##guardian,
                     rviz,
-                ]
-            )
-        )
+        #         ]
+        #     )
+        # )
     ])
