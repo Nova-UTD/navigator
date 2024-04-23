@@ -1,12 +1,18 @@
 import math
 
 import rclpy
+import numpy as np
+
+from numpy import typing as npt
 
 from rclpy.node import Node
 from tf_transformations import euler_from_quaternion
 
+from std_msgs.msg import ColorRGBA
+from rosgraph_msgs.msg import Clock
 from nav_msgs.msg import Path, Odometry
 from geometry_msgs.msg import Pose, PoseStamped, Point
+from visualization_msgs.msg import Marker
 
 from navigator_msgs.msg import VehicleControl, VehicleSpeed
 
@@ -84,8 +90,8 @@ class VehicleState:
 
 class PursuitPath:
     def __init__(self, path: list[tuple[float, float]] = []):
-        self.path = path
-        self.prev_index: int | None = None
+        self.path: npt.NDArray[np.float64] = np.asarray(path)
+        self.current_path_range: tuple[int, int] = (0, 0)
 
     def _calc_nearest_index(self, vs: VehicleState) -> int:
         if len(self.path) == 0 or not vs.loaded():
@@ -101,17 +107,23 @@ class PursuitPath:
 
         return min_index
 
+    def get_current_path(self) -> npt.NDArray[np.float64]:
+        return np.copy(
+            self.path[self.current_path_range[0] : self.current_path_range[1] + 1]
+        )
+
     def calc_target_point(self, vs: VehicleState) -> tuple[float, float] | None:
         if len(self.path) == 0 or not vs.loaded():
             return
 
-        if self.prev_index is None:
-            self.prev_index = self._calc_nearest_index(vs)
+        if self.current_path_range == (0, 0):
+            self.current_path_range = (0, self._calc_nearest_index(vs))
 
-        for i, (x, y) in enumerate(self.path[self.prev_index :]):
+        current_path_end = self.current_path_range[1]
+        for i, (x, y) in enumerate(self.path[current_path_end:]):
             dist = vs._calc_distance(x, y)
             if dist > vs.lookahead_distance():
-                self.prev_index += i
+                self.current_path_range = (current_path_end, current_path_end + i)
                 return (x, y)
 
 
@@ -135,13 +147,23 @@ class PursePursuitController(Node):
         self.speed_subscriber = self.create_subscription(
             VehicleSpeed, "/speed", self.speed_callback, 1
         )
+        self.clock_subscriber = self.create_subscription(
+            Clock, "/clock", self.clock_callback, 1
+        )
 
         self.command_publisher = self.create_publisher(
             VehicleControl, "/vehicle/control", 1
         )
+        self.rviz_path_publisher = self.create_publisher(Path, "/planning/path", 1)
+        self.barrier_marker_pub = self.create_publisher(
+            Marker, "/planning/barrier_marker", 1
+        )
 
         self.waypoint_timer = self.create_timer(0.5, self.waypoint_callback)
         self.control_timer = self.create_timer(0.1, self.control_callback)
+
+    def clock_callback(self, msg: Clock):
+        self.clock = msg.clock
 
     def route_callback(self, msg: Path):
         # Only use the first route for now. TODO: how will routes be updated in the future?
@@ -152,7 +174,7 @@ class PursePursuitController(Node):
                 for pose_stamped in msg.poses
             ]
             self.get_logger().info(f"Route: {route}\n")
-            self.path.path = route
+            self.path.path = np.asarray(route)
 
     def odometry_callback(self, msg: Odometry):
         self.vehicle_state.pose = msg.pose.pose
@@ -162,6 +184,94 @@ class PursePursuitController(Node):
 
     def waypoint_callback(self):
         self.target_waypoint = self.path.calc_target_point(self.vehicle_state)
+        current_path = self.path.get_current_path()
+
+        if len(current_path) == 0:
+            return
+
+        vehicle_origin = np.asarray(
+            [self.vehicle_state.pose.position.x + 5, self.vehicle_state.pose.position.y]
+        )
+
+        # Each RVIZ grid cell is 0.4m.
+        relative_waypoint = 0.4 * (np.asarray(self.target_waypoint) - vehicle_origin)
+
+        self.publishLookaheadMarker(
+            self.vehicle_state.lookahead_distance(), relative_waypoint
+        )
+
+        path_msg = Path()
+        path_msg.header.frame_id = "base_link"
+        path_msg.header.stamp = self.clock
+
+        vehicle_origin = np.asarray(
+            [self.vehicle_state.pose.position.x + 5, self.vehicle_state.pose.position.y]
+        )
+
+        current_path[:, 0] -= vehicle_origin[0]
+        current_path[:, 1] -= vehicle_origin[1]
+        current_path *= 0.4  # Each RVIZ grid cell is 0.4m.
+
+        path_msg.poses = [
+            PoseStamped(
+                header=path_msg.header,
+                pose=Pose(position=Point(x=x - 20, y=y - 30)),
+            )
+            for x, y in current_path
+        ]
+
+        self.get_logger().info(
+            f"Current Path: {current_path}. Target: {self.target_waypoint}"
+        )
+
+        self.rviz_path_publisher.publish(path_msg)
+
+    def publishLookaheadMarker(self, radius: float, pose: tuple[float, float]):
+        marker = Marker()
+        marker.header.frame_id = "base_link"
+        marker.header.stamp = self.clock
+        marker.ns = "lookahead"
+        marker.id = 0
+        marker.type = Marker.CYLINDER
+
+        marker.action = Marker.ADD
+
+        marker.scale.x = radius * 2
+        marker.scale.y = radius * 2
+        marker.scale.z = 0.2
+
+        color = ColorRGBA()
+        color.a = 0.3
+        color.g = 1.0
+        color.b = 1.0
+        marker.color = color
+
+        self.barrier_marker_pub.publish(marker)
+
+        marker.id = 1
+        marker.type = Marker.ARROW
+
+        marker.action = Marker.ADD
+
+        marker.scale.x = 0.5
+        marker.scale.y = 0.8
+        marker.scale.z = 0.3
+
+        color = ColorRGBA()
+        color.a = 0.7
+        color.g = 1.0
+        color.b = 0.6
+        marker.color = color
+
+        pt_a = Point()
+        marker.points.append(pt_a)
+
+        pt_b = Point()
+        pt_b.x = pose[0]
+        pt_b.y = pose[1]
+        marker.points.append(pt_b)
+
+        self.barrier_marker_pub.publish(marker)
 
     def control_callback(self):
         # If no target waypoint, do nothing.
