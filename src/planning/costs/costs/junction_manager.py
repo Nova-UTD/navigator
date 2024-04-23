@@ -286,15 +286,12 @@ class JunctionManager(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
-    junction_manager = JunctionManager()
-
-    rclpy.spin(junction_manager)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    junction_manager.destroy_node()
+    node = JunctionManager()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    node.destroy_node()
     rclpy.shutdown()
 
 
