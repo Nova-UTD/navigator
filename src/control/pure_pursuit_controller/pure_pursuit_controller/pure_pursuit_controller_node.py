@@ -6,7 +6,6 @@ import numpy as np
 from numpy import typing as npt
 
 from rclpy.node import Node
-from tf_transformations import euler_from_quaternion
 
 from std_msgs.msg import ColorRGBA, Header
 from rosgraph_msgs.msg import Clock
@@ -60,19 +59,7 @@ class VehicleState:
         if not self.loaded():
             return
 
-        _, _, yaw = euler_from_quaternion(
-            [
-                self.pose.orientation.x,
-                self.pose.orientation.y,
-                self.pose.orientation.z,
-                self.pose.orientation.w,
-            ]
-        )
-
         alpha = math.atan2(target[1], target[0])
-        self.l.info(
-            f"Atan2: {math.atan2(target[1], target[0])} Yaw: {yaw} Alpha: {alpha}"
-        )
         delta = math.atan2(
             2.0 * Constants.WHEEL_BASE * math.sin(alpha), self.lookahead_distance()
         )
