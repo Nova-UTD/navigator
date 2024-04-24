@@ -51,7 +51,7 @@ def generate_launch_description():
 
                     # PERCEPTION
                     *perception_launch_entities,
-                    traffic_light_detector,
+                    
 
                     # PLANNING
                     routing_monitor,

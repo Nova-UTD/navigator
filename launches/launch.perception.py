@@ -15,6 +15,7 @@ def generate_launch_description():
         # semantic_projection,
         ground_seg,
         static_grid,
+        traffic_light_detector,
         # prednet_inference,
         # driveable_area,
     ])
