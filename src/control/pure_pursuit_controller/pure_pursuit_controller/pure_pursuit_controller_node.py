@@ -28,6 +28,8 @@ class Constants:
     MAX_THROTTLE = 0.6
     # Max speed in m/s
     MAX_SPEED: float = 1.5
+    # Path adjustment gain
+    PATH_ADJUSTMENT_GAIN: float = 0.5
 
 
 class VehicleState:
@@ -58,9 +60,6 @@ class VehicleState:
         if not self.loaded():
             return
 
-        dx = target[0] - self.pose.position.x
-        dy = target[1] - self.pose.position.y
-
         _, _, yaw = euler_from_quaternion(
             [
                 self.pose.orientation.x,
@@ -70,7 +69,10 @@ class VehicleState:
             ]
         )
 
-        alpha = math.atan2(dy, dx) - yaw
+        alpha = math.atan2(target[1], target[0])
+        self.l.info(
+            f"Atan2: {math.atan2(target[1], target[0])} Yaw: {yaw} Alpha: {alpha}"
+        )
         delta = math.atan2(
             2.0 * Constants.WHEEL_BASE * math.sin(alpha), self.lookahead_distance()
         )
@@ -81,17 +83,16 @@ class VehicleState:
     def lookahead_distance(self) -> float:
         return Constants.kf * self.velocity + Constants.LD
 
-    def _calc_distance(self, x: float, y: float) -> float:
-        return math.hypot(
-            x - self.pose.position.x,
-            y - self.pose.position.y,
-        )
-
 
 class PursuitPath:
-    def __init__(self, path: list[tuple[float, float]] = []):
+    def __init__(self, l, path: list[tuple[float, float]] = []):
+        self.l = l
         self.path: npt.NDArray[np.float64] = np.asarray(path)
-        self.current_path_range: tuple[int, int] = (0, 0)
+        self.prev_index: int | None = None
+
+    def set_path(self, path: list[tuple[float, float]]) -> None:
+        self.path = np.asarray(path)
+        self.prev_index = None
 
     def _calc_nearest_index(self, vs: VehicleState) -> int:
         if len(self.path) == 0 or not vs.loaded():
@@ -100,7 +101,7 @@ class PursuitPath:
         min_dist = float("inf")
         min_index = 0
         for i, (x, y) in enumerate(self.path):
-            dist = vs._calc_distance(x, y)
+            dist = math.hypot(x, y)
             if dist < min_dist:
                 min_dist = dist
                 min_index = i
@@ -108,22 +109,19 @@ class PursuitPath:
         return min_index
 
     def get_current_path(self) -> npt.NDArray[np.float64]:
-        return np.copy(
-            self.path[self.current_path_range[0] : self.current_path_range[1] + 1]
-        )
+        return np.copy(self.path[: self.prev_index])
 
     def calc_target_point(self, vs: VehicleState) -> tuple[float, float] | None:
         if len(self.path) == 0 or not vs.loaded():
             return
 
-        if self.current_path_range == (0, 0):
-            self.current_path_range = (0, self._calc_nearest_index(vs))
+        if self.prev_index is None:
+            self.prev_index = self._calc_nearest_index(vs)
 
-        current_path_end = self.current_path_range[1]
-        for i, (x, y) in enumerate(self.path[current_path_end:]):
-            dist = vs._calc_distance(x, y)
+        for i, (x, y) in enumerate(self.path[self.prev_index :]):
+            dist = math.hypot(x, y)
             if dist > vs.lookahead_distance():
-                self.current_path_range = (current_path_end, current_path_end + i)
+                self.prev_index = i
                 return (x, y)
 
 
@@ -133,13 +131,12 @@ class PursePursuitController(Node):
         super().__init__("pure_pursuit_controler")
 
         self.vehicle_state = VehicleState(l=self.get_logger())
-        self.path = PursuitPath()
+        self.path = PursuitPath(l=self.get_logger())
         self.target_waypoint = None
-
-        self.first_route = None
+        self.clock = Clock().clock
 
         self.route_subscriber = self.create_subscription(
-            Path, "/planning/route", self.route_callback, 1
+            Path, "/planning/path", self.route_callback, 1
         )
         self.odometry_subscriber = self.create_subscription(
             Odometry, "/gnss/odometry", self.odometry_callback, 1
@@ -154,27 +151,28 @@ class PursePursuitController(Node):
         self.command_publisher = self.create_publisher(
             VehicleControl, "/vehicle/control", 1
         )
-        self.rviz_path_publisher = self.create_publisher(Path, "/planning/path", 1)
+
         self.barrier_marker_pub = self.create_publisher(
             Marker, "/planning/barrier_marker", 1
         )
+        self.lookahead_path_publisher = self.create_publisher(Path, "/ppc/path", 1)
 
-        self.waypoint_timer = self.create_timer(0.5, self.waypoint_callback)
         self.control_timer = self.create_timer(0.1, self.control_callback)
+        self.visualize_path_timer = self.create_timer(0.1, self.visualize_path_callback)
+        self.visualize_waypoint_timer = self.create_timer(
+            0.1, self.visualize_waypoint_callback
+        )
 
     def clock_callback(self, msg: Clock):
         self.clock = msg.clock
 
     def route_callback(self, msg: Path):
-        # Only use the first route for now. TODO: how will routes be updated in the future?
-        if self.first_route is None:
-            self.first_route = msg
-            route = [
-                (pose_stamped.pose.position.x, pose_stamped.pose.position.y)
-                for pose_stamped in msg.poses
-            ]
-            self.get_logger().info(f"Route: {route}\n")
-            self.path.path = np.asarray(route)
+        path = [
+            (pose_stamped.pose.position.x, pose_stamped.pose.position.y)
+            for pose_stamped in msg.poses
+        ]
+        self.path.set_path(path)
+        self.target_waypoint = self.path.calc_target_point(self.vehicle_state)
 
     def odometry_callback(self, msg: Odometry):
         self.vehicle_state.pose = msg.pose.pose
@@ -182,49 +180,35 @@ class PursePursuitController(Node):
     def speed_callback(self, msg: VehicleSpeed):
         self.vehicle_state.velocity = msg.speed
 
-    def waypoint_callback(self):
-        self.target_waypoint = self.path.calc_target_point(self.vehicle_state)
+    def visualize_waypoint_callback(self):
+        if self.target_waypoint is not None:
+            relative_waypoint = 0.4 * np.asarray(self.target_waypoint)
+            self.publishLookaheadMarker(
+                self.vehicle_state.lookahead_distance(), relative_waypoint
+            )
+
+    def visualize_path_callback(self):
         current_path = self.path.get_current_path()
 
         if len(current_path) == 0:
             return
 
-        vehicle_origin = np.asarray(
-            [self.vehicle_state.pose.position.x + 5, self.vehicle_state.pose.position.y]
-        )
-
-        # Each RVIZ grid cell is 0.4m.
-        relative_waypoint = 0.4 * (np.asarray(self.target_waypoint) - vehicle_origin)
-
-        self.publishLookaheadMarker(
-            self.vehicle_state.lookahead_distance(), relative_waypoint
-        )
-
         path_msg = Path()
         path_msg.header.frame_id = "base_link"
         path_msg.header.stamp = self.clock
 
-        vehicle_origin = np.asarray(
-            [self.vehicle_state.pose.position.x + 5, self.vehicle_state.pose.position.y]
-        )
-
-        current_path[:, 0] -= vehicle_origin[0]
-        current_path[:, 1] -= vehicle_origin[1]
-        current_path *= 0.4  # Each RVIZ grid cell is 0.4m.
+        # Each RVIZ grid cell is 0.4m.
+        path = np.copy(np.asarray(current_path)) * 0.4
 
         path_msg.poses = [
             PoseStamped(
                 header=path_msg.header,
-                pose=Pose(position=Point(x=x - 20, y=y - 30)),
+                pose=Pose(position=Point(x=x, y=y)),
             )
-            for x, y in current_path
+            for x, y in path
         ]
 
-        self.get_logger().info(
-            f"Current Path: {current_path}. Target: {self.target_waypoint}"
-        )
-
-        self.rviz_path_publisher.publish(path_msg)
+        self.lookahead_path_publisher.publish(path_msg)
 
     def publishLookaheadMarker(self, radius: float, pose: tuple[float, float]):
         marker = Marker()
@@ -282,8 +266,10 @@ class PursePursuitController(Node):
         throttle_brake = self.vehicle_state.calc_throttle_brake()
         steer = self.vehicle_state.calc_steer(self.target_waypoint)
 
+        self.get_logger().info(f"Steer: {steer} Throttle/Brake: {throttle_brake}")
+
         # If vehicle state is not loaded, do nothing.
-        if not throttle_brake or not steer:
+        if throttle_brake is None or steer is None:
             return
 
         # Set throttle, brake, and steer and publish.
