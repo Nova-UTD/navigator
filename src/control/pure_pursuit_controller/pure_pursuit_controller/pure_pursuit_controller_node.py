@@ -8,10 +8,10 @@ from numpy import typing as npt
 from rclpy.node import Node
 from tf_transformations import euler_from_quaternion
 
-from std_msgs.msg import ColorRGBA
+from std_msgs.msg import ColorRGBA, Header
 from rosgraph_msgs.msg import Clock
 from nav_msgs.msg import Path, Odometry
-from geometry_msgs.msg import Pose, PoseStamped, Point
+from geometry_msgs.msg import Pose, PoseStamped, Point, Vector3
 from visualization_msgs.msg import Marker
 
 from navigator_msgs.msg import VehicleControl, VehicleSpeed
@@ -180,83 +180,6 @@ class PursePursuitController(Node):
     def speed_callback(self, msg: VehicleSpeed):
         self.vehicle_state.velocity = msg.speed
 
-    def visualize_waypoint_callback(self):
-        if self.target_waypoint is not None:
-            relative_waypoint = 0.4 * np.asarray(self.target_waypoint)
-            self.publishLookaheadMarker(
-                self.vehicle_state.lookahead_distance(), relative_waypoint
-            )
-
-    def visualize_path_callback(self):
-        current_path = self.path.get_current_path()
-
-        if len(current_path) == 0:
-            return
-
-        path_msg = Path()
-        path_msg.header.frame_id = "base_link"
-        path_msg.header.stamp = self.clock
-
-        # Each RVIZ grid cell is 0.4m.
-        path = np.copy(np.asarray(current_path)) * 0.4
-
-        path_msg.poses = [
-            PoseStamped(
-                header=path_msg.header,
-                pose=Pose(position=Point(x=x, y=y)),
-            )
-            for x, y in path
-        ]
-
-        self.lookahead_path_publisher.publish(path_msg)
-
-    def publishLookaheadMarker(self, radius: float, pose: tuple[float, float]):
-        marker = Marker()
-        marker.header.frame_id = "base_link"
-        marker.header.stamp = self.clock
-        marker.ns = "lookahead"
-        marker.id = 0
-        marker.type = Marker.CYLINDER
-
-        marker.action = Marker.ADD
-
-        marker.scale.x = radius * 2
-        marker.scale.y = radius * 2
-        marker.scale.z = 0.2
-
-        color = ColorRGBA()
-        color.a = 0.3
-        color.g = 1.0
-        color.b = 1.0
-        marker.color = color
-
-        self.barrier_marker_pub.publish(marker)
-
-        marker.id = 1
-        marker.type = Marker.ARROW
-
-        marker.action = Marker.ADD
-
-        marker.scale.x = 0.5
-        marker.scale.y = 0.8
-        marker.scale.z = 0.3
-
-        color = ColorRGBA()
-        color.a = 0.7
-        color.g = 1.0
-        color.b = 0.6
-        marker.color = color
-
-        pt_a = Point()
-        marker.points.append(pt_a)
-
-        pt_b = Point()
-        pt_b.x = pose[0]
-        pt_b.y = pose[1]
-        marker.points.append(pt_b)
-
-        self.barrier_marker_pub.publish(marker)
-
     def control_callback(self):
         # If no target waypoint, do nothing.
         if not self.target_waypoint:
@@ -282,6 +205,60 @@ class PursePursuitController(Node):
             f"Steer: {control_msg.steer} Throttle: {throttle} Brake: {brake}"
         )
         self.command_publisher.publish(control_msg)
+
+    def visualize_waypoint_callback(self):
+        if self.target_waypoint is None:
+            return
+
+        relative_waypoint = 0.4 * np.asarray(self.target_waypoint)
+
+        lookahead_dist = self.vehicle_state.lookahead_distance()
+        radius_marker = Marker(
+            header=Header(frame_id="base_link", stamp=self.clock),
+            ns="lookahead",
+            id=0,
+            type=Marker.CYLINDER,
+            action=Marker.ADD,
+            scale=Vector3(x=lookahead_dist * 2, y=lookahead_dist * 2, z=0.2),
+            color=ColorRGBA(a=0.3, g=1.0, b=1.0),
+        )
+        self.barrier_marker_pub.publish(radius_marker)
+
+        arrow_marker = Marker(
+            header=Header(frame_id="base_link", stamp=self.clock),
+            ns="lookahead",
+            id=1,
+            type=Marker.ARROW,
+            action=Marker.ADD,
+            scale=Vector3(x=0.5, y=0.8, z=0.3),
+            color=ColorRGBA(a=0.7, g=1.0, b=0.6),
+            points=[Point(), Point(x=relative_waypoint[0], y=relative_waypoint[1])],
+        )
+
+        self.barrier_marker_pub.publish(arrow_marker)
+
+    def visualize_path_callback(self):
+        current_path = self.path.get_current_path()
+
+        if len(current_path) == 0:
+            return
+
+        path_msg = Path()
+        path_msg.header.frame_id = "base_link"
+        path_msg.header.stamp = self.clock
+
+        # Each RVIZ grid cell is 0.4m.
+        path = np.copy(np.asarray(current_path)) * 0.4
+
+        path_msg.poses = [
+            PoseStamped(
+                header=path_msg.header,
+                pose=Pose(position=Point(x=x, y=y)),
+            )
+            for x, y in path
+        ]
+
+        self.lookahead_path_publisher.publish(path_msg)
 
 
 def main(args=None):
