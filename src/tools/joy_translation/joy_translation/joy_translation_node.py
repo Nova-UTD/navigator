@@ -47,7 +47,7 @@ from rosgraph_msgs.msg import Clock
 import time
 
 from navigator_msgs.msg import VehicleControl
-from navigator_msgs.msg import CarlaSpeedometer
+from navigator_msgs.msg import VehicleSpeed
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from navigator_msgs.msg import Mode
 import rclpy
@@ -56,7 +56,6 @@ from sensor_msgs.msg import Joy
 
 
 class joy_translation_node(Node):
-    current_mode = Mode.DISABLED
 
     def __init__(self):
         super().__init__('joy_translation_node')
@@ -77,17 +76,17 @@ class joy_translation_node(Node):
             Mode, '/requested_mode', 1)
 
         speed_sub = self.create_subscription(
-            CarlaSpeedometer, '/speed', self.speedCb, 1)
+            VehicleSpeed, '/speed', self.speedCb, 1)
 
         self.status = DiagnosticStatus()
         self.status_pub = self.create_publisher(
             DiagnosticStatus, '/node_statuses', 1)
 
-        self.current_mode = Mode.DISABLED
+        self.current_mode = Mode.MANUAL
         self.current_mode_sub = self.create_subscription(
             Mode, '/guardian/mode', self.currentModeCb, 1)
 
-    def speedCb(self, msg: CarlaSpeedometer):
+    def speedCb(self, msg: VehicleSpeed):
         self.current_speed = msg.speed
 
     def currentModeCb(self, msg: Mode):
