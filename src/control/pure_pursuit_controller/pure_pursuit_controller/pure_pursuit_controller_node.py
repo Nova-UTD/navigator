@@ -24,9 +24,14 @@ class Constants:
     # Wheel base (distance between front and rear wheels) in meter
     WHEEL_BASE: float = 3.5
     # Max throttle and acceleration
-    MAX_THROTTLE = 0.6
+    MAX_THROTTLE = 2
     # Max speed in m/s
     MAX_SPEED: float = 1.5
+    # Stopping distance in meters
+    # This is the distance from the end of the path at which the vehicle will start to brake.
+    STOPPING_DIST: float = 10
+    # Max break possible
+    MAX_BREAK: float = 1.0
 
 
 class VehicleState:
@@ -104,6 +109,13 @@ class PursuitPath:
         self.path: npt.NDArray[np.float64] = np.asarray(path)
         self.target_index: int | None = None
 
+    def distance(self) -> float:
+        if len(self.path) == 0:
+            return 0.0
+
+        x, y = self.path[-1]
+        return math.hypot(x, y)
+
     def set_path(self, path: list[tuple[float, float]]) -> None:
         """Set the path.
 
@@ -149,6 +161,11 @@ class PursuitPath:
         # If calculating the target point for the first time, find the nearest index to the vehicle's current position.
         if self.target_index is None:
             self.target_index = self._calc_nearest_index()
+
+        # When the path is shorter then the lookahead, we will pick the last point.
+        if self.distance() < vs.lookahead_distance():
+            x, y = self.path[-1]
+            return (x, y)
 
         # Find the first point that is further than the lookahead distance.
         # If looking at the same path, start from the last target index.
@@ -216,13 +233,35 @@ class PursePursuitController(Node):
             for pose_stamped in msg.poses
         ]
         self.path.set_path(path)
-        self.target_waypoint = self.path.calc_target_point(self.vehicle_state)
+
+    def stop_vehicle(self, steer: float, break_value: float):
+        """Stop the vehicle by applying the break."""
+        control_msg = VehicleControl()
+        control_msg.brake = break_value
+        control_msg.steer = steer
+        self.command_publisher.publish(control_msg)
 
     def control_callback(self):
         """Calculate and publish the vehicle control commands based on the pure pursuit algorithm."""
+        # Calculate the waypoint just outside the lookahead distance.
+        self.target_waypoint = self.path.calc_target_point(self.vehicle_state)
+        self.get_logger().info(f"Target Waypoint: {self.target_waypoint}")
 
         # If no target waypoint, do nothing.
         if not self.target_waypoint:
+            return
+
+        path_dist = self.path.distance()
+        if path_dist < Constants.STOPPING_DIST:
+            # Scale the break value linearly based on the distance to the end of the path.
+            # Break scale is 1.0 at the end of the path and 0.0 at the stopping distance.
+            break_scale = 1.0 - (path_dist / Constants.STOPPING_DIST)
+            break_value = min(
+                Constants.MAX_BREAK,
+                break_scale * Constants.MAX_BREAK,
+            )
+            steer = self.vehicle_state.calc_steer(self.target_waypoint)
+            self.stop_vehicle(steer, break_value)
             return
 
         # Calculate throttle, brake, and steer
