@@ -62,6 +62,7 @@ class RouteCostmapNode(Node):
         route_sub = self.create_subscription(
             Path, '/planning/route', self.routeCb, 1)
         self.route = None
+        self.not_visited = None
 
         # TODO: implement status book keeping
         # self.status_pub = self.create_publisher(
@@ -78,10 +79,12 @@ class RouteCostmapNode(Node):
     def clockCb(self, msg: Clock):
         self.clock = msg
 
+    # TODO: currently implemented, the route cannot be changed once it is first received
     def routeCb(self, msg: Path):
         if self.route is None:
-            self.get_logger().info('Received the route.')
-        self.route = msg.poses
+            self.get_logger().debug('Received the route.')
+            self.route = msg.poses
+            self.route_remaining = msg.poses
 
     # TODO: this logic could be revisited.
     def buildRouteCostmap(self):
@@ -91,8 +94,9 @@ class RouteCostmapNode(Node):
         routemap = np.zeros((151, 151)) + 25.0
         
         if self.route is None:
-            self.get_logger().warn('Route Costmap Node has not received route yet.')
-            return routemap+75
+            self.get_logger().warning('Route Costmap Node has not received route yet.')
+            self.publish(routemap,(0.0,0.0))
+            return
 
         try:
             # get the transform from map to base_link
@@ -109,35 +113,45 @@ class RouteCostmapNode(Node):
             ymin = -30 # 30m left of the car
             ymax = 30 # 30m right of the car
             gridres = 0.4
-            # transform the route points to base_link and keep only those in the cost map area
-            route_baselink_x = np.zeros(len(self.route))
-            route_baselink_y = np.zeros(len(self.route))
-            # dist_to_car = np.zeros(len(self.route))
-            for i,pose in enumerate(self.route):
+
+            # transform the route points to base_link 
+            route_baselink_x = np.zeros(len(self.route_remaining))
+            route_baselink_y = np.zeros(len(self.route_remaining))
+            # dist_to_car = np.zeros(len(self.route_remaining))
+            for i,pose in enumerate(self.route_remaining):
                 x = pose.pose.position.x*np.cos(yaw) - pose.pose.position.y*np.sin(yaw) + ego_tf.transform.translation.x
                 y = pose.pose.position.x*np.sin(yaw) + pose.pose.position.y*np.cos(yaw) + ego_tf.transform.translation.y
                 # dist_to_car[i] = np.sqrt(x**2+y**2)
 
                 route_baselink_x[i] = x
                 route_baselink_y[i] = y
-                
-            start_idxs = np.where(np.array(route_baselink_x) > 0) # could be multiple points in front of the vehicle
 
-            if len(start_idxs) == 0:
-                self.get_logger().warn('Did not find any route points ahead of the vehicle.')
-                return routemap
+            # Anything behind the vehicle we say we have visited already
+            keep_idxs = np.flatnonzero(np.array(route_baselink_x) > 0) 
+
+            # none of the remaining route is ahead of the vehicle, so we are done
+            if len(keep_idxs) == 0:
+                self.get_logger().warning('Did not find any route points ahead of the vehicle.')
+                self.route_remaining = []
+                self.publish(routemap,(0.0,0.0))
+                return
             
-            start_idx = start_idxs[0][0] # pick the first one
+            # the route may make some turns such that part of the future path goes behind the vehicle
+            # so we keep everything starting with the first route point in front of the vehicle
+            # select the one prior to this, so we can interpolate from that one to the one we care about
+            start_idx = max(0,keep_idxs[0]-1) # pick the one prior to the first one
 
             # keep only the route starting from that index (adding in the origin, where the vehicle is)
-            route_baselink_x = [0]+route_baselink_x[start_idx:]
-            route_baselink_y = [0]+route_baselink_y[start_idx:]
-            # self.get_logger().info('route has %i points' % len(route_baselink_x))
+            self.route_remaining = self.route_remaining[start_idx:]
+            route_baselink_x = route_baselink_x[start_idx:]
+            route_baselink_y = route_baselink_y[start_idx:]
+            self.get_logger().debug('route has %i points' % len(route_baselink_x))
 
             # this loop interpolates between the route points so we have a point for every cell of the cost map
             # gridxs and gridys are in x/y coordinates - in meters
-            gridxs = [0]
-            gridys = [0]
+            gridxs = []
+            gridys = []
+            goal = None
             for i in range(1,len(route_baselink_x)):
                 dx = route_baselink_x[i] - route_baselink_x[i-1]
                 dy = route_baselink_y[i] - route_baselink_y[i-1]
@@ -148,22 +162,29 @@ class RouteCostmapNode(Node):
                 for t in ts[1:]:
                     newx = route_baselink_x[i-1] + t*dx
                     newy = route_baselink_y[i-1] + t*dy
-                    # stop if we have left the costmap region
+                    # gridxs.append( newx )
+                    # gridys.append( newy )
+                    # the goal should be the last point in the route that is within the costmap
                     if self.is_within_costmap(newx,newy):
+                        goal = (newx,newy)
                         gridxs.append( newx )
                         gridys.append( newy )
-                    else:
-                        break
+                    # else:
+                    #     break
 
                 # stop if we have left the costmap region
-                if not self.is_within_costmap(route_baselink_x[i],route_baselink_y[i]):
-                    break
+                # if not self.is_within_costmap(route_baselink_x[i],route_baselink_y[i]):
+                #     break
             
             # self.get_logger().info('\n'+'\n'.join([ '%1.2f, %1.2f' % (gridxs[i],gridys[i]) for i in range(len(gridxs))] ) )
+            self.get_logger().debug('grid route has %i points' % len(gridxs))
+            self.get_logger().debug('path goal point:  %1.2f, %1.2f' % goal )
 
             # If we have only 1 or 0 in the list, there isn't really anything to show
             if len(gridxs) < 2:
-                return routemap
+                self.get_logger().info('You have reached the end of the route.')
+                self.publish(routemap,(0.0,0.0))
+                return
             
             # now we paint a low cost valley along the gridxs,gridys
             pixel_steps = [1,2,3,4] # how many costmap cells are painted to either "side" according to the cost_gradient below
@@ -172,7 +193,10 @@ class RouteCostmapNode(Node):
                 # conversion from x,y in base_link to grid indices 
                 # TODO: Avoid hard coding this
                 i,j = round((gridys[r]+30)/0.4), round((gridxs[r]+20)/0.4)
-                routemap[i,j] = 0
+                try:
+                    routemap[i,j] = 0
+                except:
+                    continue
                 if r > 1:
                     if jold<j: # last point is behind current one
                         for d in pixel_steps:
@@ -217,37 +241,40 @@ class RouteCostmapNode(Node):
                     
                 iold,jold = i,j
 
-            # Publish path goal, which is the last element of the gridxs,gridys
-            path_goal = PoseStamped()
-            path_goal.header.stamp = self.clock.clock
-            path_goal.header.frame_id = 'base_link'
-            path_goal.pose.position.x = gridxs[-1]
-            path_goal.pose.position.y = gridys[-1]
-            self.path_goal_pub.publish(path_goal)
+            self.publish(routemap, goal )
 
-            # create a marker for rviz
-            self.publish_marker(path_goal,(0.0,1.0,0.4),self.goal_marker_pub)
-
-            # create and combine radial gradient overlay
-            waypoint_costmap = self.make_waypoint_costmap(path_goal.pose)
-            routemap = np.clip( routemap + waypoint_costmap , 0, 100)
-
-            # Publish as an OccupancyGrid
-            route_cost_msg = OccupancyGrid()
-            route_cost_msg.info.map_load_time = self.clock.clock
-            route_cost_msg.info.resolution = 0.4 # TODO: should avoid hard coding this
-            route_cost_msg.info.width = routemap.shape[0]
-            route_cost_msg.info.height = routemap.shape[1]
-            route_cost_msg.info.origin.position.x = -20.0 # TODO: should avoid hard coding this
-            route_cost_msg.info.origin.position.y = -30.0 # TODO: should avoid hard coding this
-            route_cost_msg.header.stamp = self.clock.clock
-            route_cost_msg.header.frame_id = 'base_link'
-            route_cost_msg.data = routemap.astype(np.int8).flatten().tolist()
-            self.route_dist_grid_pub.publish(route_cost_msg)
-            
         except(LookupException, ExtrapolationException, ConnectivityException) as e: # typically get some errors on startup as the tf buffer fills
-            self.get_logger().warn("!!! Error finding transform to build route grid !!!")
+            self.get_logger().warning("!!! Error finding transform to build route grid !!!")
             self.get_logger().error('failed to get transform {} \n'.format(repr(e)))
+
+    def publish(self, routemap, goal):
+        # Publish path goal, which is the last element of the gridxs,gridys
+        path_goal = PoseStamped()
+        path_goal.header.stamp = self.clock.clock
+        path_goal.header.frame_id = 'base_link'
+        path_goal.pose.position.x = goal[0]
+        path_goal.pose.position.y = goal[1]
+        self.path_goal_pub.publish(path_goal)
+
+        # create a marker for rviz
+        self.publish_marker(path_goal,(0.0,1.0,0.4),self.goal_marker_pub)
+
+        # create and combine radial gradient overlay
+        waypoint_costmap = self.make_waypoint_costmap(path_goal.pose)
+        routemap = np.clip( routemap + waypoint_costmap , 0, 100)
+
+        # Publish as an OccupancyGrid
+        route_cost_msg = OccupancyGrid()
+        route_cost_msg.info.map_load_time = self.clock.clock
+        route_cost_msg.info.resolution = 0.4 # TODO: should avoid hard coding this
+        route_cost_msg.info.width = routemap.shape[0]
+        route_cost_msg.info.height = routemap.shape[1]
+        route_cost_msg.info.origin.position.x = -20.0 # TODO: should avoid hard coding this
+        route_cost_msg.info.origin.position.y = -30.0 # TODO: should avoid hard coding this
+        route_cost_msg.header.stamp = self.clock.clock
+        route_cost_msg.header.frame_id = 'base_link'
+        route_cost_msg.data = routemap.astype(np.int8).flatten().tolist()
+        self.route_dist_grid_pub.publish(route_cost_msg)
 
     def is_within_costmap(self,x,y, xmin=-20.0,xmax=40.0,ymin=-30.0,ymax=30.0):
         # TODO: avoid hardcoding these values

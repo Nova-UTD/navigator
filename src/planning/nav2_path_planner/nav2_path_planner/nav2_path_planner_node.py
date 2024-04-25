@@ -164,7 +164,10 @@ class Nav2PathPlanner(Node):
             self.get_logger().warning("Have not received goal for path in path planner yet...")
             return
         if self.last_broadcast_time is None:
-            self.get_logger().warning("rHave not boadcast Nav2 transforms yet...")
+            self.get_logger().warning("Have not boadcast Nav2 transforms yet...")
+            return
+        if np.sqrt(self.path_goal.pose.position.x**2 + self.path_goal.pose.position.y**2) < 0.5:
+            self.get_logger().info("Vehicle has reached the goal!")
             return
 
         try: # may fail if transforms have not buffered
@@ -238,7 +241,7 @@ class Nav2PathPlanner(Node):
             command.header.frame_id = 'base_link'
             target_steer = np.arctan2(-lookahead_pose.pose.position.y, lookahead_pose.pose.position.x)
             command.steer = target_steer
-            target_speed = 1.5 # MAX_SPEED # m/s, ~10mph
+            target_speed = 1.0 # MAX_SPEED # m/s, ~10mph
             pid_error = target_speed - self.speed
             command.throttle = 0.0
             command.brake = 0.0
