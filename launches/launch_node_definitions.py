@@ -86,7 +86,8 @@ map_manager = Node(
     parameters=[
         {'from_file': True},
         {'data_path': '/navigator/data'}
-    ]
+    ],
+    prefix=['xterm -e gdb -ex run --args']
 )
 
 map_manager_carla = Node(
@@ -94,7 +95,8 @@ map_manager_carla = Node(
     executable='map_management_node',
     parameters=[
         {'from_file': False}
-    ]
+    ],
+    prefix=['xterm -e gdb -ex run --args']
 )
 
 odom2tf = Node(
