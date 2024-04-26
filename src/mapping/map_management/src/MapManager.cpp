@@ -35,6 +35,20 @@ struct Arc
 
 MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
+    // Callback groups & options
+    mutex_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    parallel_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+
+    rclcpp::SubscriptionOptions mutex_sub_option;
+    mutex_sub_option.callback_group = mutex_group_;
+    rclcpp::SubscriptionOptions parallel_sub_option;
+    parallel_sub_option.callback_group = parallel_group_;
+
+    rclcpp::PublisherOptions mutex_pub_option;
+    mutex_pub_option.callback_group = mutex_group_;
+    rclcpp::PublisherOptions parallel_pub_option;
+    parallel_pub_option.callback_group = parallel_group_;
+
     // Params
     this->declare_parameter("from_file", false);
     this->declare_parameter("data_path", "/home/nova/navigator/data");
@@ -45,22 +59,22 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     std::string data_path = get_parameter("data_path").as_string();
 
     // Publishers and subscribers
-    drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10);
-    junction_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/junction", 10);
+    drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10, parallel_pub_option);
+    junction_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/junction", 10, parallel_pub_option);
     //route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
-    route_path_pub_ = this->create_publisher<Path>("/planning/smoothed_route", 10);
-    goal_pose_pub_ = this->create_publisher<PoseStamped>("/planning/goal_pose", 1);
+    route_path_pub_ = this->create_publisher<Path>("/planning/smoothed_route", 10, parallel_pub_option);
+    goal_pose_pub_ = this->create_publisher<PoseStamped>("/planning/goal_pose", 1, parallel_pub_option);
     //route_progress_pub_ = this->create_publisher<std_msgs::msg::Float32>("/route_progress", 1);
-    clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1));
-    clicked_point_sub_ = this->create_subscription<PointStamped>("/clicked_point", 1, bind(&MapManagementNode::clickedPointCb, this, std::placeholders::_1));
+    clock_sub = this->create_subscription<Clock>("/clock", 10, bind(&MapManagementNode::clockCb, this, std::placeholders::_1), parallel_sub_option);
+    clicked_point_sub_ = this->create_subscription<PointStamped>("/clicked_point", 1, bind(&MapManagementNode::clickedPointCb, this, std::placeholders::_1), mutex_sub_option);
 
     // Services
-    route_set_service_ = this->create_service<navigator_msgs::srv::SetRoute>("set_route", bind(&MapManagementNode::setRoute, this, std::placeholders::_1, std::placeholders::_2));
+    route_set_service_ = this->create_service<navigator_msgs::srv::SetRoute>("set_route", bind(&MapManagementNode::setRoute, this, std::placeholders::_1, std::placeholders::_2), rmw_qos_profile_services_default, mutex_group_);
 
     // only need route timer if we want the route distance grid, but that has been commented out
     //route_timer_ = this->create_wall_timer(LOCAL_ROUTE_LS_FREQ, bind(&MapManagementNode::updateLocalRouteLinestring, this));
     
-    smooth_route_timer_ = this->create_wall_timer(SMOOTH_ROUTE_LS_FREQ, bind(&MapManagementNode::publishSmoothRoute, this));
+    smooth_route_timer_ = this->create_wall_timer(SMOOTH_ROUTE_LS_FREQ, bind(&MapManagementNode::publishSmoothRoute, this), mutex_group_);
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -124,6 +138,17 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     drivable_area_grid_pub_timer_ = this->create_wall_timer(GRID_PUBLISH_FREQUENCY, bind(&MapManagementNode::drivableAreaGridPubTimerCb, this));
 }
 
+int main(int argc, char* argv[]) {
+    rclcpp::init(argc, argv);
+    // Create map management node instance, spin inside multithreaded executor
+    auto mgr = std::make_shared<MapManagementNode>();
+    rclcpp::executors::MultiThreadedExecutor executor;
+    executor.add_node(mgr);
+    executor.spin();
+    rclcpp::shutdown();
+    return 0;
+}
+
 /**
  * Given a global (possible large) route linestring:
  * 1. Find the point closest to the car.
@@ -173,6 +198,10 @@ void MapManagementNode::updateLocalRouteLinestring()
 */
 void MapManagementNode::publishSmoothRoute()
 {
+    // Do not try to deref clock before it's initialized
+    if (!this->clock_)
+        return;
+
     auto clock = this->clock_->clock;
     // if we have already created the smoothed route message
     if(smoothed_route_msg_.poses.size() > 0)
@@ -232,6 +261,7 @@ std::vector<odr::LaneKey> laneKeysFromPoint(odr::point pt, bgi::rtree<odr::value
     // At this point, our search could not find any lanes intersecting the point.
     // The fallback is to find the nearest lane to the point, even if they don't touch.
     lane_tree.query(bgi::nearest(pt, 1), std::back_inserter(query_results));
+
     odr::LanePair result_pair = lane_polys[query_results.front().second];
     lane_keys.push_back(result_pair.first.key);
 
@@ -387,6 +417,8 @@ void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
 
 void MapManagementNode::setRoute(const std::shared_ptr<navigator_msgs::srv::SetRoute::Request> request, std::shared_ptr<navigator_msgs::srv::SetRoute::Response> response)
 {
+    RCLCPP_INFO(get_logger(), "Received request to set route!");
+
     if (request->route_nodes.size() < 2)
     {
         RCLCPP_ERROR(get_logger(), "Service call requires at least two points.");
@@ -397,6 +429,15 @@ void MapManagementNode::setRoute(const std::shared_ptr<navigator_msgs::srv::SetR
     else if (request->route_nodes.size() > 2)
     {
         RCLCPP_WARN(get_logger(), "Routing only supported for two points at the moment. Remaining points will be ignored.");
+    }
+
+    // Make sure map tree isn't empty before we try setting a route
+    if (map_wide_tree_.empty()) {
+        RCLCPP_ERROR(get_logger(), "Cannot set a route before map_wide_tree_ has been initialized.");
+        std::string message = "Cannot set a route before map_wide_tree_ has been initialized.";
+        response->message = message;
+        response->success = false;
+        return;
     }
 
     // For the first two points, get their lanekeys
@@ -513,6 +554,13 @@ void MapManagementNode::setRoute(const std::shared_ptr<navigator_msgs::srv::SetR
  */
 void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dist, float res)
 {
+    if (!this->clock_)
+    {
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                             "Clock not yet initialized. Drivable area grid is unavailable.");
+        return;
+    }
+
     if (this->map_ == nullptr)
     {
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
@@ -1233,6 +1281,9 @@ std::vector<odr::LaneKey> getLaneKeysFromIndices(RoiIndices indices, LineString 
 }
 
 /**
+ * 
+ * NOTE: CURRENTLY UNUSED
+ * 
  * @brief Given a destination point (x,y), set our route linestring
  * to be the continuous centerlines of the lanes connecting
  * the current location to the destination. Should be fast.
