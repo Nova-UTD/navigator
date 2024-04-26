@@ -9,22 +9,10 @@ services:
       dockerfile: Dockerfile
     volumes:
       # Launch directory is required for Zenith to find and modify launch files.
+      # Directories install, build, log, and src are required for subsystems list and search.
       - type: bind
-        source: $PWD/launches
-        target: /navigator/launches
-      # Directories install, build, log, src and are required for subsystems list and search.
-      - type: bind
-        source: $PWD/install
-        target: /navigator/install
-      - type: bind
-        source: $PWD/build
-        target: /navigator/build
-      - type: bind
-        source: $PWD/log
-        target: /navigator/log
-      - type: bind
-        source: $PWD/src
-        target: /navigator/src
+        source: $PWD
+        target: /navigator
       - type: bind
         source: ${HOME}/.Xauthority
         target: /root/.Xauthority
@@ -34,6 +22,10 @@ services:
     environment:
       - NAVIGATOR_SRC=/navigator/src
       - DISPLAY=${DISPLAY}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      # Specify the ROS Middleware to be consistent across containers:
+      # see: https://discourse.ros.org/t/ros-cross-distribution-communication/27335
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
     network_mode: "host"
 
   zenith:
@@ -79,6 +71,10 @@ services:
     environment:
       - NAVIGATOR_SRC=/navigator/src
       - DISPLAY=${DISPLAY}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      # Specify the ROS Middleware to be consistent across containers:
+      # see: https://discourse.ros.org/t/ros-cross-distribution-communication/27335
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
     network_mode: "host"
   
   zenith_dev:
