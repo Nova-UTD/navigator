@@ -1,0 +1,103 @@
+version: "2.3"
+name: zenith
+services:
+  zenith_backend:
+    image: zenith_backend
+    container_name: zenith_backend_${USER}
+    build:
+      context: server
+      dockerfile: Dockerfile
+    volumes:
+      # Launch directory is required for Zenith to find and modify launch files.
+      - type: bind
+        source: $PWD/launches
+        target: /navigator/launches
+      # Directories install, build, log, src and are required for subsystems list and search.
+      - type: bind
+        source: $PWD/install
+        target: /navigator/install
+      - type: bind
+        source: $PWD/build
+        target: /navigator/build
+      - type: bind
+        source: $PWD/log
+        target: /navigator/log
+      - type: bind
+        source: $PWD/src
+        target: /navigator/src
+      - type: bind
+        source: ${HOME}/.Xauthority
+        target: /root/.Xauthority
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+    environment:
+      - NAVIGATOR_SRC=/navigator/src
+      - DISPLAY=${DISPLAY}
+    network_mode: "host"
+
+  zenith:
+    image: zenith
+    container_name: zenith_${USER}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - zenith_backend
+    volumes:
+      # Bind mount the current directory to the container.
+      - ./:/navigator
+      # X11 socket for GUI.
+      - type: bind
+        source: ${HOME}/.Xauthority
+        target: /root/.Xauthority
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+    environment:
+      - DISPLAY=${DISPLAY}
+      - LAUNCH_DIR=/navigator/launches
+    network_mode: "host"
+  
+  zenith_backend_dev:
+    image: zenith_backend_dev
+    container_name: zenith_backend_dev_${USER}
+    build:
+      context: server
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Launch directory is required for Zenith to find and modify launch files.
+      # Directories install, build, log, src and are required for subsystems list and search.
+      # Bind entire navigator directory handles all above cases.
+      - ../:/navigator
+      - type: bind
+        source: ${HOME}/.Xauthority
+        target: /root/.Xauthority
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+    environment:
+      - NAVIGATOR_SRC=/navigator/src
+      - DISPLAY=${DISPLAY}
+    network_mode: "host"
+  
+  zenith_dev:
+    image: zenith_dev
+    container_name: zenith_dev_${USER}
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Bind mount the current directory to the container.
+      - ../:/navigator
+      # X11 socket for GUI.
+      - type: bind
+        source: ${HOME}/.Xauthority
+        target: /root/.Xauthority
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+    environment:
+      - DISPLAY=${DISPLAY}
+      - LAUNCH_DIR=/navigator/launches
+    network_mode: "host"

@@ -12,7 +12,7 @@ Calls:
 
 import math
 
-from geometry_msgs.msg import Point, PointStamped
+from geometry_msgs.msg import Point, PointStamped, PoseStamped
 from navigator_msgs.srv import SetRoute
 from nav_msgs.msg import Path
 from rclpy.node import Node
@@ -26,7 +26,7 @@ from rosgraph_msgs.msg import Clock
 class RoutingMonitor(Node):
 
     def __init__(self):
-        super().__init__('routing_listener_node')
+        super().__init__('routing_monitor_node')
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -58,6 +58,8 @@ class RoutingMonitor(Node):
         self.rough_route = msg
 
     def smooth_routeCb(self, msg: Path):
+        if self.smooth_route_msg is None:
+            self.get_logger().info('Smooth Route received.')
         self.smooth_route_msg = msg
 
     def smooth_route_pub_tick(self):
@@ -143,7 +145,10 @@ class RoutingMonitor(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    routing_monitor = RoutingMonitor()
-    rclpy.spin(routing_monitor)
-    routing_monitor.destroy_node()
+    node = RoutingMonitor()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    node.destroy_node()
     rclpy.shutdown()
