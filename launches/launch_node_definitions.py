@@ -172,3 +172,8 @@ web_bridge = Node(
     package='rosbridge_server',
     executable='rosbridge_websocket'
 )
+
+traffic_light_detector = Node(
+    package='traffic_light_detector',
+    executable='traffic_light_node'
+)
