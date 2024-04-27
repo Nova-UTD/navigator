@@ -1,0 +1,7 @@
+image: nav2_map.pgm
+resolution: 0.4 # TODO: update according to costmap size
+mode: scale
+origin: [-20, -30.0, 0.0]  # TODO: Update when the costmap size is updated
+negate: 0
+occupied_thresh: 0.55
+free_thresh: 0.0

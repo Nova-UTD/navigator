@@ -12,7 +12,7 @@ Calls:
 
 import math
 
-from geometry_msgs.msg import Point, PointStamped
+from geometry_msgs.msg import Point, PointStamped, PoseStamped
 from navigator_msgs.srv import SetRoute
 from nav_msgs.msg import Path
 from rclpy.node import Node
@@ -63,6 +63,8 @@ class RoutingMonitor(Node):
         self.rough_route = msg
 
     def smooth_routeCb(self, msg: Path):
+        if self.smooth_route_msg is None:
+            self.get_logger().info('Smooth Route received.')
         self.smooth_route_msg = msg
 
     def smooth_route_pub_tick(self):
@@ -152,6 +154,10 @@ def main(args=None):
     routing_monitor = RoutingMonitor()
     routing_executor = MultiThreadedExecutor()
     routing_executor.add_node(routing_monitor)
-    routing_executor.spin()
+    try:
+        routing_executor.spin()
+    except KeyboardInterrupt:
+        pass
     routing_executor.remove_node(routing_monitor)
+    routing_monitor.destroy_node()
     rclpy.shutdown()
