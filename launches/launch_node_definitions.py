@@ -4,6 +4,11 @@ from launch_ros.actions import Node
 
 NAVIGATOR_DIR = "/navigator/"
 
+pure_pursuit_controller = Node(
+    package='pure_pursuit_controller',
+    executable='pure_pursuit_controller'
+)
+
 airbags = Node(
     package='airbags',
     executable='airbag_node'

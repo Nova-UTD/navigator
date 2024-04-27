@@ -7,9 +7,13 @@ from launch import LaunchDescription
 from launch.actions import RegisterEventHandler, LogInfo
 from launch.event_handlers import OnProcessStart
 
-sys.path.append(path.abspath('/navigator/'))
+sys.path.append(path.abspath("/navigator/"))
 from launches.launch_node_definitions import *
-from launches.utils import err_fatal, try_get_launch_description_from_include, IncludeError
+from launches.utils import (
+    err_fatal,
+    try_get_launch_description_from_include,
+    IncludeError,
+)
 
 
 def generate_launch_description():
@@ -17,7 +21,9 @@ def generate_launch_description():
 
     # Include perception launch file and extract launch entities for reuse.
     try:
-        perception_launch_description = try_get_launch_description_from_include('launches/launch.perception.py')
+        perception_launch_description = try_get_launch_description_from_include(
+            "launches/launch.perception.py"
+        )
     except IncludeError as e:
         err_fatal(e)
 
@@ -64,9 +70,11 @@ def generate_launch_description():
                     grid_route_costmap,
                     grid_summation,
                     junction_manager,
+
                     #rtp,
                     *nav2_launch_entities,
                     nav2_path_planner,
+                    pure_pursuit_controller,
 
                     # SAFETY
                     ##airbags,
@@ -76,3 +84,4 @@ def generate_launch_description():
             )
         )
     ])
+
