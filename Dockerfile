@@ -98,6 +98,8 @@ RUN apt-get update && apt update && apt upgrade -y && \
         ros-humble-joy-linux \
         #
         ros-humble-lgsvl-msgs \
+        # Nav2 stack - used for path planning
+        ros-humble-navigation2 \
         #
         ros-humble-pcl-conversions \
         #
@@ -204,7 +206,10 @@ RUN pip3 install \
     # wcwidth \
     # six>=1.5 \
     # mmcls \
-    easydict
+    easydict \
+    kiss-icp \
+    g2o-python \
+    rosbags
 
 RUN pip3 install --upgrade numpy && pip3 install --upgrade scipy
 
@@ -214,6 +219,18 @@ RUN mim install mmengine
 RUN mim install 'mmcv>=2.0.0rc4'
 RUN mim install 'mmdet>=3.0.0'
 RUN mim install "mmdet3d>=1.1.0"
+
+# install loop closure package "MapClosures"
+# this issue was addressed here: https://github.com/abetlen/llama-cpp-python/issues/707
+RUN sudo apt remove python3-pathspec -y
+RUN pip3 install --user pathspec yamllint
+RUN git clone https://github.com/PRBonn/MapClosures.git
+WORKDIR MapClosures
+RUN cmake -B build -S cpp
+RUN cmake --build build -j8
+RUN make
+
+WORKDIR /
 
 # https://stackoverflow.com/questions/66669735/ubuntu-20-04-cant-find-pcl-because-of-incorrect-include-directory-after-install
 RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10/pcl /lib/x86_64-linux-gnu/cmake/pcl/include/pcl
