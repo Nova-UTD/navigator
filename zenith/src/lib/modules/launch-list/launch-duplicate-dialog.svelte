@@ -1,0 +1,88 @@
+<script lang="ts">
+	import * as Dialog from '$lib/ui/dialog';
+	import { Label } from '$lib/ui/label';
+	import { Input } from '$lib/ui/input';
+	import { Button } from '$lib/ui/button';
+	import XIcon from 'lucide-svelte/icons/x';
+	import { duplicateLaunch } from '$lib/stores/launchStore';
+
+	export let open = false;
+	export let name = '';
+	export let filename = '';
+
+	let hasChangedName = false;
+	let changedName = name;
+	let changedFilename = filename;
+
+	// Automatically change filename when name changes (after first change).
+	$: changedName != name && (changedFilename = `launch.${changedName}.py`);
+
+	let showError = false;
+	let unchangedError = false;
+	let emptyError = false;
+
+	$: unchangedError = changedName === name || changedFilename === filename;
+	$: emptyError = changedName === '' || changedFilename === '';
+
+	function changeName(event: Event) {
+		hasChangedName = true;
+		showError = false;
+		const target = event.target as HTMLInputElement;
+		changedName = target.value;
+	}
+
+	function changeFilename(event: Event) {
+		showError = false;
+		const target = event.target as HTMLInputElement;
+		changedFilename = target.value;
+	}
+</script>
+
+<Dialog.Root bind:open>
+	<Dialog.Trigger><slot /></Dialog.Trigger>
+	<Dialog.Content class="text-white sm:max-w-[425px]">
+		<Dialog.Header>
+			<Dialog.Title>Duplicate Launch File</Dialog.Title>
+		</Dialog.Header>
+		<div class="flex flex-col gap-4 py-4">
+			<div class="grid grid-cols-4 items-center gap-4">
+				<Label for="name" class="text-right">Name</Label>
+				<Input id="name" autofocus on:input={changeName} value={changedName} class="col-span-3" />
+			</div>
+			<div class="grid grid-cols-4 items-center gap-4">
+				<Label for="filename" class="text-right">Filename (exclude path)</Label>
+				<Input id="filename" on:input={changeFilename} value={changedFilename} class="col-span-3" />
+			</div>
+			{#if showError && unchangedError}
+				<div class="flex items-center gap-2 text-xs text-red-500">
+					<XIcon class="w-8 h-8" />
+					<p>Name and filename cannot be the same.</p>
+				</div>
+			{/if}
+			{#if showError && emptyError}
+				<div class="flex items-center gap-2 text-xs text-red-500">
+					<XIcon class="w-8 h-8" />
+					<p>Name and filename cannot be empty.</p>
+				</div>
+			{/if}
+		</div>
+		<Dialog.Footer>
+			<Button
+				on:click={() => {
+					if (unchangedError || emptyError) {
+						showError = true;
+						return;
+					}
+					duplicateLaunch({
+						newName: changedName,
+						oldFilename: filename,
+						newFilename: changedFilename
+					});
+					open = false;
+				}}
+				type="submit"
+				variant="secondary">Duplicate</Button
+			>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
