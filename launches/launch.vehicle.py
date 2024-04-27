@@ -29,44 +29,48 @@ def generate_launch_description():
 
     perception_launch_entities = perception_launch_description.describe_sub_entities()
 
-    return LaunchDescription(
-        [
-            map_manager_carla,
-            RegisterEventHandler(
-                OnProcessStart(
-                    target_action=map_manager_carla,
-                    on_start=[
-                        LogInfo(
-                            msg="Map Manager Started... launching the rest of Navigator..."
-                        ),
-                        # CONTROL
-                        # carla_controller,
-                        # INTERFACE
-                        # leaderboard_liaison,
-                        # web_bridge,
-                        ##joy_linux,
-                        ##joy_translation,
-                        # LOCALIZATION
-                        # gnss_averager,
-                        # mcl,
-                        # MAPPING
-                        # MISC
-                        # recorder,
-                        # rqt,
-                        # camera_streamer,
-                        # PERCEPTION
-                        *perception_launch_entities,
-                        # PLANNING
-                        routing_monitor,
-                        grid_summation,
-                        junction_manager,
-                        rtp,
-                        # SAFETY
-                        ##airbags,
-                        ##guardian,
-                        rviz,
-                    ],
-                )
-            ),
-        ]
-    )
+    return LaunchDescription([
+        map_manager_carla,
+        RegisterEventHandler(
+            OnProcessStart(
+                target_action=map_manager_carla,
+                on_start=[
+                    LogInfo(msg='Map Manager Started... launching the rest of Navigator...'),
+                    # CONTROL
+                    #carla_controller,
+
+                    # INTERFACE
+                    # leaderboard_liaison,
+                    # web_bridge,
+                    ##joy_linux,
+                    ##joy_translation,
+
+                    # LOCALIZATION
+                    # gnss_averager,
+                    # mcl,
+
+                    # MAPPING
+                    # MISC
+                    # recorder,
+                    # rqt,
+                    # camera_streamer,
+
+                    # PERCEPTION
+                    *perception_launch_entities,
+
+                    # PLANNING
+                    routing_monitor,
+                    grid_summation,
+                    junction_manager,
+                    rtp,
+                    pure_pursuit_controller,
+
+                    # SAFETY
+                    ##airbags,
+                    ##guardian,
+                    rviz,
+                ]
+            )
+        )
+    ])
+
