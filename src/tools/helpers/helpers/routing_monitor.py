@@ -17,11 +17,17 @@ from navigator_msgs.srv import SetRoute
 from nav_msgs.msg import Path
 from rclpy.node import Node
 import rclpy
+import rclpy.time
+import rclpy.utilities
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from rosgraph_msgs.msg import Clock
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
 
+parallel_group = ReentrantCallbackGroup()
+mutex_group = MutuallyExclusiveCallbackGroup()
 
 class RoutingMonitor(Node):
 
@@ -31,25 +37,24 @@ class RoutingMonitor(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
-        rough_route_sub = self.create_subscription(Path, '/planning/rough_route', self.routeCb, 1)
+        rough_route_sub = self.create_subscription(Path, '/planning/rough_route', self.routeCb, 1, callback_group=parallel_group)
         self.rough_route = None
 
         # TODO: should implement this as a service rather than two similar/redundant topics...
         # currently doing this so that the fast republishing does not need to lie with the map manager
-        smooth_route_sub = self.create_subscription(Path, '/planning/smoothed_route', self.smooth_routeCb, 1)
+        smooth_route_sub = self.create_subscription(Path, '/planning/smoothed_route', self.smooth_routeCb, 1, callback_group=parallel_group)
         self.smooth_route_msg = None
-        self.smooth_route_pub = self.create_publisher(Path, '/planning/route', 1)
+        self.smooth_route_pub = self.create_publisher(Path, '/planning/route', 1, callback_group=parallel_group)
 
-        self.routing_client = self.create_client(SetRoute, '/set_route')
+        self.routing_client = self.create_client(SetRoute, '/set_route', callback_group=parallel_group)
 
-        smooth_route_timer = self.create_timer(0.1, self.smooth_route_pub_tick)
+        smooth_route_timer = self.create_timer(0.1, self.smooth_route_pub_tick, callback_group=parallel_group)
 
-        clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1)
+        clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1, callback_group=parallel_group)
         self.clock = Clock().clock
 
         self.service_request = SetRoute.Request()
-        self.route_timer = self.create_timer(3.0, self.request_refined_route)
-        self.request_sent = False
+        self.route_timer = self.create_timer(3.0, self.request_refined_route, callback_group=mutex_group)
 
     def clockCb(self, msg: Clock):
         self.clock = msg.clock
@@ -72,9 +77,6 @@ class RoutingMonitor(Node):
     def request_refined_route(self):
         if self.rough_route is None:
             self.get_logger().info("Rough Route was not yet received")
-            return
-
-        if self.request_sent:
             return
 
         start = Point()
@@ -132,23 +134,30 @@ class RoutingMonitor(Node):
         # self.get_logger().info(f"Got response {response}")
 
         self.future = self.routing_client.call_async(self.service_request)
-        # rclpy.spin_until_future_complete(self, self.future)
-        # result = self.future.result()
-        # self.get_logger().info("Got response %s %s" % (str(result.message),str(result.success)))
+        rclpy.spin_until_future_complete(self, self.future, self.executor, 3.0)
+        result = self.future.result()
+        self.get_logger().info("Got response %s %s" % (str(result.message),str(result.success)))
+        if result.success:
+            self.get_logger().info("Route was set successfully, moving on.")
+            # to do this only once...
+            self.route_timer.destroy()
+        else:
+            self.get_logger().info("Route failed to be set successfully, will retry on next timer trigger...")
+        
+        # Re-add self to executor after call_async removes it
+        self.executor.add_node(self)
 
-        # if ~result.success:
-        #     route_timer = self.create_timer(3.0, self.request_refined_route)
-        # to do this only once...
-        self.route_timer.destroy()
-        self.request_sent = True
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = RoutingMonitor()
+    routing_monitor = RoutingMonitor()
+    routing_executor = MultiThreadedExecutor()
+    routing_executor.add_node(routing_monitor)
     try:
-        rclpy.spin(node)
+        routing_executor.spin()
     except KeyboardInterrupt:
         pass
-    node.destroy_node()
+    routing_executor.remove_node(routing_monitor)
+    routing_monitor.destroy_node()
     rclpy.shutdown()
