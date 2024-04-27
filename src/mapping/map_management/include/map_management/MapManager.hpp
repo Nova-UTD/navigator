@@ -95,6 +95,10 @@ namespace navigator
             void publishGrids(int top, int bottom, int side, float res);
 
         private:
+            // Callback groups
+            rclcpp::CallbackGroup::SharedPtr mutex_group_;
+            rclcpp::CallbackGroup::SharedPtr parallel_group_;
+
             // Parameters
             // TODO: Convert to ros params
             std::chrono::milliseconds GRID_PUBLISH_FREQUENCY = 3000ms;
