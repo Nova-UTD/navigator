@@ -24,6 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'grid_summation_node = costs.grid_summation_node:main',
+            'route_costmap_node = costs.route_costmap_node:main',
             'junction_manager = costs.junction_manager:main',
         ],
     },
