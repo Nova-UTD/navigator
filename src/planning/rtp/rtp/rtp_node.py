@@ -1,4 +1,4 @@
-'''
+"""
 Package:   rtp
 Filename:  rtp_node.py
 Author:    Will Heitman (w at heit.mn)
@@ -26,7 +26,7 @@ Publishes:
 ✅ /planning/path (Path) in map frame
 
 Minimum update rate: 2 Hz, ideally 5 Hz
-'''
+"""
 
 from matplotlib import pyplot as plt
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
@@ -40,7 +40,8 @@ from dataclasses import dataclass
 import random
 import time
 from geometry_msgs.msg import PoseStamped, Quaternion, Point
-#from carla_msgs.msg import VehicleControl, CarlaSpeedometer
+
+# from carla_msgs.msg import VehicleControl, CarlaSpeedometer
 from navigator_msgs.msg import VehicleControl, VehicleSpeed
 from std_msgs.msg import String, ColorRGBA
 from sensor_msgs.msg import Imu
@@ -59,7 +60,7 @@ DEPTH: int = 1
 # These are vehicle constants for the GEM e6.
 # The sim vehicle (Tesla Model 3) has similar constants.
 WHEEL_BASE: float = 3.5  # meters
-MAX_TURN_ANGLE = 0.2  # radians
+MAX_TURN_ANGLE = 0.4  # radians
 COST_CUTOFF = 90
 
 
@@ -78,48 +79,53 @@ class CostedPath:
         new_path.cost = self.cost
         return new_path
 
+    def __str__(self) -> str:
+        return f"CostedPath(cost={self.cost}, start_n_end={self.poses[0] if len(self.poses) > 0 else 'None'}->{self.poses[-1] if len(self.poses) > 1 else 'None'})"
+
 
 class RecursiveTreePlanner(Node):
     def __init__(self):
-        super().__init__('rtp_node')
+        super().__init__("rtp_node")
 
         self.speed_costmap = np.zeros((151, 151))
-        self.origin = (44., 75.)
+        self.origin = (44.0, 75.0)
 
         # steering_cost_map_sub = self.create_subscription(
         #     OccupancyGrid, '/grid/route_distance', self.costMapCb, 1)
-        steering_cost_map_sub = self.create_subscription(
-            OccupancyGrid, '/grid/steering_cost', self.costMapCb, 1)
+        self.steering_cost_map_sub = self.create_subscription(
+            OccupancyGrid, "/grid/steering_cost", self.cost_map_callback, 1
+        )
 
-        speed_cost_map_sub = self.create_subscription(
-            OccupancyGrid, '/grid/speed_cost', self.speedCostMapCb, 1)
+        self.speed_cost_map_sub = self.create_subscription(
+            OccupancyGrid, "/grid/speed_cost", self.speed_costmap_callback, 1
+        )
 
-        self.status_pub = self.create_publisher(
-            DiagnosticStatus, '/node_statuses', 1)
+        self.status_pub = self.create_publisher(DiagnosticStatus, "/node_statuses", 1)
 
-        odom_sub = self.create_subscription(
-            Odometry, '/gnss/odometry', self.odomCb, 1)
+        odom_sub = self.create_subscription(Odometry, "/gnss/odometry", self.odomCb, 1)
 
         current_mode_sub = self.create_subscription(
-            Mode, '/guardian/mode', self.currentModeCb, 1)
-        
-        self.target_speed_pub = self.create_publisher(VehicleSpeed, '/planning/target_speed', 1)
+            Mode, "/guardian/mode", self.current_mode_callback, 1
+        )
 
-        clock_sub = self.create_subscription(
-            Clock, '/clock', self.clockCb, 1)
+        self.target_speed_pub = self.create_publisher(
+            VehicleSpeed, "/planning/target_speed", 1
+        )
+
+        clock_sub = self.create_subscription(Clock, "/clock", self.clock_callback, 1)
         self.clock = Clock().clock
 
-        self.command_pub = self.create_publisher(
-            VehicleControl, '/vehicle/control', 1)
+        self.command_pub = self.create_publisher(VehicleControl, "/vehicle/control", 1)
 
         self.speed_sub = self.create_subscription(
-            VehicleSpeed, '/speed', self.speedCb, 1)
+            VehicleSpeed, "/speed", self.speed_callback, 1
+        )
 
-        self.path_pub = self.create_publisher(
-            Path, '/planning/path', 1)
+        self.path_pub = self.create_publisher(Path, "/planning/path", 1)
 
-        self.barrier_marker_pub = self.create_publisher(
-            Marker, '/planning/barrier_marker', 1)
+        self.barrier_marker_pub = self.create_publisher( # Length of step in segment generation
+            Marker, "/planning/barrier_marker", 1
+        )
 
         self.ego_pose = None  # [x, y, heading]
 
@@ -129,25 +135,29 @@ class RecursiveTreePlanner(Node):
 
         self.current_mode = Mode.AUTO
 
-    def currentModeCb(self, msg: Mode):
+    def current_mode_callback(self, msg: Mode):
         self.current_mode = msg.mode
 
-    def speedCostMapCb(self, msg: OccupancyGrid):
+    def speed_costmap_callback(self, msg: OccupancyGrid):
         if msg.info.height == 0:
             self.speed_costmap = np.asarray(msg.data, dtype=np.int8).reshape(
-                int(np.sqrt(len(msg.data))), -1)
+                int(np.sqrt(len(msg.data))), -1
+            )
 
         else:
             self.speed_costmap = np.asarray(msg.data, dtype=np.int8).reshape(
-                msg.info.height, msg.info.width)
+                msg.info.height, msg.info.width
+            )
 
-    def clockCb(self, msg: Clock):
+    def clock_callback(self, msg: Clock):
         self.clock = msg.clock
 
-    def speedCb(self, msg: VehicleSpeed):
+    def speed_callback(self, msg: VehicleSpeed):
         self.speed = msg.speed
 
-    def getBarrierIndex(self, path: CostedPath, map: np.ndarray, width_meters=1.8) -> int:
+    def get_barrier_index(
+        self, path: CostedPath, map: np.ndarray, width_meters=1.8
+    ) -> int:
         """Given a path, perform a basic collision check and return the pose index
         for the first pose that fails the check (such as the pose that hits a vehicle,
         goes offroad, enters an intersection, etc).
@@ -166,12 +176,20 @@ class RecursiveTreePlanner(Node):
         REACH_CELLS = np.ceil(width_meters / GRID_RES / 3)  # = 3
 
         for i, pose in enumerate(path.poses):
-            theta = pose[2] + np.pi/2
+            theta = pose[2] + np.pi / 2
 
-            ptA = np.asarray([np.cos(theta) * REACH_CELLS + pose[0],
-                              np.sin(theta) * REACH_CELLS + pose[1]]).astype(np.int8)
-            ptB = np.asarray([np.cos(theta) * REACH_CELLS * -1 + pose[0],
-                              np.sin(theta) * REACH_CELLS * -1 + pose[1]]).astype(np.int8)
+            ptA = np.asarray(
+                [
+                    np.cos(theta) * REACH_CELLS + pose[0],
+                    np.sin(theta) * REACH_CELLS + pose[1],
+                ]
+            ).astype(np.int8)
+            ptB = np.asarray(
+                [
+                    np.cos(theta) * REACH_CELLS * -1 + pose[0],
+                    np.sin(theta) * REACH_CELLS * -1 + pose[1],
+                ]
+            ).astype(np.int8)
 
             # https://scikit-image.org/docs/stable/api/skimage.draw.html#skimage.draw.line
             rr, cc = line(ptA[1], ptA[0], ptB[1], ptB[0])
@@ -188,55 +206,14 @@ class RecursiveTreePlanner(Node):
 
         return len(path.poses) - 1
 
-    # def getSegment(self, inital_pose: np.ndarray, steering_angle, segment_length: float, res: float, costmap) -> CostedPath:
-    #     end_pose = np.copy(inital_pose)
-    #     segment_poses = []
-    #     current_length = 0.0
-    #     total_cost = 0
-
-    #     x = end_pose[0]
-    #     y = end_pose[1]
-
-    #     idx = 0
-
-    #     dx = (res * np.cos(steering_angle + inital_pose[2]))
-    #     dy = (res * np.sin(steering_angle + inital_pose[2]))
-
-    #     while current_length < segment_length:
-    #         end_heading = end_pose[2]
-
-    #         # x, y = (res * np.cos(end_heading) + end_pose[0],
-    #         #         res * np.sin(end_heading) + end_pose[1])
-
-    #         # x = 
-    #         x = x + dx
-    #         y = y + dy
-
-    #         # Check cost at (x,y). Row-major means y is first!
-    #         if costmap.shape[0] < 1:
-    #             self.get_logger().warn("Costmap was empty")
-    #             return
-    #         cost = costmap[int(y), int(x)]
-    #         if cost > COST_CUTOFF:
-    #             return
-
-    #         total_cost += cost
-
-    #         segment_poses.append([
-    #             x, y, steering_angle
-    #         ])
-    #         end_pose = segment_poses[-1]
-    #         current_length += res
-
-    #         idx += 1
-
-    #     path = CostedPath()
-    #     path.poses = segment_poses
-    #     path.cost = total_cost
-
-    #     return path
-
-    def getSegment(self, inital_pose: np.ndarray, steering_angle, segment_length: float, res: float, costmap) -> CostedPath:
+    def get_path_segment(
+        self,
+        inital_pose: np.ndarray,
+        steering_angle,
+        segment_length: float,
+        res: float,
+        costmap,
+    ) -> CostedPath:
         end_pose = np.copy(inital_pose)
         segment_poses = []
         current_length = 0.0
@@ -250,24 +227,23 @@ class RecursiveTreePlanner(Node):
         while current_length < segment_length:
             end_heading = end_pose[2]
 
-            x, y = (res * np.cos(end_heading) + end_pose[0],
-                    res * np.sin(end_heading) + end_pose[1])
-
-            # x = 
+            # DO NOT SUBMIT
+            x, y = (
+                res * np.cos(end_heading) + end_pose[0],
+                res * np.sin(end_heading) + end_pose[1],
+            )
 
             # Check cost at (x,y). Row-major means y is first!
             if costmap.shape[0] < 1:
                 self.get_logger().warn("Costmap was empty")
                 return
-            cost = costmap[int(y), int(x)]
+            cost = costmap[int(y), int(x)]  # DO NOT SUBMIT
             if cost > COST_CUTOFF:
                 return
 
             total_cost += cost
 
-            segment_poses.append([
-                x, y, end_heading + steering_angle
-            ])
+            segment_poses.append([x, y, end_heading + steering_angle])  # DO NOT SUBMIT
             end_pose = segment_poses[-1]
             current_length += res
 
@@ -279,12 +255,23 @@ class RecursiveTreePlanner(Node):
 
         return path
 
-
-    def generatePaths(self, depth: int, path: CostedPath, steering_angle, segment_length, res, num_branches, results: list, result_costs, costmap):
+    def generate_paths(
+        self,
+        depth: int,
+        path: CostedPath,
+        steering_angle,
+        segment_length: int, # The total length of the segment
+        res: int,       # The length of each jump in the costmap when creating a segment.
+        num_branches,
+        results: list,
+        result_costs,
+        costmap,
+    ):
         # Current pose at this step is the latest pose in the current path
         pose = path.poses[-1]
-        segment = self.getSegment(
-            pose, steering_angle, segment_length, res, costmap)
+        segment = self.get_path_segment(
+            pose, steering_angle, segment_length, res, costmap
+        )
 
         if segment is None:  # getSegment hit an obstacle
             return
@@ -297,28 +284,44 @@ class RecursiveTreePlanner(Node):
             results.append(new_path)
             return
 
-        #for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, num_branches):
-        for angle in MAX_TURN_ANGLE*np.power(np.linspace(-1, 1, num_branches),3):
-            adjusted_angle = angle
-            # if angle > 0:
-            #     adjusted_angle = np.power(angle, 1.5)
-            # else:
-            #     adjusted_angle = np.power(abs(angle), 1.5) * -1
-            self.generatePaths(depth-1, new_path, adjusted_angle, segment_length,
-                               res, num_branches, results, result_costs, costmap)
+        for angle in MAX_TURN_ANGLE * np.linspace(-1, 1, num_branches):
+            self.generate_paths(
+                depth - 1,
+                new_path,
+                angle,
+                segment_length,
+                res,
+                num_branches,
+                results,
+                result_costs,
+                costmap,
+            )
 
-    def startGeneration(self, costmap: np.ndarray, depth=7, segment_length=9.0, branches=7):
-        # plt.figure(figsize=(8, 6), dpi=160)
-        # plt.axes().set_aspect('equal')
-        # print(f"Generating path with depth {depth}, seg len {segment_length}")
+    def start_generation(
+        self,
+        costmap: np.ndarray,
+        depth: int = 7,
+        segment_length: float = 9.0,
+        branches: int = 7,
+    ) -> list[CostedPath]:
+        """Start the recursive path generation process.
 
+        Args:
+            costmap (np.ndarray): Cost map to use for path generation
+            depth (int, optional): Depth of the recursion. Defaults to 7.
+            segment_length (float, optional): Length of each path segment. Defaults to 9.0.
+            branches (int, optional): Number of branches to generate at each step. Defaults to 7.
+
+        Returns:
+            list[CostedPath]: List of paths generated
+        """
         path = CostedPath()
         path.poses = [[self.origin[0], self.origin[1], 0.0]]
         path.cost = 0
         results = []
         costs = []
 
-        res = 1.0
+        res = 3.0
 
         # The below loop creates the ROOT of our recursive tree
         # As a special case for the ROOT only, we multiply the number of branches
@@ -327,21 +330,25 @@ class RecursiveTreePlanner(Node):
         # The closer we are to the front of the car, the more important a smooth path is!
 
         for angle in np.linspace(-MAX_TURN_ANGLE, MAX_TURN_ANGLE, branches):
-            self.generatePaths(depth-1, path, angle, segment_length,
-                               res, branches, results, costs, costmap)
+            self.generate_paths(
+                depth - 1,
+                path,
+                angle,
+                segment_length,
+                res,
+                branches,
+                results,
+                costs,
+                costmap,
+            )
 
-        # results = np.asarray(results)
-        # print(results)
-        # plt.imshow(costmap, origin='lower')
-        # plt.xlim((25,75))
-        # plt.ylim((60,90))
         return results
-    
-    def publishLookaheadMarker(self, radius, pose):
+
+    def publish_lookahead_marker(self, radius, pose):
         marker = Marker()
-        marker.header.frame_id = 'base_link'
+        marker.header.frame_id = "base_link"
         marker.header.stamp = self.clock
-        marker.ns = 'lookahead'
+        marker.ns = "lookahead"
         marker.id = 0
         marker.type = Marker.CYLINDER
 
@@ -385,11 +392,11 @@ class RecursiveTreePlanner(Node):
         self.barrier_marker_pub.publish(marker)
         # print("Lookahead published!")
 
-    def publishBarrierMarker(self, pose):
+    def publish_barrier_marker(self, pose):
         marker = Marker()
-        marker.header.frame_id = 'base_link'
+        marker.header.frame_id = "base_link"
         marker.header.stamp = self.clock
-        marker.ns = 'barrier'
+        marker.ns = "barrier"
         marker.id = 0
         marker.type = Marker.CUBE
 
@@ -398,8 +405,8 @@ class RecursiveTreePlanner(Node):
         marker.pose.position.y = pose[1] * 0.4 - 30
         marker.pose.position.z = 1.0
 
-        marker.pose.orientation.z = np.sin(pose[2]/2)
-        marker.pose.orientation.w = np.cos(pose[2]/2)
+        marker.pose.orientation.z = np.sin(pose[2] / 2)
+        marker.pose.orientation.w = np.cos(pose[2] / 2)
         marker.scale.x = 0.2
         marker.scale.y = 2.0
         marker.scale.z = 0.2
@@ -412,11 +419,11 @@ class RecursiveTreePlanner(Node):
         self.barrier_marker_pub.publish(marker)
         # print("Barrier published!")
 
-    def removeBarrierMarker(self):
+    def remove_barrier_marker(self):
         marker = Marker()
-        marker.header.frame_id = 'base_link'
+        marker.header.frame_id = "base_link"
         marker.header.stamp = self.clock
-        marker.ns = 'barrier'
+        marker.ns = "barrier"
         marker.id = 0
         marker.type = Marker.CUBE
 
@@ -424,50 +431,41 @@ class RecursiveTreePlanner(Node):
 
         self.barrier_marker_pub.publish(marker)
 
-    def initStatusMsg(self) -> DiagnosticStatus:
+    def init_status_msg(self) -> DiagnosticStatus:
         status = DiagnosticStatus()
         status.name = self.get_name()
 
         stamp = KeyValue()
-        stamp.key = 'stamp'
-        stamp.value = str(self.clock.sec+self.clock.nanosec*1e-9)
+        stamp.key = "stamp"
+        stamp.value = str(self.clock.sec + self.clock.nanosec * 1e-9)
 
         status.values.append(stamp)
 
         return status
 
-    # def findPath(self,costmap, cost_threshold=20):
-        
-
-    # def costMapCb2(self, msg: OccupancyGrid):
-    #     if msg.info.height == 0 or msg.info.width == 0:
-    #         self.get_logger().warning("Incoming cost map dimensions were zero.")
-    #         return
-        
-    #     costmap = np.asarray(msg.data, dtype=np.int8).reshape(
-    #         msg.info.height, msg.info.width)
-        
-    #     lookahead_distance = 6.0 #min(max(self.speed * 3.0, 2.0), 20.) # meters
-
-
-
-    def costMapCb(self, msg: OccupancyGrid):
-        start = time.time()
+    def cost_map_callback(self, msg: OccupancyGrid):
+        # self.get_logger().info(f"Received cost map with {msg.data}")
 
         ALPHA = 0.5
 
-        status = self.initStatusMsg()
+        status = self.init_status_msg()
 
         if msg.info.height == 0 or msg.info.width == 0:
             self.get_logger().warning("Incoming cost map dimensions were zero.")
             return
 
         costmap = np.asarray(msg.data, dtype=np.int8).reshape(
-            msg.info.height, msg.info.width)
-        results = self.startGeneration(
-            costmap, depth=DEPTH, segment_length=STEP_LEN + 2. * self.speed, branches=N_BRANCHES)
+            msg.info.height, msg.info.width
+        )
+        results = self.start_generation(
+            costmap,
+            depth=DEPTH,
+            segment_length=STEP_LEN + 2.0 * self.speed,
+            branches=N_BRANCHES,
+        )
+        self.get_logger().info(f"Results: {[str(r) for r in results]}")
 
-        min_cost = 100000
+        min_cost = float("inf")
         best_path: CostedPath = None
 
         barrier_idxs = []
@@ -476,19 +474,17 @@ class RecursiveTreePlanner(Node):
 
             # ADD BARRIER PROXIMITY COST
             # (only if car is stopped)
-            if (self.speed < 2.0):
-                barrier_idx = self.getBarrierIndex(
-                    result, self.speed_costmap)
+            if self.speed < 2.0:
+                barrier_idx = self.get_barrier_index(result, self.speed_costmap)
                 MAX_IDX = 36
-                result.cost += (MAX_IDX-barrier_idx)*50
+                result.cost += (MAX_IDX - barrier_idx) * 50
 
             barrier_idxs.append(result.cost)
             if result.cost < min_cost:
                 min_cost = result.cost
                 best_path = result
-
-        # plt.hist(barrier_idxs)
-        # plt.show()
+        
+        self.get_logger().info(f"Best CostPath: {best_path}")
 
         result_msg = Path()
         result_msg.header.frame_id = "base_link"
@@ -507,42 +503,45 @@ class RecursiveTreePlanner(Node):
         # convert poses from cost map grid to distances in meters in base_link
         poses_np = np.asarray(best_path.poses)
         poses_np_bl = np.copy(poses_np)
-        poses_np_bl[:,0] -= (self.origin[0] + 5)
-        poses_np_bl[:,1] -= self.origin[1]
-        poses_np_bl[:,0:2] *= 0.4
+        poses_np_bl[:, 0] -= self.origin[0] + 5
+        poses_np_bl[:, 1] -= self.origin[1]
+        poses_np_bl[:, 0:2] *= 0.4
 
-        max_curvature = np.max(np.abs(poses_np[:,2]))
+        max_curvature = np.max(np.abs(poses_np[:, 2]))
         # print(max_curvature)
 
-        lookahead_distance = 6.0 #min(max(self.speed * 3.0, 2.0), 20.) # meters
+        lookahead_distance = 6.0  # min(max(self.speed * 3.0, 2.0), 20.) # meters
 
         # print(lookahead_distance)
-            
-        barrier_idx = self.getBarrierIndex(best_path, self.speed_costmap)
+
+        barrier_idx = self.get_barrier_index(best_path, self.speed_costmap)
         if barrier_idx == len(best_path.poses) - 1:
             # No barrier in front of us! Set the distance to be large.
-            self.removeBarrierMarker()
+            self.remove_barrier_marker()
             distance_from_barrier = 40.0
         else:
             barrier_pose = best_path.poses[barrier_idx]
 
             distance_from_barrier = np.linalg.norm(
-                [barrier_pose[0] * 0.4 - (self.origin[0] * 0.4), barrier_pose[1] * 0.4 - 30])
+                [
+                    barrier_pose[0] * 0.4 - (self.origin[0] * 0.4),
+                    barrier_pose[1] * 0.4 - 30,
+                ]
+            )
 
-            self.publishBarrierMarker(barrier_pose)
+            self.publish_barrier_marker(barrier_pose)
 
         lookahead_pose = None
         for pose in poses_np_bl[:]:
-            if np.sqrt(pose[0]**2 + pose[1]**2) > lookahead_distance:
+            if np.sqrt(pose[0] ** 2 + pose[1] ** 2) > lookahead_distance:
                 lookahead_pose = pose
                 break
 
         if lookahead_pose is None:
             lookahead_pose = poses_np_bl[-1]
 
-
         # print(f"Lookahead pose is ({lookahead_pose[0]}, {lookahead_pose[1]})")
-        self.publishLookaheadMarker(lookahead_distance, lookahead_pose)
+        self.publish_lookahead_marker(lookahead_distance, lookahead_pose)
 
         for pose in best_path.poses:
             pose_msg = PoseStamped()
@@ -560,26 +559,30 @@ class RecursiveTreePlanner(Node):
             pose_msg.pose.position.y = 75 * 0.4 - 30
             # TODO: Add heading (pose[2]?)
             result_msg.poses.append(pose_msg)
-            self.get_logger().info('Published singleposition')
+            self.get_logger().info("Published singleposition")
         command = VehicleControl()
         if len(best_path.poses) < 4:
             return
-        #command.steer = ((best_path.poses[4][2] + best_path.poses[5][2] + best_path.poses[6][2])/3.0) * -2.7  # First steering value
-        
+        # command.steer = ((best_path.poses[4][2] + best_path.poses[5][2] + best_path.poses[6][2])/3.0) * -2.7  # First steering value
+
         # x = np.sum((np.asarray(best_path.poses)[1:11,2] * np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])))/10.0
         # command.steer = (x * -1.5)**3 - 1.6*x
-        
-        #target_steer = np.arctan2(lookahead_pose[1], lookahead_pose[0]) * -1 / 0.46
+
+        # target_steer = np.arctan2(lookahead_pose[1], lookahead_pose[0]) * -1 / 0.46
 
         target_steer = np.arctan2(-lookahead_pose[1], lookahead_pose[0])
-        
+
         # target_steer should be within the feasible turning of the vehicle, normalize between -1,1
-        target_steer = max( min(target_steer,MAX_TURN_ANGLE), -MAX_TURN_ANGLE ) / MAX_TURN_ANGLE
+        target_steer = (
+            max(min(target_steer, MAX_TURN_ANGLE), -MAX_TURN_ANGLE) / MAX_TURN_ANGLE
+        )
 
-        DT = 0.2 # s
-        ALPHA = 1.0 # min(10 - 1 * self.speed, 10.0)
+        DT = 0.2  # s
+        ALPHA = 1.0  # min(10 - 1 * self.speed, 10.0)
 
-        command.steer = self.previous_steer + ALPHA * (target_steer - self.previous_steer) * DT
+        command.steer = (
+            self.previous_steer + ALPHA * (target_steer - self.previous_steer) * DT
+        )
 
         command.steer = target_steer
 
@@ -588,25 +591,21 @@ class RecursiveTreePlanner(Node):
         # elif command.steer < -1.0:
         #     command.steer = -1.0
 
-        
-
         command.header.stamp = self.clock
 
-        
-
-        MAX_SPEED = 0.5 #5.0
+        MAX_SPEED = 0.5  # 5.0
 
         distance_from_barrier -= 7
 
         if distance_from_barrier <= 10.0 and distance_from_barrier >= -5:
             MAX_SPEED = distance_from_barrier / 3
             if distance_from_barrier <= 3.0:
-                MAX_SPEED = -1.
+                MAX_SPEED = -1.0
             print(f"MAX {MAX_SPEED}, BAR: {distance_from_barrier}")
 
-        MAX_SPEED = min(MAX_SPEED, 5.0-max_curvature * 2)
+        MAX_SPEED = min(MAX_SPEED, 5.0 - max_curvature * 2)
 
-        target_speed = 1.5 # MAX_SPEED # m/s, ~10mph
+        target_speed = 1.5  # MAX_SPEED # m/s, ~10mph
 
         target_speed_msg = VehicleSpeed()
         target_speed_msg.speed = target_speed
@@ -616,13 +615,13 @@ class RecursiveTreePlanner(Node):
         # self.get_logger().info(f"Steer/Pose: {command.steer}/{((best_path.poses[4][2] + best_path.poses[5][2] + best_path.poses[6][2])/3.0)}")
         # print(f"Speed: {self.speed} / {target_speed}")
         if pid_error > 0:
-            command.throttle = min(pid_error *0.5, 0.6)
+            command.throttle = min(pid_error * 0.5, 0.6)
             command.brake = 0.0
-        #else:
+        # else:
         elif pid_error <= -1:
-            command.brake = pid_error *0.6 *-1.0
+            command.brake = pid_error * 0.6 * -1.0
             command.throttle = 0.0
-            
+
         # print(f"Brake: {command.brake}")
         # if pid_error > 3.0:
         #     command.throttle = 0.5
@@ -669,8 +668,8 @@ class RecursiveTreePlanner(Node):
         command = VehicleControl()
         command.header.stamp = self.clock
         command.steer = 0.0
-        
-        target_speed = 1.5 # MAX_SPEED # m/s, ~10mph
+
+        target_speed = 1.5  # MAX_SPEED # m/s, ~10mph
 
         target_speed_msg = VehicleSpeed()
         target_speed_msg.speed = target_speed
@@ -678,10 +677,10 @@ class RecursiveTreePlanner(Node):
 
         pid_error = target_speed - self.speed
         if pid_error > 0:
-            command.throttle = min(pid_error *0.5, 0.6)
+            command.throttle = min(pid_error * 0.5, 0.6)
             command.brake = 0.0
         elif pid_error <= -1:
-            command.brake = pid_error *0.6 *-1.0
+            command.brake = pid_error * 0.6 * -1.0
             command.throttle = 0.0
         else:
             command.throttle = 0.0
@@ -712,5 +711,5 @@ def main(args=None):
     rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
