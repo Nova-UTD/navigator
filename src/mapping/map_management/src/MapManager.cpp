@@ -52,11 +52,13 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     // Params
     this->declare_parameter("from_file", false);
     this->declare_parameter("data_path", "/home/nova/navigator/data");
+    this->declare_parameter("route_path", "/home/nova/navigator/data/maps/route_wkt.txt");
 
     // Load map from file if from_file is true
     bool do_load_from_file = this->get_parameter("from_file").as_bool();
 
     std::string data_path = get_parameter("data_path").as_string();
+    std::string route_path = this->get_parameter("route_path").as_string();
 
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10, parallel_pub_option);
@@ -100,7 +102,8 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         // setRouteFromClickedPt(PointStamped());
 
         // Temporary linestring from file
-        std::ifstream ifs(data_path+"/maps/route_wkt.txt");
+        RCLCPP_INFO(get_logger(), "Loading route from %s", route_path.c_str());
+        std::ifstream ifs(route_path);
         std::string wkt_str( (std::istreambuf_iterator<char>(ifs) ),
                        (std::istreambuf_iterator<char>()) );
         

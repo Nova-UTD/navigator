@@ -95,7 +95,8 @@ map_manager = Node(
     executable='map_management_node',
     parameters=[
         {'from_file': True},
-        {'data_path': '/navigator/data'}
+        {'data_path': '/navigator/data'},
+        {'route_path': '/navigator/data/maps/ps4_loop_route.txt'}
     ]#,
     #prefix=['xterm -e gdb -ex run --args']
 )
