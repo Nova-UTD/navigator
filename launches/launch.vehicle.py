@@ -50,7 +50,7 @@ def generate_launch_description():
                     # leaderboard_liaison,
                     # web_bridge,
                     ##joy_linux,
-                    ##joy_translation,
+                    joy_translator,
 
                     # LOCALIZATION
                     # gnss_averager,
