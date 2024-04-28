@@ -463,7 +463,6 @@ class RecursiveTreePlanner(Node):
             segment_length=STEP_LEN + 2.0 * self.speed,
             branches=N_BRANCHES,
         )
-        self.get_logger().info(f"Results: {[str(r) for r in results]}")
 
         min_cost = float("inf")
         best_path: CostedPath = None
@@ -483,8 +482,10 @@ class RecursiveTreePlanner(Node):
             if result.cost < min_cost:
                 min_cost = result.cost
                 best_path = result
-        
-        self.get_logger().info(f"Best CostPath: {best_path}")
+
+        self.get_logger().info(
+            f"Results: {[str(r) for r in results]} --- \n\n --- Best CostPath: {best_path}\n"
+        )
 
         result_msg = Path()
         result_msg.header.frame_id = "base_link"
