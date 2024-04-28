@@ -79,9 +79,6 @@ class CostedPath:
         new_path.cost = self.cost
         return new_path
 
-    def __str__(self) -> str:
-        return f"CostedPath(cost={self.cost}, start_n_end={self.poses[0] if len(self.poses) > 0 else 'None'}->{self.poses[-1] if len(self.poses) > 1 else 'None'})"
-
 
 class RecursiveTreePlanner(Node):
     def __init__(self):
@@ -115,7 +112,7 @@ class RecursiveTreePlanner(Node):
         clock_sub = self.create_subscription(Clock, "/clock", self.clock_callback, 1)
         self.clock = Clock().clock
 
-        self.command_pub = self.create_publisher(VehicleControl, "/vehicle/control", 1)
+        # self.command_pub = self.create_publisher(VehicleControl, "/vehicle/control", 1)
 
         self.speed_sub = self.create_subscription(
             VehicleSpeed, "/speed", self.speed_callback, 1
@@ -210,8 +207,8 @@ class RecursiveTreePlanner(Node):
         self,
         inital_pose: np.ndarray,
         steering_angle,
-        segment_length: float,
-        res: float,
+        segment_length: float, # Length of segment in meters
+        res: float,     # Length of jump when selecting next point in costpath
         costmap,
     ) -> CostedPath:
         end_pose = np.copy(inital_pose)
@@ -242,7 +239,6 @@ class RecursiveTreePlanner(Node):
                 return
 
             total_cost += cost
-
             segment_poses.append([x, y, end_heading + steering_angle])  # DO NOT SUBMIT
             end_pose = segment_poses[-1]
             current_length += res
@@ -321,7 +317,7 @@ class RecursiveTreePlanner(Node):
         results = []
         costs = []
 
-        res = 3.0
+        res = 3.0 # Length of step in segment generation
 
         # The below loop creates the ROOT of our recursive tree
         # As a special case for the ROOT only, we multiply the number of branches
@@ -444,8 +440,6 @@ class RecursiveTreePlanner(Node):
         return status
 
     def cost_map_callback(self, msg: OccupancyGrid):
-        # self.get_logger().info(f"Received cost map with {msg.data}")
-
         ALPHA = 0.5
 
         status = self.init_status_msg()
@@ -482,10 +476,6 @@ class RecursiveTreePlanner(Node):
             if result.cost < min_cost:
                 min_cost = result.cost
                 best_path = result
-
-        self.get_logger().info(
-            f"Results: {[str(r) for r in results]} --- \n\n --- Best CostPath: {best_path}\n"
-        )
 
         result_msg = Path()
         result_msg.header.frame_id = "base_link"
@@ -652,9 +642,9 @@ class RecursiveTreePlanner(Node):
         # else:
         #     command.throttle = 0.4
 
-        if self.current_mode == Mode.AUTO:
-            # print("AUTO")
-            self.command_pub.publish(command)
+        # if self.current_mode == Mode.AUTO:
+        #     print("AUTO")
+        #     self.command_pub.publish(command)
 
         self.previous_steer = command.steer
 
@@ -687,7 +677,7 @@ class RecursiveTreePlanner(Node):
             command.throttle = 0.0
             command.brake = 0.0
 
-        self.command_pub.publish(command)
+        # self.command_pub.publish(command)
 
     def odomCb(self, msg: Odometry):
 
