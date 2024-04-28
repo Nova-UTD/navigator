@@ -334,8 +334,8 @@ void StaticOccupancyNode::publishOccupancyGrid()
   msg.info.width = GRID_SIZE;
   msg.info.height = GRID_SIZE;
   msg.info.origin.position.z = 0.2;
-  msg.info.origin.position.x = -64.0 * (1. / 3.);
-  msg.info.origin.position.y = -64.0 * (1. / 3.);
+  msg.info.origin.position.x = -64.0 * (RES);
+  msg.info.origin.position.y = -64.0 * (RES);
   //-----------------//
 
   //--Masses--//

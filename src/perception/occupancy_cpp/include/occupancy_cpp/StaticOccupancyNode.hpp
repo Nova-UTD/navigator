@@ -86,12 +86,12 @@ namespace navigator
       const static int event_num = 2;
 
       // Grid size.
-      const static int GRID_SIZE = 128;
+      const static int GRID_SIZE = 60;
 
       const int HALF_SIZE = GRID_SIZE / 2;
 
       // Resolution.
-      constexpr static float res = 1. / 3.;
+      constexpr static float res = 1. / 4.;
 
       // Measurement mass.
       constexpr static float meas_mass = 0.95;
