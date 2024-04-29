@@ -26,17 +26,17 @@ from geometry_msgs.msg import Point
 from sensor_msgs.msg import PointCloud2
 from navigator_msgs.msg import BoundingBox3D, Object3D, Object3DArray
 
-# Paths to pretrained model and config
-config_path = './data/perception/configs/pointpillars_hv_secfpn_8xb6-160e_kitti-3d-3class.py'
-checkpoint_path = './data/perception/models/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class_20220301_150306-37dc2420.pth'
-
 # dict of class/label association
 CLASS2LABEL = { 'Pedestrian': 0, 'Cyclist': 1, 'Car': 2 }
 
 class MMDetection3DModel():
-    def __init__(self, device: str):
+    def __init__(self, config_path: str, checkpoint_path: str, device: str):
         """! Initializes the node.
-        @param device[str]  The device the model will run on
+        @param config_path[str]  The config file for MMDetection3D, must use
+            the config for the specific checkpoint.
+        @param checkpoint_path[str]  The checkpoint file for MMDetection3D.
+            Check their api for the list of checkpoint files.
+        @param device[str]  The device the model will run on.
         """
 
         # Declare model attributes

@@ -48,6 +48,10 @@ class LidarDetectionNode(Node):
         self.declare_parameter('model', 'mmdetection3d')
         self.declare_parameter('conf_thresh', 0.7) 
         self.declare_parameter('nms_thresh', 0.2)
+        self.declare_parameter('config_path',   # Paths to pretrained model and config
+            './data/perception/configs/pointpillars_hv_secfpn_8xb6-160e_kitti-3d-3class.py')
+        self.declare_parameter('checkpoint_path', 
+            './data/perception/models/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class_20220301_150306-37dc2420.pth')
 
         # Get ROS2 parameters
         self.device = torch.device(self.get_parameter('device') \
@@ -58,6 +62,10 @@ class LidarDetectionNode(Node):
             .get_parameter_value().double_value
         model_type = self.get_parameter('model') \
             .get_parameter_value().string_value
+        config_path = self.get_parameter('config_path') \
+            .get_parameter_value().string_value
+        checkpoint_path = self.get_parameter('checkpoint_path') \
+            .get_parameter_value().string_value
         
         # Declared for publishing msgs 
         self.stamp = Time() 
@@ -66,7 +74,7 @@ class LidarDetectionNode(Node):
         if model_type == 'complex_yolo':
             self.model = ComplexYOLOv4Model(self.device)
         else:
-            self.model = MMDetection3DModel(str(self.device))
+            self.model = MMDetection3DModel(config_path, checkpoint_path, str(self.device))
         
         # Subcribes to raw lidar data
         self.lidar_sub = self.create_subscription(
