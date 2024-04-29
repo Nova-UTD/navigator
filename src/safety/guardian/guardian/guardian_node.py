@@ -46,7 +46,7 @@ class StatusEntry:
 class guardian_node(Node):
     joy_sub = 0.0
     command_pub = None
-    current_mode = Mode.DISABLED
+    current_mode = Mode.DISABLED #TEMPORARY SET TO MANUAL FOR TESTING
 
     def __init__(self):
         super().__init__('guardian_node')

@@ -5,7 +5,7 @@ import sys
 
 from launch import LaunchDescription
 
-sys.path.append(path.abspath('/navigator/'))
+sys.path.append(path.abspath("/navigator/"))
 from launches.launch_node_definitions import *
 from launches.utils import (
     err_fatal,
@@ -14,7 +14,7 @@ from launches.utils import (
 )
 
 def generate_launch_description():
-    # Include perception launch file and extract launch entities for reuse.
+    # Include 3D object detection launch file and extract launch entities for reuse.
     try:
         object3d_launch_description = try_get_launch_description_from_include(
             "launches/launch.object3d.py"
@@ -29,7 +29,8 @@ def generate_launch_description():
         # semantic_projection,
         ground_seg,
         static_grid,
-        # *object3d_launch_entities
+        # *object3d_launch_entities,
+        # traffic_light_detector,
         # prednet_inference,
         # driveable_area,
     ])
