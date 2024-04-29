@@ -280,7 +280,7 @@ class recorder(Node):
             occ=total_occupancy_frames,
             odom=total_odom_frames,
             time=stamps
-        )
+        )        
 
         # Free up RAM
         self.camera_frames.clear()

@@ -27,7 +27,16 @@ def generate_launch_description():
     except IncludeError as e:
         err_fatal(e)
 
+    # Include nav2 launch file and extract launch entities for reuse.
+    # try:
+    #     nav2_launch_description = try_get_launch_description_from_include(
+    #         "launches/launch.nav2.py"
+    #     )
+    # except IncludeError as e:
+    #     err_fatal(e)
+
     perception_launch_entities = perception_launch_description.describe_sub_entities()
+    # nav2_launch_entities = nav2_launch_description.describe_sub_entities()
 
     return LaunchDescription(
         [
@@ -58,9 +67,13 @@ def generate_launch_description():
                         *perception_launch_entities,
                         # PLANNING
                         routing_monitor,
+                        grid_route_costmap,
                         grid_summation,
                         junction_manager,
                         rtp,
+                        # *nav2_launch_entities,
+                        # nav2_path_planner,
+                        # pure_pursuit_controller,
                         # SAFETY
                         ##airbags,
                         ##guardian,

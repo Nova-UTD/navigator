@@ -4,6 +4,11 @@ from launch_ros.actions import Node
 
 NAVIGATOR_DIR = "/navigator/"
 
+pure_pursuit_controller = Node(
+    package='pure_pursuit_controller',
+    executable='pure_pursuit_controller'
+)
+
 airbags = Node(
     package='airbags',
     executable='airbag_node'
@@ -35,6 +40,11 @@ controller_parade = Node(
 driveable_area = Node(
     package='driveable_area',
     executable='driveable_area_node'
+)
+
+grid_route_costmap = Node(
+    package='costs',
+    executable='route_costmap_node'
 )
 
 grid_summation = Node(
@@ -85,8 +95,10 @@ map_manager = Node(
     executable='map_management_node',
     parameters=[
         {'from_file': True},
-        {'data_path': '/navigator/data'}
-    ]
+        {'data_path': '/navigator/data'},
+        {'route_path': '/navigator/data/maps/ps4_loop_route.txt'}
+    ]#,
+    #prefix=['xterm -e gdb -ex run --args']
 )
 
 map_manager_carla = Node(
@@ -94,7 +106,13 @@ map_manager_carla = Node(
     executable='map_management_node',
     parameters=[
         {'from_file': False}
-    ]
+    ]#,
+    #prefix=['xterm -e gdb -ex run --args']
+)
+
+nav2_path_planner = Node(
+    package='nav2_path_planner',
+    executable='nav2_path_planner_node'
 )
 
 odom2tf = Node(
@@ -134,7 +152,8 @@ rviz = Node(
     executable='rviz2',
     name='rviz2',
     arguments=['-d' + '/navigator/data/navigator_default.rviz'],
-    respawn=True
+    respawn=False,
+    output={'both': 'log'}
 )
 
 semantic_projection = Node(
@@ -155,4 +174,9 @@ static_grid = Node(
 web_bridge = Node(
     package='rosbridge_server',
     executable='rosbridge_websocket'
+)
+
+traffic_light_detector = Node(
+    package='traffic_light_detector',
+    executable='traffic_light_node'
 )
