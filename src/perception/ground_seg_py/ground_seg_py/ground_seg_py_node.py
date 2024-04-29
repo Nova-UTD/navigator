@@ -6,6 +6,7 @@ from scipy.spatial.transform import Rotation as R
 import sys
 import time
 import math
+import pypatchworkpp
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -35,7 +36,7 @@ class GroundSegNode(Node):
         )
 
         self.raw_lidar_sub = self.create_subscription(
-            PointCloud2, '/lidar', self.point_cloud_cb, 10
+            PointCloud2, '/lidar', self.pwpp, 10
         )
 
         self.filtered_lidar_pub = self.create_publisher(
@@ -50,16 +51,30 @@ class GroundSegNode(Node):
     def clock_cb(self, msg: Clock):
         self.carla_clock = msg
 
+    def pwpp(self, msg: PointCloud2):
+        params = pypatchworkpp.Parameters()
+        #params.verbose = False
+        PatchworkPLUSPLUS = pypatchworkpp.patchworkpp(params)
+
+        xyzi = rnp.point_cloud2.pointcloud2_to_array(msg)
+        xyz = rnp.point_cloud2.get_xyz_points(xyzi)
+        PatchworkPLUSPLUS.estimateGround(xyz)
+        ground_ids = PatchworkPLUSPLUS.getNongroundIndices()
+        #print(nonground)
+        nonground = np.take(xyzi, ground_ids)
+        f_msg = rnp.point_cloud2.array_to_pointcloud2(nonground, msg.header.stamp, msg.header.frame_id)
+        self.filtered_lidar_pub.publish(f_msg)
+
     def point_cloud_cb(self, msg: PointCloud2):
         start0 = time.time()
         ground_estimator = GroundPlaneFitting(
             1,      # Divide evenly the point cloud into a number of segments
             3,      # Number of iterations
             250,    # number of points used to estimate the LPR
-            1.2,    # Threshold for points to be considered initial seeds
+            10,    # Threshold for points to be considered initial seeds
             0.3,    # Threshold distance from the plane
-            1.7,      # LiDAR sensor height to ground
-            -1.5,
+            2.5,      # LiDAR sensor height to ground
+            1,
         ) #Instantiate one of the Estimators
 
         cloud_range = 80.0
