@@ -260,8 +260,8 @@ class RouteCostmapNode(Node):
         self.publish_marker(path_goal,(0.0,1.0,0.4),self.goal_marker_pub)
 
         # create and combine radial gradient overlay
-        waypoint_costmap = self.make_waypoint_costmap(path_goal.pose)
-        routemap = np.clip( routemap + waypoint_costmap , 0, 100)
+        #waypoint_costmap = self.make_waypoint_costmap(path_goal.pose)
+        #routemap = np.clip( routemap + waypoint_costmap , 0, 100)
 
         # Publish as an OccupancyGrid
         route_cost_msg = OccupancyGrid()

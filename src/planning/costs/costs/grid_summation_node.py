@@ -40,9 +40,9 @@ import matplotlib.pyplot as plt
 
 STALENESS_TOLERANCE = 0.25  # seconds. Grids older than this will be ignored.
 
-CURRENT_OCCUPANCY_SCALE = 0.75 # 0.75
+CURRENT_OCCUPANCY_SCALE = 1.0 # 0.75
 FUTURE_OCCUPANCY_SCALE = 1.0 #3.0
-DRIVABLE_GRID_SCALE = 0.6 #0.75
+DRIVABLE_GRID_SCALE = 1.0 #0.75
 ROUTE_DISTANCE_GRID_SCALE = 1.0
 JUNCTION_GRID_SCALE = 1.0
 
@@ -290,12 +290,12 @@ class GridSummationNode(Node):
         try:
             for grid_name, grid, scale in grids:
                 if grid is None or len(grid.data) == 0:
-                    self.get_logger().warn('Costmap [%s] is empty.' % grid_name)
+                    # self.get_logger().warn('Costmap [%s] is empty.' % grid_name)
                     return
                 
                 stale = self.checkForStaleness(grid)
                 if stale > 0:
-                    self.get_logger().warn('Costmap [%s] is stale (%1.2f sec).' % (grid_name,stale))
+                    #self.get_logger().warn('Costmap [%s] is stale (%1.2f sec).' % (grid_name,stale))
                     ff_grid = self.fastforward(grid)
                     weighted_grid_arr = self.getWeightedArray(ff_grid, scale)
                 else:
@@ -309,9 +309,9 @@ class GridSummationNode(Node):
                 #    weighted_grid_arr = self.resizeOccupancyGrid(weighted_grid_arr)
 
                 if grid_name == 'drivable':
-                    pass
+                    #pass
                     #steering_cost += weighted_grid_arr
-                    # steering_cost = np.maximum( steering_cost , weighted_grid_arr )
+                    steering_cost = np.maximum( steering_cost , weighted_grid_arr )
                 elif grid_name == 'junction':
                     pass
                     # speed_cost += weighted_grid_arr
