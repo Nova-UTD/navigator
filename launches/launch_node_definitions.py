@@ -110,14 +110,24 @@ map_manager_carla = Node(
     #prefix=['xterm -e gdb -ex run --args']
 )
 
-nav2_path_planner = Node(
-    package='nav2_path_planner',
-    executable='nav2_path_planner_node'
-)
-
 odom2tf = Node(
     package='recording',
     executable='odom2tf'
+)
+
+path_planner_astar = Node(
+    package='graph_path_planner',
+    executable='astar_path_planner_node'
+)
+
+path_planner_graph = Node(
+    package='graph_path_planner',
+    executable='graph_path_planner_node'
+)
+
+path_planner_nav2 = Node(
+    package='nav2_path_planner',
+    executable='nav2_path_planner_node'
 )
 
 prednet_inference = Node(
