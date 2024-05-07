@@ -151,6 +151,8 @@ RUN pip3 install \
     #
     opencv-python \
     #
+    pathfinding \
+    #
     pep8 \
     #
     pexpect \
