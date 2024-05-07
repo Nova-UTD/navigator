@@ -1,3 +1,9 @@
+"""
+ROS2 Node for the Pure Pursuit Controller. 
+
+NOT WORKING as of 04/30/2024, mainly due to faulty path planners (RTP, Nav2, attempts at Graph/A* path planning).
+"""
+
 import math
 
 import rclpy
@@ -32,6 +38,8 @@ class Constants:
     STOPPING_DIST: float = 10
     # Max break possible
     MAX_BREAK: float = 1.0
+    # Max steering angle in radians.
+    MAX_STEERING_ANGLE = 0.58
 
 
 class VehicleState:
@@ -82,12 +90,30 @@ class VehicleState:
             return
 
         alpha = math.atan2(target[1], target[0])
-        delta = math.atan2(
-            2.0 * Constants.WHEEL_BASE * math.sin(alpha), self.lookahead_distance()
-        )
 
-        # Normalize the steering angle from [-pi, pi] to [-1, 1]
-        return -delta / (math.pi / 2)
+        # delta = (
+        #     2.0 * Constants.WHEEL_BASE * math.sin(alpha) / math.hypot(target[0], target[1])
+        # )
+
+        # Alpha works with RPT node to a limited extent -- only in parking lot, 
+
+        # Originally, delta was used (and working in Carla when following smooth route),
+        # but simply did not work in real world testing.
+        # Delta is derived following this article: https://thomasfermi.github.io/Algorithms-for-Automated-Driving/Control/PurePursuit.html.
+
+        # We clip and normalize alpha to a max steering angle, which we believe is ~0.58 as specified by the Unified Controller.
+        clipped_steering_angle = self.steering_angle_to_wheel(-alpha)
+        normalized = clipped_steering_angle / Constants.MAX_STEERING_ANGLE
+
+        return normalized
+
+
+    def steering_angle_to_wheel(self, angle: float) -> float:
+        """
+        Converts a steering angle to a steering position
+        """
+        return float(min(max(angle, -Constants.MAX_STEERING_ANGLE), Constants.MAX_STEERING_ANGLE))
+
 
     def lookahead_distance(self) -> float:
         """Calculate the lookahead distance based on the current velocity.
@@ -108,7 +134,6 @@ class PursuitPath:
     def __init__(self, path: list[tuple[float, float]] = []):
         self.path: npt.NDArray[np.float64] = np.asarray(path)
         self.target_index: int | None = None
-
     def distance(self) -> float:
         if len(self.path) == 0:
             return 0.0
@@ -208,7 +233,7 @@ class PursePursuitController(Node):
         )
         self.lookahead_path_publisher = self.create_publisher(Path, "/ppc/path", 1)
 
-        self.control_timer = self.create_timer(0.1, self.control_callback)
+        self.control_timer = self.create_timer(0.05, self.control_callback)
         self.visualize_path_timer = self.create_timer(0.1, self.visualize_path_callback)
         self.visualize_waypoint_timer = self.create_timer(
             0.1, self.visualize_waypoint_callback
@@ -245,30 +270,36 @@ class PursePursuitController(Node):
         """Calculate and publish the vehicle control commands based on the pure pursuit algorithm."""
         # Calculate the waypoint just outside the lookahead distance.
         self.target_waypoint = self.path.calc_target_point(self.vehicle_state)
-        self.get_logger().info(f"Target Waypoint: {self.target_waypoint}")
 
         # If no target waypoint, do nothing.
         if not self.target_waypoint:
             return
 
-        path_dist = self.path.distance()
-        if path_dist < Constants.STOPPING_DIST:
-            # Scale the break value linearly based on the distance to the end of the path.
-            # Break scale is 1.0 at the end of the path and 0.0 at the stopping distance.
-            break_scale = 1.0 - (path_dist / Constants.STOPPING_DIST)
-            break_value = min(
-                Constants.MAX_BREAK,
-                break_scale * Constants.MAX_BREAK,
-            )
-            steer = self.vehicle_state.calc_steer(self.target_waypoint)
-            self.stop_vehicle(steer, break_value)
-            return
+        # ------------------------
+        # Stopping distance and easing stop was not tested
+        # because base pure pursuit functinality was not working to begin with.
+        # Uncomment in future if/when pure pursuit integrates with rest of the stack.
+        #
+        #
+        # path_dist = self.path.distance()
+        # if path_dist < Constants.STOPPING_DIST:
+        #     # Scale the break value linearly based on the distance to the end of the path.
+        #     # Break scale is 1.0 at the end of the path and 0.0 at the stopping distance.
+        #     break_scale = 1.0 - (path_dist / Constants.STOPPING_DIST)
+        #     break_value = min(
+        #         Constants.MAX_BREAK,
+        #         break_scale * Constants.MAX_BREAK,
+        #     )
+        #     steer = self.vehicle_state.calc_steer(self.target_waypoint)
+        #     self.stop_vehicle(steer, break_value)
+        #     return
+        #
+        #
+        # ------------------------
 
         # Calculate throttle, brake, and steer
         throttle_brake = self.vehicle_state.calc_throttle_brake()
         steer = self.vehicle_state.calc_steer(self.target_waypoint)
-
-        self.get_logger().info(f"Steer: {steer} Throttle/Brake: {throttle_brake}")
 
         # If vehicle state is not loaded, do nothing.
         if throttle_brake is None or steer is None:
@@ -280,9 +311,6 @@ class PursePursuitController(Node):
         control_msg.throttle = throttle
         control_msg.brake = brake
         control_msg.steer = steer
-        self.get_logger().info(
-            f"Steer: {control_msg.steer} Throttle: {throttle} Brake: {brake}"
-        )
         self.command_publisher.publish(control_msg)
 
     def visualize_waypoint_callback(self):
