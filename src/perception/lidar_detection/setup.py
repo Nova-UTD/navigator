@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'object_detector_3d'
+package_name = 'lidar_detection'
 
 setup(
     name=package_name,
@@ -13,14 +13,14 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='Ragib Arnab',
-    maintainer_email='ragib.arnab@gmail.com',
+    maintainer=['Gueren Sanford', 'Ragib Arnab'],
+    maintainer_email=['guerensanford@gmail.com', 'ragib.arnab@gmail.com'],
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'lidar_object_detector_3d_node = object_detector_3d.lidar_objdet3d_node:main'
+            'lidar_detection_node = lidar_detection.lidar_detection_node:main',
         ],
     },
 )
