@@ -606,14 +606,14 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     std::vector<odr::value> lane_shapes_in_range;
     map_wide_tree_.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
 
-    if (lane_shapes_in_range.size() < 1)
-    {
-        // RCLCPP_WARN(get_logger(), "There are no lane shapes nearby.");
-        std::printf("(%f, %f)\n", vehicle_pos.x, vehicle_pos.y);
-        return;
-    }
 
-    // std::printf("There are %i shapes in range.\n", lane_shapes_in_range.size());
+    bool has_nearby_lanes = lane_shapes_in_range.size() > 0:
+    // Warn if there are no nearby lanes.
+    // This may simply because we are testing in an area that is not on the campus.xodr map.
+    if (!has_nearby_lanes)
+    {
+        RCLCPP_WARN(get_logger(), "There are no lane shapes nearby.");
+    }
 
     int idx = 0;
 
@@ -725,7 +725,15 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
                 }
             }
 
-            drivable_grid_data.push_back(cell_is_drivable ? 0 : 100);
+            // If no lanes are are nearby, then the vehicle is assumed to be testing on a route
+            // area which is not on the campus.xodr map. 
+            // In this case, make the entire drivable grid 0 cost. 
+            if (!has_nearby_lanes) {
+                drivable_grid_data.push_back(0);
+            } else {
+                drivable_grid_data.push_back(cell_is_drivable ? 0 : 100);
+            }
+
             junction_grid_data.push_back(cell_is_in_junction ? 100 : 0);
 
             /*  Taking route distance out of the pipeline
