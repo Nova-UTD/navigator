@@ -526,6 +526,36 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /radar/radar_viz
       Value: false
+    - Class: rviz_common/Group
+      Displays:
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: true
+          Name: Detected
+          Namespaces:
+            object_bounding_box: true
+            object_tag: true
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /viz/detected/objects3d
+          Value: true
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: false
+          Name: Tracked
+          Namespaces:
+            object_bounding_box: true
+            object_tag: true
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /viz/tracked/objects3d
+          Value: false
+      Enabled: true
+      Name: 3D Objects
     - Class: rviz_default_plugins/Marker
       Enabled: false
       Name: Planning Goal
@@ -716,9 +746,9 @@ Visualization Manager:
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -1.3190577030181885
-        Y: 0.0719301849603653
-        Z: 0
+        X: 5.467041015625
+        Y: -0.561253547668457
+        Z: 5.697730541229248
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
