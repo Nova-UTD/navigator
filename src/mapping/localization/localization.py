@@ -1,3 +1,14 @@
+# utility
+from scipy.spatial.transform import Rotation
+import numpy as np
+import glob
+import matplotlib.pyplot as plt
+from numpy.lib.recfunctions import unstructured_to_structured
+from scipy.spatial.transform import Rotation
+import os
+import open3d as o3d
+import sys
+
 # odometry + loop closure
 from kiss_icp.config import KISSConfig
 from kiss_icp.kiss_icp import KissICP
@@ -12,21 +23,10 @@ from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
 from geometry_msgs.msg import Pose
+sys.path.append('/navigator/src/tools/ros2_numpy')
 import ros2_numpy as rnp
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
-
-# utility
-from scipy.spatial.transform import Rotation
-import numpy as np
-import glob
-import matplotlib.pyplot as plt
-from numpy.lib.recfunctions import unstructured_to_structured
-from scipy.spatial.transform import Rotation
-import os
-import open3d as o3d
-import copy
-
 
 
 def transform_points(pcd, T):
