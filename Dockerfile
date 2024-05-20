@@ -209,8 +209,11 @@ RUN pip3 install \
     # six>=1.5 \
     # mmcls \
     easydict \
+    # odometry
     kiss-icp \
+    # pose graph optimization (SLAM) 
     g2o-python \
+    # reading rosbags
     rosbags
 
 RUN pip3 install --upgrade numpy && pip3 install --upgrade scipy
@@ -226,7 +229,7 @@ RUN mim install "mmdet3d>=1.1.0"
 # this issue was addressed here: https://github.com/abetlen/llama-cpp-python/issues/707
 RUN sudo apt remove python3-pathspec -y
 RUN pip3 install --user pathspec yamllint
-RUN git clone https://github.com/PRBonn/MapClosures.git
+RUN git clone https://github.com/PRBonn/MapClosures.git --branch v0.2.0
 WORKDIR MapClosures
 RUN cmake -B build -S cpp
 RUN cmake --build build -j8
