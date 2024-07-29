@@ -107,9 +107,9 @@ $ docker compose run carla_interface
 3. In the third terminal window, run the Navigator container (should be in the `navigator` respository root directory) and then launch the Navigator stack:
 ```
 $ docker compose run navigator_carla
-# ros2 launch launch.carla.py
+# ros2 launch launches/launch.carla.py
 ```
-> Note: The node definitions for the Navigator launch script are located in the file `launch_node_definitions.py`.
+> Note: There are several different launch configurations in the `launches` directory and several of these are nested. The node definitions for the Navigator launch script are located in the file `launches/launch_node_definitions.py`.
 
 ## Real-world use
 To run in the real-world, you'll need to provide your own LiDAR stream, map data, and throttle/brake/steering interface. We provide our own interface, for use with our specific hardware, as an example.
