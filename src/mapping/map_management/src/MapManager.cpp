@@ -607,7 +607,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     map_wide_tree_.query(bgi::intersects(search_region), std::back_inserter(lane_shapes_in_range));
 
 
-    bool has_nearby_lanes = lane_shapes_in_range.size() > 0:
+    bool has_nearby_lanes = lane_shapes_in_range.size() > 0;
     // Warn if there are no nearby lanes.
     // This may simply because we are testing in an area that is not on the campus.xodr map.
     if (!has_nearby_lanes)
