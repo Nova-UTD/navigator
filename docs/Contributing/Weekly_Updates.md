@@ -24,7 +24,7 @@ Come to the meeting ready to give a brief update to the group on your task. This
 ## Copy and Paste the block below:
 
 ```
-### 9/9/2024 Update:
+### XX/XX/20XX Update:
 
 - **Status:** Fill
 - **Next Steps:** Fill
