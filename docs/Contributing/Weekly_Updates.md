@@ -20,3 +20,14 @@ For example:
 - **Update:** <insert paragraph with details about what you've done this past week>
 
 Come to the meeting ready to give a brief update to the group on your task. This is also our easist opportunity to coordinate on "handoff" items where two tasks may meet over a shared ROS topic or some dependency, so raise any issues or questions that others might need to weigh in on.
+
+## Copy and Paste the block below:
+
+```
+### 9/9/2024 Update:
+
+- **Status:** Fill
+- **Next Steps:** Fill
+- **Projected Completion:** Fill
+- **Update:**  Fill
+```
