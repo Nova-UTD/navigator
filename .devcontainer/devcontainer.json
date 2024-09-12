@@ -23,9 +23,7 @@
     // "shutdownAction": "none",
     // Uncomment the next line to run commands after the container is created.
     // "postCreateCommand": "cat /etc/os-release",
-    // Flag the /bootloader directory as safe (so git works by default) 
-    // and allow git to open editing in VSCode (e.g. for interactive rebase).
-    "postAttachCommand": "git config --global --add safe.directory /navigator && /opt/entrypoint.sh",
+    "postAttachCommand": "/opt/entrypoint.sh",
     // Configure tool-specific properties.
     "customizations": {
         "vscode": {
