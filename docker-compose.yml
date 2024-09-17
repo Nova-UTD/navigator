@@ -38,10 +38,6 @@ services:
       - type: bind
         source: /dev
         target: /dev
-      # Set local ~/.gitconfig to system git config within container. 
-      # If you don't have a ~/.gitconfig, please create one.
-      - $HOME/.gitconfig:/etc/gitconfig
-
       #- type: bind
       #  source: /dev/shm
       #  target: /dev/shm
