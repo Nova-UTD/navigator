@@ -34,9 +34,6 @@ source /navigator/install/setup.bash
 echo "🔧 Setting up aliases and git settings..."
 echo "alias navigator=\"python3 /navigator/navigator.py\"" >> ~/.bashrc
 
-git config --global --add safe.directory /navigator
-
-
 echo "👍 Finished environment setup"
 
 if [ -z ${@+x} ]; then
