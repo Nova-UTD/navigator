@@ -10,11 +10,13 @@ TODO: Description
 """
 
 # Python Imports
-import torch
+import numpy as np
+import math
 
 # Ros Imports
 import rclpy
 from rclpy.node import Node
+import sensor_msgs_py.point_cloud2 as point_cloud2
 
 # For testing. Remove later.
 from std_msgs.msg import String
@@ -26,33 +28,34 @@ from builtin_interfaces.msg import Time
 from sensor_msgs.msg import Image, PointCloud2
 from navigator_msgs.msg import Object3DArray
 
-class LidarDetectionNode(Node):
+class ProjectionNode(Node):
 
     def __init__(self):
         super().__init__("projection_node")
-
-        # Declare default ROS2 node parameters
-        self.declare_parameter('device', 'cuda:0')
-        self.declare_parameter('model', 'mmdetection3d')
-        self.declare_parameter('conf_thresh', 0.7) 
-        self.declare_parameter('nms_thresh', 0.2)
-
-        # Get ROS2 parameters
-        self.device = torch.device(self.get_parameter('device') \
-            .get_parameter_value().string_value)
-        self.conf_thresh = self.get_parameter('conf_thresh') \
-            .get_parameter_value().double_value
-        self.nms_thresh = self.get_parameter('nms_thresh') \
-            .get_parameter_value().double_value
-        model_type = self.get_parameter('model') \
-            .get_parameter_value().string_value
-        config_path = self.get_parameter('config_path') \
-            .get_parameter_value().string_value
-        checkpoint_path = self.get_parameter('checkpoint_path') \
-            .get_parameter_value().string_value
         
+        # Camera parameters. Currently set for CARLA
+        fov = 70 # degrees
+        img_width, img_height = 800, 600 # pixels
+        c = np.array([0.7,-0.15,1.88]) # location of camera in CARLA coords
+        r = np.eye(3) # rotation of camera
+
+        # intrinsic matrix
+        f = img_width / (2 * math.tan(fov*math.pi/360)) # focal length
+        cu, cv = img_width/2, img_height/2 # center of image in pixel coordinates
+        m1 = np.array([[f, 0, cu, 0],
+                        [0, f, cv, 0],
+                        [0, 0, 1, 0]]) 
+        
+        # extrinsic matrix
+        t = - r@c
+        m2 = np.hstack((r, t.reshape(-1, 1)))
+        m2 = np.vstack((m2, [0,0,0,1]))
+
+        # final matrix
+        self.matrix = m1@m2
+
         # For testing. Remove later.
-        self.publisher_ = self.create_publisher(String, 'terror', 10)
+        self.publisher_ = self.create_publisher(String, '/terror', 10)
 
         # Declared for publishing msgs 
         self.stamp = Time() 
@@ -62,14 +65,14 @@ class LidarDetectionNode(Node):
             PointCloud2, '/lidar', self.lidar_callback, 10)
         # Subscribes to camera
         self.camera_sub = self.create_subscription(
-            Image, '/camera/camera0', self.camera_callback, 10)
+            Image, '/cameras/camera0', self.camera_callback, 10)
         # Subscribes to clock for headers
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 10)
 
         # Publishes lidar data
         self.lidar_pub = self.create_publisher(
-            PointCloud2, '/', 10)
+            PointCloud2, '/abc', 10)
 
     def clock_cb(self, msg):
         """!
@@ -77,24 +80,49 @@ class LidarDetectionNode(Node):
         @param msg[Clock]   The clock message.
         """
 
-
-        # For testing. Remove later.
-        msg = String()
-        msg.data = 'Hello World'
-        self.publisher_.publish(msg)
-
         self.stamp.sec = msg.clock.sec
         self.stamp.nanosec = msg.clock.nanosec
 
-    def camera_callback(self, lidar_msg: Image):
-        pass
+    def camera_callback(self, camera_msg: Image):
+        self.image = camera_msg
+        
+        # For testing. Remove later.
+        msg = String()
+        msg.data = 'Hello World camera'
+        self.publisher_.publish(msg)
+        self.get_logger().info('Received image %dx%d' % (self.image.width, self.image.height))
+        
 
     def lidar_callback(self, lidar_msg: PointCloud2):
-        """! Uses the lidar msg and a 3D object deteciton model to
-            form 3D bouding boxes around objects. Then, publishes
-            the boxes to a 'detected' topic.
-        @param lidar_msg[PointCloud2]   The raw lidar point cloud.
+        """! 
+            Hello comment
         """
+
+        # Get LIDAR points into np array
+        self.get_logger().info('Lidar size: %d' % lidar_msg.row_step*lidar_msg.height)
+        lid_arr = np.frombuffer(lidar_msg.data, dtype=np.float32)
+        lid_arr = np.reshape(lid_arr, (-1, 4))
+        lid_arr = lid_arr[:,0:3]
+        
+        
+        # Project LIDAR points onto image coordinates
+        lid_arr_1 = np.hstack((lid_arr, np.ones((len(lid_arr),1))))
+        cam_arr = (self.matrix @ lid_arr_1.T).T
+        
+
+        # # Convert point cloud message to numpy array
+        # lidar_array = rnp.numpify(msg)
+
+        # # Strip away the dtypes
+        # lidar_array_raw = np.vstack(
+        #     (lidar_array['x'], lidar_array['y'], lidar_array['z'])).T
+
+        # For testing. Remove later.
+        msg = String()
+        msg.data = 'Hello World lidar'
+        self.publisher_.publish(msg)
+        self.get_logger().info('Lidar: %s\n%s' % (np.array2string(cam_arr), np.array2string(lid_arr)))
+
 
         # # Values determined by model
         # inputs = self.model.preprocess(lidar_msg)
@@ -118,7 +146,7 @@ class LidarDetectionNode(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    projection_node = LidarDetectionNode()
+    projection_node = ProjectionNode()
 
     rclpy.spin(projection_node)
 

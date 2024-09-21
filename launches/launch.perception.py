@@ -27,6 +27,7 @@ def generate_launch_description():
     return LaunchDescription([
         # image_segmentation,
         # semantic_projection,
+        projection,
         ground_seg,
         static_grid,
         # *object3d_launch_entities,

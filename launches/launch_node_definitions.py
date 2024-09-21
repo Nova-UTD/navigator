@@ -135,6 +135,11 @@ prednet_inference = Node(
     executable='prednet_inference_node'
 )
 
+projection = Node(
+    package='projection',
+    executable='projection_node'
+)
+
 recorder = Node(
     package='recording',
     executable='recorder'

@@ -11,6 +11,7 @@
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>navigator_msgs</depend>
+  <depend>std_msgs</depend>    <!-- remove this later  -->
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
