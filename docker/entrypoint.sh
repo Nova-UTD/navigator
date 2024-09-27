@@ -31,7 +31,7 @@ source /navigator/install/setup.bash
 # export PYTHONPATH="${CARLA_ROOT}/PythonAPI/carla/":"${SCENARIO_RUNNER_ROOT}":"${LEADERBOARD_ROOT}":"${CARLA_ROOT}/PythonAPI/carla/dist/carla-0.9.13-py3.7-linux-x86_64.egg":${PYTHONPATH}
 # source /workspace/install/setup.bash
 
-echo "🔧 Setting up aliases..."
+echo "🔧 Setting up aliases and git settings..."
 echo "alias navigator=\"python3 /navigator/navigator.py\"" >> ~/.bashrc
 
 echo "👍 Finished environment setup"
