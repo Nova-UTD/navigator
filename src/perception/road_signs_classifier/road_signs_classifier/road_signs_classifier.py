@@ -19,7 +19,7 @@ class road_signs_classifier(Node):
         super().__init__('road_signs_classifier')
 
         #instantiate model client
-        CLIENT = InferenceHTTPClient(api_url="http://localhost:9001", api_key="BmqYjCBXZD1iPIyq09sG")
+        CLIENT = InferenceHTTPClient(api_url="http://localhost:6060", api_key="BmqYjCBXZD1iPIyq09sG")
 
         #Create timer for calling navigate_intersection function
         self.create_timer(0.001, self.classify_sign)
