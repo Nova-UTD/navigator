@@ -19,7 +19,7 @@ class road_signs_classifier(Node):
         super().__init__('road_signs_classifier')
 
         #instantiate model client
-        CLIENT = InferenceHTTPClient(api_url="http://localhost:6060", api_key="BmqYjCBXZD1iPIyq09sG")
+        self.CLIENT = InferenceHTTPClient(api_url="http://localhost:6060", api_key="BmqYjCBXZD1iPIyq09sG")
 
         #Create timer for calling navigate_intersection function
         self.create_timer(0.001, self.classify_sign)
@@ -39,12 +39,15 @@ class road_signs_classifier(Node):
     def image_callback(self, msg : Image):
         temp_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
         self.image = cv.imencode('.jpg', temp_image)
+        classify_sign(self)
 
 
     #main control function
     def classify_sign(self):
         #gets prediction
-        result = CLIENT.infer(self.image, model_id="us-road-signs/71")
+        result = self.CLIENT.infer(self.image, model_id="us-road-signs/71")
+        print(result)
+
 
         #create message and publish
         road_signs_detection_msg = RoadSignsDetection()
@@ -64,13 +67,9 @@ class road_signs_classifier(Node):
         self.road_signs_publisher.publish(road_signs_detection_msg)
 
 
-def main(args=None):
-    rclpy.init(args=args)
-    road_signs_classifier = road_signs_classifier()
-    rclpy.spin(road_signs_classifier)
-    rclpy.shutdown()
-
 
 if __name__ == '__main__':
-    main()
+    rclpy.init(args=None)
+    road_signs_classification = road_signs_classifier()
+    rclpy.spin(road_signs_classification)
     rclpy.shutdown()
