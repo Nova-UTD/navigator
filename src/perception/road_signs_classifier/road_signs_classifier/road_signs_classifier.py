@@ -25,7 +25,7 @@ class road_signs_classifier(Node):
         self.create_timer(0.001, self.classify_sign)
 
         #create subscriptions
-        self.camera_sub = self.create_subscription(Image, '/cameras/camera0', self.image_callback, 10)
+        self.camera_sub = self.create_subscription(Image, '/cameras/cameraX', self.image_callback, 10)
 
         #create variables to store subscription info
         self.image = None
