@@ -5,12 +5,14 @@ Author: Pranav Boyapati
 """
 
 import rclpy
+import os
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-from navigator_msgs import RoadSigns
-from navigator_msgs import RoadSignsDetection
+#from navigator_msgs import RoadSigns
+#from navigator_msgs import RoadSignsDetection
 import cv2
+import cv_bridge
 from inference_sdk import InferenceHTTPClient
 
 
@@ -29,27 +31,29 @@ class road_signs_classifier(Node):
 
         #create variables to store subscription info
         self.image = None
-        self.bridge = CvBridge()
+        self.bridge = cv_bridge.CvBridge()
 
         #create publisher
-        self.road_signs_publisher = self.create_publisher(RoadSignsDetection, '/road_signs/detections', 10)
+        #self.road_signs_publisher = self.create_publisher(RoadSignsDetection, '/road_signs/detections', 10)
 
 
     #callbacks for subscriptions
     def image_callback(self, msg : Image):
-        temp_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')
-        self.image = cv.imencode('.jpg', temp_image)
+        temp_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8") 
+        cv2.imwrite("image.jpg", cv_image) 
         classify_sign(self)
+        os.remove("image.jpg")
 
 
     #main control function
     def classify_sign(self):
         #gets prediction
-        result = self.CLIENT.infer(self.image, model_id="us-road-signs/71")
+        result = self.CLIENT.infer("image.jpg", model_id="us-road-signs/71")
         print(result)
 
 
         #create message and publish
+        """
         road_signs_detection_msg = RoadSignsDetection()
         road_signs_detection_msg.header.stamp = self.get_clock().now().to_msg()
         road_signs_detection_msg.header.frame_id = "camera_frame"
@@ -65,6 +69,7 @@ class road_signs_classifier(Node):
         road_signs_detection_msg.road_signs.append(road_sign)
 
         self.road_signs_publisher.publish(road_signs_detection_msg)
+        """
 
 
 
