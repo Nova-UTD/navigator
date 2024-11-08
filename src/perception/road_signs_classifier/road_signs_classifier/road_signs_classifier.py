@@ -5,6 +5,7 @@ Author: Pranav Boyapati
 """
 
 import rclpy
+import base64
 import os
 from rclpy.node import Node
 from sensor_msgs.msg import Image
@@ -48,7 +49,9 @@ class road_signs_classifier(Node):
     #main control function
     def classify_sign(self):
         #gets prediction
-        result = self.CLIENT.infer("image.jpg", model_id="us-road-signs/71")
+        image = base64.b64encode("image.jpg")
+
+        result = self.CLIENT.infer(image.decode("ascii"), model_id="us-road-signs/71")
         print(result)
 
 
