@@ -13,7 +13,6 @@ from cv_bridge import CvBridge
 #from navigator_msgs import RoadSigns
 #from navigator_msgs import RoadSignsDetection
 import cv2
-import cv_bridge
 from inference_sdk import InferenceHTTPClient
 
 
@@ -25,14 +24,13 @@ class road_signs_classifier(Node):
         self.CLIENT = InferenceHTTPClient(api_url="http://localhost:6060", api_key="BmqYjCBXZD1iPIyq09sG")
 
         #Create timer for calling navigate_intersection function
-        self.create_timer(0.001, self.classify_sign)
+        #self.create_timer(0.001, self.classify_sign)
 
         #create subscriptions
         self.camera_sub = self.create_subscription(Image, '/cameras/camera0', self.image_callback, 10)
 
         #create variables to store subscription info
-        self.image = None
-        self.bridge = cv_bridge.CvBridge()
+        self.bridge = CvBridge()
 
         #create publisher
         #self.road_signs_publisher = self.create_publisher(RoadSignsDetection, '/road_signs/detections', 10)
@@ -40,23 +38,23 @@ class road_signs_classifier(Node):
 
     #callbacks for subscriptions
     def image_callback(self, msg : Image):
-        temp_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8") 
-        cv2.imwrite("image.jpg", cv_image) 
+        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough") 
+        cv2.imwrite("image.jpeg", cv_image) 
         classify_sign(self)
-        os.remove("image.jpg")
 
-
+    
     #main control function
     def classify_sign(self):
         #gets prediction
-        image = base64.b64encode("image.jpg")
+        if (os.path.exists("image.jpeg")):
+            with open("image.jpeg", "rb") as img_file:
+                img_base64 = base64.b64encode(img_file.read()).decode('utf-8')
+            result = self.CLIENT.infer(img_base64, model_id="us-road-signs/71")
+            print(result)
 
-        result = self.CLIENT.infer(image.decode("ascii"), model_id="us-road-signs/71")
-        print(result)
-
-
+    
+    """
         #create message and publish
-        """
         road_signs_detection_msg = RoadSignsDetection()
         road_signs_detection_msg.header.stamp = self.get_clock().now().to_msg()
         road_signs_detection_msg.header.frame_id = "camera_frame"
@@ -72,7 +70,7 @@ class road_signs_classifier(Node):
         road_signs_detection_msg.road_signs.append(road_sign)
 
         self.road_signs_publisher.publish(road_signs_detection_msg)
-        """
+    """
 
 
 
