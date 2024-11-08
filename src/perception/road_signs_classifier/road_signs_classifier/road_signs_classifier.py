@@ -40,7 +40,7 @@ class road_signs_classifier(Node):
     def image_callback(self, msg : Image):
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough") 
         cv2.imwrite("image.jpeg", cv_image) 
-        classify_sign(self)
+        self.classify_sign()
 
     
     #main control function
