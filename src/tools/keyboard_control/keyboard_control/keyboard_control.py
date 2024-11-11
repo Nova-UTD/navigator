@@ -34,23 +34,18 @@ class KeyboardController(Node):
         control_msg.steer = self.steer
         control_msg.reverse = self.reverse
         self.command_publisher.publish(control_msg)
-        #print("Published Message!\n")
     
     #handles Pygame controls
     def handle_controls(self):
         if pygame.K_w in self.pressed_keys:
             self.throttle += 0.05
-            print("Going forward! \n")
         elif pygame.K_s in self.pressed_keys:
             self.throttle -= 0.05
             self.brake += 0.05
-            print("Braking! \n")
         elif pygame.K_a in self.pressed_keys:
             self.steer -= 0.03
-            print("Going left! \n")
         elif pygame.K_d in self.pressed_keys:
             self.steer += 0.03
-            print("Going right!\n")
         elif pygame.K_x in self.pressed_keys:
             self.reverse = True
             self.throttle = 0.3
@@ -77,10 +72,10 @@ class KeyboardController(Node):
 
 def main(args=None):
     rclpy.init(args = args)
-    minimal_publisher = KeyboardController()
-    rclpy.spin(minimal_publisher)
+    keyboard_controller = KeyboardController()
+    rclpy.spin(keyboard_controller)
     
-    minimal_publisher.destroy_node()
+    keyboard_controller.destroy_node()
     # Shutdown ROS and Pygame
     rclpy.shutdown()
     pygame.quit()
