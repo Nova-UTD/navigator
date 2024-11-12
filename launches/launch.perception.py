@@ -24,13 +24,6 @@ def generate_launch_description():
 
     object3d_launch_entities = object3d_launch_description.describe_sub_entities()
     
-    road_signs_classifier = Node(
-    	package='road_signs_classifier',
-    	executable='road_signs_classifier',
-    	name='road_signs_classifier',
-    	parameters=[],
-    )
-    
     return LaunchDescription([
         # image_segmentation,
         # semantic_projection,
