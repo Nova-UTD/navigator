@@ -47,7 +47,6 @@ class road_signs_classifier(Node):
             with open("image.jpeg", "rb") as img_file:
                 img_base64 = base64.b64encode(img_file.read()).decode('utf-8')
             result = self.CLIENT.infer(img_base64, model_id="us-road-signs/71")
-            print(result)
 
         #create message and publish
         if (len(result["predictions"]) > 0):
