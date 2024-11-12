@@ -97,6 +97,18 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 - Track ID (int)
 - Amplitude (float)
 
+### RoadSignsDetection
+- [Header] (https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- road_signs ([RoadSigns] (#roadsigns)[])
+
+### RoadSigns
+- x (float32)
+- y (float32)
+- width (float32)
+- height (float32)
+- label (string)
+- confidence (float32)
+
 ### RouteCost
 - Lane ID (int)
 - Cost (float)
