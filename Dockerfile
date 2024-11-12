@@ -135,7 +135,7 @@ RUN pip3 install \
     #
     autopep8 \
     #
-    inference-sdk
+    inference-sdk \
     #
     cmake_format==0.6.11 \
     #
