@@ -135,7 +135,7 @@ RUN pip3 install \
     #
     autopep8 \
     #
-    inference-sdk \
+    #inference-sdk \
     #
     cmake_format==0.6.11 \
     #
@@ -247,6 +247,8 @@ RUN wget http://lemon.cs.elte.hu/pub/sources/lemon-1.3.1.tar.gz && tar xvzf lemo
 RUN usermod -a -G dialout root
 RUN usermod -a -G tty root
 # USER docker
+
+RUN pip3 install inference-sdk
 
 ENV ROS_VERSION 2
 
