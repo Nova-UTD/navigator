@@ -214,6 +214,7 @@ RUN pip3 install \
     rosbags
 
 RUN pip3 install --upgrade numpy && pip3 install --upgrade scipy
+#used for the road signs classifier API call to the model
 RUN pip3 install inference-sdk==0.26.0
 
 # install mmdetection3d for 3d object detection
