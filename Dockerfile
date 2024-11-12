@@ -241,8 +241,11 @@ RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10
 
 # Lemon
 # Library for Efficient Modeling and Optimization in Networks. It is a C++ template library providing efficient implementations of common data structures and algorithms with focus on combinatorial optimization tasks connected mainly with graphs and networks.
-RUN wget http://lemon.cs.elte.hu/pub/sources/lemon-1.3.1.tar.gz && tar xvzf lemon-1.3.1.tar.gz && cd lemon-1.3.1 && mkdir build && cd build && cmake .. && make && make install
-
+RUN git clone https://github.com/The-OpenROAD-Project/lemon-graph.git && cd lemon-graph \
+    # This specific commit is for Lemon-1.3.1. See https://github.com/The-OpenROAD-Project/lemon-graph/commits/master.
+    && git checkout 62ac753 \
+    && mkdir build && cd build && cmake .. && make && make install
+    
 # RUN useradd -ms /bin/bash docker
 RUN usermod -a -G dialout root
 RUN usermod -a -G tty root
