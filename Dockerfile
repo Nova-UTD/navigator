@@ -246,7 +246,7 @@ RUN git clone https://github.com/The-OpenROAD-Project/lemon-graph.git && cd lemo
     # This specific commit is for Lemon-1.3.1. See https://github.com/The-OpenROAD-Project/lemon-graph/commits/master.
     && git checkout 62ac753 \
     && mkdir build && cd build && cmake .. && make && make install
-    
+
 # RUN useradd -ms /bin/bash docker
 RUN usermod -a -G dialout root
 RUN usermod -a -G tty root
