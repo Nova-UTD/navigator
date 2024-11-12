@@ -210,6 +210,7 @@ RUN pip3 install \
     # mmcls \
     easydict \
     kiss-icp \
+    inference-sdk \
     g2o-python \
     rosbags
 
