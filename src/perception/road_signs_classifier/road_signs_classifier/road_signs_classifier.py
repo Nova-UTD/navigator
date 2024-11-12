@@ -69,8 +69,13 @@ class road_signs_classifier(Node):
             self.road_signs_publisher.publish(road_signs_detection_msg)
 
 
-if __name__ == '__main__':
-    rclpy.init(args=None)
+def main(args=None):
+    rclpy.init(args=args)
     road_signs_classification = road_signs_classifier()
     rclpy.spin(road_signs_classification)
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
     rclpy.shutdown()
