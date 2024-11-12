@@ -135,7 +135,7 @@ RUN pip3 install \
     #
     autopep8 \
     #
-    #inference-sdk \
+    inference-sdk \
     #
     cmake_format==0.6.11 \
     #
@@ -250,8 +250,6 @@ RUN git clone https://github.com/The-OpenROAD-Project/lemon-graph.git && cd lemo
 RUN usermod -a -G dialout root
 RUN usermod -a -G tty root
 # USER docker
-
-RUN pip3 install inference-sdk
 
 ENV ROS_VERSION 2
 
