@@ -16,7 +16,7 @@ import cv2
 from inference_sdk import InferenceHTTPClient
 
 
-class road_signs_classifier(Node):
+class RoadSignsClassifier(Node):
     def __init__(self):
         super().__init__('road_signs_classifier')
 
@@ -70,7 +70,7 @@ class road_signs_classifier(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    road_signs_classification = road_signs_classifier()
+    road_signs_classification = RoadSignsClassifier()
     rclpy.spin(road_signs_classification)
     rclpy.shutdown()
 
