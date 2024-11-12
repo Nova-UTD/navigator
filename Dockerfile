@@ -135,8 +135,6 @@ RUN pip3 install \
     #
     autopep8 \
     #
-    inference-sdk \
-    #
     cmake_format==0.6.11 \
     #
     dictor \
@@ -216,6 +214,7 @@ RUN pip3 install \
     rosbags
 
 RUN pip3 install --upgrade numpy && pip3 install --upgrade scipy
+RUN pip3 install inference-sdk
 
 # install mmdetection3d for 3d object detection
 RUN pip3 install -U openmim
@@ -240,7 +239,9 @@ WORKDIR /
 RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10/pcl /lib/x86_64-linux-gnu/cmake/pcl/include/pcl
 
 # Lemon
-# Library for Efficient Modeling and Optimization in Networks. It is a C++ template library providing efficient implementations of common data structures and algorithms with focus on combinatorial optimization tasks connected mainly with graphs and networks.
+# Library for Efficient Modeling and Optimization in Networks. 
+# It is a C++ template library providing efficient implementations of common data structures and algorithms 
+# with focus on combinatorial optimization tasks connected mainly with graphs and networks.
 RUN git clone https://github.com/The-OpenROAD-Project/lemon-graph.git && cd lemon-graph \
     # This specific commit is for Lemon-1.3.1. See https://github.com/The-OpenROAD-Project/lemon-graph/commits/master.
     && git checkout 62ac753 \
