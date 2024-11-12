@@ -135,6 +135,8 @@ RUN pip3 install \
     #
     autopep8 \
     #
+    inference-sdk
+    #
     cmake_format==0.6.11 \
     #
     dictor \
@@ -210,7 +212,6 @@ RUN pip3 install \
     # mmcls \
     easydict \
     kiss-icp \
-    inference-sdk \
     g2o-python \
     rosbags
 
