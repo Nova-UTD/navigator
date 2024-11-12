@@ -215,6 +215,9 @@ RUN pip3 install \
     g2o-python==0.0.12 \
     rosbags==0.10.4
 
+# Install Black for Python code formatting.
+RUN pip3 install black==24.10.0
+
 # install mmdetection3d for 3d object detection
 RUN pip3 install -U openmim
 RUN mim install mmengine
