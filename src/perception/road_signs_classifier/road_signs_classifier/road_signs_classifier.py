@@ -28,6 +28,7 @@ class RoadSignsClassifier(Node):
 
         #create variables to store subscription info
         self.bridge = CvBridge()
+        self.image = None
 
         #create publisher
         self.road_signs_publisher = self.create_publisher(RoadSignsDetection, '/road_signs/detections', 10)
@@ -36,17 +37,15 @@ class RoadSignsClassifier(Node):
     #callbacks for subscriptions
     def image_callback(self, msg : Image):
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough") 
-        cv2.imwrite("image.jpeg", cv_image) 
+        status, self.image = cv2.imencode(".jpeg", cv_image) 
         self.classify_sign()
 
     
     #main control function
     def classify_sign(self):
         #gets prediction
-        if (os.path.exists("image.jpeg")):
-            with open("image.jpeg", "rb") as img_file:
-                img_base64 = base64.b64encode(img_file.read()).decode('utf-8')
-            result = self.CLIENT.infer(img_base64, model_id="us-road-signs/71")
+        img_base64 = base64.b64encode(self.image).decode('utf-8')
+        result = self.CLIENT.infer(img_base64, model_id="us-road-signs/71")
 
         #create message and publish
         if (len(result["predictions"]) > 0):
