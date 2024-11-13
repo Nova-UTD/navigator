@@ -27,10 +27,11 @@ def generate_launch_description():
     return LaunchDescription([
         # image_segmentation,
         # semantic_projection,
-        ground_seg,
-        static_grid,
+        # ground_seg,
+        # static_grid,
         # *object3d_launch_entities,
         # traffic_light_detector,
         # prednet_inference,
         # driveable_area,
+        road_signs_classifier,
     ])
