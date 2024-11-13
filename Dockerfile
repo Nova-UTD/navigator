@@ -214,6 +214,8 @@ RUN pip3 install \
     rosbags
 
 RUN pip3 install --upgrade numpy && pip3 install --upgrade scipy
+#used for the road signs classifier API call to the model
+RUN pip3 install inference-sdk==0.26.0
 
 # install mmdetection3d for 3d object detection
 RUN pip3 install -U openmim
@@ -245,7 +247,6 @@ RUN git clone https://github.com/The-OpenROAD-Project/lemon-graph.git && cd lemo
     # This specific commit is for Lemon-1.3.1. See https://github.com/The-OpenROAD-Project/lemon-graph/commits/master.
     && git checkout 62ac753 \
     && mkdir build && cd build && cmake .. && make && make install
-
 
 # RUN useradd -ms /bin/bash docker
 RUN usermod -a -G dialout root
