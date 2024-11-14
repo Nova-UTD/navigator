@@ -33,170 +33,172 @@ RUN apt-get update && apt update && apt upgrade -y && \
     # =================================
     ## apt-get installs ===============
     apt-get install -y \
-        # important linux tool
-        wget \  
-        # install python libraries
-        python3-pip \
-        # be able to use git inside container
-        git \
-        #
-        fprintd \
-        #
-        libfprint-2-2:amd64 \
-        #
-        libgl1-mesa-glx \
-        #
-        libglib2.0-0 \
-        #
-        libpam-fprintd:amd64 \
-        #
-        libsm6 \
-        #
-        libxrender-dev \
-        #
-        libxext6 \
-        #
-        ninja-build \
-        #
-        ros-humble-diagnostic-updater \
+    # important linux tool
+    wget \  
+    # install python libraries
+    python3-pip \
+    # be able to use git inside container
+    git \
+    #
+    fprintd \
+    #
+    libfprint-2-2:amd64 \
+    #
+    libgl1-mesa-glx \
+    #
+    libglib2.0-0 \
+    #
+    libpam-fprintd:amd64 \
+    #
+    libsm6 \
+    #
+    libxrender-dev \
+    #
+    libxext6 \
+    #
+    ninja-build \
+    #
+    ros-humble-diagnostic-updater \
     # =================================
     # apt installs ====================
     && apt install -y \
-        #
-        alsa-base \
-        #
-        alsa-utils \
-        #
-        byobu \
-        #
-        espeak \
-        #
-        ffmpeg \
-        #
-        libespeak1 \
-        #
-        libsndfile1-dev \
-        #
-        minicom \
-        #
-        python3-matplotlib \
-        #
-        python3-nose \
-        #
-        python3-scipy \
-        #
-        ros-humble-ament-cmake* \
-        # needed for ros2_numpy package (maybe others)
-        ros-humble-ament-cmake-nose \
-        #
-        ros-humble-async-web-server-cpp \
-        #
-        ros-humble-cv-bridge \
-        #
-        ros-humble-image-transport \
-        #
-        ros-humble-joy-linux \
-        #
-        ros-humble-lgsvl-msgs \
-        # Nav2 stack - used for path planning
-        ros-humble-navigation2 \
-        #
-        ros-humble-pcl-conversions \
-        #
-        ros-humble-pcl-ros \
-        #
-        ros-humble-rmw-fastrtps-cpp \
-        #
-        ros-humble-robot-localization \
-        #
-        ros-humble-rosbridge-server \
-        #
-        ros-humble-ros-testing \
-        # rqt provides oscilliscope-style plotting of topics, etc
-        ros-humble-rqt* \
-        #
-        ros-humble-rviz2 \
-        #
-        ros-humble-tf-transformations \
-        # ROS Support for Velodyne LiDAR
-        ros-humble-velodyne-driver \
-        ros-humble-velodyne-laserscan \
-        ros-humble-velodyne-msgs \
-        ros-humble-velodyne-pointcloud \
-        #
-        ros-humble-vision-opencv \
-        #
-        software-properties-common \
+    #
+    alsa-base \
+    #
+    alsa-utils \
+    #
+    byobu \
+    #
+    espeak \
+    #
+    ffmpeg \
+    #
+    libespeak1 \
+    #
+    libsndfile1-dev \
+    #
+    minicom \
+    #
+    python3-matplotlib \
+    #
+    python3-nose \
+    #
+    python3-scipy \
+    #
+    ros-humble-ament-cmake* \
+    # needed for ros2_numpy package (maybe others)
+    ros-humble-ament-cmake-nose \
+    #
+    ros-humble-async-web-server-cpp \
+    #
+    ros-humble-cv-bridge \
+    #
+    ros-humble-image-transport \
+    #
+    ros-humble-joy-linux \
+    #
+    ros-humble-lgsvl-msgs \
+    # Nav2 stack - used for path planning
+    ros-humble-navigation2 \
+    #
+    ros-humble-pcl-conversions \
+    #
+    ros-humble-pcl-ros \
+    #
+    ros-humble-rmw-fastrtps-cpp \
+    #
+    ros-humble-robot-localization \
+    #
+    ros-humble-rosbridge-server \
+    #
+    ros-humble-ros-testing \
+    # rqt provides oscilliscope-style plotting of topics, etc
+    ros-humble-rqt* \
+    #
+    ros-humble-rviz2 \
+    #
+    ros-humble-tf-transformations \
+    # ROS Support for Velodyne LiDAR
+    ros-humble-velodyne-driver \
+    ros-humble-velodyne-laserscan \
+    ros-humble-velodyne-msgs \
+    ros-humble-velodyne-pointcloud \
+    #
+    ros-humble-vision-opencv \
+    #
+    software-properties-common \
     # cleanup to make image smaller
     && apt clean && rm -rf /var/lib/apt/lists/*
 
 # pip3 installs
 RUN pip3 install \
     #
-    autopep8 \
+    autopep8==2.3.1 \
     #
     cmake_format==0.6.11 \
     #
-    dictor \
+    dictor==0.1.12 \
     #
-    ephem \
+    ephem==4.1.5 \
+    # Used for the road signs classifier API call to the model.
+    inference-sdk==0.26.0 \
     #
-    matplotlib \
+    matplotlib==3.6.0 \
     #  (possibly needs to be version 2.2)
-    networkx \
+    networkx==3.3 \
     # Scientific Computing - used widely
-    numpy \
+    numpy==1.23.5 \
     #
-    open3d \
+    open3d==0.18.0 \
     #
-    opencv-python \
+    opencv-python==4.10.0.84 \
     #
-    pathfinding \
+    pathfinding==1.0.11 \
     #
-    pep8 \
+    pep8==1.7.1 \
     #
-    pexpect \
+    pexpect==4.9.0 \
     #
-    psutil \
+    psutil==5.9.0 \
     #
-    pygame \
+    pygame==2.6.0 \
     #
-    pylint \
+    pylint==3.2.7 \
     #
     pymap3d==2.9.1 \
     #
-    pynmea2 \
+    pynmea2==1.19.0 \
     #
-    pyproj \
+    pyproj==3.6.1 \
     #
-    pyserial \
+    pyserial==3.5 \
     #
-    python-can \
+    python-can==4.4.2 \
     #
     py-trees==0.8.3 \
     #
-    requests \
+    requests==2.28.2 \
     #
-    scikit-image \
+    scikit-image==0.24.0 \
     # Scientific Computing - used widely
-    scipy \
+    scipy==1.14.1 \
     #
     shapely==2.0.2 \
     #
-    simple-pid \
+    simple-pid==2.0.1 \
     #
-    simple-watchdog-timer \
+    simple-watchdog-timer==0.1.1 \
     #
-    six \
+    six==1.16.0 \
     #
-    tabulate \
+    tabulate==0.9.0 \
     #
-    transforms3d \
+    transforms3d==0.3.1 \
     #
     xmlschema==1.0.18 \
     # distro \
     torch==2.1.2 \
-    torchvision \
+    torchvision==0.16.2 \
     # openmim \
     # mmcv-full==1.6.0 \
     # packaging \
@@ -208,14 +210,13 @@ RUN pip3 install \
     # wcwidth \
     # six>=1.5 \
     # mmcls \
-    easydict \
-    kiss-icp \
-    g2o-python \
-    rosbags
+    easydict==1.13 \
+    kiss-icp==1.0.0 \
+    g2o-python==0.0.12 \
+    rosbags==0.10.4
 
-RUN pip3 install --upgrade numpy && pip3 install --upgrade scipy
-#used for the road signs classifier API call to the model
-RUN pip3 install inference-sdk==0.26.0
+# Install Black for Python code formatting.
+RUN pip3 install black==24.10.0
 
 # install mmdetection3d for 3d object detection
 RUN pip3 install -U openmim

@@ -1,0 +1,39 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/navigator/install/voltron_test_utils/include/**",
+        "/navigator/install/rosbridge_test_msgs/include/**",
+        "/navigator/install/rosbridge_msgs/include/**",
+        "/navigator/install/rosapi_msgs/include/**",
+        "/navigator/install/occupancy_cpp/include/**",
+        "/navigator/install/map_management/include/**",
+        "/navigator/install/localization_cc/include/**",
+        "/navigator/install/ground_seg/include/**",
+        "/navigator/install/navigator_msgs/include/**",
+        "/navigator/install/libopendrive/include/**",
+        "/navigator/install/derived_object_msgs/include/**",
+        "/navigator/install/delphi_esr_msgs/include/**",
+        "/navigator/install/carla_msgs/include/**",
+        "/opt/ros/humble/include/**",
+        "/navigator/src/mapping/map_management/include/**",
+        "/navigator/src/perception/ground_seg/include/**",
+        "/navigator/src/perception/occupancy_cpp/include/**",
+        "/navigator/src/tools/libopendrive/include/**",
+        "/navigator/src/tools/voltron_test_utils/include/**"
+        // IMPORTANT: Never add /usr/include/** to the includePath because system includes are order dependent.
+        // See this comment: https://github.com/microsoft/vscode-cpptools/issues/6114#issuecomment-692362735.
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++17"
+    }
+  ],
+  "version": 4
+}
