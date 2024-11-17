@@ -14,7 +14,7 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='root',
-    maintainer_email='bin.sysroot@gmail.com',
+    maintainer_email='josh.pahman@gmail.com',
     description='TODO: Package description',
     license='MIT',
     tests_require=['pytest'],

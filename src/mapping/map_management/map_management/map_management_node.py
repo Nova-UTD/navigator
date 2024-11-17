@@ -7,12 +7,10 @@ import rclpy.callback_groups as cbg
 import rclpy.qos as qos
 
 # For working with OpenDRIVE maps
-import pyOpenDRIVE
+import pyopendrive
 
 # For geometry
-import shapely.geometry as geo
-import shapely.strtree as rtree
-import shapely.wkt as wkt
+import shapely as sh
 
 # For coordinate transforms
 import tf2_ros as tf2
@@ -42,17 +40,17 @@ class RoiIndices:
     end: int = -1
 
 class Arc:
-    sourceKey: pyOpenDRIVE.LaneKey
-    targetKey: pyOpenDRIVE.LaneKey
+    sourceKey: pyopendrive.LaneKey
+    targetKey: pyopendrive.LaneKey
     sourceLength: float
 
 class MapManagementNode(Node):
 
-    map_: pyOpenDRIVE.OpenDriveMap
-    map_wide_tree_: rtree.STRtree
-    route_linestring_: geo.LineString
-    local_route_linestring_: geo.LineString
-    junction_polys_: list[geo.Polygon]
+    map_: pyopendrive.OpenDriveMap
+    map_wide_tree_: sh.STRtree
+    route_linestring_: sh.LineString
+    local_route_linestring_: sh.LineString
+    junction_polys_: list[sh.Polygon]
     smoothed_route_msg_: Path
 
     def __init__(self):
@@ -83,7 +81,7 @@ class MapManagementNode(Node):
         # Set up subscriptions
         self.clock_subscriber_ = self.create_subscription(Clock, 'clock', self.clock_callback, qos.qos_profile_system_default, callback_group=reentrant_group)
         # Start publishing timer for smooth_route
-        self.smooth_route_timer_ = self.create_timer(SMOOTH_ROUTE_LS_FREQ, self.publishSmoothRoute, reentrant_group)
+        self.smooth_route_timer_ = self.create_timer(SMOOTH_ROUTE_LS_FREQ, self.publishSmoothRoute, callback_group=reentrant_group)
 
         if load_from_file:
             self.__load_map_from_file(data_path)
@@ -94,16 +92,14 @@ class MapManagementNode(Node):
 
     def __load_map_from_file(self, data_path: str):
         self.get_logger().info(f"Loading map from {data_path}/maps/campus.xodr")
-        self.map_ = pyOpenDRIVE.OpenDriveMap(f"{data_path}/maps/campus.xodr")
-        # TODO: This is a custom Navigator method; implement into custom pyOpenDRIVE fork
-        # self.lane_polys_ = map_.get_lane_polygons(1.0, False)
+        self.map_ = pyopendrive.OpenDriveMap(f"{data_path}/maps/campus.xodr")
+        self.lane_polys_ = self.map_.get_lane_polygons(1.0, False)
 
         self.get_logger().info(f"Map loaded with {len(self.map_.get_roads())} roads")
 
         if (self.map_wide_tree_ == None):
             self.get_logger().info("map_wide_tree_ was empty. Generating.")
-            # TODO: This is a custom Navigator method; implement into custom pyOpenDRIVE fork
-            # self.map_wide_tree_ = self.map_.generate_mesh_tree()
+            self.map_wide_tree_ = self.map_.generate_mesh_tree()
 
         self.buildTrueRoutingGraph()
 
@@ -111,14 +107,14 @@ class MapManagementNode(Node):
 
         # Temporary linestring from file
         with open(f"{data_path}/maps/route_wkt.txt") as ifs:
-            self.route_linestring_ = wkt.load(ifs)
+            self.route_linestring_ = sh.from_wkt(ifs)
 
         self.get_logger().info(f"Route LS has {len(self.route_linestring_.coords)} pts\n")
 
         # Read junctions from file
-        junction_mps: geo.MultiPolygon
+        junction_mps: sh.MultiPolygon
         with open(f"{data_path}/maps/junction_wkt.txt") as ifs:
-            junction_mps = wkt.load(ifs)
+            junction_mps = sh.from_wkt(ifs)
 
         self.junction_polys_.clear()
         self.junction_polys_.extend(junction_mps.geoms)
@@ -153,11 +149,11 @@ class MapManagementNode(Node):
         min_distance: float = 999999.9
 
         ego_trans1 = self.getEgoTf().transform.translation
-        ego_pos: geo.Point = geo.Point(ego_trans1.x, ego_trans1.y)
+        ego_pos: sh.Point = sh.Point(ego_trans1.x, ego_trans1.y)
 
         min_idx: int = 0
         for i in range(len(self.route_linestring_.coords)):
-            pt: geo.Point = geo.Point(self.route_linestring_.coords[i])
+            pt: sh.Point = sh.Point(self.route_linestring_.coords[i])
             dist: float = pt.distance(ego_pos)
             if dist < min_distance:
                 min_distance = dist
@@ -168,12 +164,12 @@ class MapManagementNode(Node):
 
         filtered_coords: list[tuple[float, float]] = []
         for coord in self.route_linestring_.coords[min_idx:]:
-            pt: geo.Point = geo.Point(coord)
+            pt: sh.Point = sh.Point(coord)
             if pt.distance(ego_pos) > MAX_DISTANCE:
                 break
             filtered_coords.append(coord)
 
-        self.local_route_linestring_ = geo.LineString(filtered_coords)
+        self.local_route_linestring_ = sh.LineString(filtered_coords)
 
 
     def getEgoTf(self) -> tf2.TransformStamped:
