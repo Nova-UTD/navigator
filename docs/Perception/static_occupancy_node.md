@@ -12,11 +12,11 @@ parent: Perception
 
 ## Overview
 The `StaticOccupancyNode` is responsible for generating static occupancy and mass grids based on ground-segmented pointclouds provided by the 
-[`ground_segmentation_node`](https://github.com/jpahm/navigator/blob/documentation/docs/Perception/ground_segmentation_node.md). 
+[`ground_segmentation_node`](https://nova-utd.github.io/navigator/Perception/ground_segmentation.html). 
 These grids are then consumed by the 
-[`junction_manager`](https://github.com/jpahm/navigator/blob/documentation/docs/Planning/junction_manager.md) 
+[`junction_manager`](https://nova-utd.github.io/navigator/Planning/junction_manager.html) 
 and the 
-[`grid_summation_node`](https://github.com/jpahm/navigator/blob/documentation/docs/Planning/grid_summation_node.md) 
+[`grid_summation_node`](https://nova-utd.github.io/navigator/Planning/grid_summation.html) 
 for planning purposes.
 
 The **occupancy grid** is generated using 

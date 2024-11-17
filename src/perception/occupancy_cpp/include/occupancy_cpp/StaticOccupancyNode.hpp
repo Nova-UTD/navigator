@@ -91,7 +91,7 @@ namespace navigator
       const int HALF_SIZE = GRID_SIZE / 2;
 
       // Resolution.
-      constexpr static float res = 1. / 3.;
+      constexpr static float RES = 1. / 3.;
 
       // Measurement mass.
       constexpr static float meas_mass = 0.95;
