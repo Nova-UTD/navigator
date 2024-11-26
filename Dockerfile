@@ -183,7 +183,7 @@ RUN pip3 install \
     # Scientific Computing - used widely
     scipy==1.14.1 \
     #
-    shapely==2.0.2 \
+    shapely==2.0.6 \
     #
     simple-pid==2.0.1 \
     #
@@ -213,7 +213,9 @@ RUN pip3 install \
     easydict==1.13 \
     kiss-icp==1.0.0 \
     g2o-python==0.0.12 \
-    rosbags==0.10.4
+    rosbags==0.10.4 \
+    # For building pyOpenDRIVE
+    cython==3.0.11
 
 # Install Black for Python code formatting.
 RUN pip3 install black==24.10.0
