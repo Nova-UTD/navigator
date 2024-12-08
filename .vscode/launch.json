@@ -1,0 +1,12 @@
+{
+  "configurations": [
+    {
+      "name": "(gdb) Launch",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "/navigator/install/localization_cc/lib/localization_cc/localization_node",
+      "cwd": "/",
+      "miDebuggerServerAddress": "localhost:3000",
+    },
+  ]
+}
