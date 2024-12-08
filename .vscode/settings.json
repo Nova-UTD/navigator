@@ -1,6 +1,7 @@
 {
   "C_Cpp.intelliSenseCacheSize": 0,
   "C_Cpp.clang_format_sortIncludes": true,
+  "C_Cpp.clang_format_fallbackStyle": "Google",
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"
   },
