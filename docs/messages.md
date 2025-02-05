@@ -59,6 +59,15 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 - Towset (bool)
 - Head Veh Valid (bool)
 
+### AllLaneDetections
+- [Header] (https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- lane_detections ([LaneDetections] (#lanedetections)[])
+
+### LaneDetections
+- numTotalLanes (int)
+- currentLane (string)
+- allLanes (string[])
+
 ### Masses
 - [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
 - Occupied cells (float[])
