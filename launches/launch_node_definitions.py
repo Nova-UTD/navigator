@@ -197,3 +197,10 @@ road_signs_classifier = Node(
    	name='road_signs_classifier',
    	parameters=[],
 )
+
+lane_type_detector = Node(
+   	package='lane_type_detector',
+   	executable='lane_type_detector',
+   	name='lane_type_detector',
+   	parameters=[],
+)
