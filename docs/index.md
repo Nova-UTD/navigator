@@ -35,7 +35,7 @@ export ROS_DOMAIN_ID=57
 $ git clone -b dev git@github.com:Nova-UTD/navigator.git
 $ cd navigator
 ```
-> Any contributor: If simply running the stack is the goal, then checking out `dev` or `main` can make sense. If you aim to contribute, you should create your own fork of the `dev` branch and check that repository out instead. More details about contributing [can be found here](contributing/contributing-overview.md).
+> Any contributor: If simply running the stack is the goal, then checking out `dev` or `main` can make sense. If you aim to contribute, you should create your own fork of the `dev` branch and check that repository out instead. More details about contributing [can be found here](Contributing/index.md).
 
 4. Build our Docker container. The sequence of commands used to build the container is given in the `Dockerfile` file and the build and run parameters are specified in the `docker-compose.yml` file.
 ```
@@ -101,7 +101,7 @@ Launching a demo requires three terminal windows. Recall `$` are commands run on
 1. In the first terminal window, launch Carla using `runcarla` (assumes you set up the alias described above).
 2. In the second terminal window, run the CARLA-ROS2 bridge container (should be in the `carla_interface` respository root directory) and then launch the carla interface nodes:
 ```
-$ docker compose run carla_interface
+$ docker compose run carla_bridge
 # ros2 launch launch.carla_interface.py
 ```
 3. In the third terminal window, run the Navigator container (should be in the `navigator` respository root directory) and then launch the Navigator stack:
