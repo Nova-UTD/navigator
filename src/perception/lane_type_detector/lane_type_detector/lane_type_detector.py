@@ -13,6 +13,7 @@ from navigator_msgs.msg import AllLaneDetections
 import cv2
 from ultralytics import YOLO
 import numpy
+import base64
 
 
 class LaneTypeDetector(Node):
@@ -42,19 +43,21 @@ class LaneTypeDetector(Node):
 
     #callbacks for subscriptions
     def image_callback(self, msg : Image):
-        self.image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8") 
+        self.image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='8UC3')
         self.make_lane_detections()
 
     
     #main control function
     def make_lane_detections(self):
         #gets prediction
-        results = model(self.image)
+        #self.image = "image.jpeg"
+        results = self.model(self.image)
 
         #create message and publish
-        boxes = result[0].boxes.xyxy.tolist()      #top left corner of box to bottom right corner of box
-        classes = result[0].boxes.cls.tolist()
-        confidences = result[0].boxes.conf.tolist()
+        boxes = results[0].boxes.xyxy.tolist()      #top left corner of box to bottom right corner of box
+        classes = results[0].boxes.cls.tolist()
+        print(classes)
+        confidences = results[0].boxes.conf.tolist()
             
         lane_detection_msg = AllLaneDetections()
         lane_detection_msg.header.stamp = self.get_clock().now().to_msg()
@@ -69,31 +72,39 @@ class LaneTypeDetector(Node):
         for box, cls, conf in zip(boxes, classes, confidences):
             if (int(cls) == 3):
                 numTotalLanes += 1
+                
+                x1, y1, x2, y2 = box
+                if (((x1 + x2) / 2) < (400 / 2)):
+                    numLanesLeftOfImageCenter += 1
+                
             if (int(cls) == 4):
                 numLeftTurnLanes += 1
             if (int(cls) == 1):
                 numRightTurnLanes += 1
 
-            height, width = self.image.shape[:2]
-            x1, y1, x2, y2 = box
-            if (((x1 + x2) / 2) < (width / 2))
-            {
-                numLanesLeftOfImageCenter += 1
-            }
+
             
+            
+        print(numTotalLanes)
+        print(numLeftTurnLanes)
+        print(numRightTurnLanes)
+        print(numLanesLeftOfImageCenter)
+        
         this_lane_detection = LaneDetections()
         
-        this_lane_detection.numTotalLanes = numTotalLanes
+        this_lane_detection.totallanecount = numTotalLanes
         
-        this_lane_detection.allLanes = []
+        alllanes = []
         for i in range(numTotalLanes):
-            this_lane_detection.allLanes.append("Straight")
+            alllanes.append("Straight")
         for j in range(numLeftTurnLanes):
-            this_lane_detection.allLanes[j] = "Left"
+            alllanes[j] = "Left"
         for k in range(numRightTurnLanes):
-            this_lane_detection.allLanes[-1 * k] = "Right"
-
-        this_lane_detection.currentLane = this_lane_detection.allLanes[numLanesLeftOfImageCenter]
+            alllanes[-1 * k] = "Right"
+        this_lane_detection.alllanes = alllanes
+	
+        if (len(alllanes) != 0):
+        	this_lane_detection.currentlane = alllanes[numLanesLeftOfImageCenter]
         
         lane_detection_msg.lane_detections.append(this_lane_detection)
         self.lane_detections_publisher.publish(lane_detection_msg)
