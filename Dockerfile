@@ -193,7 +193,7 @@ RUN pip3 install \
     #
     tabulate==0.9.0 \
     #
-    transforms3d==0.3.1 \
+    transforms3d==0.4.2 \
     #
     xmlschema==1.0.18 \
     # distro \
