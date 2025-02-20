@@ -197,3 +197,11 @@ road_signs_classifier = Node(
    	name='road_signs_classifier',
    	parameters=[],
 )
+
+pedestrian_skeleton = Node(
+   	package='pedestrian_skeleton',
+   	executable='pedestrian_skeleton',
+   	name='pedestrian_skeleton',
+   	parameters=[],
+)
+
