@@ -105,6 +105,8 @@ class LaneTypeDetector(Node):
 	
         if (len(alllanes) != 0):
         	this_lane_detection.currentlane = alllanes[numLanesLeftOfImageCenter]
+
+	this_lane_detection.numlanesleftofcurrent = numLanesleftOfImageCenter
         
         lane_detection_msg.lane_detections.append(this_lane_detection)
         self.lane_detections_publisher.publish(lane_detection_msg)
