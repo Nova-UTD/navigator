@@ -197,3 +197,8 @@ road_signs_classifier = Node(
    	name='road_signs_classifier',
    	parameters=[],
 )
+
+intersection_manager = Node(
+    package='intersection_manager',
+    executable='intersection_manager'
+)
