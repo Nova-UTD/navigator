@@ -69,6 +69,7 @@ def generate_launch_description():
                         routing_monitor,
                         grid_route_costmap,
                         grid_summation,
+                        intersection_manager,
                         # junction_manager,
                         path_planner_graph,
                         # *nav2_launch_entities,
