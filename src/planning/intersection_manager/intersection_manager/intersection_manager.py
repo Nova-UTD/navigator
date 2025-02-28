@@ -39,11 +39,8 @@ class IntersectionManager(Node):
         #Create variables to store info from subscriptions
         self.traffic_light_status = None
         self.traffic_light_height = None
-        self.time_between_traffic_light_callbacks = None
-        self.time_of_last_traffic_light_callback = None
         self.route = None
         self.behavior_through_intersection = None
-        self.in_correct_lane = False
         self.speed = None
         self.occupancy_grid = None
         self.occupancy_grid_width = None
@@ -53,16 +50,14 @@ class IntersectionManager(Node):
         self.road_sign_type = None
         self.road_sign_width = None
         self.road_sign_height = None
-        self.time_between_road_sign_callbacks = None
-        self.time_of_last_road_sign_callback = None
         self.num_lanes_on_road = None
         self.current_lane = None
         self.all_lanes_available = None
-        self.lanes_to_left_of_current = None
+        self.numlanesleftofcurrent = None
 
-        self.numTimesStraightChecked = 0
-        self.numTimesLeftChecked = 0
-        self.numTimesRightChecked = 0
+        self.numTimesStraightChecked = None
+        self.numTimesLeftChecked = None
+        self.numTimesRightChecked = None
 
 
     def laneTypeCallback(self, msg: AllLaneDetections):
@@ -83,23 +78,11 @@ class IntersectionManager(Node):
         self.traffic_light_status = msg.traffic_lights[-1].label
         self.traffic_light_height = msg.traffic_lights[-1].height
 
-        if (self.time_of_last_traffic_light_callback != None):
-            self.time_between_traffic_light_callbacks = msg.header.stamp - self.time_of_last_traffic_light_callback
-            self.time_of_last_traffic_light_callback = msg.header.stamp
-        else:
-            self.time_between_traffic_light_callbacks = 0
-
 
     def roadSignsCallback(self, msg: RoadSignsDetection): 
         self.road_sign_type = msg.road_signs[-1].label
         self.road_sign_width = msg.road_signs[-1].width
         self.road_sign_height = msg.road_signs[-1].height
-
-        if (self.time_of_last_road_sign_callback != None):
-            self.time_between_road_sign_callbacks = msg.header.stamp - self.time_of_last_road_sign_callback
-            self.time_of_last_road_sign_callback = msg.header.stamp
-        else:
-            self.time_between_road_sign_callbacks = 0
     
     
     def routeCallback(self, msg: Path):
@@ -123,23 +106,24 @@ class IntersectionManager(Node):
 
 
     def classify_intersection_type(self):
-        if (self.time_between_traffic_light_callbacks < 0.2):
+        if (self.traffic_light_status != None):
+            self.traffic_light_status = None
             return "TrafficLight"
-        elif (self.time_between_road_sign_callbacks < 0.2):
+        elif (self.road_sign_type == "stop"):
+            self.road_sign_type = None
+            return "StopSign"
+        elif (self.road_sign_type == "warning"):
+            self.road_sign_type = None
             roundabout = True
-            if (self.road_sign_type == "warning"):
-                distanceOffset = (90 + (self.num_lanes_on_road * 3.5)) / self.occupancy_grid_resolution * self.occupancy_grid_width
-                for i in range(0, 5):
-                    boxToCheck = distanceOffset + (i * (self.occupancy_grid_width + (0.25 / self.occupancy_grid_resolution)))
-                    boxToCheckOccupancy = self.occupancy_grid[boxToCheck]
-                    if (boxToCheckOccupancy == 0):
-                        roundabout = False
-                        break
-                if (roundabout):
-                    return "Roundabout"
-        elif (self.time_between_road_sign_callbacks < 0.2):
-            if (self.road_sign_type == "stop"):
-                return "StopSign"
+            distanceOffset = (90 + (self.num_lanes_on_road * 3.5)) / self.occupancy_grid_resolution * self.occupancy_grid_width
+            for i in range(0, 5):
+                boxToCheck = distanceOffset + (i * (self.occupancy_grid_width + (0.25 / self.occupancy_grid_resolution)))
+                boxToCheckOccupancy = self.occupancy_grid[boxToCheck]
+                if (boxToCheckOccupancy == 0):
+                    roundabout = False
+                    break
+            if (roundabout):
+                return "Roundabout"
         else:
             return None
 
@@ -192,7 +176,7 @@ class IntersectionManager(Node):
             else:
                 status_message = "BrakeAndStop"
         
-        if (self.speed == 0):
+        elif (self.speed == 0):
             iterations = 0
             countCarsBefore = 0
             isLeftOccupied = None
@@ -360,14 +344,14 @@ class IntersectionManager(Node):
     def navigate_intersection(self):
         controls_message = None
 
-        intersection_type = classify_intersection_type(self)
+        intersection_type = self.classify_intersection_type()
 
         if (intersection_type == "TrafficLight"):
-            controls_message = navigate_traffic_light_intersection(self)
+            controls_message = self.navigate_traffic_light_intersection()
         elif (intersection_type == "StopSign"):
-            controls_message = navigate_stop_sign_intersection(self)
+            controls_message = self.navigate_stop_sign_intersection()
         elif (intersection_type == "Roundabout"):
-            controls_message = navigate_roundabout(self)
+            controls_message = self.navigate_roundabout()
 
         intersection_behavior_message = IntersectionBehavior()
         intersection_behavior_message.header.stamp = self.get_clock().now().to_msg()
@@ -378,7 +362,8 @@ class IntersectionManager(Node):
         elif (controls_message == "BrakeAndStop" or controls_message == "WaitForOtherCars"):
             intersection_behavior_message.action = "Wait"
         
-        self.behavior_publisher.publish(intersection_behavior_message)
+        if (intersection_behavior_message.action != ""):
+            self.behavior_publisher.publish(intersection_behavior_message)
 
 
 def main(args=None):
