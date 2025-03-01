@@ -140,8 +140,10 @@ RUN pip3 install \
     dictor==0.1.12 \
     #
     ephem==4.1.5 \
+    # Used for the road signs classifier API call to the model.
+    inference-sdk==0.26.0 \
     #
-    matplotlib==3.5.1 \
+    matplotlib==3.6.0 \
     #  (possibly needs to be version 2.2)
     networkx==3.3 \
     # Scientific Computing - used widely
@@ -191,7 +193,7 @@ RUN pip3 install \
     #
     tabulate==0.9.0 \
     #
-    transforms3d==0.3.1 \
+    transforms3d==0.4.2 \
     #
     xmlschema==1.0.18 \
     # distro \
@@ -212,6 +214,9 @@ RUN pip3 install \
     kiss-icp==1.0.0 \
     g2o-python==0.0.12 \
     rosbags==0.10.4
+
+# Install Black for Python code formatting.
+RUN pip3 install black==24.10.0
 
 # install mmdetection3d for 3d object detection
 RUN pip3 install -U openmim
@@ -236,8 +241,13 @@ WORKDIR /
 RUN mkdir /lib/x86_64-linux-gnu/cmake/pcl/include && ln -s /usr/include/pcl-1.10/pcl /lib/x86_64-linux-gnu/cmake/pcl/include/pcl
 
 # Lemon
-# Library for Efficient Modeling and Optimization in Networks. It is a C++ template library providing efficient implementations of common data structures and algorithms with focus on combinatorial optimization tasks connected mainly with graphs and networks.
-RUN wget http://lemon.cs.elte.hu/pub/sources/lemon-1.3.1.tar.gz && tar xvzf lemon-1.3.1.tar.gz && cd lemon-1.3.1 && mkdir build && cd build && cmake .. && make && make install
+# Library for Efficient Modeling and Optimization in Networks. 
+# It is a C++ template library providing efficient implementations of common data structures and algorithms 
+# with focus on combinatorial optimization tasks connected mainly with graphs and networks.
+RUN git clone https://github.com/The-OpenROAD-Project/lemon-graph.git && cd lemon-graph \
+    # This specific commit is for Lemon-1.3.1. See https://github.com/The-OpenROAD-Project/lemon-graph/commits/master.
+    && git checkout 62ac753 \
+    && mkdir build && cd build && cmake .. && make && make install
 
 # RUN useradd -ms /bin/bash docker
 RUN usermod -a -G dialout root

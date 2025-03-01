@@ -195,3 +195,10 @@ traffic_light_detector = Node(
     package='traffic_light_detector',
     executable='traffic_light_node'
 )
+    
+road_signs_classifier = Node(
+   	package='road_signs_classifier',
+   	executable='road_signs_classifier',
+   	name='road_signs_classifier',
+   	parameters=[],
+)
