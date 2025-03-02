@@ -9,20 +9,14 @@ License:   MIT License
 TODO: Description
 """
 
-# Python Imports
-import numpy as np
-import math
-
-# Ros Imports
-import rclpy
-from rclpy.node import Node
-import sensor_msgs_py.point_cloud2 as point_cloud2
-
-# For testing. Remove later.
-from std_msgs.msg import String
+# CV2 import for testing. Remove later.
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
-from geometry_msgs.msg import TransformStamped
+
+# Imports
+import numpy as np
+import rclpy
+from rclpy.node import Node
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -31,10 +25,9 @@ import image_geometry
 
 # Message Imports
 from rosgraph_msgs.msg import Clock
-
+from geometry_msgs.msg import TransformStamped
 from builtin_interfaces.msg import Time
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2
-from navigator_msgs.msg import Object3DArray
 
 class ProjectionNode(Node):
 
@@ -57,27 +50,18 @@ class ProjectionNode(Node):
         # Subcribes to raw lidar data
         self.lidar_sub = self.create_subscription(
             PointCloud2, '/lidar', self.lidar_callback, 10)
-        # Subscribes to camera
-        # self.camera_sub = self.create_subscription(
-        #     Image, '/cameras/camera0', self.camera_callback, 10)
-        # self.camera_sub = self.create_subscription(
-        #     Image, '/cameras/camera0', self.camera_callback, 10)
 
         # Subscribes to camera info
         camera_info_sub = self.create_subscription(
             CameraInfo, '/carla/hero/rgb_center/camera_info', self.camera_info_cb, 10)
         
-        # Test code to subscribe to semantic segmentation, then convert to simpler classes
+        # Subscribes to semantic segmented image topic
         segmentation_sub = self.create_subscription(
             Image, '/semantics/semantic0', self.segmentation_cb, 10)
         
-        # Subscribes to clock for headers
+        # Subscribes to clock
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 10)
-
-        # Publishes lidar data
-        self.lidar_pub = self.create_publisher(
-            PointCloud2, '/abc', 10)
 
         self.cam_arr = None
         self.cam_model = None
