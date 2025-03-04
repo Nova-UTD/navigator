@@ -5,7 +5,7 @@ nav_order: 7
 parent: Planning
 ---
 
-# Road Signs Classifier
+# Intersection Manager
 {: .no_toc }
 
 *Maintained by Pranav Boyapati*
@@ -34,7 +34,7 @@ A ROS Node that uses various preprocessed data from the car's sensors to determi
 ### Out:
 
 - **/intersection** [*IntersectionBehavior*](../messages.md#intersectionbehavior)
-  - Publishes an array of road sign detections.
+  - Publishes a string of text about what action to take for proceeding through the intersection.
 
 ---
 
