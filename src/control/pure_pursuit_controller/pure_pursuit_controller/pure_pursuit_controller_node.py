@@ -83,8 +83,9 @@ class VehicleState:
                             + 0.0 * d_error 
                             + 0.0 * self.pid_integral_error, # delays in meausuring speed make integral term cause oscillations
                            Constants.MAX_THROTTLE)
-        elif pid_error <= -0.1*target_speed: # start braking when error is over 10% of the target speed
-            brake = abs(pid_error)/target_speed
+        # Currently not implementing any braking
+        # elif abs(pid_error)/target_speed >= 0.25: # start braking when error is over 25% of the target speed
+        #     brake = 0.1*abs(pid_error)/target_speed
 
         self.last_pid_error = pid_error
         return throttle, brake

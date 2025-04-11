@@ -47,6 +47,7 @@ from visualization_msgs.msg import Marker
 
 from skimage.draw import line
 
+import scipy.ndimage
 from PIL import Image
 
 from matplotlib.patches import Rectangle
@@ -113,6 +114,22 @@ class GraphPathPlanner(Node):
             return
         self.costmap = msg
 
+    # any cells above the threshold get expanded by padding number of cells
+    def pad_obstacles(self,cmap,threshold,padding):
+        obstacles = 0*cmap
+        # finds the location of obstacles as binary values
+        obstacles[np.where(cmap>=threshold)] = 1 
+        # obstacle_frac = 100.0*np.count_nonzero(obstacles)/len(obstacles)**2
+        # self.get_logger().info(">>>>> %1.2f percent obstacle points BEFORE" % obstacle_frac)
+        # expands the obstacles using a given structure, repeating this padding number of times
+        struct1 = scipy.ndimage.generate_binary_structure(2, 1)  # 3x3 grid true in + shape
+        struct2 = scipy.ndimage.generate_binary_structure(2, 2)  # 3x3 grid all true
+        obstacles = scipy.ndimage.binary_dilation(obstacles, structure=struct2,iterations=padding).astype(cmap.dtype)
+        obstacles = 100*obstacles # rescale up to 0-100
+        # obstacle_frac = 100.0*np.count_nonzero(obstacles)/len(obstacles)**2
+        # self.get_logger().info(">>>>> %1.2f percent obstacle points AFTER" % obstacle_frac)
+        return np.maximum(cmap,obstacles)
+
     # generate the path
     def generate_path(self):
 
@@ -141,7 +158,9 @@ class GraphPathPlanner(Node):
         cmap = np.asarray(self.costmap.data, dtype=np.int32).reshape(
                     self.costmap.info.height, self.costmap.info.width)
         
-        path = self.shortest_path(cmap, (i0,j0), (i,j), obstacle_threshold=90)
+        cmap = self.pad_obstacles(cmap,85,3)
+
+        path = self.shortest_path(cmap, (i0,j0), (i,j), obstacle_threshold=95)
 
         if path is None or len(path)==0:
             self.get_logger().warning("!!! Pathfinding returned a path as None !!!")
