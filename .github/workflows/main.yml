@@ -17,6 +17,12 @@ jobs:
           cd $GITHUB_WORKSPACE
           echo Workspace directory: $(pwd)
 
+      - name: Update CMake
+        run: |
+          sudo apt-get purge --auto-remove cmake
+          sudo snap install cmake --classic
+          cmake --version
+
       - name: Build Navigator Docker image
         run: |
           docker build -t navigator -f Dockerfile .

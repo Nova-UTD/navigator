@@ -147,7 +147,7 @@ RUN pip3 install \
     #  (possibly needs to be version 2.2)
     networkx==3.3 \
     # Scientific Computing - used widely
-    numpy==1.23.5 \
+    numpy==1.26.4 \
     #
     open3d==0.18.0 \
     #
