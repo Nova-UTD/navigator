@@ -137,6 +137,9 @@ RUN apt-get purge --auto-remove -y cmake && \
     sh cmake-3.24.0-linux-x86_64.sh --skip-license --prefix=/usr/local && \
     rm cmake-3.24.0-linux-x86_64.sh
 
+RUN pip3 install "packaging<22.0" --force-reinstall
+RUN pip install --upgrade scikit-build-core
+
 # pip3 installs
 RUN pip3 install \
     #
@@ -159,8 +162,6 @@ RUN pip3 install \
     open3d==0.18.0 \
     #
     opencv-python==4.10.0.84 \
-    #
-    packaging==23.2 \
     #
     pathfinding==1.0.11 \
     #
