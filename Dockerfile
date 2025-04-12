@@ -140,6 +140,9 @@ RUN apt-get purge --auto-remove -y cmake && \
 RUN pip3 install "packaging<22.0" --force-reinstall
 RUN pip install --upgrade scikit-build-core
 
+RUN pip install --upgrade pip setuptools packaging
+RUN make
+
 # pip3 installs
 RUN pip3 install \
     #
