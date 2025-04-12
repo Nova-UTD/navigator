@@ -130,6 +130,13 @@ RUN apt-get update && apt update && apt upgrade -y && \
     # cleanup to make image smaller
     && apt clean && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get purge --auto-remove -y cmake && \
+    apt-get update && \
+    apt-get install -y wget && \
+    wget https://github.com/Kitware/CMake/releases/download/v3.24.0/cmake-3.24.0-linux-x86_64.sh && \
+    sh cmake-3.24.0-linux-x86_64.sh --skip-license --prefix=/usr/local && \
+    rm cmake-3.24.0-linux-x86_64.sh
+
 # pip3 installs
 RUN pip3 install \
     #
@@ -143,7 +150,7 @@ RUN pip3 install \
     # Used for the road signs classifier API call to the model.
     inference-sdk==0.26.0 \
     #
-    matplotlib==3.6.0 \
+    matplotlib \
     #  (possibly needs to be version 2.2)
     networkx==3.3 \
     # Scientific Computing - used widely
@@ -152,6 +159,8 @@ RUN pip3 install \
     open3d==0.18.0 \
     #
     opencv-python==4.10.0.84 \
+    #
+    packaging==23.2 \
     #
     pathfinding==1.0.11 \
     #
