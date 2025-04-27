@@ -15,17 +15,21 @@ cdef extern from "../src/Geometries/Line.cpp":
 
 from libcpp.vector cimport vector
 from libcpp.map cimport map
+from libcpp.pair cimport pair as libcpp_pair
 from libcpp.string cimport string
 from libcpp cimport bool
-from libcpp.memory cimport make_shared, shared_ptr
+from libcpp.memory cimport make_shared, shared_ptr, unique_ptr
 
 from pyOpenDRIVE.XmlNode cimport XmlNode, xml_document
 from pyOpenDRIVE.Road cimport Road
+from pyOpenDRIVE.RoadObject cimport RoadObject
+from pyOpenDRIVE.Lane cimport Lane
 from pyOpenDRIVE.Junction cimport Junction
 from pyOpenDRIVE.RoadNetworkMesh cimport RoadNetworkMesh
 from pyOpenDRIVE.RoutingGraph cimport RoutingGraph
 
 cdef extern from "OpenDriveMap.h" namespace "odr":
+
     cdef cppclass OpenDriveMap:
         OpenDriveMap(const string& xodr_file, const bool center_map, const bool with_road_objects, const bool with_lateral_profile, const bool with_lane_height, const bool abs_z_for_for_local_road_obj_outline, const bool fix_spiral_edge_cases, const bool with_road_signals) except +
 
@@ -44,7 +48,12 @@ cdef extern from "OpenDriveMap.h" namespace "odr":
         map[string, Road] id_to_road
         map[string, Junction] id_to_junction
 
+
 cdef class PyOpenDriveMap:
+    
+    cdef public list lane_polygons_
+    cdef public list drivable_lane_polygons_
+
     cdef inline OpenDriveMap* unwrap(this):
         return this.c_self.get()
 

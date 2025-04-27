@@ -5,7 +5,7 @@ cdef extern from "../src/RefLine.cpp" namespace "odr":
 
 from libcpp.vector cimport vector
 from libcpp.map cimport map
-from libcpp.set cimport set
+from libcpp.set cimport set as libcpp_set
 from libcpp.string cimport string
 from libcpp cimport bool
 from libcpp.memory cimport make_shared, shared_ptr, unique_ptr
@@ -19,8 +19,8 @@ cdef extern from "RefLine.h" namespace "odr":
         RefLine(string road_id, length) except +
         RefLine(const RefLine& other) except +
 
-        set[const RoadGeometry*] get_geometries() const
-        set[RoadGeometry*] get_geometries()
+        libcpp_set[const RoadGeometry*] get_geometries() const
+        libcpp_set[RoadGeometry*] get_geometries()
 
         double get_geometry_s0(const double s) const
         const RoadGeometry* get_geometry(const double s) const
@@ -30,7 +30,7 @@ cdef extern from "RefLine.h" namespace "odr":
         Vec3D get_grad(const double s) const
         Line3D get_line(const double s_start, const double s_end, const double eps) const
         double match(const double x, const double y) const
-        set[double] approximate_linear(const double eps, const double s_start, const double s_end) const
+        libcpp_set[double] approximate_linear(const double eps, const double s_start, const double s_end) const
 
         string road_id
         double length

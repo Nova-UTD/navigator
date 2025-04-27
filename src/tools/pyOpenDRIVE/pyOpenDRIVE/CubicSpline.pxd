@@ -5,7 +5,7 @@ cdef extern from "../src/Geometries/CubicSpline.cpp":
 
 from libcpp.vector cimport vector
 from libcpp.map cimport map
-from libcpp.set cimport set
+from libcpp.set cimport set as libcpp_set
 from libcpp.string cimport string
 from libcpp cimport bool
 from libcpp.memory cimport make_shared, shared_ptr
@@ -21,7 +21,7 @@ cdef extern from "Geometries/CubicSpline.h" namespace "odr":
         void   negate()
         bool   isnan() const
 
-        set[double] approximate_linear(double eps, double s_start, double s_end) const
+        libcpp_set[double] approximate_linear(double eps, double s_start, double s_end) const
 
         double a
         double b
@@ -41,7 +41,7 @@ cdef extern from "Geometries/CubicSpline.h" namespace "odr":
         CubicSpline negate() const
         CubicSpline add(const CubicSpline& other) const
 
-        set[double] approximate_linear(double eps, double s_start, double s_end) const
+        libcpp_set[double] approximate_linear(double eps, double s_start, double s_end) const
 
         map[double, Poly3] s0_to_poly
 
