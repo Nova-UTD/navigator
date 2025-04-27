@@ -9,6 +9,9 @@ import rclpy.qos as qos
 # For working with OpenDRIVE maps
 from pyOpenDRIVE.OpenDriveMap import PyOpenDriveMap
 from pyOpenDRIVE.Lane import PyLane, PyLaneKey
+from pyOpenDRIVE.LaneSection import PyLaneSection
+from pyOpenDRIVE.Road import PyRoad
+from pyOpenDRIVE.RoutingGraph import PyRoutingGraph
 
 # For geometry
 import shapely as sh
@@ -18,10 +21,12 @@ import tf2_ros as tf2
 
 # Message types
 from rosgraph_msgs.msg import Clock
-from geometry_msgs.msg import PoseStamped
-from nav_msgs.msg import OccupancyGrid, Path
+from geometry_msgs.msg import PoseStamped, TransformStamped
+from nav_msgs.msg import OccupancyGrid, Path, MapMetaData
 from navigator_msgs.srv import SetRoute
 from carla_msgs.msg import CarlaWorldInfo
+
+import math
 
 # Number of threads to use for the multithreaded executor, None = All threads
 NUM_THREADS: int = None
@@ -47,7 +52,7 @@ class Arc:
 
 class MapManagementNode(Node):
 
-    _clock : Clock | None = None
+    clock_ : Clock | None = None
 
     map_: PyOpenDriveMap | None = None
     map_wide_tree_: sh.STRtree | None = None
@@ -57,6 +62,8 @@ class MapManagementNode(Node):
     lane_polys_ : list[tuple[PyLane, sh.LinearRing]] = []
     smoothed_route_msg_: Path | None = None
     route_linestrings_ : list[sh.LineString] = []
+    faulty_routing_graph : PyRoutingGraph | None = None 
+    road_in_junction_map_ : dict[PyLaneKey, bool] = {}
 
     def __init__(self):
         super().__init__('map_mangement_node')
@@ -84,7 +91,7 @@ class MapManagementNode(Node):
         self.route_set_service_ = self.create_service(SetRoute, "set_route", self.setRoute)
 
         # Set up subscriptions
-        self.clock_subscriber_ = self.create_subscription(Clock, 'clock', self.clock_callback, qos.qos_profile_system_default, callback_group=reentrant_group)
+        self.clock_subscriber_ = self.create_subscription(Clock, 'clock', self.clockCb, qos.qos_profile_system_default, callback_group=reentrant_group)
         # Start publishing timer for smooth_route
         self.smooth_route_timer_ = self.create_timer(SMOOTH_ROUTE_LS_FREQ, self.publishSmoothRoute, callback_group=reentrant_group)
 
@@ -130,18 +137,6 @@ class MapManagementNode(Node):
 
         return
 
-    # Caches the latest clock from CARLA.
-    def clock_callback(self, clock: Clock):
-        self._clock = clock
-
-    def worldInfoCb(self, msg: CarlaWorldInfo):
-        # TODO
-        pass
-
-    def drivableAreaGridPubTimerCb(self):
-        # TODO
-        pass
-
     """
     * Given a global (possibly large) route linestring:
     * 1. Find the point closest to the car.
@@ -177,21 +172,12 @@ class MapManagementNode(Node):
         self.local_route_linestring_ = sh.LineString(filtered_coords)
 
 
-    def getEgoTf(self) -> tf2.TransformStamped:
-        t: tf2.TransformStamped
-        try:
-            t = self.tf_buffer_.lookup_transform("map", "base_link", 0)
-        except:
-            self.get_logger().info(f"Could not get base_link->map tf. This will republish every 5 seconds.", throttle_duration_sec=5)
-        return t
-
-
     def publishSmoothRoute(self):
         # Avoid using clock before it's initialized
-        if self._clock == None:
+        if self.clock_ == None:
             return
         
-        clock = self._clock.clock
+        clock = self.clock_.clock
         # If we have already created the smoothed route message
         if self.smoothed_route_msg_ != None and len(self.smoothed_route_msg_.poses) > 0:
             self.smoothed_route_msg_.header.stamp = clock
@@ -210,7 +196,7 @@ class MapManagementNode(Node):
                 self.smoothed_route_msg_.poses[i] = pose
             self.route_path_pub_.publish(self.smoothed_route_msg_)
     
-    def laneKeysFromPoint(self, pt : sh.Point, lane_tree : sh.STRtree, lane_polys : list[tuple[PyLane, sh.LinearRing]]):
+    def laneKeysFromPoint(self, pt : sh.Point, lane_tree : sh.STRtree, lane_polys : list[tuple[PyLane, sh.LinearRing]]) -> list[PyLaneKey]:
         query_results = lane_tree.query(pt, 'intersects')
         lane_keys : list[PyLaneKey] = []
 
@@ -264,24 +250,6 @@ class MapManagementNode(Node):
             key_ls_simplified = sh.simplify(key_ls, 2.0)
             route_linestrings_.append(key_ls_simplified)
 
-    def getLaneCenterline(self, key : PyLaneKey):
-        road = self.map_.id_to_road[key.road_id]
-        lsec = road.s_to_lanesection[key.lanesection_s0]
-        lane = lsec.id_to_lane[key.lane_id]
-
-        outer_border = road.get_lane_border_line(lane, 1.0, True)
-        inner_border = road.get_lane_border_line(lane, 1.0, False)
-
-        centerline_pts = []
-
-        for i in range(len(outer_border)):
-            outer_pt = outer_border.array[i].array
-            inner_pt = inner_border.array[i].array
-            center_pt = sh.Point((outer_pt[0] + inner_pt[0]) / 2, (outer_pt[1] + inner_pt[1]) / 2)
-            centerline_pts.append(center_pt)
-
-        return sh.LineString(centerline_pts)
-
     def setRoute(self, request : SetRoute.Request, response : SetRoute.Response):
         self.get_logger().info("Received request to set route!")
 
@@ -329,21 +297,355 @@ class MapManagementNode(Node):
         response.success = False
         return
 
-    def publishGrids(self, top_dist, bottom_dist, side_dist, res):
-        # TODO
-        pass
+    def publishGrids(self, top_dist : int, bottom_dist : int, side_dist : int, res : float):
+        if self.clock_ == None:
+            self.get_logger().info("Clock not yet initialized. Drivable area grid is unavailable.")
+            return
+        if self.map_ == None:
+            self.get_logger().info("Map not yet loaded. Drivable area grid is unavailable.")
+            return
+        
+        # Used to calculate function runtime
+        # begin = self.clock_.clock # Begin time for timing
 
+        drivable_grid_data = []
+        junction_grid_data = []
+        # route_dist_grid_data = [] # Commented out in C++ version
+
+        y_min = side_dist * -1
+        y_max = side_dist
+        x_min = bottom_dist * -1
+        x_max = top_dist
+
+        if self.map_wide_tree_ == None or len(self.map_wide_tree_) == 0:
+            self.map_wide_tree_ = self.map_.generate_mesh_tree()
+
+        # Get the search region
+        vehicle_tf = self.getEgoTf()
+        vehicle_pos = vehicle_tf.transform.translation
+        range_plus = top_dist * 1.4
+        x_min, y_min = vehicle_pos.x - range_plus, vehicle_pos.y - range_plus
+        x_max, y_max = vehicle_pos.x + range_plus, vehicle_pos.y + range_plus
+        search_region = sh.box(x_min, y_min, x_max, y_max)
+
+        # Find all lanes within the search region
+        lane_shapes_in_range: list[sh.Geometry] = []
+        query_results = self.map_wide_tree_.query(search_region, 'intersects')
+        for i in query_results:
+            lane_shapes_in_range.append(self.map_wide_tree_.geometries[i])
+        
+        has_nearby_lanes = len(lane_shapes_in_range) > 0
+        # Warn if there are no nearby lanes.
+        # This may simply be because we are testing in an area that is not on the map.
+        if not has_nearby_lanes:
+            self.get_logger().warn("There are no lane shapes nearby.")
+
+        local_tree: sh.STRtree = sh.STRtree(lane_shapes_in_range, 16)
+
+        area = 0
+        height = 0
+
+        goal_pt = sh.Point()
+        # goal_is_set = False # Unused, was only used in commented code in C++ version
+        q = vehicle_tf.transform.rotation
+
+        if q.z < 0:
+            h = abs(2 * math.acos(q.w) - 2 * math.pi)
+        else:
+            h = 2 * math.acos(q.w)
+
+        if h > math.pi:
+            h -= 2 * math.pi
+
+        nearby_junctions: list[sh.Polygon] = []
+
+        for junction_poly in self.junction_polys_:
+            vehicle_pos_pt = sh.Point(vehicle_pos.x, vehicle_pos.y)
+            dist = sh.distance(vehicle_pos_pt, junction_poly)
+
+            if dist < 40.0:
+                nearby_junctions.append(junction_poly)
+        
+        j = y_min
+        while j <= y_max:
+            i = x_min
+            while i <= x_max:
+                i = float(i)
+                j = float(j)
+                cell_is_drivable = False
+                cell_is_in_junction = False
+
+                i_in_map = i * math.cos(h) - j * math.sin(h) + vehicle_pos.x
+                j_in_map = j * math.cos(h) + i * math.sin(h) + vehicle_pos.y
+
+                p = sh.Point(i_in_map, j_in_map)
+                # This block was commented out:
+                query_results = local_tree.query(p, 'contains')
+                for geomIndex in query_results:
+                    ring = self.lane_polys_[geomIndex][1]
+                    lane = self.lane_polys_[geomIndex][0]
+                    point_is_within_shape = sh.within(p, ring)
+                    if point_is_within_shape:
+                        cell_is_in_junction = self.road_in_junction_map_[lane.key]
+                        if lane.type == "driving":
+                            cell_is_drivable = True
+                            break
+                # Down to here.
+                for poly in nearby_junctions:
+                    if sh.within(p, poly):
+                        cell_is_in_junction = True
+                
+                # If no lanes are are nearby, then the vehicle is assumed to be testing on a route
+                # area which is not on the campus.xodr map. 
+                # In this case, make the entire drivable grid 0 cost. 
+                if not has_nearby_lanes:
+                    drivable_grid_data.append(0)
+                else:
+                    drivable_grid_data.append(0 if cell_is_drivable else 100)
+
+                junction_grid_data.append(100 if cell_is_in_junction else 0)
+
+                area += 1
+                i += res
+            height += 1
+            j += res
+        
+        clock = self.clock_.clock
+        drivable_area_grid = OccupancyGrid()
+        drivable_area_grid.data = drivable_grid_data
+        drivable_area_grid.header.frame_id = "base_link"
+        drivable_area_grid.header.stamp = clock
+
+        junction_grid = OccupancyGrid()
+        junction_grid.data = junction_grid_data
+        junction_grid.header.frame_id = "base_link"
+        junction_grid.header.stamp = clock
+
+        #route_dist_grid.data = route_dist_grid_data;
+        #route_dist_grid.header.frame_id = "base_link";
+        #route_dist_grid.header.stamp = clock;
+
+        grid_info = MapMetaData()
+        grid_info.width = area / height
+        grid_info.height = height
+        grid_info.map_load_time = clock
+        grid_info.resolution = res
+        grid_info.origin.position.x = x_min
+        grid_info.origin.position.y = y_min
+
+        # Set the grids' metadata
+        drivable_area_grid.info = grid_info
+        junction_grid.info = grid_info
+        #route_dist_grid.info = grid_info
+
+        # Output function runtime
+        self.drivable_grid_pub_.publish(drivable_area_grid)
+        self.junction_grid_pub_.publish(junction_grid)
+        #self.route_dist_grid_pub_.publish(route_dist_grid) # Route distance grid
+
+        goal_pose = PoseStamped()
+        goal_pose.pose.position.x = goal_pt.x
+        goal_pose.pose.position.y = goal_pt.y
+        goal_pose.header.frame_id = "base_link"
+        goal_pose.header.stamp = clock
+        self.goal_pose_pub_.publish(goal_pose)
+
+        # end = self.clock_.clock # End time for timing
+                
+    # Return the (x,y) point at the start of a lane's outer border.
     def getLaneStart(self, key : PyLaneKey):
-        # TODO
-        pass
+        current_road = self.map_.id_to_road[key.road_id]
+        current_lsec = current_road.s_to_lanesection[key.lanesection_s0]
+        current_lane = current_lsec.id_to_lane[key.lane_id]
 
-    def getTrueSuccessors(self, key : PyLaneKey):
-        # TODO
-        pass
+        if key.lane_id < 0:
+            s_start = key.lanesection_s0
+        else:
+            s_start = current_road.get_lanesection_end(key.lanesection_s0)
+        
+        t = current_lane.outer_border.get(s_start)
+        start_vec = current_road.get_surface_pt(s_start, t)
+        start_xy = sh.Point(start_vec.array[0], start_vec.array[1])
+
+        return start_xy
+
+    """
+    Given a key, find true successors: immediately connected lanes
+    ahead of the given one with respect to traffic flow.
+    
+    Assuming right-hand driving rules, we treat the "start" of a lane as having:
+    - Either s = lanesection_s0 and ID < 0, OR
+    - s = lanesection_s_max and ID > 0.
+    
+    Recall that lanesections are identified by their start and end s values.
+    """
+    def getTrueSuccessors(self, key : PyLaneKey) -> list[PyLaneKey]:
+        results : list[PyLaneKey] = []
+
+        # We assume that each lane's listed successors and predecessors could be
+        # actual successfors, and this function verifies or refutes each one,
+        # returning the verified ones.
+
+        if self.faulty_routing_graph == None:
+            self.faulty_routing_graph = self.map_.get_routing_graph()
+            self.get_logger().error("Routing graph was empty!")
+        
+        # Get the current lane's endpoint (x,y)
+        current_road = self.map_.id_to_road[key.road_id]
+        current_lsec = current_road.s_to_lanesection[key.lanesection_s0]
+        current_lane = current_lsec.id_to_lane[key.lane_id]
+
+        if key.lane_id > 0:
+            s_end = key.lanesection_s0
+        else:
+            s_end = current_road.get_lanesection_end(key.lanesection_s0)
+        
+        t = current_lane.outer_border.get(s_end)
+        end_vec = current_road.get_surface_pt(s_end, t)
+        end_xy = sh.Point(end_vec.array[0], end_vec.array[1])
+
+        # TODO: Need full routing graph implementation in wrapper for this!!!!
+        predecessors = self.faulty_routing_graph.get_lane_predecessors(key)
+
+        # For each predecessor, get their lane's START (x,y)
+        for predecessor in predecessors:
+            start_xy = self.getLaneStart(predecessor)
+            dist = sh.distance(end_xy, start_xy)
+            if dist  < 0.05:
+                results.append(predecessor)
+        
+        successors = self.faulty_routing_graph.get_lane_successors(key)
+
+        # For each successor, get their lane's START (x,y)
+        for successor in successors:
+            start_xy = self.getLaneStart(successor)
+            dist = sh.distance(end_xy, start_xy)
+            if dist  < 0.05:
+                results.append(successor)
+
+        return results
+            
     
     def buildTrueRoutingGraph(self):
-        # TODO
-        pass
+        if len(self.lane_polys_) < 1 or self.map_ == None:
+            self.get_logger().error("Map not yet loaded. Routing graph could not be built.")
+            return
+        
+        if self.faulty_routing_graph == None:
+            self.faulty_routing_graph = self.map_.get_routing_graph()
+            self.get_logger().info("Built rough routing graph.")
+
+        # TODO: Replace lemon here!!!
+        raise NotImplementedError()
+
+    #def recursiveSearch(self, predecessors : list[PyLaneKey], target : PyLaneKey):
+    #    # TODO
+    #    pass
+
+    #def calculateRoute(self, start : PyLaneKey, end : PyLaneKey) -> list[PyLaneKey]:
+    #    # TODO
+    #    pass
+
+    # Caches the latest clock from CARLA.
+    def clockCb(self, clock: Clock):
+        self.clock_ = clock
+
+    def getEgoTf(self) -> tf2.TransformStamped:
+        t: tf2.TransformStamped
+        try:
+            t = self.tf_buffer_.lookup_transform("map", "base_link", 0)
+        except:
+            self.get_logger().info(f"Could not get base_link->map tf. This will republish every 5 seconds.", throttle_duration_sec=5)
+        return t
+
+    def drivableAreaGridPubTimerCb(self):
+        self.publishGrids(40, 20, 30, 0.4)
+
+    #def add_edge(adj : list[list[int]], src : int, dest : int):
+    #    # TODO: Unused in C++ version
+    #    pass
+
+    #def getSmoothSection(full_route : sh.LineString, ego : sh.Point, start_idx : int, end_idx : int) -> sh.LineString:
+    #    # TODO: Unused in C++ version
+    #    pass
+
+    def getLaneCenterline(self, key : PyLaneKey):
+        road = self.map_.id_to_road[key.road_id]
+        lsec = road.s_to_lanesection[key.lanesection_s0]
+        lane = lsec.id_to_lane[key.lane_id]
+
+        outer_border = road.get_lane_border_line(lane, 1.0, True)
+        inner_border = road.get_lane_border_line(lane, 1.0, False)
+
+        centerline_pts = []
+
+        for i in range(len(outer_border)):
+            outer_pt = outer_border.array[i].array
+            inner_pt = inner_border.array[i].array
+            center_pt = sh.Point((outer_pt[0] + inner_pt[0]) / 2, (outer_pt[1] + inner_pt[1]) / 2)
+            centerline_pts.append(center_pt)
+
+        return sh.LineString(centerline_pts)
+
+    #def getReorientedRoute(centerlines : list[sh.LineString]) -> sh.LineString:
+    #    # TODO: Unused in C++ version
+    #    pass
+
+    #def updateRouteWaypoints(self, msg : Path):
+    #    # TODO: Unused in C++ version
+    #   pass
+
+    #def getWaypointsInROI(waypoints : sh.LineString, tree : sh.STRtree, ego_pos : sh.Point) -> RoiIndices:
+    #    # TODO: Unused in C++ version
+    #    pass
+
+    #def getLaneKeysFromIndices(indices : RoiIndices, waypoints : sh.LineString, lane_tree : sh.STRtree, lane_polys : list[tuple[PyLane, sh.LinearRing]]) -> list[PyLaneKey]:
+    #    # TODO: Unused in C++ version
+    #    pass
+
+    """
+    NOTE: CURRENTLY UNUSED
+
+    Given a destination point (x,y), set our route linestring
+    to be the continuous centerlines of the lanes connecting
+    the current location to the destination. Should be fast.
+    """
+    #def updateRouteGivenDestination(self, destination : sh.Point):
+    #    # TODO: Unused in C++ version
+    #    pass
+
+    def getJunctionMap(self, lane_polys : list[tuple[PyLane, sh.LinearRing]]) -> dict[PyLaneKey, bool]:
+        m = {}
+        for pair in lane_polys:
+            lane = pair[0]
+            road = self.map_.id_to_road[lane.key.road_id]
+            if road.junction != "-1" and lane.type == "driving":
+                m[lane.key] = True
+            else:
+                m[lane.key] = False
+        
+        return m
+
+    # When map data is received from a CarlaWorldInfo message, load and process it
+    def worldInfoCb(self, msg: CarlaWorldInfo):
+        if self.map_ != None:
+            return # Map is already loaded. No need to continue.
+        
+        if msg.opendrive == "":
+            self.get_logger().info("Received empty map string from world_info topic. Waiting for real data.")
+            return
+        
+        # Ask pyOpenDRIVE to parse the map string
+        self.map_ = PyOpenDriveMap(msg.opendrive, True)
+        # Get lane polygons as pairs (Lane object, ring polygon)
+        self.lane_polys_ = self.map_.get_lane_polygons(1.0, False)
+
+        self.road_in_junction_map_ = self.getJunctionMap(self.lane_polys_)
+
+        self.get_logger().info(f"Loaded {msg.map_name}")
+
+        self.buildTrueRoutingGraph()
+
 
 def main():
     rclpy.init()
