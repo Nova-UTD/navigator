@@ -5,12 +5,13 @@ import sys
 import argparse
 import open3d as o3d
 from tqdm import tqdm
+from pyproj import Proj, transform
 
 # for ROS
 sys.path.append('~/navigator/src/tools/ros2_numpy')
 import ros2_numpy as rnp
 import sensor_msgs
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointCloud2, NavSatFix
 from rosbags.highlevel import AnyReader
 from rosbags.typesys import Stores, get_typestore
 from rosbags_utils import to_native
@@ -41,8 +42,18 @@ def transform_points(pcd, T):
     return pcd @ R.T + t
 
 
+lat0 = 0
+lon0 = 0
+alt0 = 0
+# WGS84 (lat/lon) -> ENU (meters)
+def gps_to_enu(lat, lon, alt):
+    proj_wgs84 = Proj(proj='latlong', datum='WGS84')
+    proj_enu = Proj(proj='aeqd', lat_0=lat0, lon_0=lon0, datum='WGS84')
+    x, y = transform(proj_wgs84, proj_enu, lon, lat)
+    z = alt - alt0
+    return np.array([x, y, z])
+
 def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
-    
     reader = AnyReader([bag_path], default_typestore=typestore)
     if not reader.isopen: reader.open()
     
@@ -56,7 +67,7 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
     kiss_config.mapping.voxel_size = 1.0
     kiss_config.data.max_range = 100.0
     odometry = KissICP(kiss_config)
-
+    full_poses = [odometry.last_pose.flatten()]
     # loop closure
     closure_config = MapClosuresConfig()
     map_closures = MapClosures(closure_config)
@@ -72,10 +83,27 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
 
     connections = [x for x in reader.connections if x.topic == topic_name]
     imuConn = [x for x in reader.connections if x.topic == "/imu"]
+    gtConn = [x for x in reader.connections if x.topic == "/carla/hero/gnss_gt"]
     num_msgs = connections[0].msgcount
     pbar = tqdm(total=num_msgs)
 
     lidarmsgs = reader.messages(connections=connections)
+    gtmsgs = reader.messages(connections=gtConn)
+    first = True
+    gps_positions = []
+    for connection, timestamp, rawdata in gtmsgs:
+      msg = reader.deserialize(rawdata, connection.msgtype)
+      if first:
+        global lat0, lon0, alt0
+        lat0 = msg.latitude
+        lon0 = msg.longitude
+        alt0 = msg.altitude
+        first = False
+        gps_positions.append(np.array([0,0,0]))
+      
+      else:
+        gps_positions.append(gps_to_enu(msg.latitude, msg.longitude, msg.altitude))
+
     # imumsgs = reader.messages(connections=imuConn)
     # for (connection, timestamp, rawdata), (imu_connection, imu_timestamp, imu_rawdata) in zip(lidarmsgs, imumsgs):
     for connection, timestamp, rawdata in lidarmsgs:
@@ -94,6 +122,7 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
 
         # downsamples current scan and adds it to the current local map
         current_frame_pose = odometry.last_pose
+        full_poses.append(current_frame_pose.flatten())
         scan_downsample = voxel_down_sample(pcd, kiss_config.mapping.voxel_size * 0.5)
         frame_to_local_map_pose = np.linalg.inv(current_local_map_pose) @ current_frame_pose
         voxel_local_map.add_points(transform_points(scan_downsample, frame_to_local_map_pose))
@@ -149,7 +178,11 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
         local_map_pose_optimized = pgo.get_pose(i).matrix()
         optimized_poses.append(local_map_pose_optimized.flatten())
 
+    full_traj_file = os.path.join(save_dir, "full_trajectory.txt")
+    full_GT_file = os.path.join(save_dir, "full_gt.txt")
+    np.savetxt(full_GT_file, gps_positions)
     np.savetxt(poses_file, optimized_poses)
+    np.savetxt(full_traj_file, full_poses)
 
 
 if __name__ == '__main__':
