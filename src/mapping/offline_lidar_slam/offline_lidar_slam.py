@@ -7,7 +7,7 @@ import open3d as o3d
 from tqdm import tqdm
 
 # for ROS
-sys.path.append('/navigator/src/tools/ros2_numpy')
+sys.path.append('~/navigator/src/tools/ros2_numpy')
 import ros2_numpy as rnp
 import sensor_msgs
 from sensor_msgs.msg import PointCloud2
@@ -71,19 +71,29 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
     pgo = PoseGraphOptimizer()
 
     connections = [x for x in reader.connections if x.topic == topic_name]
+    imuConn = [x for x in reader.connections if x.topic == "/imu"]
     num_msgs = connections[0].msgcount
     pbar = tqdm(total=num_msgs)
 
-    for connection, timestamp, rawdata in reader.messages(connections=connections):
+    lidarmsgs = reader.messages(connections=connections)
+    # imumsgs = reader.messages(connections=imuConn)
+    # for (connection, timestamp, rawdata), (imu_connection, imu_timestamp, imu_rawdata) in zip(lidarmsgs, imumsgs):
+    for connection, timestamp, rawdata in lidarmsgs:
+        # imu_msg = reader.deserialize(imu_rawdata, imu_connection.msgtype)
         msg = reader.deserialize(rawdata, connection.msgtype)
         pcd = to_native(msg)
         pcd = rnp.numpify(pcd, PointCloud2)
+        # Example: assuming `pcd` is a numpy array with shape (N, 4)
+        num_points = pcd.shape[0]
         pcd = np.array([pcd['x'].flatten(), pcd['y'].flatten(), pcd['z'].flatten()]).T
 
-        odometry.register_frame(pcd, None)
+        # If you don’t have timestamps, create dummy ones
+        timestamps = np.linspace(0, 1, num=num_points, dtype=np.float32)
+
+        odometry.register_frame(pcd, timestamps)
 
         # downsamples current scan and adds it to the current local map
-        current_frame_pose = odometry.poses[-1]
+        current_frame_pose = odometry.last_pose
         scan_downsample = voxel_down_sample(pcd, kiss_config.mapping.voxel_size * 0.5)
         frame_to_local_map_pose = np.linalg.inv(current_local_map_pose) @ current_frame_pose
         voxel_local_map.add_points(transform_points(scan_downsample, frame_to_local_map_pose))
@@ -103,10 +113,10 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
 
             if previous_local_map_pose is not None:
                 # add odometry edge
-                transform = g2o.Isometry3d(np.linalg.inv(previous_local_map_pose) @ current_local_map_pose)
+                transform = g2o.Isometry3d(odometry.last_delta)
                 pgo.add_edge([map_idx-1, map_idx], transform, robust_kernel=g2o.RobustKernelHuber())
 
-            closure = map_closures.match_and_add(map_idx, local_map_pointcloud)
+            closure = map_closures.get_best_closure(map_idx, local_map_pointcloud)
             if closure.number_of_inliers > closure_config.inliers_threshold:
                 #print(f'Loop closure found between: {closure.source_id} (source) and {map_idx} (target) !!!')
                 # add loop closure edge
