@@ -42,9 +42,9 @@ def transform_points(pcd, T):
     return pcd @ R.T + t
 
 
-lat0 = 0
-lon0 = 0
-alt0 = 0
+x0 = 0
+y0 = 0
+z0 = 0
 # WGS84 (lat/lon) -> ENU (meters)
 def gps_to_enu(lat, lon, alt):
     proj_wgs84 = Proj(proj='latlong', datum='WGS84')
@@ -83,7 +83,7 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
 
     connections = [x for x in reader.connections if x.topic == topic_name]
     imuConn = [x for x in reader.connections if x.topic == "/imu"]
-    gtConn = [x for x in reader.connections if x.topic == "/carla/hero/gnss_gt"]
+    gtConn = [x for x in reader.connections if x.topic == "/gnss_gt/odometry"]
     num_msgs = connections[0].msgcount
     pbar = tqdm(total=num_msgs)
 
@@ -94,15 +94,16 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
     for connection, timestamp, rawdata in gtmsgs:
       msg = reader.deserialize(rawdata, connection.msgtype)
       if first:
-        global lat0, lon0, alt0
-        lat0 = msg.latitude
-        lon0 = msg.longitude
-        alt0 = msg.altitude
+        global x0, y0, z0
+        x0 = msg.pose.pose.position.x
+        y0 = msg.pose.pose.position.y
+        z0 = msg.pose.pose.position.z
         first = False
         gps_positions.append(np.array([0,0,0]))
       
       else:
-        gps_positions.append(gps_to_enu(msg.latitude, msg.longitude, msg.altitude))
+        # gps_positions.append(gps_to_enu(msg.latitude, msg.longitude, msg.altitude))
+        gps_positions.append(np.array([msg.pose.pose.position.x - x0, msg.pose.pose.position.y - y0, msg.pose.pose.position.z - z0]))
 
     # imumsgs = reader.messages(connections=imuConn)
     # for (connection, timestamp, rawdata), (imu_connection, imu_timestamp, imu_rawdata) in zip(lidarmsgs, imumsgs):
@@ -142,7 +143,7 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
 
             if previous_local_map_pose is not None:
                 # add odometry edge
-                transform = g2o.Isometry3d(odometry.last_delta)
+                transform = g2o.Isometry3d(np.linalg.inv(previous_local_map_pose) @ current_local_map_pose)
                 pgo.add_edge([map_idx-1, map_idx], transform, robust_kernel=g2o.RobustKernelHuber())
 
             closure = map_closures.get_best_closure(map_idx, local_map_pointcloud)
