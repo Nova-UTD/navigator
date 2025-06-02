@@ -34,4 +34,7 @@ def generate_launch_description():
         # prednet_inference,
         # driveable_area,
         # road_signs_classifier,
+        # image_segmentation, 
+        # depth_processing, 
+        # occupancy_grid_node,
     ])
