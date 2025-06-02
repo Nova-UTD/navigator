@@ -13,10 +13,10 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='Saishravan Muthukrishnan',
-    maintainer_email='sxm210236@utdallas.edu',
-    description='TODO: Generates occupancy grid based on depth map and segmented images',
-    license='TODO: License declaration',
+    maintainer='Pranav Boyapati',
+    maintainer_email='pkb230000@utdallas.edu',
+    description='Generates occupancy grid based on depth map and segmented images',
+    license='MIT License',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
