@@ -60,7 +60,7 @@ def generate_launch_description():
                         # mcl,
                         # MAPPING
                         # MISC
-                        costmap_recorder,
+                        # costmap_recorder,
                         # rqt,
                         # camera_streamer,
                         # PERCEPTION
@@ -71,7 +71,7 @@ def generate_launch_description():
                         grid_route_costmap,
                         grid_summation,
                         # junction_manager,
-                        path_planner_graph,
+                        path_planner,
                         # *nav2_launch_entities,
                         # path_planner_nav2,
                         pure_pursuit_controller,

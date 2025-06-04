@@ -30,7 +30,7 @@ from nav_msgs.msg import OccupancyGrid, Odometry
 from rosgraph_msgs.msg import Clock
 
 # Larger = fewer writes, but they take longer.
-FRAME_RATE = 5  # FPS. Messages will be recorded at this rate.
+FRAME_RATE = 1  # FPS. Messages will be recorded at this rate.
 
 
 class costmap_recorder(Node):
@@ -41,7 +41,7 @@ class costmap_recorder(Node):
 
         # Declare the parameter for the output directory
         self.declare_parameter(
-            "output_directory", "/home/bdaniel/Documents/navigator/costmaps"
+            "output_directory", "/navigator/costmaps"
         )  # Default to costmaps subdirectory
 
         # Get the parameter value
@@ -60,9 +60,9 @@ class costmap_recorder(Node):
 
         # Recording starts disabled by default
         self.recording_enabled = True
-        self.get_logger().info(
-            "Recording is initially DISABLED. Use the '~/toggle_recording' service to enable."
-        )
+        # self.get_logger().info(
+        #     "Recording is initially DISABLED. Use the '~/toggle_recording' service to enable."
+        # )
 
         self.setUpDirectory()
 

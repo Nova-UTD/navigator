@@ -68,6 +68,10 @@ map_manager_carla = Node(
 
 odom2tf = Node(package="recording", executable="odom2tf")
 
+path_planner = Node(
+    package="path_planners", executable="path_planner_node"
+)
+
 path_planner_astar = Node(
     package="graph_path_planner", executable="astar_path_planner_node"
 )
