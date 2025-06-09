@@ -95,6 +95,7 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 - y (float32)
 - width (float32)
 - height (float32)
+- distance (float32)
 
 ### PolygonArray
 - [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
