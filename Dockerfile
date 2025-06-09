@@ -230,6 +230,7 @@ RUN mim install mmengine
 RUN mim install 'mmcv>=2.0.0rc4'
 RUN mim install 'mmdet>=3.0.0'
 RUN mim install "mmdet3d>=1.1.0"
+RUN mim install "mmpose>=1.1.0"
 
 
 # install loop closure package "MapClosures"
