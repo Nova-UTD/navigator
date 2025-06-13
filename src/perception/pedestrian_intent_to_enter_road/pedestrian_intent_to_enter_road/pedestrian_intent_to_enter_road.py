@@ -13,6 +13,7 @@ from navigator_msgs.msg import PedestrianInfo
 from cv_bridge import CvBridge
 import cv2
 from ultralytics import YOLO
+from mmpose.apis import MMPoseInferencer
 
 class PedestrianIntentToEnterRoad(Node):
     def __init__(self):
@@ -26,6 +27,7 @@ class PedestrianIntentToEnterRoad(Node):
         self.bridge = CvBridge()
         self.image = None
         self.detection_model = YOLO("/navigator/data/perception/models/pedestrian_detection_model.pt")
+        self.inferencer = MMPoseInferencer('human')
 
 
     def image_callback(self, msg : Image):
@@ -51,7 +53,8 @@ class PedestrianIntentToEnterRoad(Node):
             xywh = result.boxes.xywh
             center_x, center_y, width, height = xywh
 
-            # TODO: use MMPose to detect whether the pedestrian is facing sideways
+            direction_facing = ""
+
             xyxy = result.boxes.xyxy
             TLx, TLy, BRx, BRy = xyxy
 
@@ -59,25 +62,39 @@ class PedestrianIntentToEnterRoad(Node):
             cropped_img = image_to_crop[TLy:BRy, TLx:BRx].copy()
             image_of_person = cv2.imdecode(cropped_img, cv2.IMREAD_COLOR)
 
-            # NOTE: the full image has been cropped to only have the person of interest. Now, use this image to determine direction person is facing
-            
+            result_generator = self.inferencer(image_of_person, show=False)
+            pose_estimation_result = next(result_generator)
 
-            # TODO: if the pedestrian is facing sideways, determine if that is towards or away from the road
-            # NOTE: For this, determine which half of the image the pedestrian is on. Left half facing right and right half facing left is considered towards road
+            nose_keypoint = pose_estimation_result["predictions"][0][0]["keypoints"][0]
+            left_eye_keypoint = pose_estimation_result["predictions"][0][0]["keypoints"][1]
+            right_eye_keypoint = pose_estimation_result["predictions"][0][0]["keypoints"][2]
 
-            # for pedestrians facing the road, determine the distance between them and the road
-            horizontal_dist = self.calculate_horizontal_distance()
+            if ((nose_keypoint[0] > left_eye_keypoint[0]) and (nose_keypoint[0] > right_eye_keypoint[0])):
+                direction_facing = "RIGHT"
+            elif ((nose_keypoint[0] < left_eye_keypoint[0]) and (nose_keypoint[0] < right_eye_keypoint[0])):
+                direction_facing = "LEFT"
+            else:
+                continue
 
-            # create a PedestrianInfo message object for the pedestrian and append to the detections array
-            pedestrian_object = PedestrianInfo()
+            height, width, channels = self.image.shape
+            midpoint_x = width / 2
 
-            pedestrian_object.x = center_x
-            pedestrian_object.y = center_y
-            pedestrian_object.width = width
-            pedestrian_object.height = height
-            pedestrian_object.distance = horizontal_dist
+            if (((direction_facing == "RIGHT") and (center_x < midpoint_x)) or ((direction_facing == "LEFT") and (center_x > midpoint_x))):
+                # for pedestrians facing the road, determine the distance between them and the road
+                horizontal_dist = self.calculate_horizontal_distance()
 
-            pedestrian_detections.append(pedestrian_object)
+                # create a PedestrianInfo message object for the pedestrian and append to the detections array
+                pedestrian_object = PedestrianInfo()
+
+                pedestrian_object.x = center_x
+                pedestrian_object.y = center_y
+                pedestrian_object.width = width
+                pedestrian_object.height = height
+                pedestrian_object.distance = horizontal_dist
+
+                pedestrian_detections.append(pedestrian_object)
+            else:
+                continue
 
         # create and publish a PedestrianInfoDetections message
         detections_msg = PedestrianInfoDetections()
