@@ -127,6 +127,8 @@ RUN apt-get update && apt update && apt upgrade -y && \
     ros-humble-vision-opencv \
     #
     software-properties-common \
+    #
+    libopen3d-dev\
     # cleanup to make image smaller
     && apt clean && rm -rf /var/lib/apt/lists/*
 
@@ -149,7 +151,7 @@ RUN pip3 install \
     # Scientific Computing - used widely
     numpy==1.23.5 \
     #
-    open3d==0.18.0 \
+    open3d==0.19.0 \
     #
     opencv-python==4.10.0.84 \
     #
@@ -211,9 +213,8 @@ RUN pip3 install \
     # six>=1.5 \
     # mmcls \
     easydict==1.13 \
-    kiss-icp==1.0.0 \
     g2o-python==0.0.12 \
-    rosbags==0.10.4
+    rosbags==0.10.4 
 
 # Install Black for Python code formatting.
 RUN pip3 install black==24.10.0
@@ -224,16 +225,6 @@ RUN mim install mmengine
 RUN mim install 'mmcv>=2.0.0rc4'
 RUN mim install 'mmdet>=3.0.0'
 RUN mim install "mmdet3d>=1.1.0"
-
-# install loop closure package "MapClosures"
-# this issue was addressed here: https://github.com/abetlen/llama-cpp-python/issues/707
-RUN sudo apt remove python3-pathspec -y
-RUN pip3 install --user pathspec yamllint
-RUN git clone https://github.com/PRBonn/MapClosures.git
-WORKDIR MapClosures
-RUN cmake -B build -S cpp
-RUN cmake --build build -j8
-RUN make
 
 WORKDIR /
 
@@ -255,8 +246,11 @@ RUN usermod -a -G tty root
 # USER docker
 
 ENV ROS_VERSION 2
-
 WORKDIR /navigator
+RUN rm -rf kiss-icp
+RUN git clone https://github.com/pulipakaa24/kiss-icp.git && cd kiss-icp && make editable
+RUN pip3 install map-closures==2.0.2 kiss-slam==0.0.2
+
 COPY ./docker/entrypoint.sh /opt/entrypoint.sh
 
 ENTRYPOINT [ "/opt/entrypoint.sh" ]
