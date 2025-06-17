@@ -5,6 +5,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 from cv_bridge import CvBridge
 import numpy as np
+from skimage.draw import line
 
 class OccupancyGridNode(Node):
     def __init__(self):
@@ -22,53 +23,64 @@ class OccupancyGridNode(Node):
         self.depth_image = None
 
         print("Occupancy Grid Node Started!")
-    
+
     def process_segmentation(self, msg):
-        #receive segmentation mask
         self.segmentation_mask = self.bridge.imgmsg_to_cv2(msg, "mono8")
         print(f"Segmentation Mask Received: Shape={self.segmentation_mask.shape}, Min={np.min(self.segmentation_mask)}, Max={np.max(self.segmentation_mask)}")
         self.generate_occupancy_grid()
 
     def process_depth(self, msg):
-        #receive depth map
         self.depth_image = self.bridge.imgmsg_to_cv2(msg, "32FC1")
         print(f"Depth Image Received: Shape={self.depth_image.shape}, Min={np.min(self.depth_image)}, Max={np.max(self.depth_image)}")
         self.generate_occupancy_grid()
+
+    def raycast_fill(self, grid, origin, free_cells):
+        for fx, fy in free_cells:
+            rr, cc = line(origin[1], origin[0], fy, fx)
+            for y, x in zip(rr, cc):
+                if 0 <= y < grid.shape[0] and 0 <= x < grid.shape[1]:
+                    grid[y, x] = 0  # mark as free
+        return grid
 
     def generate_occupancy_grid(self):
         if self.segmentation_mask is None or self.depth_image is None:
             print("Segmentation or Depth Image Not Available Yet!")
             return
 
-        #create empty grid of -1s
-        grid_size = self.segmentation_mask.shape  # Match segmentation mask size
+        grid_size = self.segmentation_mask.shape
         resolution = 0.2
-        occupancy_grid = np.ones(grid_size, dtype=np.int8) * -1  # Initialize to unknown (-1)
+        occupancy_grid = np.ones(grid_size, dtype=np.int8) * -1
 
-        print(f"Generating Occupancy Grid: Size={grid_size}")
+        origin = (grid_size[1] // 2, 0)
+        free_cells = []
+        occupied_cells = []
 
-        found_drivable = False  # Track if any drivable surface was found
-
-        #loop through each grid cell
         for y in range(grid_size[0]):
             for x in range(grid_size[1]):
                 seg_value = self.segmentation_mask[y, x]
                 depth_value = self.depth_image[y, x]
-                if seg_value == 255:  # if segmented value is drivable (white)
-                    found_drivable = True  #at least one drivable point exists
 
-                    if depth_value < 10.0:  #free space
-                        occupancy_grid[y, x] = 0
-                    elif depth_value >= 3.0:  #occupied space
-                        occupancy_grid[y, x] = 100
+                if depth_value <= 0:
+                    continue
 
-        # Debugging: Check if we found any drivable surface
-        if not found_drivable:
-            print("WARNING: No drivable pixels found in segmentation mask!")
+                zCoord = depth_value
+                xCoord = (x - 512) * zCoord / 470
 
-        print(f"Occupancy Grid Values: Min={np.min(occupancy_grid)}, Max={np.max(occupancy_grid)}")
+                u = int((xCoord + (grid_size[1] * resolution / 2)) / resolution)
+                v = int(zCoord / resolution)
 
-        # Create OccupancyGrid message
+                if 0 <= u < grid_size[1] and 0 <= v < grid_size[0]:
+                    if seg_value > 0:
+                        free_cells.append((u, v))
+                    else:
+                        occupied_cells.append((u, v))
+
+        occupancy_grid = self.raycast_fill(occupancy_grid, origin, free_cells)
+
+        for u, v in occupied_cells:
+            if 0 <= u < grid_size[1] and 0 <= v < grid_size[0]:
+                occupancy_grid[v, u] = 1
+
         msg = OccupancyGrid()
         msg.header.frame_id = "map"
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -79,7 +91,6 @@ class OccupancyGridNode(Node):
 
         self.publisher.publish(msg)
         print("Published Occupancy Grid.")
-
 
 
 def main(args=None):
