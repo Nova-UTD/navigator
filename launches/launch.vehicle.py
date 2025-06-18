@@ -66,8 +66,8 @@ def generate_launch_description():
                         # PERCEPTION
                         *perception_launch_entities,
                         # PLANNING
-                        routing_monitor,
-                        # routing_hardcoded,  # Use this to load a manual route saved as a csv. Comment out routing_monitor
+                        # routing_monitor,
+                        routing_hardcoded,  # Use this to load a manual route saved as a csv. Comment out routing_monitor
                         grid_route_costmap,
                         grid_summation,
                         # junction_manager,

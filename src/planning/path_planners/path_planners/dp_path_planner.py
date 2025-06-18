@@ -61,22 +61,6 @@ class DPPathPlanner:
         self.policy = None  # Grid of optimal actions
         self.costmap_data = None  # The current costmap data
 
-    def pad_obstacles(self, cmap, threshold, padding):
-        """Apply padding to obstacles in the costmap."""
-        # In grayscale images, black (0) is free space, white (255/100) is obstacle
-        obstacles = np.zeros_like(cmap)
-        obstacles[cmap >= threshold] = 1  # Mark obstacles
-        
-        # Expand obstacles using binary dilation
-        struct2 = scipy.ndimage.generate_binary_structure(2, 2)  # 3x3 grid all true
-        obstacles = scipy.ndimage.binary_dilation(obstacles, structure=struct2, iterations=padding).astype(cmap.dtype)
-        
-        # Create padded costmap - set obstacle areas to 100 (white)
-        padded_costmap = cmap.copy()
-        padded_costmap[obstacles > 0] = 100
-        
-        return padded_costmap
-
     def run_value_iteration(self, start_i, start_j, goal_i, goal_j):
         """Run an improved value iteration algorithm for dynamic programming."""
         height, width = self.costmap_data.shape
@@ -405,40 +389,6 @@ class DPPathPlanner:
                 y0 += sy
 
         return points
-
-    # Replace the current smooth_path method with the rolling_smoothing method
-    def rolling_smoothing(self, path, look_ahead=2, depth=3):
-        """
-        Smooths a path by moving each point toward a future point.
-        
-        Parameters:
-        - path: List of (row, col) tuples representing the path
-        - look_ahead: How many points ahead to look
-        - depth: Number of smoothing iterations
-        
-        Returns:
-        - Smoothed path as list of (row, col) tuples
-        """
-        if path is None:
-            return None
-            
-        if len(path) < look_ahead:
-            return path
-
-        t = 1.0/look_ahead
-        for d in range(depth):
-            new_path = [path[0]]
-            for i in range(1, len(path)-look_ahead):
-                x0 = path[i-1][0]
-                y0 = path[i-1][1]
-                
-                dx = path[i-1+look_ahead][0] - x0
-                dy = path[i-1+look_ahead][1] - y0
-                new_path.append((x0 + t*dx, y0 + t*dy))
-            new_path.extend(path[-look_ahead:])
-            path = new_path
-        
-        return path
 
     # Keep the existing smooth_path method but rename it to avoid conflicts
     def adaptive_smooth_path(self, path):
