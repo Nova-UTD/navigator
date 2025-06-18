@@ -130,17 +130,6 @@ RUN apt-get update && apt update && apt upgrade -y && \
     # cleanup to make image smaller
     && apt clean && rm -rf /var/lib/apt/lists/*
    
-# Install Python 3.11
-RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get update && \
-    apt-get install -y python3.11 python3.11-dev python3.11-venv python3.11-distutils && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 2 && \
-    update-alternatives --set python3 /usr/bin/python3.11 && \
-    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
-    
 # install cmake 3.24+
 RUN wget https://github.com/Kitware/CMake/releases/download/v3.24.4/cmake-3.24.4-linux-x86_64.tar.gz
 RUN tar -zxvf cmake-3.24.4-linux-x86_64.tar.gz
@@ -242,16 +231,17 @@ RUN mim install 'mmcv>=2.0.0rc4'
 RUN mim install 'mmdet>=3.0.0'
 RUN mim install "mmdet3d>=1.1.0"
 
+
 # install loop closure package "MapClosures"
 # this issue was addressed here: https://github.com/abetlen/llama-cpp-python/issues/707
-RUN python3 -m pip uninstall -y exceptiongroup
-RUN sudo apt remove python3-pathspec -y
-RUN pip3 install --no-cache-dir pathspec yamllint "exceptiongroup<=1.2.0"
-RUN git clone https://github.com/PRBonn/MapClosures.git
-WORKDIR MapClosures
-RUN cmake -B build -S cpp
-RUN cmake --build build -j8
-RUN make
+# RUN python3 -m pip uninstall -y exceptiongroup
+# RUN sudo apt remove python3-pathspec -y
+# RUN pip3 install --no-cache-dir pathspec yamllint "exceptiongroup<=1.2.0"
+# RUN git clone https://github.com/PRBonn/MapClosures.git
+# WORKDIR MapClosures
+# RUN cmake -B build -S cpp
+# RUN cmake --build build -j8
+# RUN make
 
 WORKDIR /
 
