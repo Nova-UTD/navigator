@@ -22,7 +22,7 @@ from PIL import Image
 # Add the parent directory to the path so we can import the neural network module
 sys.path.append('/navigator/src/planning/path_planners/path_planners')
 # Import the correct model class name: UNet
-from neuralnet import UNet
+from neural_network_training import UNet
 
 class NeuralPathPlanner:
     def __init__(self, model_path=None):
@@ -50,21 +50,6 @@ class NeuralPathPlanner:
                 print(f"An unexpected error occurred loading the model: {e}")
         else:
             print(f"Model file not found at {model_path}. Planner initialized with untrained UNet.")
-
-    def pad_obstacles(self, cmap, threshold, padding):
-        # In grayscale images, black (0) is obstacle, white (255/100) is free space
-        obstacles = 0*cmap
-        # finds the location of obstacles as binary values
-        obstacles[np.where(cmap <= threshold)] = 1 
-        # expands the obstacles using a given structure, repeating this padding number of times
-        struct2 = scipy.ndimage.generate_binary_structure(2, 2)  # 3x3 grid all true
-        obstacles = scipy.ndimage.binary_dilation(obstacles, structure=struct2, iterations=padding).astype(cmap.dtype)
-        
-        # Create padded costmap - set obstacle areas to 0 (black)
-        padded_costmap = cmap.copy()
-        padded_costmap[obstacles > 0] = 0
-        
-        return padded_costmap
     
     def predict_path(self, costmap, start, end):
         """
@@ -133,33 +118,3 @@ class NeuralPathPlanner:
             sorted_path.append(end)
             
         return sorted_path
-    
-    def rolling_smoothing(self, path, look_ahead=2, depth=3):
-        """
-        Smooths a path by moving each point toward a future point.
-        
-        Parameters:
-        - path: List of (row, col) tuples representing the path
-        - look_ahead: How many points ahead to look
-        - depth: Number of smoothing iterations
-        
-        Returns:
-        - Smoothed path as list of (row, col) tuples
-        """
-        if len(path) < look_ahead:
-            return path
-
-        t = 1.0/look_ahead
-        for d in range(depth):
-            new_path = [path[0]]
-            for i in range(1, len(path)-look_ahead):
-                x0 = path[i-1][0]
-                y0 = path[i-1][1]
-                
-                dx = path[i-1+look_ahead][0] - x0
-                dy = path[i-1+look_ahead][1] - y0
-                new_path.append((x0 + t*dx, y0 + t*dy))
-            new_path.extend(path[-look_ahead:])
-            path = new_path
-        
-        return path

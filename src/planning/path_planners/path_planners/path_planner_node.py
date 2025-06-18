@@ -48,6 +48,79 @@ from path_planners.dp_path_planner import DPPathPlanner
 from path_planners.neural_network_path_planner import NeuralPathPlanner
 from path_planners.trrtstar_path_planner import TRRTStarPathPlanner
 
+def pad_obstacles(cmap, threshold, padding):
+    """Apply padding to obstacles in the costmap."""
+    obstacles = 0 * cmap
+    # Find the location of obstacles as binary values
+    obstacles[np.where(cmap >= threshold)] = 1
+    # Expand obstacles using binary dilation
+    #struct1 = scipy.ndimage.generate_binary_structure(2, 1)  # 3x3 grid true in + shape
+    struct2 = scipy.ndimage.generate_binary_structure(2, 2)  # 3x3 grid all true
+    obstacles = scipy.ndimage.binary_dilation(obstacles, structure=struct2, iterations=padding).astype(cmap.dtype)
+    
+    # Create padded costmap - set obstacle areas to 100 (white)
+    padded_costmap = cmap.copy()
+    padded_costmap[obstacles > 0] = 100
+    
+    return padded_costmap
+
+def rolling_smoothing(path, look_ahead=2, depth=3):
+    """
+    Smooths a path by moving each point toward a future point.
+    
+    Parameters:
+    - path: List of (row, col) tuples representing the path
+    - look_ahead: How many points ahead to look
+    - depth: Number of smoothing iterations
+    
+    Returns:
+    - Smoothed path as list of (row, col) tuples
+    """
+    if len(path) < look_ahead:
+        return path
+
+    t = 1.0/look_ahead
+    for d in range(depth):
+        new_path = [path[0]]
+        for i in range(1, len(path)-look_ahead):
+            x0 = path[i-1][0]
+            y0 = path[i-1][1]
+            
+            dx = path[i-1+look_ahead][0] - x0
+            dy = path[i-1+look_ahead][1] - y0
+            new_path.append((x0 + t*dx, y0 + t*dy))
+        new_path.extend(path[-look_ahead:])
+        path = new_path
+    
+    return path
+
+def spline_smoothing(path, s=10):
+    k = np.arange(len(path))
+    x = np.array([p[0] for p in path])
+    y = np.array([p[1] for p in path])
+
+    tck_x = splrep(k, x, s=s)
+    tck_y = splrep(k, y, s=s)
+    xnew = BSpline(*tck_x)(k)
+    ynew = BSpline(*tck_y)(k)
+    return [ (xnew[i],ynew[i]) for i in range(len(path)) ]
+
+# see: https://www.cs.unc.edu/~dm/UNC/COMP258/LECTURES/Chaikins-Algorithm.pdf
+def chaikin_smoothing(path, depth=2):
+    
+    for d in range(depth):
+        new_path = [ path[0] ] # keep the first point in the path
+        for i in range(1,len(path)):
+            dx = path[i][0] - path[i-1][0]
+            dy = path[i][1] - path[i-1][1]
+
+            # interpolate 1/4 and 3/4 of the way along the segement
+            new_path.append( (path[i-1][0] + 0.25*dx, path[i-1][1] + 0.25*dy) )
+            new_path.append( (path[i-1][0] + 0.75*dx, path[i-1][1] + 0.75*dy) )
+        new_path.append( path[-1] ) # keep the last point in the path
+        path = new_path
+    
+    return path
 
 class PathPlannerNode(Node):
     def __init__(self):
@@ -63,6 +136,11 @@ class PathPlannerNode(Node):
         # Path smoothing parameters
         self.smoothing_look_ahead = 2
         self.smoothing_depth = 3
+
+        # Parameters
+        self.declare_parameter('planner', "dijkstra")
+        self.planner_type_obj = self.get_parameter('planner')
+        self.planner_type = self.planner_type_obj.value
 
         # TF setup
         self.tf_buffer = Buffer()
@@ -96,12 +174,16 @@ class PathPlannerNode(Node):
         )
 
         # Initialize path planners
-        # UNCOMMENT THE PLANNER YOU WANT TO USE
-        self.planner = ARAStarPlanner()
-        # self.planner = DijkstraPathPlanner()
-        # self.planner = DPPathPlanner()
-        # self.planner = NeuralPathPlanner()
-        # self.planner = TRRTStarPathPlanner()
+        if self.planner_type == 'dijkstra':
+            self.planner = DijkstraPathPlanner()
+        elif self.planner_type == 'ara-star':
+            self.planner = ARAStarPlanner()
+        elif self.planner_type == 'dynamic-programming':
+            self.planner = DPPathPlanner()
+        elif self.planner_type == 'neural-network':
+            self.planner = NeuralPathPlanner()
+        elif self.planner_type == 'trrt-star':
+            self.planner = TRRTStarPathPlanner()
 
         self.get_logger().info(f"Path Planner Node initialized using {self.planner.__class__.__name__}")
 
@@ -159,7 +241,7 @@ class PathPlannerNode(Node):
         )
 
         # Pad obstacles for safety
-        padded_costmap = self.pad_obstacles(costmap_np, self.obstacle_threshold, self.obstacle_padding)
+        padded_costmap = pad_obstacles(costmap_np, self.obstacle_threshold, self.obstacle_padding)
 
         # Plan path using the selected planner
         path = None
@@ -198,7 +280,7 @@ class PathPlannerNode(Node):
             return
 
         # Apply path smoothing
-        path = self.planner.rolling_smoothing(path, look_ahead=self.smoothing_look_ahead, depth=self.smoothing_depth)
+        path = rolling_smoothing(path, look_ahead=self.smoothing_look_ahead, depth=self.smoothing_depth)
         
         self.get_logger().debug(
             f"Path ({start_i},{start_j})-->({goal_i},{goal_j}) returned with {len(path)} elements"
@@ -232,21 +314,6 @@ class PathPlannerNode(Node):
 
         # Publish the path
         self.path_pub.publish(path_msg)
-
-    def pad_obstacles(self, cmap, threshold, padding):
-        """Apply padding to obstacles in the costmap."""
-        obstacles = 0 * cmap
-        # Find the location of obstacles as binary values
-        obstacles[np.where(cmap >= threshold)] = 1
-        # Expand obstacles using binary dilation
-        struct2 = scipy.ndimage.generate_binary_structure(2, 2)  # 3x3 grid all true
-        obstacles = scipy.ndimage.binary_dilation(obstacles, structure=struct2, iterations=padding).astype(cmap.dtype)
-        
-        # Create padded costmap - set obstacle areas to 100 (white)
-        padded_costmap = cmap.copy()
-        padded_costmap[obstacles > 0] = 100
-        
-        return padded_costmap
 
 
 def main(args=None):

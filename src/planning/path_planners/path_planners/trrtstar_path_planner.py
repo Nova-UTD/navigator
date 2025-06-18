@@ -21,16 +21,6 @@ class TRRTStarPathPlanner:
     def __init__(self):
         pass
 
-    def pad_obstacles(self, cmap, threshold, padding):
-        import scipy.ndimage
-        obstacles = 0 * cmap
-        obstacles[np.where(cmap >= threshold)] = 1
-        struct2 = scipy.ndimage.generate_binary_structure(2, 2)
-        obstacles = scipy.ndimage.binary_dilation(obstacles, structure=struct2, iterations=padding).astype(cmap.dtype)
-        padded_costmap = cmap.copy()
-        padded_costmap[obstacles > 0] = 100
-        return padded_costmap
-
     def trrtstar_path(self, costmap, start, end, obstacle_threshold=25, max_iterations=30000, step_size=2, goal_sample_rate=0.1, search_radius=35, rewire_factor=2.0, temp_init=2.0, temp_factor=1.0):
         """
         TRRT* (Transition-based Rapidly-exploring Random Tree Star) path planning algorith.
@@ -344,20 +334,4 @@ class TRRTStarPathPlanner:
         # Reverse path to get start-to-goal order
         path.reverse()
         
-        return path
-
-    def rolling_smoothing(self, path, look_ahead=2, depth=3):
-        if len(path) < look_ahead:
-            return path
-        t = 1.0 / look_ahead
-        for d in range(depth):
-            new_path = [path[0]]
-            for i in range(1, len(path) - look_ahead):
-                x0 = path[i - 1][0]
-                y0 = path[i - 1][1]
-                dx = path[i - 1 + look_ahead][0] - x0
-                dy = path[i - 1 + look_ahead][1] - y0
-                new_path.append((x0 + t * dx, y0 + t * dy))
-            new_path.extend(path[-look_ahead:])
-            path = new_path
         return path
