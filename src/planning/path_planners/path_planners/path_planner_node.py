@@ -8,7 +8,7 @@ Unified path planner node that incorporates multiple planning algorithms:
 - ARA* path planner
 - Dijkstra path planner
 - Dynamic Programming path planner
-- Neural Network path planner
+- Neural Network path planner (pth model file is found in Nova Repository: https://github.com/Nova-UTD/neural_network_path_planner_training)
 - TRRT* path planner
 
 Subscribes to:
