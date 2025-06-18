@@ -145,6 +145,12 @@ routing_monitor = Node(
     executable='routing_monitor'
 )
 
+routing_hardcoded = Node(
+    package='helpers',
+    executable='routing_hardcoded',
+    parameters=[{'filename': "/navigator/Route.csv"}]
+)
+
 rqt = Node(
     package='rqt_gui',
     executable='rqt_gui',
