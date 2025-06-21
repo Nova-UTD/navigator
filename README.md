@@ -1,5 +1,8 @@
 ## This branch aims to solve SLAM and map-based-localization.
 
+### setup
+the dockerfile in this branch should build everything properly. Run ```docker compose build navigator_carla``` Email adipu@utexas.edu if you have issues.
+
 ### src/lidar_SLAM
 - Ros2 package that uses ```combined_map.pcd``` annd ```init.txt``` located in ```resource/```. To replace this, combined_map.pcd must be replaced with another pointcloud file of the same name and extension. Since the file in the build directory is referenced, you must ```colcon build``` if manually replacing the ```combined_map.pcd``` and ```init.txt``` files.
 - The localization node is automatically run when ```launch launches/launch.carla.py``` is executed, but it can also be run by executing ```run lidar_localization localization_node```
