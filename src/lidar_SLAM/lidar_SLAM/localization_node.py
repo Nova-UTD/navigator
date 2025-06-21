@@ -15,14 +15,12 @@ import ros2_numpy as rnp
 from kiss_icp.config import KISSConfig
 from kiss_icp.kiss_icp import KissICP
 
-#GPS to Map frame offset
-X0 = 25.099977464304963
-Y0 = -306.4997555049624
-Z0 = 0.7
-
 #Path to Global PCD map
-PCD = str(os.path.join(get_package_share_directory('lidar_localization'),
+PCD = str(os.path.join(get_package_share_directory('lidar_SLAM'),
                    'resource', 'combined_map.pcd'))
+
+INIT = str(os.path.join(get_package_share_directory('lidar_SLAM'),
+                   'resource', 'init.txt'))
 
 class LocalizationNode(Node):
   def __init__(self):
@@ -30,6 +28,7 @@ class LocalizationNode(Node):
     self.kiss_config = KISSConfig()
     self.kiss_config.mapping.voxel_size = 1.0
     self.odometry = KissICP(self.kiss_config, PCD)
+    self.odometry.last_pose = np.loadtxt(INIT)
     self.pcdSub = self.create_subscription(PointCloud2, '/lidar/filtered', self.register, 1)
     self.stampPosePub = self.create_publisher(Odometry, '/localized_pose', 1)
   
@@ -48,9 +47,9 @@ class LocalizationNode(Node):
     pub_msg.header.frame_id = "map"
     pub_msg.child_frame_id = "lidarCar"
 
-    pub_msg.pose.pose.position.x = current_pose[0, 3] + X0
-    pub_msg.pose.pose.position.y = current_pose[1, 3] + Y0
-    pub_msg.pose.pose.position.z = current_pose[2, 3] + Z0
+    pub_msg.pose.pose.position.x = current_pose[0, 3]
+    pub_msg.pose.pose.position.y = current_pose[1, 3]
+    pub_msg.pose.pose.position.z = current_pose[2, 3]
 
     self.get_logger().info("X: " + str(pub_msg.pose.pose.position.x) + "\n" + 
                            "Y: " + str(pub_msg.pose.pose.position.y) + "\n" + 

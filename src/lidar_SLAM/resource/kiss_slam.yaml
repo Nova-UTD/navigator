@@ -1,0 +1,41 @@
+out_dir: /navigator/install/lidar_localization/share/lidar_SLAM/resource/slam_output
+
+odometry:
+    preprocessing:
+        max_range: 100.0
+        min_range: 0.0
+        deskew: true
+    registration:
+        max_num_iterations: 500
+        convergence_criterion: 0.0001
+        max_num_threads: 0
+    mapping:
+        voxel_size: null
+        max_points_per_voxel: 20
+    adaptive_threshold:
+        fixed_threshold: null
+        initial_threshold: 2.0
+        min_motion_th: 0.1
+
+local_mapper:
+    voxel_size: 0.5
+    splitting_distance: 100.0
+
+occupancy_mapper:
+    free_threshold: 0.2
+    occupied_threshold: 0.65
+    resolution: 0.5
+    max_range: null
+    z_min: 0.1
+    z_max: 0.5
+
+loop_closer:
+    detector:
+        density_map_resolution: 0.5
+        density_threshold: 0.05
+        hamming_distance_threshold: 50
+        inliers_threshold: 5
+    overlap_threshold: 0.4
+
+pose_graph_optimizer:
+    max_iterations: 10
