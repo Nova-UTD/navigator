@@ -7,6 +7,8 @@ Author: Pranav Boyapati
 # import libraries
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from sensor_msgs.msg import Image
 from navigator_msgs.msg import PedestrianInfoDetections
 from navigator_msgs.msg import PedestrianInfo
@@ -31,8 +33,8 @@ class PedestrianIntentToEnterRoad(Node):
         self.inferencer = MMPoseInferencer('human')
         self.binary_mask = None
 
-        FACING_RIGHT = "RIGHT"
-        FACING_LEFT = "LEFT"
+        self.FACING_RIGHT = "RIGHT"
+        self.FACING_LEFT = "LEFT"
 
 
     def image_callback(self, msg : Image):
@@ -61,52 +63,54 @@ class PedestrianIntentToEnterRoad(Node):
 
         # this executes for each pedestrian detected by the model
         for result in results:
-            # get the location and dimensions of the pedestrian bounding box
-            xywh = result.boxes.xywh
-            center_x, center_y, width, height = xywh
+            for i in range(len(results[0].boxes)):
+                try:
+                    # get the location and dimensions of the pedestrian bounding box
+                    xywh = result.boxes.xywh[i].cpu().numpy()
+                    center_x, center_y, width, height = xywh
 
-            direction_facing = ""
+                    direction_facing = ""
 
-            xyxy = result.boxes.xyxy
-            TLx, TLy, BRx, BRy = xyxy
+                    xyxy = result.boxes.xyxy[i].cpu().numpy()
+                    TLx, TLy, BRx, BRy = xyxy
 
-            image_to_crop = cv2.imread(self.image)
-            cropped_img = image_to_crop[TLy:BRy, TLx:BRx].copy()
-            image_of_person = cv2.imdecode(cropped_img, cv2.IMREAD_COLOR)
+                    image_of_person = self.image[int(TLy):int(BRy), int(TLx):int(BRx)].copy()
 
-            result_generator = self.inferencer(image_of_person, show=False)
-            pose_estimation_result = next(result_generator)
+                    result_generator = self.inferencer(image_of_person, show=False)
+                    pose_estimation_result = next(result_generator)
 
-            nose_keypoint = pose_estimation_result["predictions"][0][0]["keypoints"][0]
-            left_eye_keypoint = pose_estimation_result["predictions"][0][0]["keypoints"][1]
-            right_eye_keypoint = pose_estimation_result["predictions"][0][0]["keypoints"][2]
+                    nose_keypoint = pose_estimation_result["predictions"][0][0]["keypoints"][0]
+                    left_eye_keypoint = pose_estimation_result["predictions"][0][0]["keypoints"][1]
+                    right_eye_keypoint = pose_estimation_result["predictions"][0][0]["keypoints"][2]
 
-            if ((nose_keypoint[0] > left_eye_keypoint[0]) and (nose_keypoint[0] > right_eye_keypoint[0])):
-                direction_facing = FACING_RIGHT
-            elif ((nose_keypoint[0] < left_eye_keypoint[0]) and (nose_keypoint[0] < right_eye_keypoint[0])):
-                direction_facing = FACING_LEFT
-            else:
-                continue
+                    if ((nose_keypoint[0] > left_eye_keypoint[0]) and (nose_keypoint[0] > right_eye_keypoint[0])):
+                        direction_facing = self.FACING_RIGHT
+                    elif ((nose_keypoint[0] < left_eye_keypoint[0]) and (nose_keypoint[0] < right_eye_keypoint[0])):
+                        direction_facing = self.FACING_LEFT
+                    else:
+                        continue
 
-            height, width, channels = self.image.shape
-            midpoint_x = width / 2
+                    height, width, channels = self.image.shape
+                    midpoint_x = width / 2
 
-            if (((direction_facing == FACING_RIGHT) and (center_x < midpoint_x)) or ((direction_facing == FACING_LEFT) and (center_x > midpoint_x))):
-                # for pedestrians facing the road, determine the distance between them and the road
-                horizontal_dist = self.calculate_horizontal_distance(bounding_box_coordinates=xyxy, direction_facing=direction_facing)
+                    if (((direction_facing == self.FACING_RIGHT) and (center_x < midpoint_x)) or ((direction_facing == self.FACING_LEFT) and (center_x > midpoint_x))):
+                        # for pedestrians facing the road, determine the distance between them and the road
+                        horizontal_dist = self.calculate_horizontal_distance(bounding_box_coordinates=xyxy, direction_facing=direction_facing)
 
-                # create a PedestrianInfo message object for the pedestrian and append to the detections array
-                pedestrian_object = PedestrianInfo()
+                        # create a PedestrianInfo message object for the pedestrian and append to the detections array
+                        pedestrian_object = PedestrianInfo()
 
-                pedestrian_object.x = center_x
-                pedestrian_object.y = center_y
-                pedestrian_object.width = width
-                pedestrian_object.height = height
-                pedestrian_object.distance = horizontal_dist
+                        pedestrian_object.x = float(center_x)
+                        pedestrian_object.y = float(center_y)
+                        pedestrian_object.width = float(width)
+                        pedestrian_object.height = float(height)
+                        pedestrian_object.distance = float(horizontal_dist)
 
-                pedestrian_detections.append(pedestrian_object)
-            else:
-                continue
+                        pedestrian_detections.append(pedestrian_object)
+                    else:
+                        continue
+                except Exception as e:
+                    self.get_logger().error(f"Error detecting pedestrians: {e}")
 
         # create and publish a PedestrianInfoDetections message
         detections_msg = PedestrianInfoDetections()
@@ -122,8 +126,8 @@ class PedestrianIntentToEnterRoad(Node):
         num_pixels = 0
         TLx, TLy, BRx, BRy = bounding_box_coordinates
 
-        if (self.segmentation_mask is not None):
-            if (direction_facing == FACING_RIGHT):
+        if (self.binary_mask is not None):
+            if (direction_facing == self.FACING_RIGHT):
                 while (True):
                     pixel_color = self.binary_mask[BRx + num_pixels, BRy]
 
@@ -131,7 +135,7 @@ class PedestrianIntentToEnterRoad(Node):
                         break
                     else:
                         num_pixels += 1
-            elif (direction_facing == FACING_LEFT):
+            elif (direction_facing == self.FACING_LEFT):
                 while (True):
                     pixel_color = self.binary_mask[TLx - num_pixels, BRy]
 
@@ -147,13 +151,16 @@ class PedestrianIntentToEnterRoad(Node):
 
             return hor_dist
         else:
-            return
+            return 1000000
 
 
 def main(args=None):
     rclpy.init(args=args)
     pedestrian_intent_to_enter_road = PedestrianIntentToEnterRoad()
-    rclpy.spin(pedestrian_intent_to_enter_road)
+    executor = MultiThreadedExecutor()
+    executor.add_node(pedestrian_intent_to_enter_road)
+    executor.spin()
+    pedestrian_intent_to_enter_road.destroy_node()
     rclpy.shutdown()
 
 

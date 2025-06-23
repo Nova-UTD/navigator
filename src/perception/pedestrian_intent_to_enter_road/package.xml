@@ -14,6 +14,8 @@
 
   <depend>rclpy</depend>
   <depend>rclpy.node</depend>
+  <depend>rclpy.executors</depend>
+  <depend>rclpy.callback_groups</depend>
   <depend>sensor_msgs.msg</depend>
   <depend>cv_bridge</depend>
   <depend>navigator_msgs.msg</depend>
