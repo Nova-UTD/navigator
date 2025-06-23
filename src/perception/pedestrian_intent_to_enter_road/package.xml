@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name></name>
+  <name>pedestrian_intent_to_enter_road</name>
   <version>1.0.0</version>
-  <description></description>
+  <description>This node identifies pedestrians and determines whether they are facing the road and how close to the road they are</description>
   <maintainer email="project.nova@utdallas.edu">root</maintainer>
   <license>MIT License</license>
 
@@ -16,9 +16,10 @@
   <depend>rclpy.node</depend>
   <depend>sensor_msgs.msg</depend>
   <depend>cv_bridge</depend>
-  <depend>navigator_msgs</depend>
+  <depend>navigator_msgs.msg</depend>
   <depend>cv2</depend>
-  <depend>inference_sdk</depend>
+  <depend>ultralytics</depend>
+  <depend>mmpose.apis</depend>
 
   <export>
     <build_type>ament_python</build_type>
