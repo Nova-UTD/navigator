@@ -7,9 +7,9 @@ import cv2
 from ultralytics import YOLO
 import numpy as np
 
-class Pedestrian_Skeleton(Node):
+class PedestrianSkeleton(Node):
     def __init__(self):
-        super().__init__('Pedestrian_Skeleton_detecctor')
+        super().__init__('Pedestrian_Skeleton_detector')
         
         # Subscribe to camera image topic
         self.subscription = self.create_subscription(
@@ -28,7 +28,7 @@ class Pedestrian_Skeleton(Node):
         self.bridge = CvBridge()
 
         # Load YOLOv8 Pose model
-        model_path = 'src/perception/pedestrian_skeleton/pedestrian_skeleton/pedestrian_skeleton.pt'
+        model_path = '/navigator/data/perception/models/pedestrian_skeleton.pt'
         self.model = YOLO(model_path)
 
         # Confidence threshold
@@ -86,13 +86,13 @@ class Pedestrian_Skeleton(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = Pedestrian_Skeleton()
+    pedestrian_skeleton = PedestrianSkeleton()
     
     # Spin the node
-    rclpy.spin(node)
+    rclpy.spin(pedestrian_skeleton)
     
     # Cleanup
-    node.destroy_node()
+    pedestrian_skeleton.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':

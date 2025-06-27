@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>yolov8_pedestrian_skeleton</name>
-  <version>0.0.1</version>
+  <name>pedestrian_skeleton</name>
+  <version>1.0.0</version>
   <description>YOLOv8-based pedestrian skeleton detection in ROS2</description>
   <maintainer email="project.nova@utdallas.edu">root</maintainer>
   <license>MIT License</license>
