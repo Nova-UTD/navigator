@@ -34,4 +34,5 @@ def generate_launch_description():
         # prednet_inference,
         # driveable_area,
         # road_signs_classifier,
+        # pedestrian_skeleton
     ])

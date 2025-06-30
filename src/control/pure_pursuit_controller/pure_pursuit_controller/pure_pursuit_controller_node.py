@@ -29,14 +29,14 @@ class Constants:
     kf: float = 0.1
     # Wheel base (distance between front and rear wheels) in meter
     WHEEL_BASE: float = 3.5
-    # Max throttle and acceleration
-    MAX_THROTTLE = 2
+    # Max throttle and acceleration (out of 1)
+    MAX_THROTTLE = 0.4
     # Max speed in m/s
-    MAX_SPEED: float = 1.5
+    MAX_SPEED: float = 3.5
     # Stopping distance in meters
     # This is the distance from the end of the path at which the vehicle will start to brake.
     STOPPING_DIST: float = 10
-    # Max break possible
+    # Max break possible (out of 1)
     MAX_BREAK: float = 1.0
     # Max steering angle in radians.
     MAX_STEERING_ANGLE = 0.58
@@ -48,6 +48,9 @@ class VehicleState:
     def __init__(self):
         self.pose: Pose | None = None
         self.velocity: float | None = None
+        self.steering_angle: float | None = None
+        self.last_pid_error: float | None = None
+        self.pid_integral_error = 0.0
 
     def loaded(self) -> bool:
         """Check if the vehicle state is loaded with pose and velocity.
@@ -66,16 +69,39 @@ class VehicleState:
         if not self.loaded():
             return
 
-        # Our target speed is the max speed
-        pid_error = Constants.MAX_SPEED - self.velocity
-        if pid_error > 0:
-            throttle = min(pid_error * 0.5, Constants.MAX_THROTTLE)
-            brake = 0.0
-        elif pid_error <= 0:
-            brake = pid_error * Constants.MAX_THROTTLE * -1.0
-            throttle = 0.0
+        target_speed = self.calc_target_speed()
+        pid_error = target_speed - self.velocity
+        d_error = 0.0
+        if self.last_pid_error is not None:
+            d_error = pid_error-self.last_pid_error
+        self.pid_integral_error = self.pid_integral_error + pid_error
 
+        throttle = 0.0
+        brake = 0.0
+        if pid_error > 0:
+            throttle = min(   0.5 * pid_error 
+                            + 0.0 * d_error 
+                            + 0.0 * self.pid_integral_error, # delays in meausuring speed make integral term cause oscillations
+                           Constants.MAX_THROTTLE)
+        # Currently not implementing any braking
+        # elif abs(pid_error)/target_speed >= 0.25: # start braking when error is over 25% of the target speed
+        #     brake = 0.1*abs(pid_error)/target_speed
+
+        self.last_pid_error = pid_error
         return throttle, brake
+
+    def calc_target_speed(self) -> float | None:
+        """ Calculate the target speed based on most recent steering angle
+            @TODO: Eventually move this logic higher up, so that target speed can use the (future) path curvature instead of steering angle
+
+            Returns:
+            float: Target speed or MAX_SPEED if current steering angle is not available.
+        """
+        if self.steering_angle is None:
+            return Constants.MAX_SPEED
+            
+        # Slow down when turning
+        return Constants.MAX_SPEED*math.cos(2.5*self.steering_angle)
 
     def calc_steer(self, target: tuple[float, float]) -> float | None:
         """Calculate the steering angle based on the target point.
@@ -102,8 +128,8 @@ class VehicleState:
         # Delta is derived following this article: https://thomasfermi.github.io/Algorithms-for-Automated-Driving/Control/PurePursuit.html.
 
         # We clip and normalize alpha to a max steering angle, which we believe is ~0.58 as specified by the Unified Controller.
-        clipped_steering_angle = self.steering_angle_to_wheel(-alpha)
-        normalized = clipped_steering_angle / Constants.MAX_STEERING_ANGLE
+        self.steering_angle = self.steering_angle_to_wheel(-alpha)
+        normalized = self.steering_angle / Constants.MAX_STEERING_ANGLE
 
         return normalized
 
