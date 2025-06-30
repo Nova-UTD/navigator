@@ -21,7 +21,7 @@ class LaneTypeDetector(Node):
         super().__init__('lane_type_detector')
 
         #initialize the classification model
-        model_path = '/navigator/data/perception/models/LaneDetector.pt'
+        model_path = '/navigator/data/perception/models/lane_detector.pt'
         try:
             self.get_logger().info(f"Loading YOLO model from: {model_path}")
             self.model = YOLO(model_path)
@@ -77,14 +77,13 @@ class LaneTypeDetector(Node):
                 if (((x1 + x2) / 2) < (400 / 2)):
                     numLanesLeftOfImageCenter += 1
                 
-            if (int(cls) == 4):
-                numLeftTurnLanes += 1
             if (int(cls) == 1):
+                numLeftTurnLanes += 1
+                numTotalLanes += 1
+            if (int(cls) == 4):
                 numRightTurnLanes += 1
+                numTotalLanes += 1
 
-
-            
-            
         print(numTotalLanes)
         print(numLeftTurnLanes)
         print(numRightTurnLanes)
