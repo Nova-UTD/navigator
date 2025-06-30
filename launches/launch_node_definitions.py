@@ -211,3 +211,21 @@ road_signs_classifier = Node(
    	name='road_signs_classifier',
    	parameters=[],
 )
+
+intersection_manager = Node(
+    package='intersection_manager',
+    executable='intersection_manager'
+)
+
+  lane_type_detector = Node(
+   	package='lane_type_detector',
+   	executable='lane_type_detector',
+   	name='lane_type_detector',
+)
+
+pedestrian_skeleton = Node(
+   	package='pedestrian_skeleton',
+   	executable='pedestrian_skeleton',
+   	name='pedestrian_skeleton',
+   	parameters=[],
+)

@@ -1,6 +1,6 @@
 ---
 layout: default
-title: 3D Multi-Object Tracker
+title: Road Signs Classifier
 nav_order: 7
 parent: Perception
 ---
@@ -30,5 +30,3 @@ A ROS Node that uses the inference-sdk to make API calls and classify the road s
 
 ### image_callback(self, msg: Image)
 Takes in a camera image as input, performs a classification by calling the classify_sign(self) function, then publishes the results as a `RoadSignsDetection` message.
-
-Takes in untracked 3D objects as input, performs tracking-by-detection and assigns unique IDs, then publishes the results as an `Object3DArray` message.
