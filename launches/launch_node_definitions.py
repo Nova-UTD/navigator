@@ -207,6 +207,12 @@ road_signs_classifier = Node(
    	parameters=[],
 )
 
+lane_type_detector = Node(
+   	package='lane_type_detector',
+   	executable='lane_type_detector',
+   	name='lane_type_detector',
+)
+
 pedestrian_skeleton = Node(
    	package='pedestrian_skeleton',
    	executable='pedestrian_skeleton',
