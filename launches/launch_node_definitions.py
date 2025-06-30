@@ -206,6 +206,7 @@ road_signs_classifier = Node(
    	name='road_signs_classifier',
    	parameters=[],
 )
+
 image_segmentation = Node(
     package='image_segmentation',
     executable='image_seg_node'
@@ -219,4 +220,22 @@ depth_processing = Node(
 occupancy_grid_node = Node(
     package='occupancy_grid',
     executable='occupancy_grid'
+)
+
+intersection_manager = Node(
+    package='intersection_manager',
+    executable='intersection_manager'
+)
+
+  lane_type_detector = Node(
+   	package='lane_type_detector',
+   	executable='lane_type_detector',
+   	name='lane_type_detector',
+)
+
+pedestrian_skeleton = Node(
+   	package='pedestrian_skeleton',
+   	executable='pedestrian_skeleton',
+   	name='pedestrian_skeleton',
+   	parameters=[],
 )

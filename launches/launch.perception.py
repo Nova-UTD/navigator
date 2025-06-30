@@ -37,4 +37,6 @@ def generate_launch_description():
         image_segmentation, 
         depth_processing, 
         occupancy_grid_node,
+        # lane_type_detector,
+        # pedestrian_skeleton
     ])

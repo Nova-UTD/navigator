@@ -21,7 +21,7 @@ class RoadSignsClassifier(Node):
         super().__init__('road_signs_classifier')
 
         #instantiate model client
-        self.CLIENT = InferenceHTTPClient(api_url="http://localhost:6060", api_key="BmqYjCBXZD1iPIyq09sG")
+        self.CLIENT = InferenceHTTPClient(api_url="http://localhost:9001", api_key="BmqYjCBXZD1iPIyq09sG")
 
         #create subscriptions
         self.camera_sub = self.create_subscription(Image, '/cameras/camera0', self.image_callback, 10)

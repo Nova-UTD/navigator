@@ -70,6 +70,7 @@ def generate_launch_description():
                         routing_hardcoded,  # Use this to load a manual route saved as a csv. Comment out routing_monitor
                         grid_route_costmap,
                         grid_summation,
+                        intersection_manager,
                         # junction_manager,
                         path_planner,
                         # *nav2_launch_entities,
