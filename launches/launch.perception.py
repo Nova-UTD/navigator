@@ -35,4 +35,5 @@ def generate_launch_description():
         # driveable_area,
         #road_signs_classifier,
         #lane_type_detector,
+        # pedestrian_skeleton
     ])
