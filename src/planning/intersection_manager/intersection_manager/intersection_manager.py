@@ -23,7 +23,7 @@ class IntersectionManager(Node):
         super().__init__('intersection_manager')
         
         #Create subscriptions
-        self.traffic_light_sub = self.create_subscription(TrafficLightDetection, '/traffic_light/detections', self.trafficLightCallback, 1)
+        self.traffic_light_sub = self.create_subscription(TrafficLightDetection, '/traffic_lights/detections', self.trafficLightCallback, 1)
         self.road_sign_sub = self.create_subscription(RoadSignsDetection, '/road_signs/detections', self.roadSignsCallback, 1)
         self.route_sub = self.create_subscription(Path, '/planning/path', self.routeCallback, 1)
         self.speed_sub = self.create_subscription(CarlaSpeedometer, '/speed', self.speedCallback, 1)
@@ -34,7 +34,7 @@ class IntersectionManager(Node):
         self.behavior_publisher = self.create_publisher(IntersectionBehavior, '/intersection', 10)
 
         #Create timer for calling navigate_intersection function
-        self.create_timer(0.001, self.navigate_intersection)
+        self.create_timer(0.1, self.navigate_intersection)
 
         #Create variables to store info from subscriptions
         self.traffic_light_status = None
@@ -357,10 +357,10 @@ class IntersectionManager(Node):
         intersection_behavior_message.header.stamp = self.get_clock().now().to_msg()
         intersection_behavior_message.header.frame_id = "camera_frame"
 
-        if (controls_message == "KeepDriving" or controls_message == "ProceedThroughIntersection"):
-            intersection_behavior_message.action = "Proceed"
-        elif (controls_message == "BrakeAndStop" or controls_message == "WaitForOtherCars"):
+        if (controls_message == "BrakeAndStop" or controls_message == "WaitForOtherCars"):
             intersection_behavior_message.action = "Wait"
+        else:
+            intersection_behavior_message.action = "Proceed"
         
         if (intersection_behavior_message.action != ""):
             self.behavior_publisher.publish(intersection_behavior_message)
