@@ -35,6 +35,9 @@ def generate_launch_description():
         # driveable_area,
         # pedestrian_intent_to_enter_road,
         # road_signs_classifier,
+        image_segmentation, 
+        depth_processing, 
+        occupancy_grid_node,
         # lane_type_detector,
-        # pedestrian_skeleton,
+        # pedestrian_skeleton
     ])

@@ -153,7 +153,7 @@ RUN pip3 install --ignore-installed \
     #  (possibly needs to be version 2.2)
     networkx==3.3 \
     # Scientific Computing - used widely
-    numpy==1.23.5 \
+    numpy \
     #
     open3d==0.18.0 \
     #
@@ -203,8 +203,8 @@ RUN pip3 install --ignore-installed \
     #
     xmlschema==1.0.18 \
     # distro \
-    torch==2.1.2 \
-    torchvision==0.16.2 \
+    torch \
+    torchvision \
     # openmim \
     # mmcv-full==1.6.0 \
     # packaging \

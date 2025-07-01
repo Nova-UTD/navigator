@@ -212,6 +212,21 @@ road_signs_classifier = Node(
    	parameters=[],
 )
 
+image_segmentation = Node(
+    package='image_segmentation',
+    executable='image_seg_node'
+)
+
+depth_processing = Node(
+    package='depth_processing',
+    executable='depth_processing_node'
+)
+
+occupancy_grid_node = Node(
+    package='occupancy_grid',
+    executable='occupancy_grid'
+)
+
 intersection_manager = Node(
     package='intersection_manager',
     executable='intersection_manager'
