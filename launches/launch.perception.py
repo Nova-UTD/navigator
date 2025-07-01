@@ -33,7 +33,10 @@ def generate_launch_description():
         # traffic_light_detector,
         # prednet_inference,
         # driveable_area,
-        #road_signs_classifier,
-        #lane_type_detector,
+        # road_signs_classifier,
+        image_segmentation, 
+        depth_processing, 
+        occupancy_grid_node,
+        # lane_type_detector,
         # pedestrian_skeleton
     ])
