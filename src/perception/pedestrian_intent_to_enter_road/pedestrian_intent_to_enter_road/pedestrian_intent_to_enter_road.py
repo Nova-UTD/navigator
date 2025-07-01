@@ -14,6 +14,7 @@ from navigator_msgs.msg import PedestrianInfoDetections
 from navigator_msgs.msg import PedestrianInfo
 from cv_bridge import CvBridge
 import cv2
+import time
 from ultralytics import YOLO
 from mmpose.apis import MMPoseInferencer
 
@@ -36,6 +37,9 @@ class PedestrianIntentToEnterRoad(Node):
         self.FACING_RIGHT = "RIGHT"
         self.FACING_LEFT = "LEFT"
 
+        #Create timer for calling detect_pedestrians function
+        self.create_timer(1.0, self.detect_pedestrians)
+
 
     def image_callback(self, msg : Image):
         # convert the image message into a jpg formatted image
@@ -52,6 +56,7 @@ class PedestrianIntentToEnterRoad(Node):
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough") 
         status, temp_image = cv2.imencode(".jpg", cv_image) 
         self.binary_mask = cv2.imdecode(temp_image, cv2.IMREAD_COLOR)
+        self.binary_mask = cv2.resize(self.binary_mask, (672, 376))
 
 
     def detect_pedestrians(self):
@@ -129,17 +134,25 @@ class PedestrianIntentToEnterRoad(Node):
         if (self.binary_mask is not None):
             if (direction_facing == self.FACING_RIGHT):
                 while (True):
-                    pixel_color = self.binary_mask[BRx + num_pixels, BRy]
+                    pixel_color = self.binary_mask[int(BRy), int(BRx + num_pixels)]
 
-                    if (pixel_color == [0, 0, 0]):
+                    blue = pixel_color[0]
+                    green = pixel_color[1]
+                    red = pixel_color[2]
+
+                    if ((blue == 0) and (green == 0) and (red == 0)):
                         break
                     else:
                         num_pixels += 1
             elif (direction_facing == self.FACING_LEFT):
                 while (True):
-                    pixel_color = self.binary_mask[TLx - num_pixels, BRy]
+                    pixel_color = self.binary_mask[int(BRy), int(TLx - num_pixels)]
 
-                    if (pixel_color == [0, 0, 0]):
+                    blue = pixel_color[0]
+                    green = pixel_color[1]
+                    red = pixel_color[2]
+
+                    if ((blue == 0) and (green == 0) and (red == 0)):
                         break
                     else:
                         num_pixels += 1

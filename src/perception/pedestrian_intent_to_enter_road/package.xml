@@ -22,6 +22,7 @@
   <depend>cv2</depend>
   <depend>ultralytics</depend>
   <depend>mmpose.apis</depend>
+  <depend>time</depend>
 
   <export>
     <build_type>ament_python</build_type>
