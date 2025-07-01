@@ -136,19 +136,6 @@ RUN tar -zxvf cmake-3.24.4-linux-x86_64.tar.gz
 RUN mv cmake-3.24.4-linux-x86_64 /opt/cmake
 RUN ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake
 
-RUN apt-get purge --auto-remove -y cmake && \
-    apt-get update && \
-    apt-get install -y wget && \
-    wget https://github.com/Kitware/CMake/releases/download/v3.24.0/cmake-3.24.0-linux-x86_64.sh && \
-    sh cmake-3.24.0-linux-x86_64.sh --skip-license --prefix=/usr/local && \
-    rm cmake-3.24.0-linux-x86_64.sh
-
-RUN pip3 install "packaging<22.0" --force-reinstall
-RUN pip install --upgrade scikit-build-core
-
-RUN pip install --upgrade pip setuptools packaging
-RUN make
-
 # pip3 installs
 RUN pip3 install --ignore-installed \
     #
