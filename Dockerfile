@@ -220,8 +220,10 @@ RUN pip3 install --ignore-installed \
     kiss-icp==1.0.0 \
     g2o-python==0.0.12 \
     rosbags==0.10.4 \
-    ultralytics \
-    sam2
+    ultralytics
+
+# Install SAM2 seperately to avoid storage space errors on GitHub Actions
+RUN pip3 install sam2
 
 # Install Black for Python code formatting.
 RUN pip3 install black==24.10.0
