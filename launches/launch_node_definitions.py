@@ -232,7 +232,7 @@ intersection_manager = Node(
     executable='intersection_manager'
 )
 
-  lane_type_detector = Node(
+lane_type_detector = Node(
    	package='lane_type_detector',
    	executable='lane_type_detector',
    	name='lane_type_detector',
