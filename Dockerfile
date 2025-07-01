@@ -149,7 +149,7 @@ RUN pip3 install --ignore-installed \
     # Used for the road signs classifier API call to the model.
     inference-sdk==0.26.0 \
     #
-    matplotlib==3.6.0 \
+    matplotlib \
     #  (possibly needs to be version 2.2)
     networkx==3.3 \
     # Scientific Computing - used widely

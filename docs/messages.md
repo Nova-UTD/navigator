@@ -98,6 +98,17 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 - Data (float)
   - [0.0, 1.0] *1.0 is fully depressed*
 
+### PedestrianInfoDetections
+- [Header] (https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- pedestrians ([PedestrianInfo] (#pedestrianinfo)[])
+
+### PedestrianInfo
+- x (float32)
+- y (float32)
+- width (float32)
+- height (float32)
+- distance (float32)
+
 ### PolygonArray
 - [Header](https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
 - Polygons ([Polygon](https://docs.ros2.org/latest/api/geometry_msgs/msg/Polygon.html)[])
