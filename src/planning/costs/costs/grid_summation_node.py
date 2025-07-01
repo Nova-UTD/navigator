@@ -98,7 +98,7 @@ class GridSummationNode(Node):
 
         self.clock = Clock()
 
-        self.grid_out_details = []
+        self.grid_out_details = [0.4, -20.0, -30.0]
 
     def clockCb(self, msg: Clock):
         self.clock = msg
@@ -128,8 +128,10 @@ class GridSummationNode(Node):
         stamp = grid.header.stamp
         stamp_in_seconds = stamp.sec + stamp.nanosec*1e-9
         current_time_in_seconds = self.clock.clock.sec + self.clock.clock.nanosec*1e-9
-        stale = current_time_in_seconds - stamp_in_seconds > STALENESS_TOLERANCE
-        print("Stale for " + (current_time_in_seconds - stamp_in_seconds) + " seconds")
+
+        stale_time = current_time_in_seconds - stamp_in_seconds
+        stale = stale_time > STALENESS_TOLERANCE
+        print("Stale for " + str(stale_time) + " seconds")
         
         if stale:
             self.status.level = DiagnosticStatus.WARN
@@ -199,7 +201,7 @@ class GridSummationNode(Node):
 
         return grid_out
 
-    def getWeightedArray(self, msg: OccupancyGrid, scale: float) -> np.ndarray:
+    def getWeightedArrayFromNumpy(self, msg: OccupancyGrid, scale: float) -> np.ndarray:
         """Converts the OccupancyGrid message into a numpy array, then multiplies it by scale
 
         Args:
@@ -209,29 +211,48 @@ class GridSummationNode(Node):
         Returns:
             np.ndarray: Weighted ndarray
         """
-        arr = np.asarray(msg.data, dtype=np.float16).reshape(
-            msg.info.height, msg.info.width)
+        height, width = msg.shape
+
+        arr = np.asarray(msg.data, dtype=np.float16).reshape(height, width)
+
+        arr *= scale
+
+        return arr
+
+    def getWeightedArrayFromOccupancyGrid(self, msg: OccupancyGrid, scale: float) -> np.ndarray:
+        """Converts the OccupancyGrid message into a numpy array, then multiplies it by scale
+
+        Args:
+            msg (OccupancyGrid)
+            scale (float)
+
+        Returns:
+            np.ndarray: Weighted ndarray
+        """
+        arr = np.asarray(msg.data, dtype=np.float16).reshape(msg.info.height, msg.info.width)
 
         arr *= scale
 
         return arr
 
     def resizeOccupancyGrid(self, original: np.ndarray) -> np.ndarray:
-        # This is a temporary measure until our current occ. grid's params
-        # match the rest of our stack. Basically, due to the difference in cell size,
-        # 1 out of 6 cells in the array needs to be deleted.
+        # Remove every 6th row
+        rows_to_delete = np.arange(0, original.shape[0], 6)
+        downsampled = np.delete(original, rows_to_delete, axis=0)
 
-        downsampled = np.delete(original, np.arange(0, 128, 6), axis=0)
-        downsampled = np.delete(downsampled, np.arange(
-            0, 128, 6), axis=1)  # 106x106 result
+        # Remove every 6th column
+        cols_to_delete = np.arange(0, original.shape[1], 6)
+        downsampled = np.delete(downsampled, cols_to_delete, axis=1)
 
-        # trim the bottom columns (behind the car)
+        # trim 3 columns from the left (behind the car)
         downsampled = downsampled[:, 3:]
 
+        # Now make sure downsampled has the correct shape for the background
         background = np.zeros((151, 151))
-
-        background[22:128, 0:103] = downsampled
-        return background  # Correct scale
+        h, w = downsampled.shape
+        background[22:22+h, 0:w] = downsampled
+        
+        return background
 
     def createCostMap(self):
         # self.get_logger().info('Composing aggregate costmap...')
@@ -243,24 +264,30 @@ class GridSummationNode(Node):
                  ('future_occupancy', self.future_occupancy_grid, FUTURE_OCCUPANCY_SCALE),
                  ('drivable', self.drivable_grid, DRIVABLE_GRID_SCALE),
                  ('route_dist', self.route_dist_grid, ROUTE_DISTANCE_GRID_SCALE),
-                 ('junction', self.junction_grid, JUNCTION_GRID_SCALE)] 
-        
+                 ('junction', self.junction_grid, JUNCTION_GRID_SCALE)
+                ] 
+
         try:
             for grid_name, grid, scale in grids:
                 if grid is None or len(grid.data) == 0:
-                    return
+                    print("GRID NOT FOUND")
+                    continue
                 
                 stale = self.checkForStaleness(grid)
                 if stale > 0:
                     ff_grid = self.fastforward(grid)
-                    weighted_grid_arr = self.getWeightedArray(ff_grid, scale)
+                    weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
                 else:
                     ff_grid = occupancygrid_to_numpy(grid)
                     if grid_name == 'occupancy' or grid_name == 'future_occupancy':
                         ff_grid = self.resizeOccupancyGrid(ff_grid)
                     weighted_grid_arr = ff_grid*scale
 
-                weighted_grid_arr = self.getWeightedArray(ff_grid, scale)
+                if isinstance(ff_grid, np.ndarray):
+                    weighted_grid_arr = self.getWeightedArrayFromNumpy(ff_grid, scale)
+                else:
+                    weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
+                
                 if grid_name == 'occupancy' or grid_name == 'future_occupancy':
                     weighted_grid_arr = self.resizeOccupancyGrid(weighted_grid_arr)
 
@@ -303,11 +330,13 @@ class GridSummationNode(Node):
         except(Exception) as e:
             self.get_logger().warn('Error composing aggregate cost map - likely waiting for Transform Buffer.')
             self.get_logger().warn(str(e))
-
+        
+"""
         #Publish Egma
         egma_msg = Egma()
-        egma_msg.header = steering_cost_msg.header
-        current_stamp = steering_cost_msg.header.stamp
+        egma_msg.header.stamp = self.clock.clock
+        egma_msg.header.frame_id = 'base_link'
+        current_stamp = egma_msg.header.stamp
         t = current_stamp.sec + current_stamp.nanosec * 1e-9
         for i in range(15):
             frame = steering_cost_msg
@@ -319,6 +348,7 @@ class GridSummationNode(Node):
             steering_cost_msg.header.frame_id = 'base_link'
             egma_msg.egma.append(frame)
         self.combined_egma_pub.publish(egma_msg)
+"""
 
 def main(args=None):
     rclpy.init(args=args)
