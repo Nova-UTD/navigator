@@ -37,6 +37,11 @@ controller_parade = Node(
     executable="parade_controller_node"
 )
 
+costmap_recorder = Node(
+    package="recording", 
+    executable="costmap_recorder"
+)
+
 driveable_area = Node(
     package='driveable_area',
     executable='driveable_area_node'
@@ -115,15 +120,13 @@ odom2tf = Node(
     executable='odom2tf'
 )
 
-path_planner_astar = Node(
-    package='graph_path_planner',
-    executable='astar_path_planner_node'
-)
-
-path_planner_graph = Node(
-    package='graph_path_planner',
-    executable='graph_path_planner_node'
-)
+path_planner = Node(
+    package="path_planners", 
+    executable="path_planner_node",
+    parameters=[
+        {'planner': 'dijkstra'}
+    ]
+) # options: dijkstra, ara-star, dynamic-programming, neural-network, trrt-star
 
 path_planner_nav2 = Node(
     package='nav2_path_planner',
@@ -201,5 +204,23 @@ road_signs_classifier = Node(
    	package='road_signs_classifier',
    	executable='road_signs_classifier',
    	name='road_signs_classifier',
+   	parameters=[],
+)
+
+intersection_manager = Node(
+    package='intersection_manager',
+    executable='intersection_manager'
+)
+
+  lane_type_detector = Node(
+   	package='lane_type_detector',
+   	executable='lane_type_detector',
+   	name='lane_type_detector',
+)
+
+pedestrian_skeleton = Node(
+   	package='pedestrian_skeleton',
+   	executable='pedestrian_skeleton',
+   	name='pedestrian_skeleton',
    	parameters=[],
 )

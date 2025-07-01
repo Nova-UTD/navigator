@@ -129,6 +129,12 @@ RUN apt-get update && apt update && apt upgrade -y && \
     software-properties-common \
     # cleanup to make image smaller
     && apt clean && rm -rf /var/lib/apt/lists/*
+   
+# install cmake 3.24+
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.24.4/cmake-3.24.4-linux-x86_64.tar.gz
+RUN tar -zxvf cmake-3.24.4-linux-x86_64.tar.gz
+RUN mv cmake-3.24.4-linux-x86_64 /opt/cmake
+RUN ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake
 
 RUN apt-get purge --auto-remove -y cmake && \
     apt-get update && \
@@ -144,7 +150,7 @@ RUN pip install --upgrade pip setuptools packaging
 RUN make
 
 # pip3 installs
-RUN pip3 install \
+RUN pip3 install --ignore-installed \
     #
     autopep8==2.3.1 \
     #
@@ -238,15 +244,17 @@ RUN mim install 'mmcv>=2.0.0rc4'
 RUN mim install 'mmdet>=3.0.0'
 RUN mim install "mmdet3d>=1.1.0"
 
+
 # install loop closure package "MapClosures"
 # this issue was addressed here: https://github.com/abetlen/llama-cpp-python/issues/707
-RUN sudo apt remove python3-pathspec -y
-RUN pip3 install --user pathspec yamllint
-RUN git clone https://github.com/PRBonn/MapClosures.git
-WORKDIR MapClosures
-RUN cmake -B build -S cpp
-RUN cmake --build build -j8
-RUN make
+# RUN python3 -m pip uninstall -y exceptiongroup
+# RUN sudo apt remove python3-pathspec -y
+# RUN pip3 install --no-cache-dir pathspec yamllint "exceptiongroup<=1.2.0"
+# RUN git clone https://github.com/PRBonn/MapClosures.git
+# WORKDIR MapClosures
+# RUN cmake -B build -S cpp
+# RUN cmake --build build -j8
+# RUN make
 
 WORKDIR /
 
