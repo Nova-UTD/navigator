@@ -33,6 +33,7 @@ def generate_launch_description():
         # traffic_light_detector,
         # prednet_inference,
         # driveable_area,
+        # pedestrian_intent_to_enter_road,
         # road_signs_classifier,
         image_segmentation, 
         depth_processing, 

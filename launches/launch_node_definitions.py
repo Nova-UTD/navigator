@@ -138,6 +138,11 @@ prednet_inference = Node(
     executable='prednet_inference_node'
 )
 
+pedestrian_intent_to_enter_road = Node(
+    package='pedestrian_intent_to_enter_road',
+    executable='pedestrian_intent_to_enter_road'
+)
+
 recorder = Node(
     package='recording',
     executable='recorder'
