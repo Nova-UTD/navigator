@@ -153,7 +153,7 @@ RUN pip3 install --ignore-installed \
     #  (possibly needs to be version 2.2)
     networkx==3.3 \
     # Scientific Computing - used widely
-    numpy \
+    numpy==1.26.4 \
     #
     open3d==0.18.0 \
     #
@@ -219,7 +219,9 @@ RUN pip3 install --ignore-installed \
     easydict==1.13 \
     kiss-icp==1.0.0 \
     g2o-python==0.0.12 \
-    rosbags==0.10.4
+    rosbags==0.10.4 \
+    ultralytics \
+    sam2
 
 # Install Black for Python code formatting.
 RUN pip3 install black==24.10.0
@@ -230,6 +232,7 @@ RUN mim install mmengine
 RUN mim install 'mmcv>=2.0.0rc4'
 RUN mim install 'mmdet>=3.0.0'
 RUN mim install "mmdet3d>=1.1.0"
+RUN mim install "mmpose>=1.1.0"
 
 
 # install loop closure package "MapClosures"
