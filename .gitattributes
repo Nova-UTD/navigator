@@ -1,3 +1,0 @@
-pedestrian_skeleton.pt filter=lfs diff=lfs merge=lfs -text
-best_traffic_med_yolo_v8.pt filter=lfs diff=lfs merge=lfs -text
-sam2.1_hiera_base_plus.pt filter=lfs diff=lfs merge=lfs -text

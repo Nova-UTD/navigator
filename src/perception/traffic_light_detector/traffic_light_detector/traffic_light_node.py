@@ -22,7 +22,7 @@ class TrafficLightDetectionNode(Node):
         super().__init__('traffic_light_detection_node')
         
         # Initialize YOLO model for traffic light detection
-        self.model = YOLO('/navigator/data/perception/models/best_traffic_med_yolo_v8.pt')  # Correct path
+        self.model = YOLO('/models/best_traffic_med_yolo_v8.pt')  # Correct path
 
         # Initialize CvBridge to convert ROS image messages to OpenCV
         self.bridge = CvBridge()

@@ -22,7 +22,7 @@ class ImageSegNode(Node):
 
         #initialize sam 2.0
         self.device = "cuda:0"
-        self.sam_checkpoint = "/navigator/data/perception/models/sam2.1_hiera_base_plus.pt"
+        self.sam_checkpoint = "/models/sam2.1_hiera_base_plus.pt"
         self.model_cfg = "/configs/sam2.1/sam2.1_hiera_b+.yaml"
         self.predictor = SAM2ImagePredictor(build_sam2(self.model_cfg, self.sam_checkpoint))
 

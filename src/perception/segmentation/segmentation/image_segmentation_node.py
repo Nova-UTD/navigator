@@ -93,7 +93,7 @@ class ImageSegmentationNode(Node):
     def __init__(self):
         super().__init__('image_segmentation_node')
         config_file = '/mmsegmentation/configs/pspnet/pspnet_r18-d8_512x1024_80k_cityscapes.py'
-        checkpoint_file = '/navigator/data/perception/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth'
+        checkpoint_file = '/models/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth'
 
         self.model = init_segmentor(
             config_file, checkpoint_file, device='cuda:0')  # Change this to '1,' 2,' etc to change GPU used

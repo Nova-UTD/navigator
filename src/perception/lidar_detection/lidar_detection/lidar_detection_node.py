@@ -51,7 +51,7 @@ class LidarDetectionNode(Node):
         self.declare_parameter('config_path',   # Paths to pretrained model and config
             '/navigator/data/perception/configs/pointpillars_hv_secfpn_8xb6-160e_kitti-3d-3class.py')
         self.declare_parameter('checkpoint_path', 
-            '/navigator/data/perception/models/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class_20220301_150306-37dc2420.pth')
+            '/models/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class_20220301_150306-37dc2420.pth')
 
         # Get ROS2 parameters
         self.device = torch.device(self.get_parameter('device') \
