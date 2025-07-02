@@ -28,6 +28,9 @@ services:
         source: /storage/bags
         target: /bags
       - type: bind
+        source: /storage/navigator_binaries
+        target: /models
+      - type: bind
         source: ${HOME}/.Xauthority
         target: /root/.Xauthority
       - type: bind
