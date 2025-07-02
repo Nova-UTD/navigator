@@ -153,7 +153,7 @@ RUN pip3 install --ignore-installed \
     #  (possibly needs to be version 2.2)
     networkx==3.3 \
     # Scientific Computing - used widely
-    numpy \
+    numpy==1.26.4 \
     #
     open3d==0.18.0 \
     #
@@ -221,6 +221,9 @@ RUN pip3 install --ignore-installed \
     g2o-python==0.0.12 \
     rosbags==0.10.4 \
     ultralytics
+
+# Install SAM2 seperately to avoid storage space errors on GitHub Actions
+RUN pip3 install sam2
 
 # Install Black for Python code formatting.
 RUN pip3 install black==24.10.0
