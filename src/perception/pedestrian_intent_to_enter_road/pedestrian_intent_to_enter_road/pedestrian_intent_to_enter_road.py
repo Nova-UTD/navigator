@@ -30,7 +30,7 @@ class PedestrianIntentToEnterRoad(Node):
         # define variables used throughout the node
         self.bridge = CvBridge()
         self.image = None
-        self.detection_model = YOLO("/models/pedestrian_detection_model.pt")
+        self.detection_model = YOLO("/navigator_binaries/pedestrian_detection_model.pt")
         self.inferencer = MMPoseInferencer('human')
         self.binary_mask = None
 

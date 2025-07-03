@@ -469,7 +469,7 @@ def train_model(model, train_loader, val_loader, device, num_epochs=50, learning
         # Save best model
         if epoch_val_loss < best_val_loss:
             best_val_loss = epoch_val_loss
-            torch.save(model.state_dict(), '/models/best_model.pth')
+            torch.save(model.state_dict(), '/navigator_binaries/best_model.pth')
             print(f'Model saved at epoch {epoch+1} with validation loss: {best_val_loss:.4f}')
     
     # Plot training and validation loss

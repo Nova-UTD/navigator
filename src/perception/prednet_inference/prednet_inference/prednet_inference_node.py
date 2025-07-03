@@ -91,7 +91,7 @@ class PredNetNode(Node):
         
         # Model directry
         # Importing models
-        modelDir = "/models/prednet.pt"
+        modelDir = "/navigator_binaries/prednet.pt"
 
         # Sets the device to the rigth GPU
         torch.cuda.set_device(torch.device(self.device))

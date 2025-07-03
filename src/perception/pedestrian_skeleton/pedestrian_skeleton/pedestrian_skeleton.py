@@ -28,7 +28,7 @@ class PedestrianSkeleton(Node):
         self.bridge = CvBridge()
 
         # Load YOLOv8 Pose model
-        model_path = '/models/pedestrian_skeleton.pt'
+        model_path = '/navigator_binaries/pedestrian_skeleton.pt'
         self.model = YOLO(model_path)
 
         # Confidence threshold
