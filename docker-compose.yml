@@ -1,0 +1,46 @@
+version: "2.3"
+name: navigator_localization
+services:
+  navigator_localization:
+    privileged: true
+    stdin_open: true
+    tty: true
+
+    image: navigator_localization
+    container_name: navigator_localization_${USER}
+
+    volumes:
+      - type: bind
+        source: $PWD
+        target: /navigator
+      - type: bind
+        source: /home/share/carla
+        target: /carla
+      - type: bind
+        source: /storage/bags
+        target: /bags
+      - type: bind
+        source: ${HOME}/.Xauthority
+        target: /root/.Xauthority
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+      # need to enable shared memory for ros to communicate between docker containers
+      # see: https://answers.ros.org/question/370595/ros2-foxy-nodes-cant-communicate-through-docker-container-border/
+      - type: bind
+        source: /dev
+        target: /dev
+
+    environment:
+      - DISPLAY=${DISPLAY}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      - NVIDIA_VISIBLE_DEVICES=all
+      # Specify the ROS Middleware to be consistent across containers:
+      # see: https://discourse.ros.org/t/ros-cross-distribution-communication/27335
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    network_mode: "host"

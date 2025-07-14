@@ -1,0 +1,32 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/navigator/install/localization_cc/include/**",
+        "/navigator/install/pcl_conversions/include/**",
+        "/navigator/install/pcl_msgs/include/**",
+        "/navigator/install/pcl_ros/include/**",
+        "/opt/ros/humble/include/**",
+        // IMPORTANT: Never add /usr/include/** to the includePath because system includes are order dependent.
+        // See this comment: https://github.com/microsoft/vscode-cpptools/issues/6114#issuecomment-692362735.
+        // Point Cloud Library (PCL) includes.
+        "/usr/local/include/pcl-1.14/**",
+        // VTK is a dependency of PCL visualization.
+        "/usr/local/include/vtk-9.3/**",
+        // OusterSDK for visualization (amount other APIs).
+        "/usr/local/include/ouster/**",
+        "/usr/include/absl/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++17"
+    }
+  ],
+  "version": 4
+}
