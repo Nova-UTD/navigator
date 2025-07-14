@@ -1,0 +1,5 @@
+/**:
+  ros__parameters:
+    xodr_path: "data/maps/town01/town01.xodr"
+    draw_detail: 1.0
+    nearby_search_radius: 20.0

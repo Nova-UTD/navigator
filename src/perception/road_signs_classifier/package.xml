@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>road_signs_classifier</name>
+  <version>1.0.0</version>
+  <description>Tools to perform road sign classifications</description>
+  <maintainer email="project.nova@utdallas.edu">root</maintainer>
+  <license>MIT License</license>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <depend>rclpy</depend>
+  <depend>rclpy.node</depend>
+  <depend>sensor_msgs.msg</depend>
+  <depend>cv_bridge</depend>
+  <depend>navigator_msgs</depend>
+  <depend>cv2</depend>
+  <depend>inference_sdk</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

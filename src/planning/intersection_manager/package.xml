@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>intersection_manager</name>
+  <version>1.0.0</version>
+  <description>Evaluates various info to determine intersection behavior</description>
+  <maintainer email="project.nova@utdallas.edu">root</maintainer>
+  <license>MIT License</license>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <depend>rclypy</depend>
+  <depend>rclypy.node</depend>
+  <depend>navigator_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>math</depend>
+  <depend>time</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

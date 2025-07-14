@@ -1,0 +1,157 @@
+<?xml version="1.0" ?>
+<!-- TODO: Add GPS sensor -->
+<robot name="voltron">
+  <material name="maroon">
+    <color rgba="0.5 0.0 0.0 1"/>
+  </material>
+  <material name="blue">
+    <color rgba="0.1 0.1 0.5 1"/>
+  </material>
+
+  <!-- base_link relates to its projection on the ground by this offset:
+    <origin xyz="0 0 0.31" rpy="0 0 0"/>
+  -->
+
+    <link name="model_link">
+        <visual>
+            <geometry>
+                <mesh filename="file:////navigator/data/hailbopp.stl" scale="1.0 1.0 1.0" />
+            </geometry>
+            <material name="maroon" />
+            <origin xyz="-2.6 0 0.28" rpy="0 0 1.570796" />
+        </visual>
+    </link>
+
+    <joint name="model_joint" type="fixed">
+        <parent link="base_link" />
+        <child link="model_link" />
+        <origin xyz="-1.2 -2.75 0.0" rpy="0 0 -1.570796" />
+    </joint>
+
+
+  <link name="base_link">
+    <collision>
+      <geometry>
+        <box size="4.37 2.0 1.85"/>
+      </geometry>
+      <origin xyz="-1.7 0 0.645" rpy="0 0 0"/>
+    </collision>
+    <inertial>
+      <!-- TODO: Get or calculate inertia values -->
+      <origin xyz="-1.7 0 0.013" rpy="0 0 0"/>
+      <mass value="0.25"/>
+      <inertia ixx="0.0003350833" ixy="0" ixz="0" iyy="0.000560417" iyz="0" izz="0.000478833"/>
+    </inertial>
+  </link>
+
+  <!-- Center of Gravity link -->
+  <!-- <link name="nav_base"/>
+
+  <joint name="nav_base_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="nav_base"/>
+    <origin xyz="1.5618 0 0" rpy="0 0 0"/>
+  </joint> -->
+
+  <link name="imu"/>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu"/>
+    <origin xyz="0.0 0.0 1.0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="arduino_imu"/>
+
+  <joint name="arduino_imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arduino_imu"/>
+    <origin xyz="0.3 0.0 0.0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="gnss"/>
+
+  <!-- This specifies where our GNSS sensor is located relative to our rear axle. WSH. -->
+  <!-- TODO: Add RPY. -->
+  <joint name="gnss_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="gnss"/>
+    <origin xyz="-0.5 0.0 1.5" rpy="0 0 0"/>
+  </joint>
+
+  <link name="lidar_right">
+    <visual>
+      <geometry>
+        <cylinder length="0.0869" radius="0.05165"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.0869" radius="0.05165"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <!-- TODO: Get or calculate inertia values -->
+      <mass value="0.1"/>
+      <inertia ixx="1.02083e-5" ixy="0" ixz="0" iyy="1.02083e-5" iyz="0" izz="2e-5"/>
+    </inertial>
+  </link>
+
+  <joint name="lidar_right_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_right"/>
+    <origin xyz="0.0 -0.73 1.8" rpy="-.20 .20 -.85"/>
+  </joint>
+
+  <link name="lidar_left">
+    <visual>
+      <geometry>
+        <cylinder length="0.0869" radius="0.05165"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.0869" radius="0.05165"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <!-- TODO: Get or calculate inertia values -->
+      <mass value="0.1"/>
+      <inertia ixx="1.02083e-5" ixy="0" ixz="0" iyy="1.02083e-5" iyz="0" izz="2e-5"/>
+    </inertial>
+  </link>
+
+  <joint name="lidar_left_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_left"/>
+    <origin xyz="0.0 0.73 1.8" rpy="0.15 0.2 0.55"/>
+  </joint>
+
+  <link name="radar"/>
+
+  <joint name="radar_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="radar"/>
+    <origin xyz="0.61 0.0 0.52" rpy="0 0 0"/>
+  </joint>
+
+
+  <link name="zed2_left_camera_optical_frame"></link>
+
+  <link name="zed2_camera_center">
+  </link>
+
+  <joint name="zed2_center_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="zed2_camera_center"/>
+    <origin xyz="0.0 0.0 1.78" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+  <joint name="zed2_left_camera_optical_frame_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="zed2_left_camera_optical_frame"/>
+    <origin xyz="3.4 0.0 1.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+</robot>

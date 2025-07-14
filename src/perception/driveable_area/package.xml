@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>driveable_area</name>
+  <version>1.0.0</version>
+  <description>Node for tracking a given 2D bounding box.</description>
+  <maintainer email="project.nova@utdallas.edu">Nova</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>nova_auto_package</buildtool_depend>
+
+  <depend>rclpy</depend>
+  <depend>ros2_numpy</depend>
+  <depend>numpy</depend>
+  <depend>time</depend>
+  <depend>rosgraph_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>navigator_msgs</depend>
+  <depend>torch</depend>
+  <depend>sensor_msgs</depend>
+  <depend>norfair</depend>
+  <depend>cv2</depend>
+ 
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
