@@ -1,0 +1,32 @@
+# Automatically build and test all packages in our workspace
+name: Build and Test
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest # UNTIL SELF-HOSTED RUNNER SETUP ON QUAD
+    steps:
+      # Checks-out the repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - name: Enter Workspace
+        run: |
+          cd $GITHUB_WORKSPACE
+          echo Workspace directory: $(pwd)
+
+      - name: Build Navigator Docker image
+        run: |
+          docker build -t navigator -f Dockerfile .
+
+      - name: Build Navigator using latest Docker image
+        run: |
+          docker run \
+            --rm \
+            -v $PWD:/navigator \
+            --net=host \
+            -e="DISPLAY" \
+            navigator \
+            "colcon build --packages-select cyclonedds --cmake-clean-cache && . install/setup.bash && colcon build --cmake-clean-cache"

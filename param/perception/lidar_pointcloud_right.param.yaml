@@ -1,0 +1,14 @@
+# param/perception/lidar_driver_front.param.yaml
+# See: https://github.com/ros-drivers/velodyne/tree/foxy-devel/velodyne_driver
+/**:
+  ros__parameters:
+    calibration: "/navigator/data/VLP16db.yaml" # The path to the calibration file for the particular device. There are a set of default calibration files to start with in the "params" subdirectory in this package. Defaults to the empty string.
+    model: VLP16
+    min_range: 0.9 # The minimum range in meters that a point must be to be added to the resulting point cloud. Points closer than this are discarded. Must be between 0.1 and 10.0. Defaults to 0.9.
+    max_range: 130.0 # The maximum range in meters that a point must be to be added to the resulting point cloud. Points further away than this are discarded. Must be between 0.1 and 200.0. Defaults to 130.0.
+    view_direction: 0.0 # The point around the circumference of the device, in radians, to "center" the view. Combined with view_width, this allows the node to generate a pointcloud only for the given width, centered at this point. This can vastly reduce the CPU requirements of the node. Must be between -Pi and Pi, where 0 is straight ahead from the device. Defaults to 0.0.
+    view_width: 6.283185307179586 # The width, in radians, of the view to generate for the resulting pointcloud. Combined with view_direction, this allows the node to generate a pointcloud only for the given width, centered at the view_direction point. This can vastly reduce the CPU requirements of the node. Must be between 0 and 2Pi. Defaults to 2Pi.
+    organize_cloud: True # Whether to organize the cloud by ring (True), or to use the order as it comes directly from the driver (False). Defaults to True.
+    target_frame: "" # The coordinate frame to apply to the generated point cloud header before publishing. If the empty string (the default), the frame is passed along from the driver packet. If this frame is different than the fixed_frame, a transformation to this coordinate frame is performed while creating the pointcloud.
+    fixed_frame: "" # The fixed coordinate frame to transform the data from.
+    
