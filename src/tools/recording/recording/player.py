@@ -23,6 +23,7 @@ import sys  # argv
 from array import array as Array
 from datetime import datetime
 from time import sleep, strftime, strptime, time
+import yaml  # For reading config files
 
 import numpy as np
 import rclpy
@@ -292,6 +293,14 @@ class player(Node):
             odom = npz['odom']
             times = npz['time']
 
+            try:
+                with open('/navigator/param/global_parameters.yaml', 'r') as file:
+                    data = yaml.safe_load(file)
+            except FileNotFoundError:
+                print("Error: config.yaml not found.")
+            except yaml.YAMLError as e:
+                print(f"Error parsing YAML file: {e}")
+
             for idx, time in np.ndenumerate(times):
 
                 time_sec = int(times[idx])
@@ -305,9 +314,9 @@ class player(Node):
                 occ_msg.header.frame_id = 'base_link'
                 occ_msg.header.stamp.sec = time_sec
                 occ_msg.header.stamp.nanosec = time_nsec
-                occ_msg.info.resolution = 1./3.  # Meters
-                occ_msg.info.origin.position.x = -64.0 * (1. / 3.)
-                occ_msg.info.origin.position.y = -64.0 * (1. / 3.)
+                occ_msg.info.resolution = data[occupancy_grids][resolution]  # Meters
+                occ_msg.info.origin.position.x = -40.0 * data[occupancy_grids][resolution]  # Meters
+                occ_msg.info.origin.position.y = -20.0 * data[occupancy_grids][resolution]  # Meters
 
                 # Prepare odom message
                 odom_msg = numpyToOdom(odom[idx], time_sec, time_nsec)
