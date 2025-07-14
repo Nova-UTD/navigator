@@ -7,13 +7,9 @@
     ],
     // The name of the service for the container that VS Code should
     // use.
-    "service": "navigator_carla",
+    "service": "navigator_localization",
     // The path path VS Code should open by default when connected.
     "workspaceFolder": "/navigator",
-    // Specific services to start.
-    "runServices": [
-        "navigator_carla"
-    ],
     "postAttachCommand": "/opt/entrypoint.sh",
     // Configure tool-specific properties.
     "customizations": {
