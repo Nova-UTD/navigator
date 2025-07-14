@@ -90,6 +90,11 @@ junction_manager = Node(
     executable='junction_manager'
 )
 
+lidar_localization = Node(
+  package='lidar_SLAM',
+  executable='localization_node'
+)
+
 mcl = Node(
     package='state_estimation',
     executable='mcl_node'

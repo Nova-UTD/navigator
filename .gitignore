@@ -18,3 +18,7 @@ complex_yolov4_mse_loss.pth
 trace*
 
 rosbag2*
+
+closuresBag*
+
+src/mapping/offline_lidar_slam/save
