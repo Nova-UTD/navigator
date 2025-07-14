@@ -1,0 +1,6 @@
+[submodule "libs/pcl_msgs"]
+	path = libs/pcl_msgs
+	url = https://github.com/ros-perception/pcl_msgs.git
+[submodule "libs/perception_pcl"]
+	path = libs/perception_pcl
+	url = https://github.com/ros-perception/perception_pcl.git
