@@ -61,6 +61,7 @@ def generate_launch_description():
                         # MAPPING
                         # MISC
                         # costmap_recorder,
+                        # recorder, 
                         # rqt,
                         # camera_streamer,
                         # PERCEPTION
@@ -72,6 +73,7 @@ def generate_launch_description():
                         grid_summation,
                         intersection_manager,
                         # junction_manager,
+                        # rtp, 
                         path_planner,
                         # *nav2_launch_entities,
                         # path_planner_nav2,

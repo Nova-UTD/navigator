@@ -48,6 +48,7 @@ void GroundSegmentationNode::pointCloudCb(PointCloud2::SharedPtr msg)
   filtered_msg.header = msg->header;
 
   filtered_lidar_pub->publish(filtered_msg);
+  std::cout << "Done\n";
 }
 
 /**

@@ -40,4 +40,5 @@ def generate_launch_description():
         occupancy_grid_node,
         # lane_type_detector,
         # pedestrian_skeleton
+        ground_seg_py,
     ])

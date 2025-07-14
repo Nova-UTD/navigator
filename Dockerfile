@@ -201,7 +201,9 @@ RUN pip3 install --ignore-installed \
     #
     transforms3d==0.4.2 \
     #
-    xmlschema==1.0.18 \
+    pygroundsegmentation \
+    #
+    xmlschema==1.0.18
     # distro \
     torch \
     torchvision \
@@ -247,6 +249,8 @@ RUN mim install "mmpose>=1.1.0"
 # RUN cmake -B build -S cpp
 # RUN cmake --build build -j8
 # RUN make
+
+RUN pip install pygroundsegmentation
 
 WORKDIR /
 
