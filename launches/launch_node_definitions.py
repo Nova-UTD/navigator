@@ -238,6 +238,11 @@ lane_type_detector = Node(
    	name='lane_type_detector',
 )
 
+brake_detection = Node(
+    package='yolov8_brake_detection',
+    executable='yolov8_node'
+)
+
 pedestrian_skeleton = Node(
    	package='pedestrian_skeleton',
    	executable='pedestrian_skeleton',
