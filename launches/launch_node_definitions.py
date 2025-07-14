@@ -143,6 +143,11 @@ pedestrian_intent_to_enter_road = Node(
     executable='pedestrian_intent_to_enter_road'
 )
 
+projection = Node(
+    package='projection',
+    executable='projection_node'
+)
+
 recorder = Node(
     package='recording',
     executable='recorder'

@@ -27,8 +27,9 @@ def generate_launch_description():
     return LaunchDescription([
         # image_segmentation,
         # semantic_projection,
-        ground_seg,                         # /lidar --> /lidar/filtered
-        static_grid,                        # /lidar/filtered --> /grid/occupancy/current
+        projection,
+        ground_seg, # /lidar --> /lidar/filtered
+        static_grid, # /lidar/filtered --> /grid/occupancy/current
         # *object3d_launch_entities,
         # traffic_light_detector,
         # prednet_inference,
