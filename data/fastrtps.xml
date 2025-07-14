@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <profiles>
+
+        <transport_descriptors>
+            <transport_descriptor>
+                <transport_id>test</transport_id>
+                <type>UDPv4</type>
+                <maxMessageSize>5500</maxMessageSize>
+                <non_blocking_send>true</non_blocking_send>
+            </transport_descriptor>
+        </transport_descriptors>
+
+        <participant profile_name="participant profile" is_default_profile="true">
+            <rtps>
+                <userTransports>
+                    <transport_id>test</transport_id>
+                </userTransports>
+                <useBuiltinTransports>false</useBuiltinTransports>
+            </rtps>
+        </participant>
+
+        <!-- Default publisher profile -->
+        <publisher profile_name="default publisher profile" is_default_profile="true">
+            <qos>
+                <publishMode>
+                    <kind>SYNCHRONOUS</kind>
+                </publishMode>
+            </qos>
+            <historyMemoryPolicy>PREALLOCATED_WITH_REALLOC</historyMemoryPolicy>
+        </publisher>
+
+        <!-- Default subscriber profile -->
+        <subscriber profile_name="default subscriber profile" is_default_profile="true">
+            <historyMemoryPolicy>PREALLOCATED_WITH_REALLOC</historyMemoryPolicy>
+        </subscriber>
+
+        <!-- Publisher profile for topic helloworld -->
+        <publisher profile_name="helloworld">
+            <qos>
+                <publishMode>
+                    <kind>SYNCHRONOUS</kind>
+                </publishMode>
+            </qos>
+        </publisher>
+
+        <!-- Request subscriber profile for services -->
+        <subscriber profile_name="service">
+            <historyMemoryPolicy>PREALLOCATED_WITH_REALLOC</historyMemoryPolicy>
+        </subscriber>
+
+        <!-- Request publisher profile for clients -->
+        <publisher profile_name="client">
+            <qos>
+                <publishMode>
+                    <kind>ASYNCHRONOUS</kind>
+                </publishMode>
+            </qos>
+        </publisher>
+
+        <!-- Request subscriber profile for server of service "add_two_ints" -->
+        <subscriber profile_name="rq/add_two_intsRequest">
+            <historyMemoryPolicy>PREALLOCATED_WITH_REALLOC</historyMemoryPolicy>
+        </subscriber>
+
+        <!-- Reply subscriber profile for client of service "add_two_ints" -->
+        <subscriber profile_name="rr/add_two_intsReply">
+            <historyMemoryPolicy>PREALLOCATED_WITH_REALLOC</historyMemoryPolicy>
+        </subscriber>
+    </profiles>
+</dds>

@@ -1,0 +1,10 @@
+# param/perception/lidar_driver_right.param.yaml
+# See: https://github.com/ros-drivers/velodyne/tree/foxy-devel/velodyne_driver
+/**:
+  ros__parameters:
+    device_ip: "192.168.1.202" # The IP address that the Velodyne is on. From the factory, this is 192.168.1.201.
+    frame_id: "lidar_right" # The frame_id to use when constructing the header for the packet to be published. Defaults to "velodyne".
+    model: "VLP16" #  The model number of the Velodyne attached. This should be one of 64E, 64E_S2, 64E_S2.1, 64E_S3, 32E, 32C, or VLP16. Defaults to 64E.
+    rpm: 600.0 # The RPM that the Velodyne is configured for. Note that this is descriptive, not prescriptive, so this should be set to match the value configured through the Velodyne web interface.
+    port: 2369
+    

@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>occupancy_cpp</name>
+  <version>1.0.0</version>
+  <description>Tools to perform MRF ground segmentation and filtering on raw LiDAR data</description>
+  <maintainer email="project.nova@utdallas.edu">Nova</maintainer>
+  <license>MIT License</license>
+
+  <buildtool_depend>nova_auto_package</buildtool_depend>
+
+  <depend>carla_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>navigator_msgs</depend>
+  <depend>octomap</depend>
+  <depend>pcl</depend>
+  <depend>pcl_ros</depend>
+  <depend>pcl_conversions</depend>
+  <depend>rclcpp</depend>
+  <depend>rosgraph_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>tf2_eigen</depend>
+  <depend>tf2_ros</depend>
+  <depend>visualization_msgs</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

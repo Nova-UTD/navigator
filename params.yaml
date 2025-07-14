@@ -1,0 +1,585 @@
+# Parameter file
+
+/**:
+  ros__parameters:
+    # Robot description file
+    robot_description: "/navigator/data/carla.urdf"
+
+interface:
+  /**:
+    ros__parameters:
+      
+
+      # Carla
+      drive_mode: "carla_autopilot" # "manual", "carla_autopilot", "autosteer", "automatic"
+
+      # Can interface
+      interface_name: vcan0
+
+      # Speedometer reporter
+      input_min: 128
+      input_max: 152
+      output_min: 0.0
+      output_max: 10.73
+      message_id: 2298415087 
+      field_start_bit: 48
+      field_length_bits: 8
+
+      # Steering pid controller
+      KP: 2.0
+      KI: 0.5
+      KD: 0.0
+      integral_cap: 0.5
+
+      # Throttle controller
+      engaged_position: 1280
+      disengaged_position: 2304
+      command_id: 16711680
+
+
+atlas:
+  /**:
+    ros__parameters:
+      # icp nudger
+      nudge_period: 1.0
+      publish_tf: true
+
+      # lidar nudger
+      xodr_path: "data/maps/town10/Town10HD_Opt.xodr"
+      draw_detail: 0.5
+
+      # map odom
+      frequency: 10.0 # Estimate update frequency, Hz, double
+      world_frame: "map"
+      two_d_mode: true
+    
+      odom0: "/odom0" # xyz and yaw
+      odom0_config:
+        [
+          true,
+          true,
+          true,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+        ]
+      odom0_differential: true
+
+      imu0: "/imu0"
+      imu0_config:
+        [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+        ]
+
+      # odom bl
+      frequency: 10.0 # Estimate update frequency, Hz, double
+      world_frame: "odom"
+      two_d_mode: tru
+
+      # ukf map odom
+      frequency: 10.0 # Estimate update frequency, Hz, double
+      world_frame: "map"
+      two_d_mode: true
+
+      # ukf odom bl
+      frequency: 10.0 # Estimate update frequency, Hz, double
+      world_frame: "odom"
+
+
+
+mapping:
+  /**:
+    ros__parameters:
+      # lio sam
+      ## Topics
+      pointCloudTopic: "/lidar_right/velodyne_points" # Point cloud data
+      imuTopic: "/sensors/zed/imu" # IMU data
+      odomTopic: "odometry/imu" # IMU pre-preintegration odometry, same frequency as IMU
+      gpsTopic: "/sensors/gnss/odometry" # GPS odometry topic from navsat, see module_navsat.launch file
+      ## Frames
+      lidarFrame: "lidar_link"
+      baselinkFrame: "base_link"
+      odometryFrame: "odom"
+      mapFrame: "map"
+      ## GPS Settings
+      useImuHeadingInitialization: true # if using GPS data, set to "true"
+      useGpsElevation: false # if GPS elevation is bad, set to "false"
+      gpsCovThreshold: 2.0 # m^2, threshold for using GPS data
+      poseCovThreshold: 25.0 # m^2, threshold for using GPS data
+      ## Export settings
+      savePCD: false # https://github.com/TixiaoShan/LIO-SAM/issues/3
+      savePCDDirectory: "/Downloads/LOAM/" # in your home folder, starts and ends with "/". Warning: the code deletes "LOAM" folder then recreates it. See "mapOptimization" for implementation
+      ## Sensor Settings
+      sensor: velodyne # lidar sensor type, either 'velodyne' or 'ouster'
+      N_SCAN: 16 # number of lidar channel (i.e., 16, 32, 64, 128)
+      Horizon_SCAN: 512 # lidar horizontal resolution (Velodyne:1800, Ouster:512,1024,2048)
+      downsampleRate: 1 # default: 1. Downsample your data if too many
+      ## points. i.e., 16 = 64 / 4, 16 = 16 / 1
+      lidarMinRange: 1.0 # default: 1.0, minimum lidar range to be used
+      lidarMaxRange: 1000.0 # default: 1000.0, maximum lidar range to be used
+      ## IMU Settings
+      imuAccNoise: 3.9939570888238808e-03
+      imuGyrNoise: 1.5636343949698187e-03
+      imuAccBiasN: 6.4356659353532566e-05
+      imuGyrBiasN: 3.5640318696367613e-05
+
+      imuGravity: 9.80511
+      imuRPYWeight: 0.01
+      
+      extrinsicTrans: [0.0, 0.0, 0.0]
+      extrinsicRot: [1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0]
+      extrinsicRPY: [1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0]
+
+      ## LOAM feature threshold
+      edgeThreshold: 1.0
+      surfThreshold: 0.1
+      edgeFeatureMinValidNum: 10
+      surfFeatureMinValidNum: 100
+      ## voxel filter paprams
+      odometrySurfLeafSize: 0.4 # default: 0.4 - outdoor, 0.2 - indoor
+      mappingCornerLeafSize: 0.2 # default: 0.2 - outdoor, 0.1 - indoor
+      mappingSurfLeafSize: 0.4 # default: 0.4 - outdoor, 0.2 - indoor
+      ## robot motion constraint (in case you are using a 2D robot)
+      z_tollerance: 1000.0 # meters
+      rotation_tollerance: 1000.0 # radians
+      ## CPU Params
+      numberOfCores: 4 # number of cores for mapping optimization
+      mappingProcessInterval: 0.15 # seconds, regulate mapping frequency
+      ## Surrounding map
+      surroundingkeyframeAddingDistThreshold: 1.0 # meters, regulate keyframe adding threshold
+      surroundingkeyframeAddingAngleThreshold: 0.2 # radians, regulate keyframe adding threshold
+      surroundingKeyframeDensity: 2.0 # meters, downsample surrounding keyframe poses
+      surroundingKeyframeSearchRadius: 50.0 # meters, within n meters scan-to-map optimization
+      ##@ (when loop closure disabled)
+      ## Loop closure
+      loopClosureEnableFlag: true
+      loopClosureFrequency: 1.0 # Hz, regulate loop closure constraint add frequency
+      surroundingKeyframeSize: 50 # submap size (when loop closure enabled)
+      historyKeyframeSearchRadius: 15.0 # meters, key frame that is within n meters from
+      ### current pose will be considerd for loop closure
+      historyKeyframeSearchTimeDiff: 30.0 # seconds, key frame that is n seconds older will be
+      ### considered for loop closure
+      historyKeyframeSearchNum: 25 # number of hostory key frames will be fused into a
+      ### submap for loop closure
+      historyKeyframeFitnessScore: 0.3 # icp threshold, the smaller the better alignment
+      ## Visualization
+      globalMapVisualizationSearchRadius: 1000.0 # meters, global map visualization radius
+      globalMapVisualizationPoseDensity: 10.0 # meters, global map visualization keyframe density
+      globalMapVisualizationLeafSize: 1.0 # meters, global map visualization cloud density
+
+      # odr
+      xodr_path: "data/maps/grand_loop/grand_loop.xodr"
+      draw_detail: 1.0
+      nearby_search_radius: 20.0
+
+
+perception:
+  /**:
+    ros__parameters:
+      # front camera
+      ## image resolution
+      image_size_x: 1280
+      image_size_y: 720
+      ## camera intrinsics
+      focal_x: 531.5750
+      focal_y: 531.3700
+      center_x: 643.3700
+      center_y: 356.9830
+      ## camera extrinsics, with respect to base-link
+      ### euler rotations to base-link in degrees
+      rotation_x: 0.0
+      rotation_y: 0.0
+      rotation_z: 0.0
+      ## translations from base-link
+      translation_x: 0.5
+      translation_y: 0.0
+      translation_z: -1.5
+      
+      # lidar downsampler
+      is_approximate: false
+      config:
+        capacity: 55000
+        min_point:
+          x: -130.0
+          y: -130.0
+          z: -3.0
+        max_point:
+          x: 130.0
+          y: 130.0
+          z: 3.0
+        voxel_size:
+          x: 1.0
+          y: 1.0
+          z: 1.0
+
+      # lidar obstacle detection
+      fov_angle: 2.0943951023931953
+      fov_segments: 30
+      incline_rate: 0.05
+      max_obstacle_height: 4.0
+      min_obstacle_height: 0.05
+      use_sim_time: false
+      zone_padding: 0.5
+
+      # lidar pointcloud front
+      calibration: "/home/main/navigator/data/VLP16db.yaml" # The path to the calibration file for the particular device. There are a set of default calibration files to start with in the "params" subdirectory in this package. Defaults to the empty string.
+      min_range: 1.0 # The minimum range in meters that a point must be to be added to the resulting point cloud. Points closer than this are discarded. Must be between 0.1 and 10.0. Defaults to 0.9.
+      max_range: 130.0 # The maximum range in meters that a point must be to be added to the resulting point cloud. Points further away than this are discarded. Must be between 0.1 and 200.0. Defaults to 130.0.
+      view_direction: 0.0 # The point around the circumference of the device, in radians, to "center" the view. Combined with view_width, this allows the node to generate a pointcloud only for the given width, centered at this point. This can vastly reduce the CPU requirements of the node. Must be between -Pi and Pi, where 0 is straight ahead from the device. Defaults to 0.0.
+      view_width: 6.283185307179586 # The width, in radians, of the view to generate for the resulting pointcloud. Combined with view_direction, this allows the node to generate a pointcloud only for the given width, centered at the view_direction point. This can vastly reduce the CPU requirements of the node. Must be between 0 and 2Pi. Defaults to 2Pi.
+      organize_cloud: True # Whether to organize the cloud by ring (True), or to use the order as it comes directly from the driver (False). Defaults to True.
+      target_frame: "base_link" # The coordinate frame to apply to the generated point cloud header before publishing. If the empty string (the default), the frame is passed along from the driver packet. If this frame is different than the fixed_frame, a transformation to this coordinate frame is performed while creating the pointcloud.
+      fixed_frame: "lidar_right" # The fixed coordinate frame to transform the data from.
+
+      # lidar pointcloud rear
+      calibration: "/home/main/navigator/data/VLP16db.yaml" # The path to the calibration file for the particular device. There are a set of default calibration files to start with in the "params" subdirectory in this package. Defaults to the empty string.
+      min_range: 1.0 # The minimum range in meters that a point must be to be added to the resulting point cloud. Points closer than this are discarded. Must be between 0.1 and 10.0. Defaults to 0.9.
+      max_range: 130.0 # The maximum range in meters that a point must be to be added to the resulting point cloud. Points further away than this are discarded. Must be between 0.1 and 200.0. Defaults to 130.0.
+      view_direction: 0.0 # The point around the circumference of the device, in radians, to "center" the view. Combined with view_width, this allows the node to generate a pointcloud only for the given width, centered at this point. This can vastly reduce the CPU requirements of the node. Must be between -Pi and Pi, where 0 is straight ahead from the device. Defaults to 0.0.
+      view_width: 6.283185307179586 # The width, in radians, of the view to generate for the resulting pointcloud. Combined with view_direction, this allows the node to generate a pointcloud only for the given width, centered at the view_direction point. This can vastly reduce the CPU requirements of the node. Must be between 0 and 2Pi. Defaults to 2Pi.
+      organize_cloud: True # Whether to organize the cloud by ring (True), or to use the order as it comes directly from the driver (False). Defaults to True.
+      target_frame: "base_link" # The coordinate frame to apply to the generated point cloud header before publishing. If the empty string (the default), the frame is passed along from the driver packet. If this frame is different than the fixed_frame, a transformation to this coordinate frame is performed while creating the pointcloud.
+      fixed_frame: "lidar_left" # The fixed coordinate frame to transform the data from.
+
+      # lidar rear
+      ip: "0.0.0.0"
+      port: 2368
+      cloud_size:  55000
+      topic: "points_raw"  # UdpDriverNode strictly expects to get the topic via `declare_parameter`.
+      frame_id: "lidar_left"
+      timeout_ms: 10
+      rpm: 600
+
+      # pc filter transform front
+      timeout_ms:       110
+      pcl_size:         55000
+      input_frame_id:  "lidar_right"
+      output_frame_id: "base_link"
+      init_timeout_ms:  5000
+      expected_num_subscribers: 1
+      expected_num_publishers:  1
+      start_angle:            4.61      # radius
+      end_angle:              2.85
+      min_radius:             1.5           # meters
+      max_radius:             150.0
+      static_transformer:
+        quaternion:
+          x:                    0.0
+          y:                    0.0
+          z:                   -0.6631354427
+          w:                    0.7484994220
+        translation:
+          x:                    1.43
+          y:                    3.35
+          z:                    0.7876
+          
+      # pc filter transform front
+      timeout_ms:       110
+      pcl_size:         55000
+      input_frame_id:  "lidar_right"
+      output_frame_id: "base_link"
+      init_timeout_ms:  5000
+      expected_num_subscribers: 1
+      expected_num_publishers:  1
+      start_angle:            0.0       # radians
+      end_angle:              6.28
+      min_radius:             3.0      # meters
+      max_radius:             50.0
+      static_transformer:
+        quaternion:
+          x:                    0.0
+          y:                    0.0
+          z:                    0.0
+          w:                    1.0
+        translation:
+          x:                    1.498
+          y:                    -0.022
+          z:                    1.49
+
+      # pc filter transform rear
+      timeout_ms:       110
+      pcl_size:         55000
+      input_frame_id:  "lidar_left"
+      output_frame_id: "base_link" # Use URDF transform
+      init_timeout_ms:  5000
+      expected_num_subscribers: 1
+      expected_num_publishers:  1
+      start_angle:            3.7      # radius
+      end_angle:              2.0
+      min_radius:             1.5           # meters
+      max_radius:             150.0
+      static_transformer:
+        quaternion:
+          x:                    0.032584 #0.0
+          y:                    0.0081743 #0.0
+          z:                    0.9693964 #0.9699438633
+          w:                    0.2431915 #0.2433287941
+        translation:
+          x:                    0.52
+          y:                   -0.72
+          z:                    1.0
+
+      # pc filter transform rear sim
+      timeout_ms:       110
+      pcl_size:         55000
+      input_frame_id:  "lidar_left"
+      output_frame_id: "base_link"
+      init_timeout_ms:  5000
+      expected_num_subscribers: 1
+      expected_num_publishers:  1
+      start_angle:            0.0       # radians
+      end_angle:              6.28
+      min_radius:             3.0       # meters
+      max_radius:             150.0
+      static_transformer:
+        quaternion:
+          x:                    0.0
+          y:                    0.0
+          z:                    0.0
+          w:                    1.0
+        translation:
+          x:                    0.308
+          y:                    -0.022
+          z:                    1.49
+
+      # zed
+      general:
+        camera_model: "zed2i"
+        camera_name: "zed2i"
+        svo_file: ""
+        svo_loop: false # Enable loop mode when using an SVO as input source
+        svo_realtime: true # if true SVO will be played trying to respect the original framerate eventually skipping frames, otherwise every frame will be processed respecting the `pub_frame_rate` setting
+        camera_timeout_sec: 5
+        camera_max_reconnect: 5
+        camera_flip: false
+        zed_id: 0
+        serial_number: 0
+        resolution: 2 # '0': HD2K, '1': HD1080, '2': HD720, '3': VGA
+        sdk_verbose: true
+        grab_frame_rate: 15 # ZED SDK internal grabbing rate
+        pub_frame_rate: 15.0 # [DYNAMIC] - frequency of publishing of visual images and depth images
+        gpu_id: -1
+
+      video:
+        extrinsic_in_camera_frame: false # if `false` extrinsic parameter in `camera_info` will use ROS native frame (X FORWARD, Z UP) instead of the camera frame (Z FORWARD, Y DOWN) [`true` use old behavior as for version < v3.1]
+        img_downsample_factor: 1.0 # Resample factor for image data matrices [0.01,1.0] The SDK works with native data sizes, but publishes rescaled matrices
+        brightness: 4 # [DYNAMIC]
+        contrast: 4 # [DYNAMIC]
+        hue: 0 # [DYNAMIC]
+        saturation: 4 # [DYNAMIC]
+        sharpness: 4 # [DYNAMIC]
+        gamma: 8 # [DYNAMIC] - Requires SDK >=v3.1
+        auto_exposure_gain: true # [DYNAMIC]
+        exposure: 80 # [DYNAMIC]
+        gain: 80 # [DYNAMIC]
+        auto_whitebalance: true # [DYNAMIC]
+        whitebalance_temperature: 42 # [DYNAMIC] - [28,65] works only if `auto_whitebalance` is false
+        qos_history: 1 # '1': KEEP_LAST - '2': KEEP_ALL
+        qos_depth: 1 # Queue size if using KEEP_LAST
+        qos_reliability: 1 # '1': RELIABLE - '2': BEST_EFFORT -
+        qos_durability: 2 # '1': TRANSIENT_LOCAL - '2': VOLATILE
+
+      depth:
+        quality: 1 # '0': NONE, '1': PERFORMANCE, '2': QUALITY, '3': ULTRA - '4': NEURAL - Note: if '0' all the modules that requires depth extraction are disabled by default (Pos. Tracking, Obj. Detection, Mapping, ...)
+        sensing_mode: 0 # '0': STANDARD, '1': FILL
+        depth_stabilization: true # Forces positional tracking to start if 'true'
+        openni_depth_mode: false # 'false': 32bit float [meters], 'true': 16bit unsigned int [millimeters]
+        depth_downsample_factor: 1.0 # Resample factor for depth data matrices [0.01,1.0] The SDK works with native data sizes, but publishes rescaled matrices (depth map, point cloud, ...)
+        point_cloud_freq: 10.0 # [DYNAMIC] - frequency of the pointcloud publishing (equal or less to `grab_frame_rate` value)
+        depth_confidence: 50 # [DYNAMIC]
+        depth_texture_conf: 100 # [DYNAMIC]
+        remove_saturated_areas: true # [DYNAMIC]
+        qos_history: 1 # '1': KEEP_LAST - '2': KEEP_ALL
+        qos_depth: 1 # Queue size if using KEEP_LAST
+        qos_reliability: 1 # '1': RELIABLE - '2': BEST_EFFORT -
+        qos_durability: 2 # '1': TRANSIENT_LOCAL - '2': VOLATILE
+        min_depth: .3 # Min: 0.2, Max: 3.0 - Default 0.7 - Note: reducing this value wil require more computational power and GPU memory
+        max_depth: 40.0 # Max: 40.0
+
+      pos_tracking:
+        pos_tracking_enabled: true # True to enable positional tracking from start
+        publish_tf: false # publish `odom -> base_link` TF
+        publish_map_tf: false # publish `map -> odom` TF
+        base_frame: "base_link" # use the same name as in the URDF file
+        map_frame: "map"
+        odometry_frame: "odom"
+        area_memory_db_path: ""
+        area_memory: false # Enable to detect loop closure
+        floor_alignment: false # Enable to automatically calculate camera/floor offset
+        initial_base_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # Initial position of the `base_frame` -> [X, Y, Z, R, P, Y]
+        init_odom_with_first_valid_pose: true # Enable to initialize the odometry with the first valid pose
+        path_pub_rate: 2.0 # [DYNAMIC] - Camera trajectory publishing frequency
+        path_max_count: -1 # use '-1' for unlimited path size
+        two_d_mode: true # Force navigation on a plane. If true the Z value will be fixed to "fixed_z_value", roll and pitch to zero
+        fixed_z_value: 0.00 # Value to be used for Z coordinate if `two_d_mode` is true
+        qos_history: 1 # '1': KEEP_LAST - '2': KEEP_ALL
+        qos_depth: 1 # Queue size if using KEEP_LAST
+        qos_reliability: 1 # '1': RELIABLE - '2': BEST_EFFORT -
+        qos_durability: 2 # '1': TRANSIENT_LOCAL - '2': VOLATILE
+        imu_fusion: true # enable/disable IMU fusion. When set to false, only the optical odometry will be used.
+        publish_imu_tf: true # enable/disable the static IMU TF broadcasting
+
+      mapping:
+        mapping_enabled: true # True to enable mapping and fused point cloud pubblication
+        resolution: 0.1 # maps resolution in meters [0.01f, 0.2f]
+        max_mapping_range: 20.0 # maximum depth range while mapping in meters (-1 for automatic calculation) [2.0, 20.0]
+        fused_pointcloud_freq: 0.5 # frequency of the publishing of the fused colored point cloud
+        qos_history: 1 # '1': KEEP_LAST - '2': KEEP_ALL
+        qos_depth: 1 # Queue size if using KEEP_LAST
+        qos_reliability: 1 # '1': RELIABLE - '2': BEST_EFFORT -
+        qos_durability: 2 # '1': TRANSIENT_LOCAL - '2': VOLATILE
+
+      debug:
+        debug_general: false
+        debug_sensors: false
+
+      sensors:
+        sensors_image_sync: true # Synchronize Sensors messages with latest published video/depth message
+        sensors_pub_rate: 200. # frequency of publishing of sensors data. MAX: 400. - MIN: grab rate
+        qos_history: 1 # '1': KEEP_LAST - '2': KEEP_ALL
+        qos_depth: 1 # Queue size if using KEEP_LAST
+        qos_reliability: 1 # '1': RELIABLE - '2': BEST_EFFORT -
+        qos_durability: 2 # '1': TRANSIENT_LOCAL - '2': VOLATILE
+
+      object_detection:
+        od_enabled: false # True to enable Object Detection [only ZED 2]
+        confidence_threshold: 50.0 # [DYNAMIC] - Minimum value of the detection confidence of an object [0,100]
+        model: 0 # '0': MULTI_CLASS_BOX - '1': MULTI_CLASS_BOX_ACCURATE - '2': HUMAN_BODY_FAST - '3': HUMAN_BODY_ACCURATE - '4': MULTI_CLASS_BOX_MEDIUM - '5': HUMAN_BODY_MEDIUM - '6': PERSON_HEAD_BOX
+        filtering_mode: 1 # '0': NONE - '1': NMS3D - '2': NMS3D_PER_CLASS
+        mc_people: true # [DYNAMIC] - Enable/disable the detection of persons for 'MULTI_CLASS_X' models
+        mc_vehicle: true # [DYNAMIC] - Enable/disable the detection of vehicles for 'MULTI_CLASS_X' models
+        mc_bag: false # [DYNAMIC] - Enable/disable the detection of bags for 'MULTI_CLASS_X' models
+        mc_animal: true # [DYNAMIC] - Enable/disable the detection of animals for 'MULTI_CLASS_X' models
+        mc_electronics: false # [DYNAMIC] - Enable/disable the detection of electronic devices for 'MULTI_CLASS_X' models
+        mc_fruit_vegetable: false # [DYNAMIC] - Enable/disable the detection of fruits and vegetables for 'MULTI_CLASS_X' models
+        mc_sport: false # [DYNAMIC] - Enable/disable the detection of sport-related objects for 'MULTI_CLASS_X' models
+        body_fitting: true # Enable/disable body fitting for 'HUMAN_BODY_FAST' and 'HUMAN_BODY_ACCURATE' models
+        body_format: 1 # '0': POSE_18 - '1': POSE_34 [Only if `HUMAN_BODY_*` model is selected]
+        qos_history: 1 # '1': KEEP_LAST - '2': KEEP_ALL
+        qos_depth: 1 # Queue size if using KEEP_LAST
+        qos_reliability: 1 # '1': RELIABLE - '2': BEST_EFFORT
+        qos_durability: 2 # '1': TRANSIENT_LOCAL - '2': VOLATILE
+
+
+planning:
+  /**:
+    ros__parameters:
+      # Behavior planner
+      map_xodr_file_path: data/maps/grand_loop/grand_loop.xodr
+      stop_tick: 10
+      junc_delay: 20
+      max_dist_to_zone: 2.0
+      min_dist_out_zone: 10.0
+      stop_speed_dif: 0.25
+      stop_pose_dif: 1.0
+
+      # Lane planner
+      heading_weight: 0.1
+      lane_planner:
+        trajectory_resolution: 0.5
+      vehicle:
+        cg_to_front_m: 1.228
+        cg_to_rear_m: 1.5618
+        front_corner_stiffness: 0.1
+        rear_corner_stiffness: 0.1
+        mass_kg: 1500.0
+        yaw_inertia_kgm2: 12.0
+        width_m: 2.0
+        front_overhang_m: 1.05
+        rear_overhang_m: 0.92
+      gaussian_smoother:
+        standard_deviation: 5.0
+        kernel_size: 3
+
+      # Motion planner
+      approx_point_spacing: 0.25
+      horizon: 400
+      max_accel: 0.70
+      max_decel: 0.70
+      max_lat_accel: 0.6
+
+      # Parking planner
+      vehicle:
+        cg_to_front_m: 1.228
+        cg_to_rear_m: 1.5618
+        front_corner_stiffness: 0.1
+        rear_corner_stiffness: 0.1
+        mass_kg: 1500.0
+        yaw_inertia_kgm2: 12.0
+        width_m: 1.6
+        front_overhang_m: 0.5
+        rear_overhang_m: 0.5
+      optimization_weights:
+        steering: 1.0
+        throttle: 1.0
+        goal: 0.5
+      state_bounds:
+        lower:
+          x_m: -300.0
+          y_m: -300.0
+          velocity_mps: -3.0
+          heading_rad: -6.2832
+          steering_rad: -0.67
+        upper:
+          x_m: 300.0
+          y_m: 300.0
+          velocity_mps: 3.0
+          heading_rad: 6.2832
+          steering_rad: 0.67
+      command_bounds:
+        lower:
+          steering_rate_rps: -5.0
+          throttle_mps2: -5.0
+        upper:
+          steering_rate_rps: 5.0
+          throttle_mps2: 5.0
+
+      # Path planner
+      enable_object_collision_estimator: false
+      heading_weight: 0.1
+      goal_distance_thresh: 3.0
+      stop_velocity_thresh: 2.0
+      subroute_goal_offset_lane2parking: 7.6669
+      subroute_goal_offset_parking2lane: 7.6669
+      vehicle:
+        cg_to_front_m: 1.228
+        cg_to_rear_m: 1.5618
+        front_corner_stiffness: 17000.0
+        rear_corner_stiffness: 20000.0
+        mass_kg: 1460.0
+        yaw_inertia_kgm2: 2170.0
+        width_m: 2.0
+        front_overhang_m: 0.5
+        rear_overhang_m: 0.5
+
+      # Path publisher
+      cruising_speed_ms: 10.0
+      map_xodr_file_path: data/maps/grand_loop/grand_loop.xodr
+      route_info_params: [
+        "66", "-1", "0",
+        "359", "-1", "0",
+        "85", "-1", "0"
+      ]

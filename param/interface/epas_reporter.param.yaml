@@ -1,0 +1,6 @@
+---
+/**:
+  ros__parameters:
+    epas_min: 228.0
+    epas_max: 250.0
+    is_calibrated: true

@@ -1,0 +1,4 @@
+/**:
+  ros__parameters:
+    xodr_path: "data/maps/town10/Town10HD_Opt.xodr"
+    draw_detail: 0.5

@@ -1,0 +1,4 @@
+ccnet_r50-d8_512x1024_80k_drivable_bdd100k.pth
+ccnet_r50-d8_512x1024_80k_drivable_bdd100k.py
+fpn_r50_gn_dconv_512x1024_80k_drivable_bdd100k.pth
+fpn_r50_gn_dconv_512x1024_80k_drivable_bdd100k.py
