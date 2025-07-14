@@ -39,5 +39,6 @@ def generate_launch_description():
         depth_processing, 
         occupancy_grid_node,
         # lane_type_detector,
-        # pedestrian_skeleton
+        # brake_detection,
+        # pedestrian_skeleton,
     ])
