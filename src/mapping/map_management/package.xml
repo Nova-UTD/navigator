@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>map_management</name>
+  <version>0.0.1</version>
+  <description>Cost Map Maker</description>
+  <maintainer email="jim3moore@gmail.com">Jim Moore</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>nova_auto_package</buildtool_depend>
+  <depend>lemon</depend>
+  <depend>rclcpp</depend>
+
+  <!-- Message definitions -->
+  <depend>carla_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>libopendrive</depend>
+  <depend>nav_msgs</depend>
+  <depend>navigator_msgs</depend>
+  <depend>rosgraph_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

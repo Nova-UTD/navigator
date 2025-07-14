@@ -1,0 +1,45 @@
+version: '2.3'
+name: carla_bridge
+services:
+    carla_bridge:
+        privileged: true
+        stdin_open: true
+        tty: true
+        runtime: nvidia
+
+        image: carla_bridge
+        container_name: carla_bridge_${USER}
+
+        volumes:     
+          - type: bind
+            source: /home/share/carla
+            target: /carla
+          # /launch is where we store parameter/data files for launching carla and the bridge
+          - type: bind
+            source: ${PWD}/launch
+            target: /launch 
+          - type: bind
+            source: ${HOME}/.Xauthority
+            target: /root/.Xauthority
+          - type: bind
+            source: /tmp/.X11-unix
+            target: /tmp/.X11-unix
+          # need to enable shared memory for ros to communicate between docker containers
+          # see: https://answers.ros.org/question/370595/ros2-foxy-nodes-cant-communicate-through-docker-container-border/
+          - type: bind
+            source: /dev/shm
+            target: /dev/shm
+
+        environment:
+          - DISPLAY=${DISPLAY}
+          - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+          - NVIDIA_VISIBLE_DEVICES=all
+          # Specify the ROS Middleware to be consistent across containers:
+          # see: https://discourse.ros.org/t/ros-cross-distribution-communication/27335
+          - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+        build:
+          context: .
+          dockerfile: Dockerfile
+        
+        network_mode: "host"

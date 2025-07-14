@@ -1,0 +1,137 @@
+version: "2.3"
+name: navigator
+services:
+  navigator:
+    image: navigator
+    container_name: navigator_${USER}
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+  navigator_carla:
+    privileged: true
+    stdin_open: true
+    tty: true
+    runtime: nvidia 
+
+    image: navigator
+    container_name: navigator_carla_${USER}
+
+    volumes:
+      - type: bind
+        source: $PWD
+        target: /navigator
+      - type: bind
+        source: /home/share/carla
+        target: /carla
+      - type: bind
+        source: /storage/bags
+        target: /bags
+      - type: bind
+        source: ${HOME}/.Xauthority
+        target: /root/.Xauthority
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+      # need to enable shared memory for ros to communicate between docker containers
+      # see: https://answers.ros.org/question/370595/ros2-foxy-nodes-cant-communicate-through-docker-container-border/
+      - type: bind
+        source: /dev
+        target: /dev
+      #- type: bind
+      #  source: /dev/shm
+      #  target: /dev/shm
+
+    environment:
+      - DISPLAY=${DISPLAY}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      - NVIDIA_VISIBLE_DEVICES=all
+      # Specify the ROS Middleware to be consistent across containers:
+      # see: https://discourse.ros.org/t/ros-cross-distribution-communication/27335
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    network_mode: "host"
+
+  # On Board Computer (OBC) does not have Carla or Bags directory
+  # runtime nvidia has yet to be set up on the OBC
+  navigator_obc:
+    privileged: true
+    stdin_open: true
+    tty: true
+
+    image: navigator
+    container_name: navigator_obc_${USER}
+
+    volumes:
+      - type: bind
+        source: $PWD
+        target: /navigator
+      - type: bind
+        source: ${HOME}/.Xauthority
+        target: /root/.Xauthority
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+      # need to enable shared memory for ros to communicate between docker containers
+      # see: https://answers.ros.org/question/370595/ros2-foxy-nodes-cant-communicate-through-docker-container-border/
+      - type: bind
+        source: /dev
+        target: /dev
+      #- type: bind
+      #  source: /dev/shm
+      #  target: /dev/shm
+
+    environment:
+      - DISPLAY=${DISPLAY}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      - NVIDIA_VISIBLE_DEVICES=all
+      # Specify the ROS Middleware to be consistent across containers:
+      # see: https://discourse.ros.org/t/ros-cross-distribution-communication/27335
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    network_mode: "host"
+
+  zenith:
+    extends:
+      file: zenith/docker-compose.yaml
+      service: zenith
+  
+  zenith_backend:
+    extends:
+      file: zenith/docker-compose.yaml
+      service: zenith_backend
+
+  zenith_dev:
+    extends:
+      file: zenith/docker-compose.yaml
+      service: zenith_dev
+
+  zenith_backend_dev:
+    extends:
+      file: zenith/docker-compose.yaml
+      service: zenith_backend_dev
+
