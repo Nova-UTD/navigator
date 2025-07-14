@@ -189,7 +189,7 @@ RUN pip3 install --ignore-installed \
     # Scientific Computing - used widely
     scipy==1.14.1 \
     #
-    shapely==2.0.2 \
+    shapely==2.0.6 \
     #
     simple-pid==2.0.1 \
     #
@@ -220,7 +220,8 @@ RUN pip3 install --ignore-installed \
     kiss-icp==1.0.0 \
     g2o-python==0.0.12 \
     rosbags==0.10.4 \
-    ultralytics
+    ultralytics \
+    cython==3.0.11    # For building pyOpenDRIVE
 
 # Install SAM2 seperately to avoid storage space errors on GitHub Actions
 RUN pip3 install sam2

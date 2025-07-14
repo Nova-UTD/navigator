@@ -1,0 +1,4 @@
+[submodule "src/tools/pyOpenDRIVE"]
+	path = src/tools/pyOpenDRIVE
+	url = https://github.com/Nova-UTD/pyOpenDRIVE
+	branch = nova-ros-pkg
