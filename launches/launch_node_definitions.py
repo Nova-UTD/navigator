@@ -4,10 +4,6 @@ from launch_ros.actions import Node
 
 NAVIGATOR_DIR = "/navigator/"
 
-pure_pursuit_controller = Node(
-    package='pure_pursuit_controller',
-    executable='pure_pursuit_controller'
-)
 
 airbags = Node(
     package='airbags',
@@ -137,6 +133,10 @@ prednet_inference = Node(
     package='prednet_inference',
     executable='prednet_inference_node'
 )
+pure_pursuit_controller = Node(
+    package='pure_pursuit_controller',
+    executable='pure_pursuit_controller'
+)
 
 pedestrian_intent_to_enter_road = Node(
     package='pedestrian_intent_to_enter_road',
@@ -188,6 +188,10 @@ semantic_projection = Node(
 sounds = Node(
     package='guardian',
     executable='sound_node'
+)
+state_estimation = Node(
+    package='state_estimation',
+    executable='state_estimation_node'
 )
 
 static_grid = Node(
