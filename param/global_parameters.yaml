@@ -1,6 +1,6 @@
 occupancy_grids:
-  length: 60  # in meters
-  width: 80  # in meters
-  vehicle_x_location: 40  # in meters from left
-  vehicle_y_location: 20  # in meters from back
+  length: 60.0  # in meters
+  width: 80.0  # in meters
+  vehicle_x_location: 40.0  # in meters from left
+  vehicle_y_location: 20.0  # in meters from back
   resolution: 0.2  # in meters
