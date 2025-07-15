@@ -12,6 +12,10 @@ class OccupancyGridNode(Node):
         super().__init__('occupancy_grid_node')
         self.bridge = CvBridge()
 
+        # Set up the global config file
+        self.declare_parameter('global_config', 'temp_value')
+        self.file_path = self.get_parameter('global_config').value
+
         #subscribe to segmentation and depth masks
         self.create_subscription(Image, '/segmentation_mask', self.process_segmentation, 10)
         self.create_subscription(Image, '/processed_depth', self.process_depth, 10)
@@ -47,8 +51,17 @@ class OccupancyGridNode(Node):
             print("Segmentation or Depth Image Not Available Yet!")
             return
 
+        # Open the config file
+        try:
+            with open(self.file_path, 'r') as file:
+                data = yaml.safe_load(file)
+        except FileNotFoundError:
+            print("Error: config.yaml not found.")
+        except yaml.YAMLError as e:
+            print(f"Error parsing YAML file: {e}")
+
         grid_size = self.segmentation_mask.shape
-        resolution = 0.2
+        resolution = data['occupancy_grids']['resolution']
         occupancy_grid = np.ones(grid_size, dtype=np.int8) * -1
 
         origin = (grid_size[1] // 2, 0)
@@ -81,13 +94,48 @@ class OccupancyGridNode(Node):
             if 0 <= u < grid_size[1] and 0 <= v < grid_size[0]:
                 occupancy_grid[v, u] = 1
 
+        # Resize occupancy grid to match size specified in config file
+        prepend_data = Array(np.int8, [-1] * (data['occupancy_grids']['width'] * data['occupancy_grids']['vehicle_y_location']))
+        new_grid = np.insert(occupancy_grid, 0, prepend_data)
+
+        if (new_grid.shape[0] * resolution) != data['occupancy_grids']['length']:
+            diff = (data['occupancy_grids']['length'] - (new_grid.shape[0] * resolution)) / resolution
+            diff = int(diff)  # Convert to integer
+            
+            if diff < 0:
+                new_grid = new_grid[:diff * new_grid.shape[1] * resolution]
+            elif diff > 0:
+                new_grid.extend(Array(np.int8, [-1] * (diff * new_grid.shape[1] * resolution)))
+
+            grid_size[0] = data['occupancy_grids']['length']
+                    
+        if (new_grid.shape[0] * resolution) != data['occupancy_grids']['width']:
+            diff = (data['occupancy_grids']['width'] - (new_grid.shape[0] * resolution)) / resolution     
+            diff = int(diff)  # Convert to integer
+        
+            if diff < 0:
+                new_grid = new_grid[:, int(diff / 2):(int(diff / 2) * -1)]
+            elif diff > 0:
+                new_new_grid = Array(np.int8, [-1] * (data['occupancy_grids']['width'] * (new_grid.shape[1] * resolution)))
+                offset = int(diff / 2)
+                for i in range(int(new_grid.shape[1] * resolution)):
+                    start = i * data['occupancy_grids']['width'] + offset
+                    end = start + data['occupancy_grids']['width']
+                    new_new_grid[start:end] = new_grid[i * new_grid.shape[0] * resolution:(i + 1) * new_grid.shape[0] * resolution]
+                new_grid = new_new_grid
+        
+            grid_size[1] = data['occupancy_grids']['width']
+
+
         msg = OccupancyGrid()
         msg.header.frame_id = "map"
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.info.resolution = resolution
         msg.info.width = grid_size[1]
         msg.info.height = grid_size[0]
-        msg.data = occupancy_grid.flatten().tolist()
+        msg.data = new_grid.flatten().tolist()
+        msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location'] * data['occupancy_grids']['resolution']
+        msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location'] * data['occupancy_grids']['resolution']
 
         self.publisher.publish(msg)
         print("Published Occupancy Grid.")
