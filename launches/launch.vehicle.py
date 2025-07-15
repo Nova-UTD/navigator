@@ -6,6 +6,7 @@ import sys
 from launch import LaunchDescription
 from launch.actions import RegisterEventHandler, LogInfo
 from launch.event_handlers import OnProcessStart
+import launch_ros.actions
 
 sys.path.append(path.abspath("/navigator/"))
 from launches.launch_node_definitions import *
@@ -40,6 +41,9 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            # Set the global config file as a parameter for all nodes.
+            launch_ros.actions.SetParameter(name="global_config", value="/navigator/param/global_parameters.yaml"),
+            
             map_manager_carla,
             RegisterEventHandler(
                 OnProcessStart(
