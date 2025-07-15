@@ -139,10 +139,47 @@ def numpyToOccupancyGrid(arr):
         # We assume that the masked value are already -1, for speed
         arr = arr.data
 
+    # Open the config file
+    try:
+        with open(self.file_path, 'r') as file:
+            data = yaml.safe_load(file)
+    except FileNotFoundError:
+        print("Error: config.yaml not found.")
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML file: {e}")
+
     grid.data = Array('b', arr.ravel().astype(np.int8))
     grid.info = MapMetaData()
     grid.info.height = arr.shape[0]
     grid.info.width = arr.shape[1]
+
+    if grid.info.height != data['occupancy_grids']['length']:
+        diff = (data['occupancy_grids']['length'] - grid.info.height) / data['occupancy_grids']['resolution']
+        diff = int(diff)  # Convert to integer
+        
+        if diff < 0:
+            grid.data = grid.data[:diff * grid.info.width]
+        elif diff > 0:
+            grid.data.extend(Array(np.int8, [-1] * (diff * grid.info.width)))
+        
+        grid.info.height = data['occupancy_grids']['length']
+
+    if grid.info.width != data['occupancy_grids']['width']:
+        diff = (data['occupancy_grids']['width'] - grid.info.width) / data['occupancy_grids']['resolution']     # Num cells to add or remove from each row
+        diff = int(diff)  # Convert to integer
+
+        if diff < 0:
+            grid.data = grid.data[:, int(diff / 2):(int(diff / 2) * -1)]
+        elif diff > 0:
+            new_grid = Array(np.int8, [-1] * (data['occupancy_grids']['width'] * grid.info.height))
+            offset = int(diff / 2)
+            for i in range(grid.info.height):
+                start = i * data['occupancy_grids']['width'] + offset
+                end = start + data['occupancy_grids']['width']
+                new_grid[start:end] = grid.data[i * grid.info.width:(i + 1) * grid.info.width]
+            grid.data = new_grid
+
+        grid.info.width = data['occupancy_grids']['width']
 
     return grid
 
