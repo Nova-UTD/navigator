@@ -219,6 +219,10 @@ class player(Node):
     def __init__(self):
         super().__init__('player')
 
+        # Set up the global config file
+        self.declare_parameter('global_config', 'temp_value')
+        self.file_path = self.get_parameter('global_config').value
+
         self.srcdir = '/replay'
         self.search_from = strptime('70-1-1_0-0-0', '%y-%m-%d_%H-%M-%S')
         self.search_to = strptime('30-1-1_0-0-0', '%y-%m-%d_%H-%M-%S')
@@ -294,7 +298,7 @@ class player(Node):
             times = npz['time']
 
             try:
-                with open('/navigator/param/global_parameters.yaml', 'r') as file:
+                with open(self.file_path, 'r') as file:
                     data = yaml.safe_load(file)
             except FileNotFoundError:
                 print("Error: config.yaml not found.")
