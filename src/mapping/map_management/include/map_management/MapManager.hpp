@@ -60,6 +60,8 @@
 
 #include "map_management/RouteManager.hpp"
 
+#include "yaml-cpp/yaml.h"
+
 using namespace std::chrono_literals;
 using namespace nav_msgs::msg;
 namespace bg = boost::geometry;
@@ -92,7 +94,7 @@ namespace navigator
             MapManagementNode();
 
             // Functions
-            void publishGrids(int top, int bottom, int side, float res);
+            void publishGrids(float top_dist, float bottom_dist, float side_dist, float res);
 
         private:
             // Callback groups

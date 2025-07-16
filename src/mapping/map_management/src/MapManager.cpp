@@ -17,6 +17,8 @@
 
 #include <fstream>
 
+#include "yaml-cpp/yaml.h"
+
 using namespace navigator::planning;
 
 struct RoiIndices
@@ -35,6 +37,10 @@ struct Arc
 
 MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
+    // Get path to the config file
+    this->declare_parameter<std::string>("global_config", "temp_value");
+    std::string file_path_ = this->get_parameter("global_config").as_string();
+
     // Callback groups & options
     mutex_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     parallel_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
@@ -548,14 +554,13 @@ void MapManagementNode::setRoute(const std::shared_ptr<navigator_msgs::srv::SetR
  *      i. If yes again, the cell is truly occupied. Append '100' ("occupied") to OccupancyGrid. Otherwise '0'.
  * 4. Set OccupancyGrid metadata and return.
  *
- * @param center Center of the grid
  * @param top_dist Distance from car to top edge
  * @param bottom_dist Distance from car to bottom edge
  * @param side_dist Distance from car to left and right edges
  * @param res Side length of grid cells (meters)
  * @return OccupancyGrid
  */
-void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dist, float res)
+void MapManagementNode::publishGrids(float top_dist, float bottom_dist, float side_dist, float res)
 {
     if (!this->clock_)
     {
@@ -643,7 +648,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     // down to here
 
     int area = 0;
-    int height = 0;
+    int width = 0;
 
     BoostPoint goal_pt;
     bool goal_is_set = false;
@@ -771,7 +776,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
             area += 1;
         }
-        height += 1;
+        width += 1;
     }
 
     auto clock = this->clock_->clock;
@@ -787,8 +792,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     //route_dist_grid.header.frame_id = "base_link";
     //route_dist_grid.header.stamp = clock;
 
-    grid_info.width = area / height;
-    grid_info.height = height;
+    grid_info.width = width;
+    grid_info.height = area / width;
     grid_info.map_load_time = clock;
     grid_info.resolution = res;
     grid_info.origin.position.x = x_min;
@@ -1070,7 +1075,19 @@ TransformStamped MapManagementNode::getEgoTf()
 void MapManagementNode::drivableAreaGridPubTimerCb()
 {
     // std::printf("Publishing grids\n");
-    publishGrids(40, 20, 30, 0.4);
+
+    try {
+        YAML::Node params_data = YAML::LoadFile(file_path_);
+    } catch (const YAML::BadFile& e) {
+        std::cerr << "Error loading YAML file: " << e.what() << std::endl;
+    } 
+
+    float top_dist = params_data["occupancy_grids"]["length"].as<float>() - params_data["occupancy_grids"]["vehicle_y_location"].as<float>();
+    float bottom_dist = params_data["occupancy_grids"]["vehicle_y_location"].as<float>();
+    float side_dist = params_data["occupancy_grids"]["vehicle_x_location"].as<float>();
+    float resolution = params_data["occupancy_grids"]["resolution"].as<float>();
+
+    publishGrids(top_dist, bottom_dist, side_dist, resolution);
 }
 
 // CPP code for printing shortest path between
