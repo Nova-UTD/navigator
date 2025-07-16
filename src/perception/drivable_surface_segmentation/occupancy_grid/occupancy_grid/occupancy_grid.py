@@ -6,6 +6,7 @@ from std_msgs.msg import Header
 from cv_bridge import CvBridge
 import numpy as np
 from skimage.draw import line
+import yaml
 
 class OccupancyGridNode(Node):
     def __init__(self):

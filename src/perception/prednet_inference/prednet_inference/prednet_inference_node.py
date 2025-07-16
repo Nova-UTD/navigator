@@ -23,6 +23,8 @@ import copy
 from threading import Thread
 from array import array as Array
 
+import yaml
+
 
 # Message definitions
 from rosgraph_msgs.msg import Clock
