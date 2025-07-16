@@ -13,6 +13,7 @@ from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 import time
+import yaml
 
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
@@ -50,6 +51,10 @@ class GridSummationNode(Node):
         """
         super().__init__('grid_summation_node')
 
+        # Set up the global config file
+        self.declare_parameter('global_config', 'temp_value')
+        self.file_path = self.get_parameter('global_config').value
+
         # Subscriptions and publishers
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -74,9 +79,6 @@ class GridSummationNode(Node):
             OccupancyGrid, '/grid/route_distance', self.routeDistGridCb, 1)
         self.route_dist_grid = None
 
-        self.junction_occupancy_pub = self.create_publisher(
-            OccupancyGrid, '/grid/junction_occupancy', 1)
-
         self.steering_cost_pub = self.create_publisher(
             OccupancyGrid, '/grid/steering_cost', 1)
 
@@ -97,8 +99,6 @@ class GridSummationNode(Node):
             Clock, '/clock', self.clockCb, 1)
 
         self.clock = Clock()
-
-        self.grid_out_details = [0.4, -20.0, -30.0]
 
     def clockCb(self, msg: Clock):
         self.clock = msg
@@ -167,9 +167,18 @@ class GridSummationNode(Node):
 
         roll, pitch, yaw = euler_from_quaternion(quat_to_numpy(t.transform.rotation))
 
+        # Open the config file
+        try:
+            with open(self.file_path, 'r') as file:
+                data = yaml.safe_load(file)
+        except FileNotFoundError:
+            print("Error: config.yaml not found.")
+        except yaml.YAMLError as e:
+            print(f"Error parsing YAML file: {e}")
+
         # use 10 here because it is the distance from the center of the occupancy grid to the vehicle
-        x = t.transform.translation.x + (10.0-10.0*np.cos(-yaw))
-        y = t.transform.translation.y - 10.0*np.sin(-yaw)
+        x = t.transform.translation.x + ((0.5 * data['occupancy_grids']['vehicle_y_location']) - (0.5 * data['occupancy_grids']['vehicle_y_location'])*np.cos(-yaw))
+        y = t.transform.translation.y - (0.5 * data['occupancy_grids']['vehicle_y_location'])*np.sin(-yaw)
         
         shift = [y/grid_res, x/grid_res]
 
@@ -194,10 +203,6 @@ class GridSummationNode(Node):
         grid_out.header.stamp = self.clock.clock
         grid_out.header.frame_id = 'base_link'
         grid_out.data = grid_img.astype(np.int8).flatten().tolist()
-
-        self.grid_out_details[0] = grid_out.info.resolution
-        self.grid_out_details[1] = grid_out.info.origin.position.x
-        self.grid_out_details[2] = grid_out.info.origin.position.y
 
         return grid_out
 
@@ -302,29 +307,98 @@ class GridSummationNode(Node):
             steering_cost = np.clip(steering_cost, 0, 100)
             speed_cost = np.clip(speed_cost, 0, 100)
 
+            # Open the config file
+            try:
+                with open(self.file_path, 'r') as file:
+                    data = yaml.safe_load(file)
+            except FileNotFoundError:
+                print("Error: config.yaml not found.")
+            except yaml.YAMLError as e:
+                print(f"Error parsing YAML file: {e}")
+
             # Publish as an OccupancyGrid
             steering_cost_msg = OccupancyGrid()
             steering_cost_msg.info.map_load_time = self.clock.clock
-            steering_cost_msg.info.resolution = self.grid_out_details[0]
-            steering_cost_msg.info.width = steering_cost.shape[0]
-            steering_cost_msg.info.height = steering_cost.shape[1]
-            steering_cost_msg.info.origin.position.x = self.grid_out_details[1]
-            steering_cost_msg.info.origin.position.y = self.grid_out_details[2]
+            steering_cost_msg.info.resolution = data['occupancy_grids']['resolution']
+            steering_cost_msg.info.width = steering_cost.shape[1]
+            steering_cost_msg.info.height = steering_cost.shape[0]
+            steering_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location'] * data['occupancy_grids']['resolution']
+            steering_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location'] * data['occupancy_grids']['resolution']
             steering_cost_msg.header.stamp = self.clock.clock
             steering_cost_msg.header.frame_id = 'base_link'
             steering_cost_msg.data = steering_cost.astype(np.int8).flatten().tolist()
+
+            # Resize occupancy grid to match size specified in config file
+            if steering_cost_msg.info.height != data['occupancy_grids']['length']:
+                diff = (data['occupancy_grids']['length'] - steering_cost_msg.info.height) / steering_cost_msg.info.resolution
+                diff = int(diff)  # Convert to integer
+                
+                if diff < 0:
+                    steering_cost_msg.data = steering_cost_msg.data[:diff * steering_cost_msg.info.width]
+                elif diff > 0:
+                    steering_cost_msg.data.extend(Array(np.int8, [-1] * (diff * steering_cost_msg.info.width)))
+                
+                steering_cost_msg.info.height = data['occupancy_grids']['length']
+            
+            if steering_cost_msg.info.width != data['occupancy_grids']['width']:
+                diff = (data['occupancy_grids']['width'] - steering_cost_msg.info.width) / steering_cost_msg.info.resolution     
+                diff = int(diff)  # Convert to integer
+            
+                if diff < 0:
+                    steering_cost_msg.data = steering_cost_msg.data[:, int(diff / 2):(int(diff / 2) * -1)]
+                elif diff > 0:
+                    new_grid = Array(np.int8, [-1] * (data['occupancy_grids']['width'] * steering_cost_msg.info.height))
+                    offset = int(diff / 2)
+                    for i in range(steering_cost_msg.info.height):
+                        start = i * data['occupancy_grids']['width'] + offset
+                        end = start + data['occupancy_grids']['width']
+                        new_grid[start:end] = steering_cost_msg.data[i * steering_cost_msg.info.width:(i + 1) * steering_cost_msg.info.width]
+                    steering_cost_msg.data = new_grid
+            
+                steering_cost_msg.info.width = data['occupancy_grids']['width']
+
             self.steering_cost_pub.publish(steering_cost_msg)
 
             speed_cost_msg = OccupancyGrid()
             speed_cost_msg.info.map_load_time = self.clock.clock
-            speed_cost_msg.info.resolution = self.grid_out_details[0]
-            speed_cost_msg.info.width = speed_cost.shape[0]
-            speed_cost_msg.info.height = speed_cost.shape[1]
-            speed_cost_msg.info.origin.position.x = self.grid_out_details[1]
-            speed_cost_msg.info.origin.position.y = self.grid_out_details[2]
+            speed_cost_msg.info.resolution = data['occupancy_grids']['resolution']
+            speed_cost_msg.info.width = speed_cost.shape[1]
+            speed_cost_msg.info.height = speed_cost.shape[0]
+            speed_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location'] * data['occupancy_grids']['resolution']
+            speed_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location'] * data['occupancy_grids']['resolution']
             speed_cost_msg.header.stamp = self.clock.clock
             speed_cost_msg.header.frame_id = 'base_link'
             speed_cost_msg.data = speed_cost.astype(np.int8).flatten().tolist()
+
+            # Resize occupancy grid to match size specified in config file
+            if speed_cost_msg.info.height != data['occupancy_grids']['length']:
+                diff = (data['occupancy_grids']['length'] - speed_cost_msg.info.height) / speed_cost_msg.info.resolution
+                diff = int(diff)  # Convert to integer
+                
+                if diff < 0:
+                    speed_cost_msg.data = speed_cost_msg.data[:diff * speed_cost_msg.info.width]
+                elif diff > 0:
+                    speed_cost_msg.data.extend(Array(np.int8, [-1] * (diff * speed_cost_msg.info.width)))
+                
+                speed_cost_msg.info.height = data['occupancy_grids']['length']
+            
+            if speed_cost_msg.info.width != data['occupancy_grids']['width']:
+                diff = (data['occupancy_grids']['width'] - speed_cost_msg.info.width) / speed_cost_msg.info.resolution 
+                diff = int(diff)  # Convert to integer
+            
+                if diff < 0:
+                    speed_cost_msg.data = speed_cost_msg.data[:, int(diff / 2):(int(diff / 2) * -1)]
+                elif diff > 0:
+                    new_grid = Array(np.int8, [-1] * (data['occupancy_grids']['width'] * speed_cost_msg.info.height))
+                    offset = int(diff / 2)
+                    for i in range(speed_cost_msg.info.height):
+                        start = i * data['occupancy_grids']['width'] + offset
+                        end = start + data['occupancy_grids']['width']
+                        new_grid[start:end] = speed_cost_msg.data[i * speed_cost_msg.info.width:(i + 1) * speed_cost_msg.info.width]
+                    speed_cost_msg.data = new_grid
+            
+                speed_cost_msg.info.width = data['occupancy_grids']['width']
+
             self.speed_cost_pub.publish(speed_cost_msg)
         
         except(Exception) as e:
