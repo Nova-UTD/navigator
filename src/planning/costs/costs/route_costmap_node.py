@@ -15,6 +15,7 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 import time
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
+import yaml
 
 # Message definitions
 from navigator_msgs.msg import CarlaSpeedometer
@@ -45,6 +46,10 @@ class RouteCostmapNode(Node):
 
     def __init__(self):
         super().__init__('route_costmap_node')
+
+        # Set up the global config file
+        self.declare_parameter('global_config', 'temp_value')
+        self.file_path = self.get_parameter('global_config').value
 
         # Subscriptions and publishers
         self.tf_buffer = Buffer()
@@ -90,7 +95,6 @@ class RouteCostmapNode(Node):
     def buildRouteCostmap(self):
         # self.get_logger().info('Creating route costmap...')
         # assign some baseline cost for not following the route
-        # TODO: Avoid hardcoding the costmap size
         routemap = np.zeros((151, 151)) + 25.0
         
         if self.route is None:
@@ -108,11 +112,20 @@ class RouteCostmapNode(Node):
             
             roll, pitch, yaw = euler_from_quaternion(quat_to_numpy(ego_tf.transform.rotation))
 
-            xmax = 40 # 40m in front of the car
-            xmin = -20 # 20m in back of the car
-            ymin = -30 # 30m left of the car
-            ymax = 30 # 30m right of the car
-            gridres = 0.4
+            # Open the config file
+            try:
+                with open(self.file_path, 'r') as file:
+                    data = yaml.safe_load(file)
+            except FileNotFoundError:
+                print("Error: config.yaml not found.")
+            except yaml.YAMLError as e:
+                print(f"Error parsing YAML file: {e}")
+
+            xmax = data['occupancy_grids']['length'] - data['occupancy_grids']['vehicle_y_location'] # 40m in front of the car
+            xmin = -1 * data['occupancy_grids']['vehicle_y_location'] # 20m in back of the car
+            ymin = -1 * data['occupancy_grids']['vehicle_x_location'] # 40m left of the car
+            ymax = data['occupancy_grids']['vehicle_x_location'] # 40m right of the car
+            gridres = data['occupancy_grids']['resolution']
 
             # transform the route points to base_link 
             route_baselink_x = np.zeros(len(self.route_remaining))
@@ -192,7 +205,7 @@ class RouteCostmapNode(Node):
             for r in range(len(gridxs)):
                 # conversion from x,y in base_link to grid indices 
                 # TODO: Avoid hard coding this
-                i,j = round((gridys[r]+30)/0.4), round((gridxs[r]+20)/0.4)
+                i,j = round((gridys[r] + ymax) / gridres), round((gridxs[r] + data['occupancy_grids']['vehicle_y_location']) / gridres)
                 try:
                     routemap[i,j] = 0
                 except:
@@ -263,32 +276,88 @@ class RouteCostmapNode(Node):
         #waypoint_costmap = self.make_waypoint_costmap(path_goal.pose)
         #routemap = np.clip( routemap + waypoint_costmap , 0, 100)
 
+        # Open the config file
+        try:
+            with open(self.file_path, 'r') as file:
+                data = yaml.safe_load(file)
+        except FileNotFoundError:
+            print("Error: config.yaml not found.")
+        except yaml.YAMLError as e:
+            print(f"Error parsing YAML file: {e}")
+
         # Publish as an OccupancyGrid
         route_cost_msg = OccupancyGrid()
         route_cost_msg.info.map_load_time = self.clock.clock
-        route_cost_msg.info.resolution = 0.4 # TODO: should avoid hard coding this
-        route_cost_msg.info.width = routemap.shape[0]
-        route_cost_msg.info.height = routemap.shape[1]
-        route_cost_msg.info.origin.position.x = -20.0 # TODO: should avoid hard coding this
-        route_cost_msg.info.origin.position.y = -30.0 # TODO: should avoid hard coding this
+        route_cost_msg.info.resolution = data['occupancy_grids']['resolution']
+        route_cost_msg.info.width = data['occupancy_grids']['width']
+        route_cost_msg.info.height = data['occupancy_grids']['length']
+        route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location'] * data['occupancy_grids']['resolution']
+        route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location'] * data['occupancy_grids']['resolution']
         route_cost_msg.header.stamp = self.clock.clock
         route_cost_msg.header.frame_id = 'base_link'
         route_cost_msg.data = routemap.astype(np.int8).flatten().tolist()
+
+        # Resize occupancy grid to match size specified in config file
+        if routemap.shape[0] != route_cost_msg.info.height:
+            diff = (route_cost_msg.info.height - routemap.shape[0]) / route_cost_msg.info.resolution
+            diff = int(diff)  # Convert to integer
+            
+            if diff < 0:
+                route_cost_msg.data = route_cost_msg.data[:diff * routemap.shape[1]]
+            elif diff > 0:
+                route_cost_msg.data.extend(Array(np.int8, [-1] * (diff * routemap.shape[1])))
+        
+        if routemap.shape[1] != route_cost_msg.info.width:
+            diff = (route_cost_msg.info.width - routemap.shape[1]) / route_cost_msg.info.resolution     
+            diff = int(diff)  # Convert to integer
+        
+            if diff < 0:
+                route_cost_msg.data = route_cost_msg.data[:, int(diff / 2):(int(diff / 2) * -1)]
+            elif diff > 0:
+                new_grid = Array(np.int8, [-1] * (route_cost_msg.info.width * route_cost_msg.info.height))
+                offset = int(diff / 2)
+                for i in range(route_cost_msg.info.height):
+                    start = i * route_cost_msg.info.width + offset
+                    end = start + route_cost_msg.info.width
+                    new_grid[start:end] = route_cost_msg.data[i * routemap.shape[1]:(i + 1) * routemap.shape[1]]
+                route_cost_msg.data = new_grid
+
         self.route_dist_grid_pub.publish(route_cost_msg)
 
-    def is_within_costmap(self,x,y, xmin=-20.0,xmax=40.0,ymin=-30.0,ymax=30.0):
-        # TODO: avoid hardcoding these values
+    def is_within_costmap(self, x, y):
+        # Open the config file
+        try:
+            with open(self.file_path, 'r') as file:
+                data = yaml.safe_load(file)
+        except FileNotFoundError:
+            print("Error: config.yaml not found.")
+        except yaml.YAMLError as e:
+            print(f"Error parsing YAML file: {e}")
+
+        xmax = data['occupancy_grids']['length'] - data['occupancy_grids']['vehicle_y_location'] 
+        xmin = -1 * data['occupancy_grids']['vehicle_y_location'] 
+        ymin = -1 * data['occupancy_grids']['vehicle_x_location'] 
+        ymax = data['occupancy_grids']['vehicle_x_location']
+
         return x>=xmin and x<=xmax and y>=ymin and y<=ymax
 
     # this creates a radial costmap centered on the goal waypoint
     # creates a gradual cost landscape to drive the path towards the end
     def make_waypoint_costmap(self,waypoint):
-        # TODO: avoid hardcoding these values
-        xmax = 40 # 40m in front of the car
-        xmin = -20 # 20m in back of the car
-        ymin = -30 # 30m left of the car
-        ymax = 30 # 30m right of the car
-        gridres = 0.4
+        # Open the config file
+        try:
+            with open(self.file_path, 'r') as file:
+                data = yaml.safe_load(file)
+        except FileNotFoundError:
+            print("Error: config.yaml not found.")
+        except yaml.YAMLError as e:
+            print(f"Error parsing YAML file: {e}")
+        
+        xmax = data['occupancy_grids']['length'] - data['occupancy_grids']['vehicle_y_location'] # 40m in front of the car
+        xmin = -1 * data['occupancy_grids']['vehicle_y_location'] # 20m in back of the car
+        ymin = -1 * data['occupancy_grids']['vehicle_x_location'] # 40m left of the car
+        ymax = data['occupancy_grids']['vehicle_x_location'] # 40m right of the car
+        gridres = data['occupancy_grids']['resolution']
         
         costmap = np.zeros((151,151))
         for i in range(costmap.shape[0]):
