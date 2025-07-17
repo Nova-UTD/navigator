@@ -8,6 +8,7 @@
  */
 
 #include "occupancy_cpp/StaticOccupancyNode.hpp"
+#include "yaml-cpp/yaml.h"
 
 using namespace navigator::perception;
 using namespace std::chrono_literals;
@@ -19,6 +20,10 @@ using namespace std::chrono_literals;
  */
 StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node")
 {
+  // Get path to the config file
+  this->declare_parameter<std::string>("global_config", "temp_value");
+  std::string file_path_ = this->get_parameter("global_config").as_string();
+
   //------Subscribers-------//
   // Subscribe to and use CARLA's clock
   clock_sub = this->create_subscription<Clock>(
@@ -324,18 +329,24 @@ void StaticOccupancyNode::addEgoMask()
 //-------------HELPERS----------------------------//
 void StaticOccupancyNode::publishOccupancyGrid()
 {
+  // Open the config file
+  try {
+      YAML::Node params_data = YAML::LoadFile(file_path_);
+  } catch (const YAML::BadFile& e) {
+      std::cerr << "Error loading YAML file: " << e.what() << std::endl;
+  }
 
   //--Occupancy Grid--//
   OccupancyGrid msg;
 
   msg.header.stamp = this->clock.clock;
   msg.header.frame_id = "base_link"; // TODO: Make sure the frame is the correct one.
-  msg.info.resolution = RES;
+  msg.info.resolution = params_data["occupancy_grids"]["resolution"].as<float>();
   msg.info.width = GRID_SIZE;
   msg.info.height = GRID_SIZE;
   msg.info.origin.position.z = 0.2;
-  msg.info.origin.position.x = -64.0 * (RES);
-  msg.info.origin.position.y = -64.0 * (RES);
+  msg.info.origin.position.x = -1 * params_data["occupancy_grids"]["vehicle_x_location"].as<float>() * msg.info.resolution;
+  msg.info.origin.position.y = -1 * params_data["occupancy_grids"]["vehicle_y_location"].as<float>() * msg.info.resolution;
   //-----------------//
 
   //--Masses--//
@@ -357,6 +368,69 @@ void StaticOccupancyNode::publishOccupancyGrid()
       masses_msg.free.push_back(updated_free[i][j]);
     }
   }
+
+  // Resize the occupancy grid data to match the expected size
+  if (msg.info.height != params_data['occupancy_grids']['length'].as<float>())
+  {
+    msg.data = msg.data.resize(msg.info.width * (params_data['occupancy_grids']['length'].as<float>()), -1);
+    msg.info.height = params_data['occupancy_grids']['length'].as<float>();
+  }
+
+  if (msg.info.width != params_data['occupancy_grids']['width'].as<float>())
+  {
+    float diff = (params_data['occupancy_grids']['width'].as<float>() - msg.info.width) / msg.info.resolution;     
+    int conv_diff = (int)diff;  // Convert to integer
+  
+    if (conv_diff < 0)
+    {
+      std::vector<int> new_grid = {-1};
+      new_grid.resize(params_data['occupancy_grids']['width'].as<float>() * msg.info.height, -1);
+
+      int amount_to_trim_each_side = (int)(conv_diff / 2);
+
+      int k = 0;
+
+      for (int i = 0; i < grid.info.height; i++)
+      {
+        int start = i * (int)(params_data['occupancy_grids']['width'].as<float>()) + amount_to_trim_each_side;
+        int end = (i + 1) * (int)(params_data['occupancy_grids']['width'].as<float>()) - 1 - amount_to_trim_each_side;
+
+        for (int j = start; j < end; j++)
+        {
+          new_grid.at(k) = msg.data.at(j);
+          k += 1;
+        }
+      }
+
+      msg.data = new_grid;
+    }
+    else if (conv_diff > 0)
+    {
+      std::vector<int> new_grid = {-1};
+      new_grid.resize(params_data['occupancy_grids']['width'].as<float>() * msg.info.height, -1);
+
+      int offset = (int)(conv_diff / 2);
+      
+      int k = 0;
+
+      for (int i = 0; i < grid.info.height; i++)
+      {
+        int start = i * (int)(params_data['occupancy_grids']['width'].as<float>()) + offset;
+        int end = (i + 1) * (int)(params_data['occupancy_grids']['width'].as<float>()) - 1 - offset;
+
+        for (int j = start; j < end; j++)
+        {
+          new_grid.at(j) = msg.data.at(k);
+          k += 1;
+        }
+      }
+      
+      msg.data = new_grid;
+    }
+        
+    msg.info.width = params_data['occupancy_grids']['width'].as<float>();
+  }
+
   occupancy_grid_pub->publish(msg);
   masses_pub->publish(masses_msg);
 }

@@ -21,6 +21,8 @@
 #include <string>
 #include <vector>
 
+#include "yaml-cpp/yaml.h"
+
 // PCL
 #include "pcl_conversions/pcl_conversions.h"
 #include "pcl_ros/transforms.hpp"
