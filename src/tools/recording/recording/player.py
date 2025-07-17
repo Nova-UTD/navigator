@@ -175,7 +175,7 @@ def numpyToOccupancyGrid(arr):
             offset = int(diff / 2)
             for i in range(grid.info.height):
                 start = i * data['occupancy_grids']['width'] + offset
-                end = start + data['occupancy_grids']['width']
+                end = ((i + 1) * data['occupancy_grids']['width']) - 1 - offset
                 new_grid[start:end] = grid.data[i * grid.info.width:(i + 1) * grid.info.width]
             grid.data = new_grid
 
@@ -355,10 +355,9 @@ class player(Node):
                 occ_msg.header.frame_id = 'base_link'
                 occ_msg.header.stamp.sec = time_sec
                 occ_msg.header.stamp.nanosec = time_nsec
-                occ_msg.info.resolution = data['occupancy_grids']['resolution']  # Meters
-                occ_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location'] * data['occupancy_grids']['resolution']  # Meters
-                occ_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location'] * data['occupancy_grids']['resolution']  # Meters
-
+                occ_msg.info.resolution = data['occupancy_grids']['resolution']
+                occ_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
+                occ_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
                 # Prepare odom message
                 odom_msg = numpyToOdom(odom[idx], time_sec, time_nsec)
 

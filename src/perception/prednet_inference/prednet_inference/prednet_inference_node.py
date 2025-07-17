@@ -316,7 +316,7 @@ class PredNetNode(Node):
                     offset = int(diff / 2)
                     for i in range(occ_grid_msg.info.height):
                         start = i * data['occupancy_grids']['width'] + offset
-                        end = start + data['occupancy_grids']['width']
+                        end = ((i + 1) * data['occupancy_grids']['width']) - 1 - offset
                         new_grid[start:end] = prob_2D[i * grid.info.width:(i + 1) * grid.info.width]
                     prob_2D = new_grid
             
@@ -329,8 +329,8 @@ class PredNetNode(Node):
             occ_grid_msg.data = prob_2D.flatten().type(torch.int8).numpy().tolist()
             
             # Sets the origin of the occupancy grid
-            occ_grid_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location'] * data['occupancy_grids']['resolution']
-            occ_grid_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location'] * data['occupancy_grids']['resolution']
+            occ_grid_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
+            occ_grid_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
 
             output_occ = new_output
 

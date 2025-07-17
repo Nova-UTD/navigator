@@ -121,7 +121,7 @@ class OccupancyGridNode(Node):
                 offset = int(diff / 2)
                 for i in range(int(new_grid.shape[1] * resolution)):
                     start = i * data['occupancy_grids']['width'] + offset
-                    end = start + data['occupancy_grids']['width']
+                    end = ((i + 1) * data['occupancy_grids']['width']) - 1 - offset
                     new_new_grid[start:end] = new_grid[i * new_grid.shape[0] * resolution:(i + 1) * new_grid.shape[0] * resolution]
                 new_grid = new_new_grid
         
@@ -135,8 +135,8 @@ class OccupancyGridNode(Node):
         msg.info.width = grid_size[1]
         msg.info.height = grid_size[0]
         msg.data = new_grid.flatten().tolist()
-        msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location'] * data['occupancy_grids']['resolution']
-        msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location'] * data['occupancy_grids']['resolution']
+        msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
+        msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
 
         self.publisher.publish(msg)
         print("Published Occupancy Grid.")

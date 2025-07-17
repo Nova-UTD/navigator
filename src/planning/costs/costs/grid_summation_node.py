@@ -322,8 +322,8 @@ class GridSummationNode(Node):
             steering_cost_msg.info.resolution = data['occupancy_grids']['resolution']
             steering_cost_msg.info.width = steering_cost.shape[1]
             steering_cost_msg.info.height = steering_cost.shape[0]
-            steering_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location'] * data['occupancy_grids']['resolution']
-            steering_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location'] * data['occupancy_grids']['resolution']
+            steering_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
+            steering_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
             steering_cost_msg.header.stamp = self.clock.clock
             steering_cost_msg.header.frame_id = 'base_link'
             steering_cost_msg.data = steering_cost.astype(np.int8).flatten().tolist()
@@ -351,7 +351,7 @@ class GridSummationNode(Node):
                     offset = int(diff / 2)
                     for i in range(steering_cost_msg.info.height):
                         start = i * data['occupancy_grids']['width'] + offset
-                        end = start + data['occupancy_grids']['width']
+                        end = ((i + 1) * data['occupancy_grids']['width']) - 1 - offset
                         new_grid[start:end] = steering_cost_msg.data[i * steering_cost_msg.info.width:(i + 1) * steering_cost_msg.info.width]
                     steering_cost_msg.data = new_grid
             
@@ -364,8 +364,8 @@ class GridSummationNode(Node):
             speed_cost_msg.info.resolution = data['occupancy_grids']['resolution']
             speed_cost_msg.info.width = speed_cost.shape[1]
             speed_cost_msg.info.height = speed_cost.shape[0]
-            speed_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location'] * data['occupancy_grids']['resolution']
-            speed_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location'] * data['occupancy_grids']['resolution']
+            speed_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
+            speed_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
             speed_cost_msg.header.stamp = self.clock.clock
             speed_cost_msg.header.frame_id = 'base_link'
             speed_cost_msg.data = speed_cost.astype(np.int8).flatten().tolist()
@@ -393,7 +393,7 @@ class GridSummationNode(Node):
                     offset = int(diff / 2)
                     for i in range(speed_cost_msg.info.height):
                         start = i * data['occupancy_grids']['width'] + offset
-                        end = start + data['occupancy_grids']['width']
+                        end = ((i + 1) * data['occupancy_grids']['width']) - 1 - offset
                         new_grid[start:end] = speed_cost_msg.data[i * speed_cost_msg.info.width:(i + 1) * speed_cost_msg.info.width]
                     speed_cost_msg.data = new_grid
             
