@@ -345,8 +345,8 @@ void StaticOccupancyNode::publishOccupancyGrid()
   msg.info.width = GRID_SIZE;
   msg.info.height = GRID_SIZE;
   msg.info.origin.position.z = 0.2;
-  msg.info.origin.position.x = -1 * params_data["occupancy_grids"]["vehicle_x_location"].as<float>() * msg.info.resolution;
-  msg.info.origin.position.y = -1 * params_data["occupancy_grids"]["vehicle_y_location"].as<float>() * msg.info.resolution;
+  msg.info.origin.position.x = -1 * params_data["occupancy_grids"]["vehicle_x_location"].as<float>();
+  msg.info.origin.position.y = -1 * params_data["occupancy_grids"]["vehicle_y_location"].as<float>();
   //-----------------//
 
   //--Masses--//

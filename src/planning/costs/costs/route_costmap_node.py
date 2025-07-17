@@ -291,8 +291,8 @@ class RouteCostmapNode(Node):
         route_cost_msg.info.resolution = data['occupancy_grids']['resolution']
         route_cost_msg.info.width = data['occupancy_grids']['width']
         route_cost_msg.info.height = data['occupancy_grids']['length']
-        route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location'] * data['occupancy_grids']['resolution']
-        route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location'] * data['occupancy_grids']['resolution']
+        route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
+        route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
         route_cost_msg.header.stamp = self.clock.clock
         route_cost_msg.header.frame_id = 'base_link'
         route_cost_msg.data = routemap.astype(np.int8).flatten().tolist()
@@ -318,7 +318,7 @@ class RouteCostmapNode(Node):
                 offset = int(diff / 2)
                 for i in range(route_cost_msg.info.height):
                     start = i * route_cost_msg.info.width + offset
-                    end = start + route_cost_msg.info.width
+                    end = ((i + 1) * route_cost_msg.info.width) - 1 - offset
                     new_grid[start:end] = route_cost_msg.data[i * routemap.shape[1]:(i + 1) * routemap.shape[1]]
                 route_cost_msg.data = new_grid
 
