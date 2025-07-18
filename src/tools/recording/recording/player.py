@@ -365,8 +365,8 @@ class player(Node):
                 occ_msg.header.stamp.sec = time_sec
                 occ_msg.header.stamp.nanosec = time_nsec
                 occ_msg.info.resolution = data['occupancy_grids']['resolution']
-                occ_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
-                occ_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
+                occ_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
+                occ_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
                 # Prepare odom message
                 odom_msg = numpyToOdom(odom[idx], time_sec, time_nsec)
 

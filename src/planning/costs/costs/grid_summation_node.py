@@ -177,8 +177,8 @@ class GridSummationNode(Node):
             print(f"Error parsing YAML file: {e}")
 
         # use 10 here because it is the distance from the center of the occupancy grid to the vehicle
-        x = t.transform.translation.x + ((0.5 * data['occupancy_grids']['vehicle_y_location']) - (0.5 * data['occupancy_grids']['vehicle_y_location'])*np.cos(-yaw))
-        y = t.transform.translation.y - (0.5 * data['occupancy_grids']['vehicle_y_location'])*np.sin(-yaw)
+        x = t.transform.translation.x + ((0.5 * data['occupancy_grids']['vehicle_longitudinal_location']) - (0.5 * data['occupancy_grids']['vehicle_longitudinal_location'])*np.cos(-yaw))
+        y = t.transform.translation.y - (0.5 * data['occupancy_grids']['vehicle_longitudinal_location'])*np.sin(-yaw)
         
         shift = [y/grid_res, x/grid_res]
 
@@ -325,8 +325,8 @@ class GridSummationNode(Node):
             steering_cost_msg.info.resolution = data['occupancy_grids']['resolution']
             steering_cost_msg.info.width = steering_cost.shape[1]
             steering_cost_msg.info.height = steering_cost.shape[0]
-            steering_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
-            steering_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
+            steering_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
+            steering_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
             steering_cost_msg.header.stamp = self.clock.clock
             steering_cost_msg.header.frame_id = 'base_link'
             steering_cost_msg.data = steering_cost.astype(np.int8).flatten().tolist()
@@ -377,8 +377,8 @@ class GridSummationNode(Node):
             speed_cost_msg.info.resolution = data['occupancy_grids']['resolution']
             speed_cost_msg.info.width = speed_cost.shape[1]
             speed_cost_msg.info.height = speed_cost.shape[0]
-            speed_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
-            speed_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
+            speed_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
+            speed_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
             speed_cost_msg.header.stamp = self.clock.clock
             speed_cost_msg.header.frame_id = 'base_link'
             speed_cost_msg.data = speed_cost.astype(np.int8).flatten().tolist()

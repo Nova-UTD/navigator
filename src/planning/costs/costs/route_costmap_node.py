@@ -121,10 +121,10 @@ class RouteCostmapNode(Node):
             except yaml.YAMLError as e:
                 print(f"Error parsing YAML file: {e}")
 
-            xmax = data['occupancy_grids']['length'] - data['occupancy_grids']['vehicle_y_location'] # 40m in front of the car
-            xmin = -1 * data['occupancy_grids']['vehicle_y_location'] # 20m in back of the car
-            ymin = -1 * data['occupancy_grids']['vehicle_x_location'] # 40m left of the car
-            ymax = data['occupancy_grids']['vehicle_x_location'] # 40m right of the car
+            xmax = data['occupancy_grids']['length'] - data['occupancy_grids']['vehicle_longitudinal_location'] # 40m in front of the car
+            xmin = -1 * data['occupancy_grids']['vehicle_longitudinal_location'] # 20m in back of the car
+            ymin = -1 * data['occupancy_grids']['vehicle_latitudinal_location'] # 40m left of the car
+            ymax = data['occupancy_grids']['vehicle_latitudinal_location'] # 40m right of the car
             gridres = data['occupancy_grids']['resolution']
 
             # transform the route points to base_link 
@@ -205,7 +205,7 @@ class RouteCostmapNode(Node):
             for r in range(len(gridxs)):
                 # conversion from x,y in base_link to grid indices 
                 # TODO: Avoid hard coding this
-                i,j = round((gridys[r] + ymax) / gridres), round((gridxs[r] + data['occupancy_grids']['vehicle_y_location']) / gridres)
+                i,j = round((gridys[r] + ymax) / gridres), round((gridxs[r] + data['occupancy_grids']['vehicle_longitudinal_location']) / gridres)
                 try:
                     routemap[i,j] = 0
                 except:
@@ -291,8 +291,8 @@ class RouteCostmapNode(Node):
         route_cost_msg.info.resolution = data['occupancy_grids']['resolution']
         route_cost_msg.info.width = data['occupancy_grids']['width']
         route_cost_msg.info.height = data['occupancy_grids']['length']
-        route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
-        route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
+        route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
+        route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
         route_cost_msg.header.stamp = self.clock.clock
         route_cost_msg.header.frame_id = 'base_link'
         route_cost_msg.data = routemap.astype(np.int8).flatten().tolist()
@@ -334,10 +334,10 @@ class RouteCostmapNode(Node):
         except yaml.YAMLError as e:
             print(f"Error parsing YAML file: {e}")
 
-        xmax = data['occupancy_grids']['length'] - data['occupancy_grids']['vehicle_y_location'] 
-        xmin = -1 * data['occupancy_grids']['vehicle_y_location'] 
-        ymin = -1 * data['occupancy_grids']['vehicle_x_location'] 
-        ymax = data['occupancy_grids']['vehicle_x_location']
+        xmax = data['occupancy_grids']['length'] - data['occupancy_grids']['vehicle_longitudinal_location'] 
+        xmin = -1 * data['occupancy_grids']['vehicle_longitudinal_location'] 
+        ymin = -1 * data['occupancy_grids']['vehicle_latitudinal_location'] 
+        ymax = data['occupancy_grids']['vehicle_latitudinal_location']
 
         return x>=xmin and x<=xmax and y>=ymin and y<=ymax
 
@@ -353,10 +353,10 @@ class RouteCostmapNode(Node):
         except yaml.YAMLError as e:
             print(f"Error parsing YAML file: {e}")
         
-        xmax = data['occupancy_grids']['length'] - data['occupancy_grids']['vehicle_y_location'] # 40m in front of the car
-        xmin = -1 * data['occupancy_grids']['vehicle_y_location'] # 20m in back of the car
-        ymin = -1 * data['occupancy_grids']['vehicle_x_location'] # 40m left of the car
-        ymax = data['occupancy_grids']['vehicle_x_location'] # 40m right of the car
+        xmax = data['occupancy_grids']['length'] - data['occupancy_grids']['vehicle_longitudinal_location'] # 40m in front of the car
+        xmin = -1 * data['occupancy_grids']['vehicle_longitudinal_location'] # 20m in back of the car
+        ymin = -1 * data['occupancy_grids']['vehicle_latitudinal_location'] # 40m left of the car
+        ymax = data['occupancy_grids']['vehicle_latitudinal_location'] # 40m right of the car
         gridres = data['occupancy_grids']['resolution']
         
         costmap = np.zeros((151,151))

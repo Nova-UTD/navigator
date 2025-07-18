@@ -96,7 +96,7 @@ class OccupancyGridNode(Node):
                 occupancy_grid[v, u] = 1
 
         # Resize occupancy grid to match size specified in config file
-        prepend_data = [-1] * int(data['occupancy_grids']['width'] * data['occupancy_grids']['vehicle_y_location'])
+        prepend_data = [-1] * int(data['occupancy_grids']['width'] * data['occupancy_grids']['vehicle_longitudinal_location'])
         new_grid = np.insert(occupancy_grid, 0, prepend_data)
 
         if new_grid.shape[0] != data['occupancy_grids']['length']:
@@ -144,8 +144,8 @@ class OccupancyGridNode(Node):
         msg.info.width = grid_size[1]
         msg.info.height = grid_size[0]
         msg.data = new_grid.flatten().tolist()
-        msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
-        msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
+        msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
+        msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
 
         self.publisher.publish(msg)
         print("Published Occupancy Grid.")

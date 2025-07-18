@@ -1085,9 +1085,9 @@ void MapManagementNode::drivableAreaGridPubTimerCb()
         std::cerr << "Error loading YAML file: " << e.what() << std::endl;
     } 
 
-    float top_dist = params_data["occupancy_grids"]["length"].as<float>() - params_data["occupancy_grids"]["vehicle_y_location"].as<float>();
-    float bottom_dist = params_data["occupancy_grids"]["vehicle_y_location"].as<float>();
-    float side_dist = params_data["occupancy_grids"]["vehicle_x_location"].as<float>();
+    float top_dist = params_data["occupancy_grids"]["length"].as<float>() - params_data["occupancy_grids"]["vehicle_longitudinal_location"].as<float>();
+    float bottom_dist = params_data["occupancy_grids"]["vehicle_longitudinal_location"].as<float>();
+    float side_dist = params_data["occupancy_grids"]["vehicle_latitudinal_location"].as<float>();
     float resolution = params_data["occupancy_grids"]["resolution"].as<float>();
 
     publishGrids(top_dist, bottom_dist, side_dist, resolution);

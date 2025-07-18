@@ -338,8 +338,8 @@ class PredNetNode(Node):
             occ_grid_msg.data = prob_2D.flatten().type(torch.int8).numpy().tolist()
             
             # Sets the origin of the occupancy grid
-            occ_grid_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location']
-            occ_grid_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location']
+            occ_grid_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
+            occ_grid_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
 
             output_occ = new_output
 
@@ -369,8 +369,8 @@ class PredNetNode(Node):
         combined_grid.header.stamp = self.clock
         combined_grid.header.frame_id = "base_link"
         combined_grid.info.origin.position.z = 0.2
-        combined_grid.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_x_location'] * data['occupancy_grids']['resolution']
-        combined_grid.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_y_location'] * data['occupancy_grids']['resolution']
+        combined_grid.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location'] * data['occupancy_grids']['resolution']
+        combined_grid.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location'] * data['occupancy_grids']['resolution']
         self.prednet_combined_pub.publish(combined_grid)
 
 
