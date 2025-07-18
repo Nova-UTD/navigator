@@ -289,8 +289,8 @@ class RouteCostmapNode(Node):
         route_cost_msg = OccupancyGrid()
         route_cost_msg.info.map_load_time = self.clock.clock
         route_cost_msg.info.resolution = data['occupancy_grids']['resolution']
-        route_cost_msg.info.width = data['occupancy_grids']['width']
-        route_cost_msg.info.height = data['occupancy_grids']['length']
+        route_cost_msg.info.width = int(data['occupancy_grids']['width'])
+        route_cost_msg.info.height = int(data['occupancy_grids']['length'])
         route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
         route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
         route_cost_msg.header.stamp = self.clock.clock
@@ -303,23 +303,32 @@ class RouteCostmapNode(Node):
             diff = int(diff)  # Convert to integer
             
             if diff < 0:
-                route_cost_msg.data = route_cost_msg.data[:diff * routemap.shape[1]]
+                route_cost_msg.data = route_cost_msg.data[:int(diff * routemap.shape[1])]
             elif diff > 0:
-                route_cost_msg.data.extend(Array(np.int8, [-1] * (diff * routemap.shape[1])))
+                route_cost_msg.data.extend([-1] * int(diff * routemap.shape[1]))
         
         if routemap.shape[1] != route_cost_msg.info.width:
             diff = (route_cost_msg.info.width - routemap.shape[1]) / route_cost_msg.info.resolution     
             diff = int(diff)  # Convert to integer
         
             if diff < 0:
-                route_cost_msg.data = route_cost_msg.data[:, int(diff / 2):(int(diff / 2) * -1)]
+                new_grid = [-1] * int(data['occupancy_grids']['width'] * route_cost_msg.info.height)
+                offset = int(diff / 2 * -1)
+                
+                for i in range(int(route_cost_msg.info.height)):
+                    start = int(i * data['occupancy_grids']['width'] + offset)
+                    end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+
+                    new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = route_cost_msg.data[start:end]
+
+                route_cost_msg.data = new_grid
             elif diff > 0:
-                new_grid = Array(np.int8, [-1] * (route_cost_msg.info.width * route_cost_msg.info.height))
+                new_grid = [-1] * int(route_cost_msg.info.width * route_cost_msg.info.height)
                 offset = int(diff / 2)
-                for i in range(route_cost_msg.info.height):
-                    start = i * route_cost_msg.info.width + offset
-                    end = ((i + 1) * route_cost_msg.info.width) - 1 - offset
-                    new_grid[start:end] = route_cost_msg.data[i * routemap.shape[1]:(i + 1) * routemap.shape[1]]
+                for i in range(int(route_cost_msg.info.height)):
+                    start = int(i * route_cost_msg.info.width + offset)
+                    end = int(((i + 1) * route_cost_msg.info.width) - 1 - offset)
+                    new_grid[start:end] = route_cost_msg.data[int(i * routemap.shape[1]):int((i + 1) * routemap.shape[1])]
                 route_cost_msg.data = new_grid
 
         self.route_dist_grid_pub.publish(route_cost_msg)
