@@ -196,8 +196,8 @@ class GridSummationNode(Node):
         grid_out = OccupancyGrid()
         grid_out.info.map_load_time = self.clock.clock
         grid_out.info.resolution = (grid_res * old_dim / (new_dim - diff)) * prezoom_rows / grid_img.shape[0]
-        grid_out.info.width = grid_img.shape[0]
-        grid_out.info.height = grid_img.shape[1]
+        grid_out.info.width = int(grid_img.shape[0])
+        grid_out.info.height = int(grid_img.shape[1])
         grid_out.info.origin.position.x = grid_img.shape[0] * grid_out.info.resolution * 2 / 3 * -1
         grid_out.info.origin.position.y = grid_img.shape[1] * grid_out.info.resolution * 1 / 2 * -1
         grid_out.header.stamp = self.clock.clock
@@ -217,6 +217,9 @@ class GridSummationNode(Node):
             np.ndarray: Weighted ndarray
         """
         height, width = msg.shape
+
+        height = int(height)
+        width = int(width)
 
         arr = np.asarray(msg.data, dtype=np.float16).reshape(height, width)
 
@@ -334,28 +337,38 @@ class GridSummationNode(Node):
                 diff = int(diff)  # Convert to integer
                 
                 if diff < 0:
-                    steering_cost_msg.data = steering_cost_msg.data[:diff * steering_cost_msg.info.width]
+                    steering_cost_msg.data = steering_cost_msg.data[:int(diff * steering_cost_msg.info.width)]
                 elif diff > 0:
-                    steering_cost_msg.data.extend(Array(np.int8, [-1] * (diff * steering_cost_msg.info.width)))
+                    steering_cost_msg.data.extend(Array(np.int8, [-1] * int(diff * steering_cost_msg.info.width)))
                 
-                steering_cost_msg.info.height = data['occupancy_grids']['length']
+                steering_cost_msg.info.height = int(data['occupancy_grids']['length'])
             
             if steering_cost_msg.info.width != data['occupancy_grids']['width']:
                 diff = (data['occupancy_grids']['width'] - steering_cost_msg.info.width) / steering_cost_msg.info.resolution     
                 diff = int(diff)  # Convert to integer
             
                 if diff < 0:
-                    steering_cost_msg.data = steering_cost_msg.data[:, int(diff / 2):(int(diff / 2) * -1)]
+                    new_grid = [-1] * int(data['occupancy_grids']['width'] * steering_cost_msg.info.height)
+                    offset = int(diff / 2 * -1)
+                    
+                    for i in range(int(steering_cost_msg.info.height)):
+                        start = int(i * data['occupancy_grids']['width'] + offset)
+                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+
+                        new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = steering_cost_msg.data[start:end]
+
+                    steering_cost_msg.data = new_grid
+
                 elif diff > 0:
-                    new_grid = Array(np.int8, [-1] * (data['occupancy_grids']['width'] * steering_cost_msg.info.height))
+                    new_grid = [-1] * int(data['occupancy_grids']['width'] * steering_cost_msg.info.height)
                     offset = int(diff / 2)
-                    for i in range(steering_cost_msg.info.height):
-                        start = i * data['occupancy_grids']['width'] + offset
-                        end = ((i + 1) * data['occupancy_grids']['width']) - 1 - offset
-                        new_grid[start:end] = steering_cost_msg.data[i * steering_cost_msg.info.width:(i + 1) * steering_cost_msg.info.width]
+                    for i in range(int(steering_cost_msg.info.height)):
+                        start = int(i * data['occupancy_grids']['width'] + offset)
+                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+                        new_grid[start:end] = steering_cost_msg.data[int(i * steering_cost_msg.info.width):int((i + 1) * steering_cost_msg.info.width)]
                     steering_cost_msg.data = new_grid
             
-                steering_cost_msg.info.width = data['occupancy_grids']['width']
+                steering_cost_msg.info.width = int(data['occupancy_grids']['width'])
 
             self.steering_cost_pub.publish(steering_cost_msg)
 
@@ -376,28 +389,37 @@ class GridSummationNode(Node):
                 diff = int(diff)  # Convert to integer
                 
                 if diff < 0:
-                    speed_cost_msg.data = speed_cost_msg.data[:diff * speed_cost_msg.info.width]
+                    speed_cost_msg.data = speed_cost_msg.data[:int(diff * speed_cost_msg.info.width)]
                 elif diff > 0:
-                    speed_cost_msg.data.extend(Array(np.int8, [-1] * (diff * speed_cost_msg.info.width)))
+                    speed_cost_msg.data.extend(Array(np.int8, [-1] * int(diff * speed_cost_msg.info.width)))
                 
-                speed_cost_msg.info.height = data['occupancy_grids']['length']
+                speed_cost_msg.info.height = int(data['occupancy_grids']['length'])
             
             if speed_cost_msg.info.width != data['occupancy_grids']['width']:
                 diff = (data['occupancy_grids']['width'] - speed_cost_msg.info.width) / speed_cost_msg.info.resolution 
                 diff = int(diff)  # Convert to integer
             
                 if diff < 0:
-                    speed_cost_msg.data = speed_cost_msg.data[:, int(diff / 2):(int(diff / 2) * -1)]
+                    new_grid = [-1] * int(data['occupancy_grids']['width'] * speed_cost_msg.info.height)
+                    offset = int(diff / 2 * -1)
+                    
+                    for i in range(int(speed_cost_msg.info.height)):
+                        start = int(i * data['occupancy_grids']['width'] + offset)
+                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+
+                        new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = speed_cost_msg.data[start:end]
+
+                    speed_cost_msg.data = new_grid
                 elif diff > 0:
-                    new_grid = Array(np.int8, [-1] * (data['occupancy_grids']['width'] * speed_cost_msg.info.height))
+                    new_grid = [-1] * int(data['occupancy_grids']['width'] * speed_cost_msg.info.height)
                     offset = int(diff / 2)
-                    for i in range(speed_cost_msg.info.height):
-                        start = i * data['occupancy_grids']['width'] + offset
-                        end = ((i + 1) * data['occupancy_grids']['width']) - 1 - offset
-                        new_grid[start:end] = speed_cost_msg.data[i * speed_cost_msg.info.width:(i + 1) * speed_cost_msg.info.width]
+                    for i in range(int(speed_cost_msg.info.height)):
+                        start = int(i * data['occupancy_grids']['width'] + offset)
+                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+                        new_grid[start:end] = speed_cost_msg.data[int(i * speed_cost_msg.info.width):int((i + 1) * speed_cost_msg.info.width)]
                     speed_cost_msg.data = new_grid
             
-                speed_cost_msg.info.width = data['occupancy_grids']['width']
+                speed_cost_msg.info.width = int(data['occupancy_grids']['width'])
 
             self.speed_cost_pub.publish(speed_cost_msg)
         
