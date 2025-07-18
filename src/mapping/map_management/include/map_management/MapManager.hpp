@@ -60,6 +60,8 @@
 
 #include "map_management/RouteManager.hpp"
 
+#include "yaml-cpp/yaml.h"
+
 using namespace std::chrono_literals;
 using namespace nav_msgs::msg;
 namespace bg = boost::geometry;
@@ -92,9 +94,11 @@ namespace navigator
             MapManagementNode();
 
             // Functions
-            void publishGrids(int top, int bottom, int side, float res);
+            void publishGrids(float top_dist, float bottom_dist, float side_dist, float res);
 
         private:
+            std::string file_path_;
+
             // Callback groups
             rclcpp::CallbackGroup::SharedPtr mutex_group_;
             rclcpp::CallbackGroup::SharedPtr parallel_group_;
@@ -122,7 +126,7 @@ namespace navigator
 
             std::vector<odr::LaneKey> getTrueSuccessors(odr::LaneKey key);
             void setRoute(const std::shared_ptr<navigator_msgs::srv::SetRoute::Request> request, std::shared_ptr<navigator_msgs::srv::SetRoute::Response> response);
-            void setRouteFromClickedPt(const PointStamped clicked_pt);
+            // void setRouteFromClickedPt(const PointStamped clicked_pt);
             void recursiveSearch(std::vector<odr::LaneKey> predecessors, odr::LaneKey target);
             void buildTrueRoutingGraph();
             void updateLocalRouteLinestring();

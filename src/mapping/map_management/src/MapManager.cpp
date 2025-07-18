@@ -17,6 +17,8 @@
 
 #include <fstream>
 
+#include "yaml-cpp/yaml.h"
+
 using namespace navigator::planning;
 
 struct RoiIndices
@@ -35,6 +37,9 @@ struct Arc
 
 MapManagementNode::MapManagementNode() : Node("map_management_node")
 {
+    // Get path to the config file
+    this->declare_parameter<std::string>("global_config", "temp_value");
+
     // Callback groups & options
     mutex_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     parallel_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
@@ -87,7 +92,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         this->map_ = new odr::OpenDriveMap(data_path+"/maps/campus.xodr", false);
         this->lane_polys_ = map_->get_lane_polygons(1.0, false);
 
-        RCLCPP_INFO(get_logger(), "Map loaded with %i roads", map_->get_roads().size());
+        // RCLCPP_INFO(get_logger(), "Map loaded with %i roads", map_->get_roads().size());
 
         if (this->map_wide_tree_.size() == 0)
         {
@@ -110,7 +115,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
         boost::geometry::read_wkt<bg::model::linestring<odr::point>>(wkt_str.c_str(), route_linestring_);
         // boost::geometry::read_wkt<bg::model::linestring<odr::point>>("LINESTRING (-1785.5709300144865 500.47158225551465, -1783.51573231485 500.426477889891, -1780.6739054100492 500.3795679204954, -1778.4010968628584 500.34884278664725, -1776.1958928441231 500.31184580977424, -1773.688495800675 500.2895820615064, -1771.5040078903626 500.2583199311353, -1768.7392892089179 500.1944219703132, -1766.5241186105725 500.1426381243812, -1764.3136214656129 500.08845269001256, -1762.0990727336323 500.04313937155604, -1759.8915296822818 500.0194541509073, -1757.68507812045 499.98948504289785, -1755.497315893976 499.9754160542061, -1753.342420362035 499.96357149904264, -1751.2876863581755 499.9373276887229, -1748.5438410566176 499.86974231084747, -1746.2394450887848 499.64900290332207, -1744.2142545991442 499.0397787080288, -1742.5008434688584 497.9376404137962, -1741.183330800356 496.3178341177956, -1740.322162930486 494.1337905419717, -1739.9896603515517 492.01823157983966, -1739.8773787302384 489.2223135223487, -1739.913493575646 486.7134791086838, -1739.908414630678 484.60555657054573, -1739.8622249629875 482.42886607977044, -1739.8361276821756 480.26197569941684, -1739.800055413954 478.12780033877357, -1739.7586833017647 476.0145110290066, -1739.704693551921 473.90325274094494, -1739.6633174454214 471.8123291509038, -1739.6046548519844 469.6995913235776, -1739.567803256984 467.5676339455309, -1739.5437210553405 465.4561961332065, -1739.514340480081 463.357326546673, -1739.4995945118299 461.30171224370235, -1739.4645911946768 459.2878683253042, -1739.417509521431 456.86903664856015, -1739.3232198651872 454.50657299504644, -1739.2594491459688 452.2104725029271, -1739.2071941227584 449.977589519413, -1739.2910660890177 447.83031178945316, -1739.7030389504323 445.39381665915545, -1740.5380355508755 443.21395508362457, -1741.8912084972449 441.418099154745, -1743.7622291392117 440.10347514617996, -1746.1286470860184 439.38024432790803, -1748.3332725265468 439.2444085434031, -1750.6894357796405 439.2527758501802, -1753.1675477799545 439.365045844081, -1755.2358394257853 439.4301089706463, -1757.3748612514996 439.43363327118027, -1759.564048357831 439.39465368999623, -1761.7443538557068 439.3711996081456, -1763.90036842507 439.2972801863837, -1766.0417490553843 439.17696363509856, -1768.189679554088 439.0148747653776, -1770.3334129749385 438.8049119106266, -1772.4678089635186 438.5470741396735, -1774.60189879693 438.2600319737102, -1776.7264915419319 437.94692603578164, -1778.852643719421 437.6249484953247, -1781.0035722123616 437.25399315875796, -1783.1780264433644 436.8586436080242, -1785.4057608073906 436.4254118985683, -1788.2620448678192 435.878802881793, -1790.6128468357235 435.3936545420111, -1793.033421294417 434.9763559635073, -1795.520660846115 434.582914580696, -1798.0655185296062 434.2807955886815, -1800.618620771449 434.0407851837233, -1803.1445983067208 433.9151867624361, -1805.5997000045643 433.79438182887833, -1807.9858035213863 433.63253022527863, -1810.3162852350167 433.53721155516985, -1812.5526928790355 433.3847603711799, -1814.7298966355513 433.29532939216966, -1816.8307692851881 433.22862018183355, -1818.8401774652443 433.31290922012056, -1821.2366386834458 433.57859891017904, -1823.4246158153837 434.1930446213779, -1825.28055744744 435.29744145197907, -1826.6058636952457 436.85922039426265, -1827.4924584066912 438.7710059646407, -1827.8984478098546 440.9899072531039, -1827.9993995491411 443.4322240753073, -1827.8935545968318 445.5264477283775, -1827.7563795661563 447.73120020937483, -1827.6293116139889 450.0326261793703, -1827.579802487167 452.4104057180048, -1827.5385356031736 454.86101397029, -1827.4927740715855 458.0280633452006, -1827.470019576219 460.60861796167427, -1827.456916953241 463.22041243191495, -1827.453167882708 465.7922830943315, -1827.4664022747277 468.33901860668254, -1827.483847189667 470.86006207510894, -1827.4812057373863 473.33914301537476, -1827.4896274959874 475.79863292259535, -1827.5067805340334 478.2137627289414, -1827.5521353626518 480.587493500622, -1827.6017024782875 482.9259205198625, -1827.6375645915152 485.25011227640493, -1827.6983559216255 487.5404828533384, -1827.768495006748 489.8217979889334, -1827.8534363140877 492.0801956554021, -1827.8273242241976 494.2877415343229, -1827.7507596790954 496.4067394188003, -1827.459557173411 498.4683968484606, -1826.8895520078909 500.40985613436163, -1825.6598362068603 502.5267914916609, -1823.9104113483388 504.165263241579, -1821.7884973306147 505.2227124260856, -1819.3789976867308 505.6442573407121, -1817.3692903647297 505.57290695757285, -1815.297601863844 505.42261862443434, -1813.2094200422746 505.1738076699607, -1811.1013280494194 504.7715758325278, -1809.0021121189377 504.3832091173471, -1806.937318575842 504.0068638148298, -1804.8840410014557 503.68893067579495, -1802.8768755844571 503.34420453758554, -1800.8922914031307 503.02683934821647, -1798.4957194611536 502.6044097665408, -1796.14213440751 502.208975343921, -1793.9041200239078 501.8636543540316, -1791.8578507456577 501.54794330183046, -1789.7726435242073 501.20893567743997, -1787.6620374411332 500.91668853927246, -1785.640526958567 500.6447904936965)", route_linestring_);
 
-        std::printf("Route LS has %i pts\n", route_linestring_.size());
+        // std::printf("Route LS has %i pts\n", route_linestring_.size());
 
         // Read junctions from file
         odr::multipolygon junction_mps;
@@ -126,11 +131,11 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
             junction_polys_.push_back(poly);
         }
 
-        std::printf("Added %i junction polygons\n", junction_polys_.size());
+        // std::printf("Added %i junction polygons\n", junction_polys_.size());
 
 
         // bg::simplify(route_linestring_, route_linestring_, 1.0);
-        std::printf("Route LS now has %i pts\n", route_linestring_.size());
+        // std::printf("Route LS now has %i pts\n", route_linestring_.size());
 
     }
     else
@@ -170,7 +175,7 @@ void MapManagementNode::updateLocalRouteLinestring()
     local_route_linestring_.clear();
 
     int min_idx = 0;
-    for (int i = 0; i < route_linestring_.size(); i++)
+    for (long unsigned int i = 0; i < route_linestring_.size(); i++)
     {
         auto pt = route_linestring_[i];
         float dist = bg::distance(pt, ego_pos);
@@ -186,7 +191,7 @@ void MapManagementNode::updateLocalRouteLinestring()
         min_idx--;
     }
 
-    for (int i = min_idx; i < route_linestring_.size(); i+= 1)
+    for (long unsigned int i = min_idx; i < route_linestring_.size(); i+= 1)
     {
         if (bg::distance(ego_pos, route_linestring_[i]) > MAX_DISTANCE)
             break;
@@ -236,7 +241,9 @@ void MapManagementNode::publishSmoothRoute()
 
 void MapManagementNode::clickedPointCb(PointStamped::SharedPtr msg)
 {
-    setRouteFromClickedPt(*msg);
+    // setRouteFromClickedPt(*msg);
+    PointStamped clicked_pt = *msg;         // Remove this line in the future when setRouteFromClickedPt is uncommented
+    std::cout << "Skipping function call... clickedPointCb" << std::endl;
 }
 
 std::vector<odr::LaneKey> laneKeysFromPoint(odr::point pt, bgi::rtree<odr::value, bgi::rstar<16, 4>> lane_tree, std::vector<odr::LanePair> lane_polys)
@@ -302,7 +309,7 @@ void MapManagementNode::setPredeterminedRoute()
     {
         std::printf("Appending %s to route linestrings.\n", k.to_string().c_str());
         LineString key_ls = getLaneCenterline(k);
-        std::printf("Key LS has %i points\n", key_ls.size());
+        // std::printf("Key LS has %i points\n", key_ls.size());
 
         // bg::append(route_linestring_, getLaneCenterline(k));
         LineString key_ls_simplified;
@@ -316,6 +323,7 @@ void MapManagementNode::setPredeterminedRoute()
 
 }
 
+/*
 void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
 {
 
@@ -417,6 +425,7 @@ void MapManagementNode::setRouteFromClickedPt(const PointStamped clicked_pt)
     // }
 
 }
+*/
 
 void MapManagementNode::setRoute(const std::shared_ptr<navigator_msgs::srv::SetRoute::Request> request, std::shared_ptr<navigator_msgs::srv::SetRoute::Response> response)
 {
@@ -507,7 +516,7 @@ void MapManagementNode::setRoute(const std::shared_ptr<navigator_msgs::srv::SetR
     }
     node_route.push_back(start);
 
-    std::printf("Path has %i nodes\n", node_route.size());
+    // std::printf("Path has %i nodes\n", node_route.size());
 
     route_linestring_.clear();
 
@@ -517,7 +526,7 @@ void MapManagementNode::setRoute(const std::shared_ptr<navigator_msgs::srv::SetR
         bg::append(route_linestring_, getLaneCenterline((*nodeMap)[*p]));
     }
 
-    std::printf("route_linestring_ has length %i\n", route_linestring_.size());
+    // std::printf("route_linestring_ has length %i\n", route_linestring_.size());
 
     if (node_route.size() < 2)
     {
@@ -548,14 +557,13 @@ void MapManagementNode::setRoute(const std::shared_ptr<navigator_msgs::srv::SetR
  *      i. If yes again, the cell is truly occupied. Append '100' ("occupied") to OccupancyGrid. Otherwise '0'.
  * 4. Set OccupancyGrid metadata and return.
  *
- * @param center Center of the grid
  * @param top_dist Distance from car to top edge
  * @param bottom_dist Distance from car to bottom edge
  * @param side_dist Distance from car to left and right edges
  * @param res Side length of grid cells (meters)
  * @return OccupancyGrid
  */
-void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dist, float res)
+void MapManagementNode::publishGrids(float top_dist, float bottom_dist, float side_dist, float res)
 {
     if (!this->clock_)
     {
@@ -574,7 +582,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     // printf("Publish grids... ");
 
     // Used to calculate function runtime
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     OccupancyGrid drivable_area_grid;
     OccupancyGrid junction_grid;
@@ -615,8 +623,6 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
         RCLCPP_WARN(get_logger(), "There are no lane shapes nearby.");
     }
 
-    int idx = 0;
-
     // This was commented out...
     bgi::rtree<odr::value, bgi::rstar<16, 4>> local_tree;
     std::unordered_map< unsigned int, odr::polygon> box_to_poly_map;
@@ -628,7 +634,6 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
         bg::assign(a, lane_shapes_in_range.at(i).first);
         bg::assign(b, search_region);
         bg::intersection(a,b, output);
-        int count = 0;
         if(output.size()>1){
             local_tree.insert(lane_shapes_in_range.at(i));
             odr::polygon poly;
@@ -643,10 +648,10 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     // down to here
 
     int area = 0;
-    int height = 0;
+    int width = 0;
 
     BoostPoint goal_pt;
-    bool goal_is_set = false;
+    // bool goal_is_set = false;
     auto q = vehicle_tf.transform.rotation;
     float h;
 
@@ -771,7 +776,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
 
             area += 1;
         }
-        height += 1;
+        width += 1;
     }
 
     auto clock = this->clock_->clock;
@@ -787,8 +792,8 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     //route_dist_grid.header.frame_id = "base_link";
     //route_dist_grid.header.stamp = clock;
 
-    grid_info.width = area / height;
-    grid_info.height = height;
+    grid_info.width = width;
+    grid_info.height = area / width;
     grid_info.map_load_time = clock;
     grid_info.resolution = res;
     grid_info.origin.position.x = x_min;
@@ -811,7 +816,7 @@ void MapManagementNode::publishGrids(int top_dist, int bottom_dist, int side_dis
     goal_pose.header.stamp = clock_->clock;
     goal_pose_pub_->publish(goal_pose);
 
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     // std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
 
@@ -1070,7 +1075,22 @@ TransformStamped MapManagementNode::getEgoTf()
 void MapManagementNode::drivableAreaGridPubTimerCb()
 {
     // std::printf("Publishing grids\n");
-    publishGrids(40, 20, 30, 0.4);
+    YAML::Node params_data;
+
+    std::string file_path_ = this->get_parameter("global_config").as_string();
+
+    try {
+        params_data = YAML::LoadFile(file_path_);
+    } catch (const YAML::BadFile& e) {
+        std::cerr << "Error loading YAML file: " << e.what() << std::endl;
+    } 
+
+    float top_dist = params_data["occupancy_grids"]["length"].as<float>() - params_data["occupancy_grids"]["vehicle_longitudinal_location"].as<float>();
+    float bottom_dist = params_data["occupancy_grids"]["vehicle_longitudinal_location"].as<float>();
+    float side_dist = params_data["occupancy_grids"]["vehicle_latitudinal_location"].as<float>();
+    float resolution = params_data["occupancy_grids"]["resolution"].as<float>();
+
+    publishGrids(top_dist, bottom_dist, side_dist, resolution);
 }
 
 // CPP code for printing shortest path between
@@ -1093,7 +1113,7 @@ LineString getSmoothSection(LineString full_route, BoostPoint ego, int &start_id
     float closest_dist = 999.9;
     int closest_idx = -1;
 
-    for (int i = 0; i < full_route.size(); i++)
+    for (long unsigned int i = 0; i < full_route.size(); i++)
     {
         auto wp = full_route[i];
         float dist_to_ego = bg::distance(ego, wp);
@@ -1134,7 +1154,7 @@ LineString MapManagementNode::getLaneCenterline(odr::LaneKey key)
     odr::Line3D outer_border = road.get_lane_border_line(lane, 1.0, true);
     odr::Line3D inner_border = road.get_lane_border_line(lane, 1.0, false);
 
-    for (int i = 0; i < outer_border.size(); i++)
+    for (long unsigned int i = 0; i < outer_border.size(); i++)
     {
         odr::Vec3D outer_pt = outer_border[i];
         odr::Vec3D inner_pt = inner_border[i];
@@ -1207,7 +1227,7 @@ void MapManagementNode::updateRouteWaypoints(Path::SharedPtr msg)
         bg::append(rough_route_, wp);
     }
 
-    RCLCPP_INFO(get_logger(), "%i waypoints added to tree", rough_route_tree_.size());
+    // RCLCPP_INFO(get_logger(), "%i waypoints added to tree", rough_route_tree_.size());
 }
 
 RoiIndices getWaypointsInROI(LineString waypoints, bgi::rtree<odr::value, bgi::rstar<16, 4>> tree, BoostPoint ego_pos)

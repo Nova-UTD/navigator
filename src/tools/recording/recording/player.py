@@ -23,6 +23,7 @@ import sys  # argv
 from array import array as Array
 from datetime import datetime
 from time import sleep, strftime, strptime, time
+import yaml  # For reading config files
 
 import numpy as np
 import rclpy
@@ -138,10 +139,56 @@ def numpyToOccupancyGrid(arr):
         # We assume that the masked value are already -1, for speed
         arr = arr.data
 
-    grid.data = Array('b', arr.ravel().astype(np.int8))
+    # Open the config file
+    try:
+        with open(self.file_path, 'r') as file:
+            data = yaml.safe_load(file)
+    except FileNotFoundError:
+        print("Error: config.yaml not found.")
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML file: {e}")
+
+    grid.data = arr.ravel().astype(np.int8)
     grid.info = MapMetaData()
     grid.info.height = arr.shape[0]
     grid.info.width = arr.shape[1]
+
+    if grid.info.height != data['occupancy_grids']['length']:
+        diff = (data['occupancy_grids']['length'] - grid.info.height) / data['occupancy_grids']['resolution']
+        diff = int(diff)  # Convert to integer
+        
+        if diff < 0:
+            grid.data = grid.data[:int(diff * grid.info.width)]
+        elif diff > 0:
+            grid.data.extend([-1] * int(diff * grid.info.width))
+        
+        grid.info.height = int(data['occupancy_grids']['length'])
+
+    if grid.info.width != data['occupancy_grids']['width']:
+        diff = (data['occupancy_grids']['width'] - grid.info.width) / data['occupancy_grids']['resolution']     # Num cells to add or remove from each row
+        diff = int(diff)  # Convert to integer
+
+        if diff < 0:
+            new_grid = [-1] * int(data['occupancy_grids']['width'] * grid.info.height)
+            offset = int(diff / 2 * -1)
+            
+            for i in range(int(grid.info.height)):
+                start = int(i * data['occupancy_grids']['width'] + offset)
+                end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+
+                new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = grid.data[start:end]
+
+            grid.data = new_grid
+        elif diff > 0:
+            new_grid = [-1] * int(data['occupancy_grids']['width'] * grid.info.height)
+            offset = int(diff / 2)
+            for i in range(int(grid.info.height)):
+                start = int(i * data['occupancy_grids']['width'] + offset)
+                end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+                new_grid[start:end] = grid.data[int(i * grid.info.width):int((i + 1) * grid.info.width)]
+            grid.data = new_grid
+
+        grid.info.width = int(data['occupancy_grids']['width'])
 
     return grid
 
@@ -218,6 +265,10 @@ class player(Node):
     def __init__(self):
         super().__init__('player')
 
+        # Set up the global config file
+        self.declare_parameter('global_config', 'temp_value')
+        self.file_path = self.get_parameter('global_config').value
+
         self.srcdir = '/replay'
         self.search_from = strptime('70-1-1_0-0-0', '%y-%m-%d_%H-%M-%S')
         self.search_to = strptime('30-1-1_0-0-0', '%y-%m-%d_%H-%M-%S')
@@ -292,6 +343,14 @@ class player(Node):
             odom = npz['odom']
             times = npz['time']
 
+            try:
+                with open(self.file_path, 'r') as file:
+                    data = yaml.safe_load(file)
+            except FileNotFoundError:
+                print("Error: config.yaml not found.")
+            except yaml.YAMLError as e:
+                print(f"Error parsing YAML file: {e}")
+
             for idx, time in np.ndenumerate(times):
 
                 time_sec = int(times[idx])
@@ -305,10 +364,9 @@ class player(Node):
                 occ_msg.header.frame_id = 'base_link'
                 occ_msg.header.stamp.sec = time_sec
                 occ_msg.header.stamp.nanosec = time_nsec
-                occ_msg.info.resolution = 1./3.  # Meters
-                occ_msg.info.origin.position.x = -64.0 * (1. / 3.)
-                occ_msg.info.origin.position.y = -64.0 * (1. / 3.)
-
+                occ_msg.info.resolution = data['occupancy_grids']['resolution']
+                occ_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
+                occ_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
                 # Prepare odom message
                 odom_msg = numpyToOdom(odom[idx], time_sec, time_nsec)
 

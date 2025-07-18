@@ -17,6 +17,7 @@ project(${directory_name})
 add_library(route_manager STATIC src/RouteManager.cpp)
 target_include_directories(route_manager PUBLIC include/)
 find_package(nova_auto_package REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 # Default to C++17 
 if(NOT CMAKE_CXX_STANDARD) 
@@ -24,3 +25,4 @@ if(NOT CMAKE_CXX_STANDARD)
 endif() 
 
 nova_auto_package()
+target_link_libraries(map_management_node yaml-cpp)

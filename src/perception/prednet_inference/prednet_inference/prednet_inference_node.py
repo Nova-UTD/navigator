@@ -23,6 +23,8 @@ import copy
 from threading import Thread
 from array import array as Array
 
+import yaml
+
 
 # Message definitions
 from rosgraph_msgs.msg import Clock
@@ -46,6 +48,10 @@ class PredNetNode(Node):
 
     def __init__(self):
         super().__init__('prednet_inference_node')
+
+        # Set up the global config file
+        self.declare_parameter('global_config', 'temp_value')
+        self.file_path = self.get_parameter('global_config').value
 
         # Subcribes to masses
         self.masses_sub = self.create_subscription(
@@ -243,6 +249,15 @@ class PredNetNode(Node):
         return output
 
     def Publish(self, output):
+        # Open the config file
+        try:
+            with open(self.file_path, 'r') as file:
+                data = yaml.safe_load(file)
+        except FileNotFoundError:
+            print("Error: config.yaml not found.")
+        except yaml.YAMLError as e:
+            print(f"Error parsing YAML file: {e}")
+
         # Prediction message instantiation
         self.prediction_msg = Egma()
 
@@ -270,17 +285,61 @@ class PredNetNode(Node):
             occ_grid_msg.header.stamp = cur_clock
             occ_grid_msg.header.frame_id = "base_link"
 
-            occ_grid_msg.info.resolution = 1. / 3.
-            occ_grid_msg.info.width = self.sizeX
-            occ_grid_msg.info.height = self.sizeY
+            occ_grid_msg.info.resolution = data['occupancy_grids']['resolution']
+            occ_grid_msg.info.width = int(self.sizeX)
+            occ_grid_msg.info.height = int(self.sizeY)
 
             # Calcualtes the probabilitisc occupancy grid
             prob_2D = (new_output[0, i, 0] * 0.5 +
                        (new_output[0, i, 1] * -0.5 + 0.5)) * 100
+
+            # Resize occupancy grid to match size specified in config file
+            if self.sizeY != data['occupancy_grids']['length']:
+                diff = (data['occupancy_grids']['length'] - self.sizeY) / data['occupancy_grids']['resolution']
+                diff = int(diff)  # Convert to integer
+                
+                if diff < 0:
+                    prob_2D = prob_2D[:int(diff * self.sizeX)]
+                elif diff > 0:
+                    prob_2D.extend([-1] * int(diff * self.sizeX))
+                
+                occ_grid_msg.info.height = int(data['occupancy_grids']['length'])
+            
+            if self.sizeX != data['occupancy_grids']['width']:
+                diff = (data['occupancy_grids']['width'] - self.sizeX) / data['occupancy_grids']['resolution']     
+                diff = int(diff)  # Convert to integer
+            
+                if diff < 0:
+                    new_grid = [-1] * int(data['occupancy_grids']['width'] * occ_grid_msg.info.height)
+                    offset = int(diff / 2 * -1)
+                    
+                    for i in range(int(occ_grid_msg.info.height)):
+                        start = int(i * data['occupancy_grids']['width'] + offset)
+                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+
+                        new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = prob_2D[start:end]
+
+                    prob_2D = new_grid
+                elif diff > 0:
+                    new_grid = [-1] * int(data['occupancy_grids']['width'] * occ_grid_msg.info.height)
+                    offset = int(diff / 2)
+                    for i in range(int(occ_grid_msg.info.height)):
+                        start = int(i * data['occupancy_grids']['width'] + offset)
+                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+                        new_grid[start:end] = prob_2D[int(i * grid.info.width):int((i + 1) * grid.info.width)]
+                    prob_2D = new_grid
+            
+                occ_grid_msg.info.width = int(data['occupancy_grids']['width'])
+
+
             probability_grids.append(prob_2D.detach().numpy())
 
             # Flattens the grid and puts it into the message
             occ_grid_msg.data = prob_2D.flatten().type(torch.int8).numpy().tolist()
+            
+            # Sets the origin of the occupancy grid
+            occ_grid_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
+            occ_grid_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
 
             output_occ = new_output
 
@@ -306,13 +365,12 @@ class PredNetNode(Node):
         # Publish combined (flattened) message
         combined_grid = OccupancyGrid()
         combined_grid.info = self.prediction_msg.egma[0].info
-        combined_grid.data = Array(
-            'b', aggregate_probability.ravel().astype(np.int8))
+        combined_grid.data = Array('b', aggregate_probability.ravel().astype(np.int8))
         combined_grid.header.stamp = self.clock
         combined_grid.header.frame_id = "base_link"
         combined_grid.info.origin.position.z = 0.2
-        combined_grid.info.origin.position.x = -64.0 * (1. / 3.)
-        combined_grid.info.origin.position.y = -64.0 * (1. / 3.)
+        combined_grid.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location'] * data['occupancy_grids']['resolution']
+        combined_grid.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location'] * data['occupancy_grids']['resolution']
         self.prednet_combined_pub.publish(combined_grid)
 
 

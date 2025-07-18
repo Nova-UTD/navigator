@@ -228,6 +228,13 @@ class JunctionManager(Node):
         return can_enter
 
     def junctionGridCb(self, msg: OccupancyGrid):
+        """
+        The message handled by this callback comes from the topic /grid/junction. 
+        The message on this topic is published by the MapManager node. 
+        When the MapManager published the junction grid, it used values from the config file to determine the properties of the junction grid.
+        The stateful junction grid is generated using the junction grid's properties, so it inherits the values from the config file.
+        Therefore, this node does not need to read the config file or explicitly pull values from it.
+        """
 
         # The "> 0 " makes this an efficient binary grid
         junction_grid = np.asarray(msg.data,
