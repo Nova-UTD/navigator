@@ -96,36 +96,45 @@ class OccupancyGridNode(Node):
                 occupancy_grid[v, u] = 1
 
         # Resize occupancy grid to match size specified in config file
-        prepend_data = Array(np.int8, [-1] * (data['occupancy_grids']['width'] * data['occupancy_grids']['vehicle_y_location']))
+        prepend_data = [-1] * int(data['occupancy_grids']['width'] * data['occupancy_grids']['vehicle_y_location'])
         new_grid = np.insert(occupancy_grid, 0, prepend_data)
 
-        if (new_grid.shape[0] * resolution) != data['occupancy_grids']['length']:
-            diff = (data['occupancy_grids']['length'] - (new_grid.shape[0] * resolution)) / resolution
+        if new_grid.shape[0] != data['occupancy_grids']['length']:
+            diff = (data['occupancy_grids']['length'] - new_grid.shape[0]) / data['occupancy_grids']['resolution']
             diff = int(diff)  # Convert to integer
             
             if diff < 0:
-                new_grid = new_grid[:diff * new_grid.shape[1] * resolution]
+                new_grid = new_grid[:int(diff * new_grid.shape[1])]
             elif diff > 0:
-                new_grid.extend(Array(np.int8, [-1] * (diff * new_grid.shape[1] * resolution)))
+                new_grid.extend([-1] * int(diff * new_grid.shape[1]))
+            
+            grid_size[0] = int(data['occupancy_grids']['length'])
 
-            grid_size[0] = data['occupancy_grids']['length']
-                    
-        if (new_grid.shape[0] * resolution) != data['occupancy_grids']['width']:
-            diff = (data['occupancy_grids']['width'] - (new_grid.shape[0] * resolution)) / resolution     
+        if new_grid.shape[1] != data['occupancy_grids']['width']:
+            diff = (data['occupancy_grids']['width'] - new_grid.shape[1]) / data['occupancy_grids']['resolution']     # Num cells to add or remove from each row
             diff = int(diff)  # Convert to integer
-        
+
             if diff < 0:
-                new_grid = new_grid[:, int(diff / 2):(int(diff / 2) * -1)]
-            elif diff > 0:
-                new_new_grid = Array(np.int8, [-1] * (data['occupancy_grids']['width'] * (new_grid.shape[1] * resolution)))
-                offset = int(diff / 2)
-                for i in range(int(new_grid.shape[1] * resolution)):
-                    start = i * data['occupancy_grids']['width'] + offset
-                    end = ((i + 1) * data['occupancy_grids']['width']) - 1 - offset
-                    new_new_grid[start:end] = new_grid[i * new_grid.shape[0] * resolution:(i + 1) * new_grid.shape[0] * resolution]
+                new_new_grid = [-1] * int(data['occupancy_grids']['width'] * new_grid.shape[0])
+                offset = int(diff / 2 * -1)
+                
+                for i in range(int(new_grid.shape[0])):
+                    start = int(i * data['occupancy_grids']['width'] + offset)
+                    end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+
+                    new_new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = new_grid[start:end]
+
                 new_grid = new_new_grid
-        
-            grid_size[1] = data['occupancy_grids']['width']
+            elif diff > 0:
+                new_new_grid = [-1] * int(data['occupancy_grids']['width'] * new_grid.shape[0])
+                offset = int(diff / 2)
+                for i in range(int(new_grid.shape[0])):
+                    start = int(i * data['occupancy_grids']['width'] + offset)
+                    end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+                    new_new_grid[start:end] = new_grid[int(i * new_grid.shape[1]):int((i + 1) * new_grid.shape[1])]
+                new_grid = new_new_grid
+
+            grid_size[1] = int(data['occupancy_grids']['width'])
 
 
         msg = OccupancyGrid()
