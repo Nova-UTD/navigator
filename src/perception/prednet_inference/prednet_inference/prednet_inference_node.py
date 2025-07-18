@@ -286,8 +286,8 @@ class PredNetNode(Node):
             occ_grid_msg.header.frame_id = "base_link"
 
             occ_grid_msg.info.resolution = data['occupancy_grids']['resolution']
-            occ_grid_msg.info.width = self.sizeX
-            occ_grid_msg.info.height = self.sizeY
+            occ_grid_msg.info.width = int(self.sizeX)
+            occ_grid_msg.info.height = int(self.sizeY)
 
             # Calcualtes the probabilitisc occupancy grid
             prob_2D = (new_output[0, i, 0] * 0.5 +
@@ -299,28 +299,37 @@ class PredNetNode(Node):
                 diff = int(diff)  # Convert to integer
                 
                 if diff < 0:
-                    prob_2D = prob_2D[:diff * self.sizeX]
+                    prob_2D = prob_2D[:int(diff * self.sizeX)]
                 elif diff > 0:
-                    grid.data.extend(Array(np.int8, [-1] * (diff * self.sizeX)))
+                    prob_2D.extend([-1] * int(diff * self.sizeX))
                 
-                occ_grid_msg.info.height = data['occupancy_grids']['length']
+                occ_grid_msg.info.height = int(data['occupancy_grids']['length'])
             
             if self.sizeX != data['occupancy_grids']['width']:
                 diff = (data['occupancy_grids']['width'] - self.sizeX) / data['occupancy_grids']['resolution']     
                 diff = int(diff)  # Convert to integer
             
                 if diff < 0:
-                    prob_2D = prob_2D[:, int(diff / 2):(int(diff / 2) * -1)]
+                    new_grid = [-1] * int(data['occupancy_grids']['width'] * occ_grid_msg.info.height)
+                    offset = int(diff / 2 * -1)
+                    
+                    for i in range(int(occ_grid_msg.info.height)):
+                        start = int(i * data['occupancy_grids']['width'] + offset)
+                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+
+                        new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = prob_2D[start:end]
+
+                    prob_2D = new_grid
                 elif diff > 0:
-                    new_grid = Array(np.int8, [-1] * (data['occupancy_grids']['width'] * occ_grid_msg.info.height))
+                    new_grid = [-1] * int(data['occupancy_grids']['width'] * occ_grid_msg.info.height)
                     offset = int(diff / 2)
-                    for i in range(occ_grid_msg.info.height):
-                        start = i * data['occupancy_grids']['width'] + offset
-                        end = ((i + 1) * data['occupancy_grids']['width']) - 1 - offset
-                        new_grid[start:end] = prob_2D[i * grid.info.width:(i + 1) * grid.info.width]
+                    for i in range(int(occ_grid_msg.info.height)):
+                        start = int(i * data['occupancy_grids']['width'] + offset)
+                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+                        new_grid[start:end] = prob_2D[int(i * grid.info.width):int((i + 1) * grid.info.width)]
                     prob_2D = new_grid
             
-                occ_grid_msg.info.width = data['occupancy_grids']['width']
+                occ_grid_msg.info.width = int(data['occupancy_grids']['width'])
 
 
             probability_grids.append(prob_2D.detach().numpy())
@@ -356,8 +365,7 @@ class PredNetNode(Node):
         # Publish combined (flattened) message
         combined_grid = OccupancyGrid()
         combined_grid.info = self.prediction_msg.egma[0].info
-        combined_grid.data = Array(
-            'b', aggregate_probability.ravel().astype(np.int8))
+        combined_grid.data = Array('b', aggregate_probability.ravel().astype(np.int8))
         combined_grid.header.stamp = self.clock
         combined_grid.header.frame_id = "base_link"
         combined_grid.info.origin.position.z = 0.2
