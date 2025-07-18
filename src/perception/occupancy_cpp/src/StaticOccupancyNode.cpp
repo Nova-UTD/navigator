@@ -22,7 +22,6 @@ StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node")
 {
   // Get path to the config file
   this->declare_parameter<std::string>("global_config", "temp_value");
-  std::string file_path_ = this->get_parameter("global_config").as_string();
 
   //------Subscribers-------//
   // Subscribe to and use CARLA's clock
@@ -328,6 +327,8 @@ void StaticOccupancyNode::addEgoMask()
 //-------------HELPERS----------------------------//
 void StaticOccupancyNode::publishOccupancyGrid()
 {
+  std::string file_path_ = this->get_parameter("global_config").as_string();
+
   YAML::Node params_data;
 
   // Open the config file
