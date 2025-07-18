@@ -195,7 +195,6 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
  */
 void StaticOccupancyNode::add_free_spaces_to_the_DST()
 {
-  float i = 0.0;
   float angle = 0.0f;
 
   // fills free spaces, not efficient?
@@ -329,9 +328,11 @@ void StaticOccupancyNode::addEgoMask()
 //-------------HELPERS----------------------------//
 void StaticOccupancyNode::publishOccupancyGrid()
 {
+  YAML::Node params_data;
+
   // Open the config file
   try {
-      YAML::Node params_data = YAML::LoadFile(file_path_);
+      params_data = YAML::LoadFile(file_path_);
   } catch (const YAML::BadFile& e) {
       std::cerr << "Error loading YAML file: " << e.what() << std::endl;
   }
@@ -370,35 +371,40 @@ void StaticOccupancyNode::publishOccupancyGrid()
   }
 
   // Resize the occupancy grid data to match the expected size
-  if (msg.info.height != params_data['occupancy_grids']['length'].as<float>())
+  if (msg.info.height != params_data["occupancy_grids"]["length"].as<float>())
   {
-    msg.data = msg.data.resize(msg.info.width * (params_data['occupancy_grids']['length'].as<float>()), -1);
-    msg.info.height = params_data['occupancy_grids']['length'].as<float>();
+    msg.data.resize(msg.info.width * (params_data["occupancy_grids"]["length"].as<float>()), -1);
+    msg.info.height = params_data["occupancy_grids"]["length"].as<float>();
   }
 
-  if (msg.info.width != params_data['occupancy_grids']['width'].as<float>())
+  if (msg.info.width != params_data["occupancy_grids"]["width"].as<float>())
   {
-    float diff = (params_data['occupancy_grids']['width'].as<float>() - msg.info.width) / msg.info.resolution;     
+    float diff = (params_data["occupancy_grids"]["width"].as<float>() - msg.info.width) / msg.info.resolution;     
     int conv_diff = (int)diff;  // Convert to integer
   
     if (conv_diff < 0)
     {
-      std::vector<int> new_grid = {-1};
-      new_grid.resize(params_data['occupancy_grids']['width'].as<float>() * msg.info.height, -1);
+      int trimmed_width = static_cast<int>(params_data["occupancy_grids"]["width"].as<float>());
+      int trimmed_height = static_cast<int>(msg.info.height);
+      std::vector<signed char> new_grid(trimmed_width * trimmed_height, -1);
 
-      int amount_to_trim_each_side = (int)(conv_diff / 2);
+      int amount_to_trim_each_side = std::abs(conv_diff) / 2;
 
-      int k = 0;
-
-      for (int i = 0; i < grid.info.height; i++)
+      for (int i = 0; i < trimmed_height; i++)
       {
-        int start = i * (int)(params_data['occupancy_grids']['width'].as<float>()) + amount_to_trim_each_side;
-        int end = (i + 1) * (int)(params_data['occupancy_grids']['width'].as<float>()) - 1 - amount_to_trim_each_side;
+        int row_start = i * msg.info.width;
+        int new_row_start = i * trimmed_width;
+        int start = row_start + amount_to_trim_each_side;
+        int end = row_start + msg.info.width - amount_to_trim_each_side;
 
-        for (int j = start; j < end; j++)
+        // Ensure bounds are valid
+        if (start < row_start) start = row_start;
+        if (end > static_cast<int>(row_start + msg.info.width)) end = row_start + msg.info.width;
+
+        int copy_len = end - start;
+        if (copy_len > 0 && static_cast<long unsigned int>(new_row_start + copy_len) <= new_grid.size() && static_cast<long unsigned int>(start + copy_len) <= msg.data.size())
         {
-          new_grid.at(k) = msg.data.at(j);
-          k += 1;
+          std::copy(msg.data.begin() + start, msg.data.begin() + end, new_grid.begin() + new_row_start);
         }
       }
 
@@ -406,17 +412,17 @@ void StaticOccupancyNode::publishOccupancyGrid()
     }
     else if (conv_diff > 0)
     {
-      std::vector<int> new_grid = {-1};
-      new_grid.resize(params_data['occupancy_grids']['width'].as<float>() * msg.info.height, -1);
+      std::vector<signed char> new_grid = {-1};
+      new_grid.resize(params_data["occupancy_grids"]["width"].as<float>() * msg.info.height, -1);
 
       int offset = (int)(conv_diff / 2);
       
       int k = 0;
 
-      for (int i = 0; i < grid.info.height; i++)
+      for (unsigned int i = 0; i < msg.info.height; i++)
       {
-        int start = i * (int)(params_data['occupancy_grids']['width'].as<float>()) + offset;
-        int end = (i + 1) * (int)(params_data['occupancy_grids']['width'].as<float>()) - 1 - offset;
+        int start = i * (int)(params_data["occupancy_grids"]["width"].as<float>()) + offset;
+        int end = (i + 1) * (int)(params_data["occupancy_grids"]["width"].as<float>()) - 1 - offset;
 
         for (int j = start; j < end; j++)
         {
@@ -428,7 +434,7 @@ void StaticOccupancyNode::publishOccupancyGrid()
       msg.data = new_grid;
     }
         
-    msg.info.width = params_data['occupancy_grids']['width'].as<float>();
+    msg.info.width = params_data["occupancy_grids"]["width"].as<float>();
   }
 
   occupancy_grid_pub->publish(msg);
@@ -598,7 +604,6 @@ void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x2, int y2, 
 
   int slope = 2 * (y2 - y1);
   int slope_error = slope - (x2 - x1);
-  int x_sample, y_sample;
   for (int x = x1, y = y1; x < x2; x++)
   {
     // checks if the point is occupied
@@ -633,7 +638,6 @@ void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x2, int y2, 
 
   int slope = 2 * (x2 - x1);
   int slope_error = slope - (y2 - y1);
-  int x_sample, y_sample;
   for (int x = x1, y = y1; y < y2; y++)
   {
     // checks if the point is occupied
@@ -666,7 +670,6 @@ void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x2, int y2, 
 void StaticOccupancyNode::ray_tracing_vertical(int x2)
 {
   int x1 = 0;
-  int y1 = 0;
   x2 = x2 - 1;
 
   for (int x = x1; x <= x2; x++)
@@ -688,7 +691,6 @@ void StaticOccupancyNode::ray_tracing_vertical(int x2)
 void StaticOccupancyNode::ray_tracing_vertical_n(int x1)
 {
   int x2 = 0;
-  int y2 = 0;
   x1 = x1 + 1;
 
   for (int x = x1; x <= x2; x++)
@@ -708,7 +710,6 @@ void StaticOccupancyNode::ray_tracing_vertical_n(int x1)
 // HORIZONTAL +
 void StaticOccupancyNode::ray_tracing_horizontal(int y2)
 {
-  int x1 = 0;
   int y1 = 0;
   y2 = y2 - 1;
 
@@ -726,7 +727,6 @@ void StaticOccupancyNode::ray_tracing_horizontal(int y2)
 // HORIZONTAL -
 void StaticOccupancyNode::ray_tracing_horizontal_n(int y1)
 {
-  int x1 = 0;
   int y2 = 0;
   y1 = y1 + 1;
 

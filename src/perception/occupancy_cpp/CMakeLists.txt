@@ -25,4 +25,8 @@ include_directories(${OCTOMAP_INCLUDE_DIRS})
 # target_link_libraries(${OCTOMAP_LIBRARIES})
 
 find_package(nova_auto_package REQUIRED)
+find_package(yaml-cpp REQUIRED)
+
 nova_auto_package()
+
+target_link_libraries(static_grid_exe yaml-cpp)

@@ -83,6 +83,7 @@ namespace navigator
       float x_old_high;
       float y_old_low;
       float y_old_high;
+      std::string file_path_;
 
       // There are only two events: 0 = Occupied and 1 = Free.
       const static int event_num = 2;
