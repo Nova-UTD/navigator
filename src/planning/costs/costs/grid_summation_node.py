@@ -339,7 +339,7 @@ class GridSummationNode(Node):
                 if diff < 0:
                     steering_cost_msg.data = steering_cost_msg.data[:int(diff * steering_cost_msg.info.width)]
                 elif diff > 0:
-                    steering_cost_msg.data.extend(Array(np.int8, [-1] * int(diff * steering_cost_msg.info.width)))
+                    steering_cost_msg.data.extend([-1] * int(diff * steering_cost_msg.info.width))
                 
                 steering_cost_msg.info.height = int(data['occupancy_grids']['length'])
             
@@ -391,7 +391,7 @@ class GridSummationNode(Node):
                 if diff < 0:
                     speed_cost_msg.data = speed_cost_msg.data[:int(diff * speed_cost_msg.info.width)]
                 elif diff > 0:
-                    speed_cost_msg.data.extend(Array(np.int8, [-1] * int(diff * speed_cost_msg.info.width)))
+                    speed_cost_msg.data.extend([-1] * int(diff * speed_cost_msg.info.width))
                 
                 speed_cost_msg.info.height = int(data['occupancy_grids']['length'])
             

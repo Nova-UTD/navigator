@@ -148,7 +148,7 @@ def numpyToOccupancyGrid(arr):
     except yaml.YAMLError as e:
         print(f"Error parsing YAML file: {e}")
 
-    grid.data = Array('b', arr.ravel().astype(np.int8))
+    grid.data = arr.ravel().astype(np.int8)
     grid.info = MapMetaData()
     grid.info.height = arr.shape[0]
     grid.info.width = arr.shape[1]
@@ -158,28 +158,37 @@ def numpyToOccupancyGrid(arr):
         diff = int(diff)  # Convert to integer
         
         if diff < 0:
-            grid.data = grid.data[:diff * grid.info.width]
+            grid.data = grid.data[:int(diff * grid.info.width)]
         elif diff > 0:
-            grid.data.extend(Array(np.int8, [-1] * (diff * grid.info.width)))
+            grid.data.extend([-1] * int(diff * grid.info.width))
         
-        grid.info.height = data['occupancy_grids']['length']
+        grid.info.height = int(data['occupancy_grids']['length'])
 
     if grid.info.width != data['occupancy_grids']['width']:
         diff = (data['occupancy_grids']['width'] - grid.info.width) / data['occupancy_grids']['resolution']     # Num cells to add or remove from each row
         diff = int(diff)  # Convert to integer
 
         if diff < 0:
-            grid.data = grid.data[:, int(diff / 2):(int(diff / 2) * -1)]
+            new_grid = [-1] * int(data['occupancy_grids']['width'] * grid.info.height)
+            offset = int(diff / 2 * -1)
+            
+            for i in range(int(grid.info.height)):
+                start = int(i * data['occupancy_grids']['width'] + offset)
+                end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+
+                new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = grid.data[start:end]
+
+            grid.data = new_grid
         elif diff > 0:
-            new_grid = Array(np.int8, [-1] * (data['occupancy_grids']['width'] * grid.info.height))
+            new_grid = [-1] * int(data['occupancy_grids']['width'] * grid.info.height)
             offset = int(diff / 2)
-            for i in range(grid.info.height):
-                start = i * data['occupancy_grids']['width'] + offset
-                end = ((i + 1) * data['occupancy_grids']['width']) - 1 - offset
-                new_grid[start:end] = grid.data[i * grid.info.width:(i + 1) * grid.info.width]
+            for i in range(int(grid.info.height)):
+                start = int(i * data['occupancy_grids']['width'] + offset)
+                end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+                new_grid[start:end] = grid.data[int(i * grid.info.width):int((i + 1) * grid.info.width)]
             grid.data = new_grid
 
-        grid.info.width = data['occupancy_grids']['width']
+        grid.info.width = int(data['occupancy_grids']['width'])
 
     return grid
 
