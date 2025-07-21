@@ -6,6 +6,7 @@ Author: Pranav Boyapati
 
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import MultiThreadedExecutor
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from navigator_msgs.msg import RoadUser
@@ -75,7 +76,7 @@ class RoadUserDetection(Node):
                 road_user_msg.confidence = float(conf)
                 road_user_msg.detection = str(results[0].names[int(cls)])
 
-                all_road_users_msg.road_users.append(road_user_msg)
+                all_road_users_msg.all_road_users.append(road_user_msg)
             
             self.road_user_publisher.publish(all_road_users_msg)
         except Exception as e:
