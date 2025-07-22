@@ -27,17 +27,18 @@ def generate_launch_description():
     return LaunchDescription([
         # image_segmentation,
         # semantic_projection,
-        ground_seg,                         # /lidar --> /lidar/filtered
-        static_grid,                        # /lidar/filtered --> /grid/occupancy/current
+        # ground_seg,                         # /lidar --> /lidar/filtered
+        # static_grid,                        # /lidar/filtered --> /grid/occupancy/current
         # *object3d_launch_entities,
         # traffic_light_detector,
         # prednet_inference,
         # driveable_area,
         # pedestrian_intent_to_enter_road,
         # road_signs_classifier,
-        image_segmentation, 
-        depth_processing, 
-        occupancy_grid_node,
+        # image_segmentation, 
+        # depth_processing, 
+        # occupancy_grid_node,
         # lane_type_detector,
         # pedestrian_skeleton
+        road_user_detector,
     ])

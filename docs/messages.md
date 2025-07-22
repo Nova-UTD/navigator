@@ -122,7 +122,7 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 
 ### RoadSignsDetection
 - [Header] (https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
-- road_signs ([RoadSigns] (#roadsigns)[])
+- road_signs ([RoadSigns](#roadsigns)[])
 
 ### RoadSigns
 - x (float32)
@@ -131,6 +131,18 @@ Maintained by Daniel Vayman, last updated November 2nd, 2023
 - height (float32)
 - label (string)
 - confidence (float32)
+
+### RoadUser
+- x (float32)
+- y (float32)
+- width (float32)
+- height (float32)
+- confidence (float32)
+- detection (string)
+
+### RoadUserDetections
+- [Header] (https://docs.ros2.org/latest/api/std_msgs/msg/Header.html)
+- all_road_users ([RoadUser](#roaduser)[])
 
 ### RouteCost
 - Lane ID (int)

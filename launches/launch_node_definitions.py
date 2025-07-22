@@ -244,3 +244,8 @@ pedestrian_skeleton = Node(
    	name='pedestrian_skeleton',
    	parameters=[],
 )
+
+road_user_detector = Node(
+    package='road_user_detection',
+    executable='road_user_detection'
+)
