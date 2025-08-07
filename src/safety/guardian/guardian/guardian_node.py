@@ -45,7 +45,6 @@ class guardian_node(Node):
             "map_manager": StatusData(),
             "web_bridge": StatusData(),
             "joy_translation": StatusData(),
-            "joy_linux": StatusData(),
             "gnss_averager": StatusData(),
             "mcl": StatusData(),
             "camera_streamer": StatusData(),
@@ -64,9 +63,6 @@ class guardian_node(Node):
             "traffic_light_detector": StatusData(),
             "prednet_inference": StatusData(),
             "driveable_area": StatusData(),
-            "map_manager": StatusData(),
-            "map_manager": StatusData(),
-            "map_manager": StatusData(),
             "road_signs_classifier": StatusData(),
             "depth_processing": StatusData(),
             "occupancy_grid_node": StatusData(),
@@ -75,8 +71,6 @@ class guardian_node(Node):
         }
         self.secondary_nodes = {
             "costmap_recorder": StatusData(),
-            "rqt": StatusData(),
-            "rviz": StatusData(),
             "complex_yolo_model": StatusData(),
             "mmdetection3d_model": StatusData(),
             "object_viz_deteced_node": StatusData(),
