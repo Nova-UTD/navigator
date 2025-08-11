@@ -27,6 +27,17 @@ GroundSegmentationNode::GroundSegmentationNode() : Node("ground_segmentation_nod
       std::bind(&GroundSegmentationNode::pointCloudCb, this, std::placeholders::_1));
 
   filtered_lidar_pub = this->create_publisher<PointCloud2>("/lidar/filtered", 10);
+  diagnostic_pub = this->create_publisher<String>("/node_statuses", 10);
+
+  // Timer to publish diagnostic messages
+  diagnostic_pub_timer = this->create_wall_timer(0.5, publishDiagnostics);
+}
+
+void publishDiagnostics()
+{
+  String msg;
+  msg.data = "ground_seg, OK, " + std::to_string(clock.now().seconds());
+  diagnostic_pub->publish(msg);
 }
 
 /**
@@ -48,6 +59,7 @@ void GroundSegmentationNode::pointCloudCb(PointCloud2::SharedPtr msg)
   filtered_msg.header = msg->header;
 
   filtered_lidar_pub->publish(filtered_msg);
+  publishDiagnostics();
 }
 
 /**
