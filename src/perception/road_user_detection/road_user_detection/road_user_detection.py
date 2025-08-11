@@ -16,6 +16,7 @@ from ultralytics import YOLO
 import numpy
 import base64
 from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 
 class RoadUserDetection(Node):

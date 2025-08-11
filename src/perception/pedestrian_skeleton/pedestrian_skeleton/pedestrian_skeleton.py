@@ -6,10 +6,16 @@ from cv_bridge import CvBridge
 import cv2
 from ultralytics import YOLO
 import numpy as np
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 class PedestrianSkeleton(Node):
     def __init__(self):
         super().__init__('Pedestrian_Skeleton_detector')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
         
         # Subscribe to camera image topic
         self.subscription = self.create_subscription(
@@ -17,12 +23,14 @@ class PedestrianSkeleton(Node):
             'cameras/camera0',
             self.image_callback,
             10)
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
         
         # Publish the processed image
         self.publisher = self.create_publisher(Image, 'processed_image', 10)
 
         # Publish detection messages
         self.detection_publisher = self.create_publisher(String, 'detection_status', 10)
+        self.clock = None
         
         # Initialize CvBridge
         self.bridge = CvBridge()
@@ -33,6 +41,17 @@ class PedestrianSkeleton(Node):
 
         # Confidence threshold
         self.CONFIDENCE_THRESHOLD = 0.7  # Adjust as needed
+
+    def clock_cb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "pedestrian_skeleton, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def image_callback(self, msg):
         try:
@@ -73,6 +92,7 @@ class PedestrianSkeleton(Node):
 
                 # Publish the annotated image
                 self.publisher.publish(processed_img_msg)
+                self.publish_diagnostics()
 
                 # Display the image
                 cv2.imshow("Annotated Image", annotated_img)
@@ -83,6 +103,10 @@ class PedestrianSkeleton(Node):
 
         except Exception as e:
             self.get_logger().error(f"Error in processing image: {e}")
+            
+            diagnostic_msg = String()
+            diagnostic_msg.data = "pedestrian_skeleton, ERROR, " + str(self.clock)
+            self.diagnostic_publisher.publish(diagnostic_msg)
 
 def main(args=None):
     rclpy.init(args=args)

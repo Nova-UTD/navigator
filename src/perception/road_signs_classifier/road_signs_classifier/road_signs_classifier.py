@@ -14,17 +14,25 @@ from navigator_msgs.msg import RoadSigns
 from navigator_msgs.msg import RoadSignsDetection
 import cv2
 from inference_sdk import InferenceHTTPClient
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 
 class RoadSignsClassifier(Node):
     def __init__(self):
         super().__init__('road_signs_classifier')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         #instantiate model client
         self.CLIENT = InferenceHTTPClient(api_url="http://localhost:9001", api_key="BmqYjCBXZD1iPIyq09sG")
 
         #create subscriptions
         self.camera_sub = self.create_subscription(Image, '/cameras/camera0', self.image_callback, 10)
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
+        self.clock = None
 
         #create variables to store subscription info
         self.bridge = CvBridge()
@@ -40,7 +48,18 @@ class RoadSignsClassifier(Node):
         status, self.image = cv2.imencode(".jpeg", cv_image) 
         self.classify_sign()
 
+    def clock_cb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "road_signs_classifier, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
     
+
+
     #main control function
     def classify_sign(self):
         #gets prediction
@@ -65,6 +84,7 @@ class RoadSignsClassifier(Node):
             road_signs_detection_msg.road_signs.append(road_sign)
 
             self.road_signs_publisher.publish(road_signs_detection_msg)
+            self.publish_diagnostics()
 
 
 def main(args=None):

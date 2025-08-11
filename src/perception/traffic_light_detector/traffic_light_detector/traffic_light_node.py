@@ -16,10 +16,16 @@ from ultralytics import YOLO
 from navigator_msgs.msg import TrafficLight, TrafficLightDetection
 from PIL import Image as PILImage
 import base64
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 class TrafficLightDetectionNode(Node):
     def __init__(self):
         super().__init__('traffic_light_detection_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
         
         # Initialize YOLO model for traffic light detection
         self.model = YOLO('/navigator_binaries/best_traffic_med_yolo_v8.pt')  # Correct path
@@ -30,9 +36,23 @@ class TrafficLightDetectionNode(Node):
         # Subscribe to the image topic (modify topic if necessary)
         self.image_subscriber = self.create_subscription(
             Image, '/cameras/camera0', self.image_callback, 10)
+
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
+        self.clock = 0.0
         
         # Publisher for the detection result
         self.traffic_light_publisher = self.create_publisher(TrafficLightDetection, '/traffic_lights/detections', 10)
+
+    def clock_cb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "traffic_light_detector, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def image_callback(self, msg: Image):
        # Convert ROS image message to OpenCV image
@@ -81,6 +101,7 @@ class TrafficLightDetectionNode(Node):
 
        # Publish the detection result
         self.traffic_light_publisher.publish(detection_msg)
+        self.publish_diagnostics()
 
 def main(args=None):
     rclpy.init(args=args)

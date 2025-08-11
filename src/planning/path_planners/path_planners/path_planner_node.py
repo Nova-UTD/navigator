@@ -25,6 +25,7 @@ import numpy as np
 import time
 from typing import List, Tuple, Optional
 import scipy.ndimage
+from std_msgs.msg import String
 
 import rclpy
 from rclpy.node import Node
@@ -125,6 +126,10 @@ def chaikin_smoothing(path, depth=2):
 class PathPlannerNode(Node):
     def __init__(self):
         super().__init__("path_planner_node")
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         # Parameters
         self.grid_res = 0.4  # Grid resolution in meters/cell
@@ -150,7 +155,7 @@ class PathPlannerNode(Node):
         self.clock_sub = self.create_subscription(
             Clock, "/clock", self.clock_callback, 1
         )
-        self.clock = Clock()
+        self.clock = 0.0
 
         self.costmap_sub = self.create_subscription(
             OccupancyGrid, "/grid/steering_cost", self.costmap_callback, 1
@@ -187,8 +192,16 @@ class PathPlannerNode(Node):
 
         self.get_logger().info(f"Path Planner Node initialized using {self.planner.__class__.__name__}")
 
-    def clock_callback(self, msg: Clock):
-        self.clock = msg
+    def clock_callback(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "path_planner, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def costmap_callback(self, msg: OccupancyGrid):
         if msg.info.height == 0 or msg.info.width == 0:
@@ -288,13 +301,13 @@ class PathPlannerNode(Node):
 
         # Convert path to ROS message
         path_msg = Path()
-        path_msg.header.stamp = self.clock.clock
+        path_msg.header.stamp = self.clock
         path_msg.header.frame_id = "base_link"
         path_msg.poses = []
 
         for i in range(len(path)):
             p = PoseStamped()
-            p.header.stamp = self.clock.clock
+            p.header.stamp = self.clock
             p.header.frame_id = "base_link"
 
             # Convert grid coordinates back to base_link frame
@@ -314,6 +327,7 @@ class PathPlannerNode(Node):
 
         # Publish the path
         self.path_pub.publish(path_msg)
+        self.publish_diagnostics()
 
 
 def main(args=None):

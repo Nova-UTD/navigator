@@ -34,6 +34,7 @@ from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, PointCloud2
 from tf2_ros import TransformBroadcaster
+from std_msgs.msg import String
 
 from .mcl import MCL
 
@@ -44,9 +45,13 @@ class MCLNode(Node):
 
     def __init__(self):
         super().__init__('mcl_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         self.previous_result = None
-        self.clock = Clock()
+        self.clock = None
         self.filter = None
         self.gnss_pose = None
         self.last_update_time = time.time()
@@ -94,8 +99,16 @@ class MCLNode(Node):
 
         self.tf_broadcaster = TransformBroadcaster(self)
 
-    def clock_cb(self, msg: Clock):
-        self.clock = msg
+    def clock_cb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "mcl, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def imu_cb(self, msg: Imu):
         self.imu = msg
@@ -133,9 +146,11 @@ class MCLNode(Node):
         cloud_array['i'] = self.filter.weights
 
         msg: PointCloud2 = rnp.msgify(PointCloud2, cloud_array)
-        msg.header.stamp = self.clock.clock
+        msg.header.stamp = self.clock
         msg.header.frame_id = 'map'
         self.particle_cloud_pub.publish(msg)
+
+        self.publish_diagnostics()
 
     def cloud_cb(self, msg: PointCloud2):
         """Update our filter with the latest observations and publish the result
@@ -174,7 +189,7 @@ class MCLNode(Node):
         # step() is the critical function that feeds data into the filter
         # and returns a pose and covariance.
 
-        clock_seconds = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
+        clock_seconds = self.clock
 
         result_pose, pose_variance = self.filter.step(
             [heading_rate, self.speed], clock_seconds, cloud, self.gnss_pose, self.grid)
@@ -187,7 +202,7 @@ class MCLNode(Node):
         # Turn our filter result into a transform
         t = TransformStamped()
         t.header.frame_id = 'map'
-        t.header.stamp = self.clock.clock
+        t.header.stamp = self.clock
         t.child_frame_id = 'hero'
         t.transform.translation.x = result_pose[0]
         t.transform.translation.y = result_pose[1]
@@ -229,7 +244,7 @@ class MCLNode(Node):
         origin = msg.info.origin.position
         res = msg.info.resolution
 
-        clock_seconds = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
+        clock_seconds = self.clock
         self.filter = MCL(clock_seconds, res, initial_pose=self.gnss_pose,
                           map_origin=np.array([origin.x, origin.y]), N=50)
 

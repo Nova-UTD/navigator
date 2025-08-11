@@ -3,20 +3,40 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, qos_profile_sensor_data
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 import numpy as np
 
 class DepthProcessingNode(Node):
     def __init__(self):
         super().__init__('depth_processing_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
+
         self.bridge = CvBridge()
 
         #subscribe to rosbag depth topics
         self.range_image_sub = self.create_subscription(Image, '/ouster/range_image', self.process_depth,qos_profile_sensor_data)
-
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
         self.publisher = self.create_publisher(Image, '/processed_depth', 10)
 
+        self.clock = None
+
         self.get_logger().info("Depth Processing Node Started (rosbag)")
+
+    def clock_cb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "depth_processing, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def process_depth(self, msg):
         #ros2 image to opencv numpy array
@@ -34,6 +54,7 @@ class DepthProcessingNode(Node):
         depth_msg = self.bridge.cv2_to_imgmsg(depth_image, encoding="32FC1")
         depth_msg.header = msg.header  # Keep original timestamps
         self.publisher.publish(depth_msg)
+        self.publish_diagnostics()
 
 
 def main(args=None):

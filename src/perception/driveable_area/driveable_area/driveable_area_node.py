@@ -14,6 +14,7 @@ from cv_bridge import CvBridge  # Package to convert between ROS and OpenCV Imag
 import cv2  # OpenCV library
 import math
 import matplotlib.pyplot as plt
+from std_msgs.msg import String
 
 
 # Message definitions
@@ -121,6 +122,10 @@ class DriveableAreaNode(Node):
 
     def __init__(self):
         super().__init__('driveable_area_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         camera_sub = self.create_subscription(
             Image, '/cameras/camera0', self.cameraCb, 1)
@@ -146,11 +151,19 @@ class DriveableAreaNode(Node):
         self.model = init_segmentor(
             config_file, checkpoint_file, device='cuda:0')
 
-    def clockCb(self, msg: Clock):
-        self.clock = msg.clock
+    def clockCb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
 
     def cameraCb(self, image):
         self.current_image = image
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "driveable_area, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def makeSegmentation(self):
         if self.current_image == None:
@@ -204,6 +217,7 @@ class DriveableAreaNode(Node):
         # result_msg = self.cv_bridge.cv2_to_imgmsg(output_image, 'bgra8')
         # result_msg.header.stamp = self.clock
         self.result_pub.publish(result_msg)
+        self.publish_diagnostics()
 
         self.get_logger().info(f"{time.time() - start}")
 

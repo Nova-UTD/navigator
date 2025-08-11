@@ -34,6 +34,7 @@ from tf_transformations import quaternion_multiply, euler_from_quaternion
 from ros2_numpy.occupancy_grid import occupancygrid_to_numpy, numpy_to_occupancy_grid
 # to do image rotations/shifts for fast forwarding occupancy grids
 from scipy import ndimage
+from std_msgs.msg import String
 
 from visualization_msgs.msg import Marker
 from std_msgs.msg import ColorRGBA
@@ -46,6 +47,10 @@ class RouteCostmapNode(Node):
 
     def __init__(self):
         super().__init__('route_costmap_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         # Set up the global config file
         self.declare_parameter('global_config', 'temp_value')
@@ -79,10 +84,18 @@ class RouteCostmapNode(Node):
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)
 
-        self.clock = Clock()
+        self.clock = None
 
-    def clockCb(self, msg: Clock):
-        self.clock = msg
+    def clockCb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "grid_route_costmap, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     # TODO: currently implemented, the route cannot be changed once it is first received
     def routeCb(self, msg: Path):
@@ -100,6 +113,7 @@ class RouteCostmapNode(Node):
         if self.route is None:
             self.get_logger().warning('Route Costmap Node has not received route yet.')
             self.publish(routemap,(0.0,0.0))
+            self.publish_diagnostics()
             return
 
         try:
@@ -147,6 +161,7 @@ class RouteCostmapNode(Node):
                 self.get_logger().warning('Did not find any route points ahead of the vehicle.')
                 self.route_remaining = []
                 self.publish(routemap,(0.0,0.0))
+                self.publish_diagnostics()
                 return
             
             # the route may make some turns such that part of the future path goes behind the vehicle
@@ -197,6 +212,7 @@ class RouteCostmapNode(Node):
             if len(gridxs) < 2:
                 self.get_logger().info('You have reached the end of the route.')
                 self.publish(routemap,(0.0,0.0))
+                self.publish_diagnostics()
                 return
             
             # now we paint a low cost valley along the gridxs,gridys
@@ -255,15 +271,20 @@ class RouteCostmapNode(Node):
                 iold,jold = i,j
 
             self.publish(routemap, goal )
+            self.publish_diagnostics()
 
         except(LookupException, ExtrapolationException, ConnectivityException) as e: # typically get some errors on startup as the tf buffer fills
             self.get_logger().warning("!!! Error finding transform to build route grid !!!")
             self.get_logger().error('failed to get transform {} \n'.format(repr(e)))
+            
+            diagnostic_msg = String()
+            diagnostic_msg.data = "grid_route_costmap, ERROR, " + str(self.clock)
+            self.diagnostic_publisher.publish(diagnostic_msg)
 
     def publish(self, routemap, goal):
         # Publish path goal, which is the last element of the gridxs,gridys
         path_goal = PoseStamped()
-        path_goal.header.stamp = self.clock.clock
+        path_goal.header.stamp = self.clock
         path_goal.header.frame_id = 'base_link'
         path_goal.pose.position.x = goal[0]
         path_goal.pose.position.y = goal[1]
@@ -287,13 +308,13 @@ class RouteCostmapNode(Node):
 
         # Publish as an OccupancyGrid
         route_cost_msg = OccupancyGrid()
-        route_cost_msg.info.map_load_time = self.clock.clock
+        route_cost_msg.info.map_load_time = self.clock
         route_cost_msg.info.resolution = data['occupancy_grids']['resolution']
         route_cost_msg.info.width = int(data['occupancy_grids']['width'])
         route_cost_msg.info.height = int(data['occupancy_grids']['length'])
         route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
         route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
-        route_cost_msg.header.stamp = self.clock.clock
+        route_cost_msg.header.stamp = self.clock
         route_cost_msg.header.frame_id = 'base_link'
         route_cost_msg.data = routemap.astype(np.int8).flatten().tolist()
 
@@ -380,7 +401,7 @@ class RouteCostmapNode(Node):
     def publish_marker(self, target, c, publisher):
         marker = Marker()
         marker.header.frame_id = 'base_link'
-        marker.header.stamp = self.clock.clock
+        marker.header.stamp = self.clock
         marker.id = 0
         marker.type = Marker.ARROW
         marker.action = Marker.ADD

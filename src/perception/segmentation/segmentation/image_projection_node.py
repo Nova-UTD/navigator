@@ -27,6 +27,7 @@ from std_msgs.msg import Float32
 
 import image_geometry
 import matplotlib.pyplot as plt
+from std_msgs.msg import String
 
 import struct
 
@@ -91,6 +92,10 @@ class ImageProjectioNode(Node):
     def __init__(self):
         super().__init__('image_projection_node')
         self.get_logger().info("Ready to project!")
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         lidar_sub = self.create_subscription(
             PointCloud2, "/lidar/fused", self.lidarCb, 1)
@@ -110,6 +115,9 @@ class ImageProjectioNode(Node):
         right_camera_info_sub = self.create_subscription(
             CameraInfo, '/carla/hero/rgb_right/camera_info', self.rightCameraInfoCb, 1)
 
+        self.clock_sub = self.create_subscription(
+            String, '/clock', self.clockCb, 10)
+
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
@@ -120,6 +128,18 @@ class ImageProjectioNode(Node):
 
         self.left_semantic_image = None
         self.right_semantic_image = None
+        self.clock = 0.0
+
+    def clockCb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "semantic_projection, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def imageToNumpy(self, msg: Image) -> np.array:
         """Converts Image message to numpy array
@@ -314,6 +334,7 @@ class ImageProjectioNode(Node):
         result_msg.header = msg.header
 
         self.semantic_lidar_pub.publish(result_msg)
+        self.publish_diagnostics()
 
 
 def main(args=None):

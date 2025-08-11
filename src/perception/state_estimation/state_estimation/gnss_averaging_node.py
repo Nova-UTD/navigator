@@ -37,12 +37,18 @@ from geometry_msgs.msg import PoseStamped, TransformStamped, Vector3
 from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu
+from std_msgs.msg import String
 
 
 class GnssAveragingNode(Node):
 
     def __init__(self):
         super().__init__('gnss_averaging_node')
+
+
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 1)
@@ -83,6 +89,7 @@ class GnssAveragingNode(Node):
         self.cached_gnss_poses = []
         self.current_pose = None  # [x, y, heading]
         self.yaw = 0.0
+        self.clock = None
 
         # This variable describes whether or not our pose was recently refreshed by average GNSS
         # If the car has not recently been stationary for a significant period of time,
@@ -103,6 +110,17 @@ class GnssAveragingNode(Node):
 
         if self.yaw > np.pi:
             self.yaw -= 2 * np.pi
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "gnss_averager, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
+
+    def clock_cb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
 
     def true_pose_cb(self, msg: PoseStamped):
         if self.current_pose is None:
@@ -147,6 +165,7 @@ class GnssAveragingNode(Node):
             status.message = "Localization operating normally."
 
         self.diagnostic_pub.publish(status)
+        self.publish_diagnostics()
 
     def raw_gnss_cb(self, msg: Odometry):
         if self.clock is None:

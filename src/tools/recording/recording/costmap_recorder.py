@@ -16,6 +16,7 @@ import os
 import numpy as np
 import rclpy
 import cv2
+from std_msgs.msg import String
 
 # Add necessary imports for parameters and services
 from rclpy.parameter import Parameter
@@ -39,6 +40,11 @@ class costmap_recorder(Node):
         # Use a consistent name for the node and status reporting
         super().__init__("costmap_recorder")
 
+
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
+
         # Declare the parameter for the output directory
         self.declare_parameter(
             "output_directory", "/navigator/costmaps"
@@ -53,6 +59,7 @@ class costmap_recorder(Node):
 
         # Objects to store data in memory
         self.current_time = 0.0
+        self.clock = 0.0
         self.current_costmap_msg = None
         self.current_odom_msg = None
         self.total_disk_usage = 0  # Bytes
@@ -86,6 +93,14 @@ class costmap_recorder(Node):
         )
 
         self.status_pub = self.create_publisher(DiagnosticStatus, "/node_statuses", 1)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "costmap_recorder, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def getStatus(self):
         msg = DiagnosticStatus()
@@ -182,6 +197,7 @@ class costmap_recorder(Node):
         # Publish status
         status_msg = self.getStatus()
         self.status_pub.publish(status_msg)
+        self.publish_diagnostics()
 
     def saveCostmapAsImage(self):
         """Convert costmap to image and save it with sequential numbering"""
@@ -239,6 +255,7 @@ class costmap_recorder(Node):
             msg (Clock)
         """
         self.current_time = msg.clock.sec + msg.clock.nanosec * 1e-9
+        self.clock = self.current_time
 
     def odomCb(self, msg: Odometry):
         """Caches the latest message, to be used by recordCostmap()
@@ -265,6 +282,7 @@ class costmap_recorder(Node):
         status_msg.values.append(state_kv)
 
         self.status_pub.publish(status_msg)
+        self.publish_diagnostics()
 
 
 def main(args=None):

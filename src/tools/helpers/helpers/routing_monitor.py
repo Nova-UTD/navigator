@@ -25,6 +25,7 @@ from tf2_ros.transform_listener import TransformListener
 from rosgraph_msgs.msg import Clock
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
+from std_msgs.msg import String
 
 parallel_group = ReentrantCallbackGroup()
 mutex_group = MutuallyExclusiveCallbackGroup()
@@ -33,6 +34,10 @@ class RoutingMonitor(Node):
 
     def __init__(self):
         super().__init__('routing_monitor_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -51,13 +56,21 @@ class RoutingMonitor(Node):
         smooth_route_timer = self.create_timer(0.1, self.smooth_route_pub_tick, callback_group=parallel_group)
 
         clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1, callback_group=parallel_group)
-        self.clock = Clock().clock
+        self.clock = 0.0
 
         self.service_request = SetRoute.Request()
         self.route_timer = self.create_timer(3.0, self.request_refined_route, callback_group=mutex_group)
 
-    def clockCb(self, msg: Clock):
-        self.clock = msg.clock
+    def clockCb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "routing_monitor, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def routeCb(self, msg: Path):
         self.rough_route = msg
@@ -73,6 +86,7 @@ class RoutingMonitor(Node):
             for i in range(len(self.smooth_route_msg.poses)):
                 self.smooth_route_msg.poses[i].header.stamp = self.clock
             self.smooth_route_pub.publish(self.smooth_route_msg)
+            self.publish_diagnostics()
 
     def request_refined_route(self):
         if self.rough_route is None:

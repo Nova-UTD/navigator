@@ -7,10 +7,17 @@ from cv_bridge import CvBridge
 import numpy as np
 from skimage.draw import line
 import yaml
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 class OccupancyGridNode(Node):
     def __init__(self):
         super().__init__('occupancy_grid_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
+
         self.bridge = CvBridge()
 
         # Set up the global config file
@@ -20,6 +27,8 @@ class OccupancyGridNode(Node):
         #subscribe to segmentation and depth masks
         self.create_subscription(Image, '/segmentation_mask', self.process_segmentation, 10)
         self.create_subscription(Image, '/processed_depth', self.process_depth, 10)
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
+        self.clock = None
 
         #publisher for occupancy grid
         self.publisher = self.create_publisher(OccupancyGrid, '/occupancy_grid', 10)
@@ -28,6 +37,17 @@ class OccupancyGridNode(Node):
         self.depth_image = None
 
         print("Occupancy Grid Node Started!")
+
+    def clock_cb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "occupancy_grid_node, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def process_segmentation(self, msg):
         self.segmentation_mask = self.bridge.imgmsg_to_cv2(msg, "mono8")
@@ -148,6 +168,7 @@ class OccupancyGridNode(Node):
         msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
 
         self.publisher.publish(msg)
+        self.publish_diagnostics()
         print("Published Occupancy Grid.")
 
 

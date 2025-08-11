@@ -53,6 +53,7 @@ from navigator_msgs.msg import Mode
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Joy
+from std_msgs.msg import String
 
 
 class joy_translation_node(Node):
@@ -62,10 +63,14 @@ class joy_translation_node(Node):
 
         self.current_speed = 0.0  # m/s
 
+        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
+
         joy_sub = self.create_subscription(
             Joy, '/joy', self.joyCb, 10)
 
-        self.clock = Clock().clock
+        self.clock = 0.0
         clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 10)
 
@@ -92,8 +97,16 @@ class joy_translation_node(Node):
     def currentModeCb(self, msg: Mode):
         self.current_mode = msg.mode
 
-    def clockCb(self, msg: Clock):
-        self.clock = msg.clock
+    def clockCb(self, msg: String):
+        self.clock = msg.sec + (msg.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "joy_translation, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def initStatusMsg(self) -> DiagnosticStatus:
         status = DiagnosticStatus()
@@ -102,7 +115,7 @@ class joy_translation_node(Node):
 
         stamp = KeyValue()
         stamp.key = 'stamp'
-        stamp.value = str(self.clock.sec+self.clock.nanosec*1e-9)
+        stamp.value = str(self.clock)
         status.values.append(stamp)
 
         status.level = DiagnosticStatus.OK
@@ -184,6 +197,7 @@ class joy_translation_node(Node):
         requested_mode_keyval.value = str(requested_mode)
         self.status.values.append(requested_mode_keyval)
         self.status_pub.publish(self.status)
+        self.publish_diagnostics()
 
 
 def main(args=None):

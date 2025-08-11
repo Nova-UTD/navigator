@@ -43,11 +43,9 @@ class guardian_node(Node):
 
         self.mandatory_nodes = {
             "map_manager": StatusData(),
-            "web_bridge": StatusData(),
             "joy_translation": StatusData(),
             "gnss_averager": StatusData(),
             "mcl": StatusData(),
-            "camera_streamer": StatusData(),
             "routing_monitor": StatusData(),
             "grid_route_costmap": StatusData(),
             "grid_summation": StatusData(),
@@ -71,8 +69,6 @@ class guardian_node(Node):
         }
         self.secondary_nodes = {
             "costmap_recorder": StatusData(),
-            "complex_yolo_model": StatusData(),
-            "mmdetection3d_model": StatusData(),
             "object_viz_deteced_node": StatusData(),
             "multi_object_tracker_3d_node": StatusData(),
             "object_viz_tracked_node": StatusData(),
