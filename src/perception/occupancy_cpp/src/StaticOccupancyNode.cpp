@@ -38,11 +38,21 @@ StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node")
   //----Publishers-------//
   occupancy_grid_pub = this->create_publisher<OccupancyGrid>("/grid/occupancy/current", 10);
   masses_pub = this->create_publisher<Masses>("/grid/masses", 10);
+  diagnostic_pub = this->create_publisher<String>("/node_statuses", 10);
+
+  diagnostic_pub_timer = this->create_wall_timer(0.5, publishDiagnostics);
 }
 
 StaticOccupancyNode::~StaticOccupancyNode()
 {
   // nothing here
+}
+
+void publishDiagnostics()
+{
+  String msg;
+  msg.data = "static_grid, OK, " + std::to_string(clock.clock.sec) + "." + std::to_string(clock.clock.nanosec);
+  diagnostic_pub->publish(msg);
 }
 
 /**
@@ -440,6 +450,7 @@ void StaticOccupancyNode::publishOccupancyGrid()
 
   occupancy_grid_pub->publish(msg);
   masses_pub->publish(masses_msg);
+  publishDiagnostics();
 }
 
 void StaticOccupancyNode::update_previous()

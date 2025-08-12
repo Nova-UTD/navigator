@@ -34,6 +34,7 @@ using namespace std::chrono_literals;
 
 using rosgraph_msgs::msg::Clock;
 using sensor_msgs::msg::PointCloud2;
+using std_msgs::msg::String;
 
 namespace navigator
 {

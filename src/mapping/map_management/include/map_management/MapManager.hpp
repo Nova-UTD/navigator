@@ -77,6 +77,7 @@ using geometry_msgs::msg::PolygonStamped;
 using geometry_msgs::msg::PoseStamped;
 using geometry_msgs::msg::TransformStamped;
 using rosgraph_msgs::msg::Clock;
+using std_msgs::msg::String;
 
 using SptSolver = lemon::Dijkstra<lemon::SmartDigraph, lemon::SmartDigraph::ArcMap<double>>;
 using lemon::SmartDigraph;
