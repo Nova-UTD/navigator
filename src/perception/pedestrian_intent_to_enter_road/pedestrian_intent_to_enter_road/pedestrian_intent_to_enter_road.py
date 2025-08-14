@@ -17,14 +17,21 @@ import cv2
 import time
 from ultralytics import YOLO
 from mmpose.apis import MMPoseInferencer
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 class PedestrianIntentToEnterRoad(Node):
     def __init__(self):
         super().__init__('pedestrian_intent_to_enter_road')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         # create subscriber and publisher
         self.camera_subscription = self.create_subscription(Image, '/cameras/camera0', self.image_callback, 10)
         self.binary_mask_subscription = self.create_subscription(Image, '/segmentation_mask', self.binary_mask_callback, 10)
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
         self.pedestrian_publisher = self.create_publisher(PedestrianInfoDetections, '/pedestrians', 10)
 
         # define variables used throughout the node
@@ -33,12 +40,25 @@ class PedestrianIntentToEnterRoad(Node):
         self.detection_model = YOLO("/navigator_binaries/pedestrian_detection_model.pt")
         self.inferencer = MMPoseInferencer('human')
         self.binary_mask = None
+        self.clock = 0.0
 
         self.FACING_RIGHT = "RIGHT"
         self.FACING_LEFT = "LEFT"
 
         #Create timer for calling detect_pedestrians function
         self.create_timer(1.0, self.detect_pedestrians)
+
+
+    def clock_cb(self, msg: String):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "pedestrian_intent_to_enter_road, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
 
     def image_callback(self, msg : Image):
@@ -116,6 +136,10 @@ class PedestrianIntentToEnterRoad(Node):
                         continue
                 except Exception as e:
                     self.get_logger().error(f"Error detecting pedestrians: {e}")
+            
+                    diagnostic_msg = String()
+                    diagnostic_msg.data = "pedestrian_intent_to_enter_road, ERROR, " + str(self.clock)
+                    self.diagnostic_publisher.publish(diagnostic_msg)
 
         # create and publish a PedestrianInfoDetections message
         detections_msg = PedestrianInfoDetections()
@@ -125,6 +149,7 @@ class PedestrianIntentToEnterRoad(Node):
         detections_msg.pedestrians = pedestrian_detections
 
         self.pedestrian_publisher.publish(detections_msg)
+        self.publish_diagnostics()
 
 
     def calculate_horizontal_distance(self, bounding_box_coordinates, direction_facing):

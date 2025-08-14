@@ -25,6 +25,7 @@ from tf2_ros.transform_listener import TransformListener
 from rosgraph_msgs.msg import Clock
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
+from std_msgs.msg import String
 
 parallel_group = ReentrantCallbackGroup()
 mutex_group = MutuallyExclusiveCallbackGroup()
@@ -33,6 +34,10 @@ class RoutingMonitor(Node):
 
     def __init__(self):
         super().__init__('routing_monitor_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -51,13 +56,23 @@ class RoutingMonitor(Node):
         smooth_route_timer = self.create_timer(0.1, self.smooth_route_pub_tick, callback_group=parallel_group)
 
         clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1, callback_group=parallel_group)
-        self.clock = Clock().clock
+        self.clock = 0.0
+        self.clock_obj = Clock()
 
         self.service_request = SetRoute.Request()
         self.route_timer = self.create_timer(3.0, self.request_refined_route, callback_group=mutex_group)
 
-    def clockCb(self, msg: Clock):
-        self.clock = msg.clock
+    def clockCb(self, msg: String):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+        self.clock_obj = msg.clock
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "routing_monitor, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def routeCb(self, msg: Path):
         self.rough_route = msg
@@ -69,10 +84,11 @@ class RoutingMonitor(Node):
 
     def smooth_route_pub_tick(self):
         if self.smooth_route_msg is not None:
-            self.smooth_route_msg.header.stamp = self.clock
+            self.smooth_route_msg.header.stamp = self.clock_obj
             for i in range(len(self.smooth_route_msg.poses)):
-                self.smooth_route_msg.poses[i].header.stamp = self.clock
+                self.smooth_route_msg.poses[i].header.stamp = self.clock_obj
             self.smooth_route_pub.publish(self.smooth_route_msg)
+            self.publish_diagnostics()
 
     def request_refined_route(self):
         if self.rough_route is None:
@@ -136,7 +152,6 @@ class RoutingMonitor(Node):
         self.future = self.routing_client.call_async(self.service_request)
         rclpy.spin_until_future_complete(self, self.future, self.executor, 3.0)
         result = self.future.result()
-        self.get_logger().info("Got response %s %s" % (str(result.message),str(result.success)))
         if result.success:
             self.get_logger().info("Route was set successfully, moving on.")
             # to do this only once...

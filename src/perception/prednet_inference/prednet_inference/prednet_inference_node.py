@@ -25,6 +25,7 @@ from array import array as Array
 
 import yaml
 
+from std_msgs.msg import String
 
 # Message definitions
 from rosgraph_msgs.msg import Clock
@@ -48,7 +49,12 @@ class PredNetNode(Node):
 
     def __init__(self):
         super().__init__('prednet_inference_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
+
+        self.clock = 0.0
         # Set up the global config file
         self.declare_parameter('global_config', 'temp_value')
         self.file_path = self.get_parameter('global_config').value
@@ -132,15 +138,23 @@ class PredNetNode(Node):
 
     # Updates the clock for the header
     def clock_cb(self, msg):
-        self.clock = msg.clock
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "prednet_inference, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     # Adds masses to history
     def masses_callback(self, mass):
-        if self.clock.sec + 1e-9 * self.clock.nanosec - self.lastAccepted < 1. / self.frameRate  - 0.01:
+        if self.clock - self.lastAccepted < 1. / self.frameRate  - 0.01:
             return
         
 
-        # self.get_logger().info(str(self.clock.sec + 1e-9 * self.clock.nanosec))
+        # self.get_logger().info(str(self.clock))
         # Sets the grid size to the given grid size
         self.sizeX = mass.width
         self.sizeY = mass.height
@@ -162,7 +176,7 @@ class PredNetNode(Node):
             self.data_acquired = True
         
         #Updates last accepted time
-        self.lastAccepted = self.clock.sec + 1e-9 * self.clock.nanosec
+        self.lastAccepted = self.clock
         
                 
     
@@ -273,13 +287,6 @@ class PredNetNode(Node):
 
         for i in range(new_output.shape[1]):
 
-            # Makes a new clock for time that the occupancy grid is predicted for
-            cur_clock = copy.deepcopy(cur_clock)
-            cur_clock.nanosec = cur_clock.nanosec + pow(10, 7)
-            if cur_clock.nanosec >= pow(10, 9):
-                cur_clock.nanosec = cur_clock.nanosec - pow(10, 9)
-                cur_clock.sec = cur_clock.sec + 1
-
             # Creates the occupancy grid message
             occ_grid_msg = OccupancyGrid()
             occ_grid_msg.header.stamp = cur_clock
@@ -372,6 +379,8 @@ class PredNetNode(Node):
         combined_grid.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location'] * data['occupancy_grids']['resolution']
         combined_grid.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location'] * data['occupancy_grids']['resolution']
         self.prednet_combined_pub.publish(combined_grid)
+
+        self.publish_diagnostics()
 
 
 def main(args=None):

@@ -5,6 +5,8 @@ from .tracker import Tracker3D
 from easydict import EasyDict
 from mmdet3d.structures import LiDARInstance3DBoxes
 from geometry_msgs.msg import Point
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 
 CLASS2LABEL = {
@@ -19,6 +21,10 @@ class MultiObjectTracker3DNode(Node):
 
     def __init__(self):
         super().__init__('multi_object_tracker_3d_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
         
         self.declare_parameter("state_func_covariance", 100)
         self.declare_parameter("measure_func_covariance", 0.001)
@@ -82,6 +88,8 @@ class MultiObjectTracker3DNode(Node):
             callback = self.detection_callback, 
             qos_profile = 10
         )
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
+        self.clock = 0.0
 
         self.tracked_objects_publisher = self.create_publisher(
             msg_type = Object3DArray,
@@ -89,6 +97,16 @@ class MultiObjectTracker3DNode(Node):
             qos_profile = 10
         )
 
+    def clock_cb(self, msg: String):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "multi_object_tracker_3d_node, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
         
 
     def detection_callback(self, detection_msg: Object3DArray):
@@ -143,6 +161,7 @@ class MultiObjectTracker3DNode(Node):
         tracked_objects_array.header.stamp = detection_msg.header.stamp
         tracked_objects_array.header.frame_id = detection_msg.header.frame_id
         self.tracked_objects_publisher.publish(tracked_objects_array)   
+        self.publish_diagnostics()
         self.frame_stamp += 1
     
     # remaps ids unique for each class to unique for all classes

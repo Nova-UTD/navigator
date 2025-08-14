@@ -15,6 +15,8 @@ import cv2
 from ultralytics import YOLO
 import numpy
 import base64
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 
 class RoadUserDetection(Node):
@@ -33,19 +35,34 @@ class RoadUserDetection(Node):
 
         #create subscriptions
         self.camera_sub = self.create_subscription(Image, '/cameras/camera0', self.image_callback, 10)
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
 
         #create variables to store subscription info
         self.bridge = CvBridge()
         self.image = None
+        self.clock = 0.0
 
         #create publisher
         self.road_user_publisher = self.create_publisher(RoadUserDetections, '/road_users/detections', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
 
     #callbacks for subscriptions
     def image_callback(self, msg : Image):
         self.image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='8UC3')
         self.make_detections()
+
+
+    def clock_cb(self, msg: String):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "road_user_detector, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
 
     
     #main control function
@@ -79,8 +96,14 @@ class RoadUserDetection(Node):
                 all_road_users_msg.all_road_users.append(road_user_msg)
             
             self.road_user_publisher.publish(all_road_users_msg)
+            self.publish_diagnostics()
         except Exception as e:
             self.get_logger().error(f"Error during detection: {e}")
+            
+            diagnostic_msg = String()
+            diagnostic_msg.data = "road_user_detector, ERROR, " + str(self.clock)
+            self.diagnostic_publisher.publish(diagnostic_msg)
+            
             return
 
 

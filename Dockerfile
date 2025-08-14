@@ -222,9 +222,6 @@ RUN pip3 install --ignore-installed \
     rosbags==0.10.4 \
     ultralytics
 
-# Install SAM2 seperately to avoid storage space errors on GitHub Actions
-RUN pip3 install sam2
-
 # Install Black for Python code formatting.
 RUN pip3 install black==24.10.0
 
@@ -236,6 +233,8 @@ RUN mim install 'mmdet>=3.0.0'
 RUN mim install "mmdet3d>=1.1.0"
 RUN mim install "mmpose>=1.1.0"
 
+# Install SAM2 seperately to avoid storage space errors on GitHub Actions
+RUN pip3 install sam2
 
 # install loop closure package "MapClosures"
 # this issue was addressed here: https://github.com/abetlen/llama-cpp-python/issues/707

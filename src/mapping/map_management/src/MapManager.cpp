@@ -68,6 +68,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10, parallel_pub_option);
     junction_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/junction", 10, parallel_pub_option);
+    diagnostic_pub_ = this->create_publisher<String>("/node_status_info", 10, parallel_pub_option);
     //route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
     route_path_pub_ = this->create_publisher<Path>("/planning/smoothed_route", 10, parallel_pub_option);
     goal_pose_pub_ = this->create_publisher<PoseStamped>("/planning/goal_pose", 1, parallel_pub_option);
@@ -82,6 +83,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     //route_timer_ = this->create_wall_timer(LOCAL_ROUTE_LS_FREQ, bind(&MapManagementNode::updateLocalRouteLinestring, this));
     
     smooth_route_timer_ = this->create_wall_timer(SMOOTH_ROUTE_LS_FREQ, bind(&MapManagementNode::publishSmoothRoute, this), mutex_group_);
+    diagnostic_pub_timer_ = this->create_wall_timer(500ms, bind(&MapManagementNode::publishDiagnostics, this), mutex_group_);
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -157,6 +159,13 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+void MapManagementNode::publishDiagnostics()
+{
+    String msg;
+    msg.data = "map_manager, OK, " + std::to_string(this->clock_->clock.sec) + "." + std::to_string(this->clock_->clock.nanosec);
+    diagnostic_pub_->publish(msg);
+}
+
 /**
  * Given a global (possible large) route linestring:
  * 1. Find the point closest to the car.
@@ -219,6 +228,7 @@ void MapManagementNode::publishSmoothRoute()
             smoothed_route_msg_.poses[i].header.stamp = clock;
         }
         route_path_pub_->publish(smoothed_route_msg_);
+        publishDiagnostics();
     }
     // if the route has been defined, but the message hasn't been made
     else if(route_linestring_.size() > 0)
@@ -236,6 +246,7 @@ void MapManagementNode::publishSmoothRoute()
             smoothed_route_msg_.poses[i] = pose;
         }
         route_path_pub_->publish(smoothed_route_msg_);
+        publishDiagnostics();
     }
 }
 
@@ -816,6 +827,8 @@ void MapManagementNode::publishGrids(float top_dist, float bottom_dist, float si
     goal_pose.header.stamp = clock_->clock;
     goal_pose_pub_->publish(goal_pose);
 
+    publishDiagnostics();
+
     // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     // std::cout << "publishGrids(): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 }
@@ -1040,6 +1053,7 @@ std::vector<odr::LaneKey> MapManagementNode::calculateRoute(odr::LaneKey start, 
 void MapManagementNode::clockCb(Clock::SharedPtr msg)
 {
     this->clock_ = msg;
+    std::cout << "Clock received: " << this->clock_->clock.sec << std::endl;
 }
 
 /**

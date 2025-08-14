@@ -25,6 +25,7 @@ from nav_msgs.msg import OccupancyGrid, Odometry, Path
 from navigator_msgs.msg import Mode
 import numpy as np
 from rosgraph_msgs.msg import Clock
+from std_msgs.msg import String
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
@@ -58,6 +59,10 @@ NAV2_MAP_PARAMS = '/navigator/src/planning/nav2_path_planner/nav2_path_planner/n
 class Nav2PathPlanner(Node):
     def __init__(self):
         super().__init__('nav2_path_planner_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -65,14 +70,15 @@ class Nav2PathPlanner(Node):
         self.last_broadcast_time = None
 
         clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1)
-        self.clock = Clock()
+        self.clock = 0.0
+        self.clock_obj = Clock()
 
         self.navigator = BasicNavigator(namespace='nav2')
         
         # Nav2 wants an initial pose even though we won't ever use it.
         self.zero_pose = PoseStamped()
         self.zero_pose.header.frame_id = NAV2_BASELINK_FRAME
-        self.zero_pose.header.stamp = self.clock.clock
+        self.zero_pose.header.stamp = self.clock_obj.clock
         self.zero_pose.pose.position.x = 0.0
         self.zero_pose.pose.position.y = 0.0
         self.zero_pose.pose.orientation.z = 0.0
@@ -87,8 +93,7 @@ class Nav2PathPlanner(Node):
         # speed_cost_map_sub = self.create_subscription(
         #     OccupancyGrid, '/grid/speed_cost', self.speedCostMapCb, 1)
 
-        # self.status_pub = self.create_publisher(
-        #     DiagnosticStatus, '/node_statuses', 1)
+        
 
         path_goal_sub = self.create_subscription(
             PoseStamped, '/planning/path_goal', self.pathGoalCb, 1)
@@ -115,6 +120,14 @@ class Nav2PathPlanner(Node):
     def speedCb(self, msg: VehicleSpeed):
         self.speed = msg.speed
 
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "path_planner_nav2, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
+
     # Goal is to establish map->nav2_map->nav2_odom->nav2_base_link such that nav2_map is located at the same spot as Navigator's base_link
     def broadcast_timer_callback(self):
         try:
@@ -140,8 +153,9 @@ class Nav2PathPlanner(Node):
     #         self.speed_costmap = np.asarray(msg.data, dtype=np.int8).reshape(
     #             msg.info.height, msg.info.width)
 
-    def clockCb(self, msg: Clock):
-        self.clock = msg
+    def clockCb(self, msg: String):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+        self.clock_obj = msg
 
     # saves the point we want to navigate to (a point along the route)
     def pathGoalCb(self, msg: PoseStamped):
@@ -212,14 +226,13 @@ class Nav2PathPlanner(Node):
                 path_base_link.poses[i].pose.position.y += biasy
 
             self.path_pub.publish(path_base_link)
+            self.publish_diagnostics()
 
             # TODO: Revist this status stuff once 
             # status.level = DiagnosticStatus.ERROR
             # status.message = "Could not find viable path. Likely too far off course."
             # self.get_logger().error("Could not find viable path")
-            # self.status_pub.publish(status)
 
-            # self.status_pub.publish(status)
             # self.last_status_time = time.time()
 
             ############################ TODO: Just for testing until controller is in place:
@@ -235,9 +248,10 @@ class Nav2PathPlanner(Node):
                 lookahead_pose = path_base_link.poses[-1]
 
             self.publish_marker(lookahead_pose,(0.0,0.2,1.0),self.lookahead_marker_pub)
+            self.publish_diagnostics()
 
             command = VehicleControl()
-            command.header.stamp = self.clock.clock
+            command.header.stamp = self.clock_obj.clock
             command.header.frame_id = 'base_link'
             target_steer = np.arctan2(-lookahead_pose.pose.position.y, lookahead_pose.pose.position.x)
             command.steer = target_steer
@@ -256,6 +270,7 @@ class Nav2PathPlanner(Node):
                 command.throttle = 0.0
             
             self.command_pub.publish(command)
+            self.publish_diagnostics()
             ##############################
 
         except(Exception) as e:
@@ -305,7 +320,7 @@ class Nav2PathPlanner(Node):
     def publish_marker(self, target, c, publisher):
         marker = Marker()
         marker.header.frame_id = 'base_link'
-        marker.header.stamp = self.clock.clock
+        marker.header.stamp = self.clock_obj.clock
         marker.id = 0
         marker.type = Marker.ARROW
         marker.action = Marker.ADD

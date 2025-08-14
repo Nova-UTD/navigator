@@ -15,6 +15,7 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 import time
 import yaml
 
+from std_msgs.msg import String
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
 from navigator_msgs.msg import Egma
@@ -50,6 +51,10 @@ class GridSummationNode(Node):
 
         """
         super().__init__('grid_summation_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         # Set up the global config file
         self.declare_parameter('global_config', 'temp_value')
@@ -98,10 +103,18 @@ class GridSummationNode(Node):
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)
 
-        self.clock = Clock()
+        self.clock = 0.0
 
-    def clockCb(self, msg: Clock):
-        self.clock = msg
+    def clockCb(self, msg: String):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "grid_summation, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     # Make sure we're only keeping the newest grid messages
     def currentOccupancyCb(self, msg: OccupancyGrid):
@@ -127,7 +140,7 @@ class GridSummationNode(Node):
     def checkForStaleness(self, grid: OccupancyGrid):
         stamp = grid.header.stamp
         stamp_in_seconds = stamp.sec + stamp.nanosec*1e-9
-        current_time_in_seconds = self.clock.clock.sec + self.clock.clock.nanosec*1e-9
+        current_time_in_seconds = self.clock
 
         stale_time = current_time_in_seconds - stamp_in_seconds
         stale = stale_time > STALENESS_TOLERANCE
@@ -194,13 +207,13 @@ class GridSummationNode(Node):
             grid_img = ndimage.zoom(grid_img, 151.0/float(grid_img.shape[0]))
 
         grid_out = OccupancyGrid()
-        grid_out.info.map_load_time = self.clock.clock
+        grid_out.info.map_load_time = self.clock
         grid_out.info.resolution = (grid_res * old_dim / (new_dim - diff)) * prezoom_rows / grid_img.shape[0]
         grid_out.info.width = int(grid_img.shape[0])
         grid_out.info.height = int(grid_img.shape[1])
         grid_out.info.origin.position.x = grid_img.shape[0] * grid_out.info.resolution * 2 / 3 * -1
         grid_out.info.origin.position.y = grid_img.shape[1] * grid_out.info.resolution * 1 / 2 * -1
-        grid_out.header.stamp = self.clock.clock
+        grid_out.header.stamp = self.clock
         grid_out.header.frame_id = 'base_link'
         grid_out.data = grid_img.astype(np.int8).flatten().tolist()
 
@@ -321,13 +334,13 @@ class GridSummationNode(Node):
 
             # Publish as an OccupancyGrid
             steering_cost_msg = OccupancyGrid()
-            steering_cost_msg.info.map_load_time = self.clock.clock
+            steering_cost_msg.info.map_load_time = self.clock
             steering_cost_msg.info.resolution = data['occupancy_grids']['resolution']
             steering_cost_msg.info.width = steering_cost.shape[1]
             steering_cost_msg.info.height = steering_cost.shape[0]
             steering_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
             steering_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
-            steering_cost_msg.header.stamp = self.clock.clock
+            steering_cost_msg.header.stamp = self.clock
             steering_cost_msg.header.frame_id = 'base_link'
             steering_cost_msg.data = steering_cost.astype(np.int8).flatten().tolist()
 
@@ -371,15 +384,16 @@ class GridSummationNode(Node):
                 steering_cost_msg.info.width = int(data['occupancy_grids']['width'])
 
             self.steering_cost_pub.publish(steering_cost_msg)
+            self.publish_diagnostics()
 
             speed_cost_msg = OccupancyGrid()
-            speed_cost_msg.info.map_load_time = self.clock.clock
+            speed_cost_msg.info.map_load_time = self.clock
             speed_cost_msg.info.resolution = data['occupancy_grids']['resolution']
             speed_cost_msg.info.width = speed_cost.shape[1]
             speed_cost_msg.info.height = speed_cost.shape[0]
             speed_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
             speed_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
-            speed_cost_msg.header.stamp = self.clock.clock
+            speed_cost_msg.header.stamp = self.clock
             speed_cost_msg.header.frame_id = 'base_link'
             speed_cost_msg.data = speed_cost.astype(np.int8).flatten().tolist()
 
@@ -422,15 +436,20 @@ class GridSummationNode(Node):
                 speed_cost_msg.info.width = int(data['occupancy_grids']['width'])
 
             self.speed_cost_pub.publish(speed_cost_msg)
+            self.publish_diagnostics()
         
         except(Exception) as e:
             self.get_logger().warn('Error composing aggregate cost map - likely waiting for Transform Buffer.')
             self.get_logger().warn(str(e))
+            
+            diagnostic_msg = String()
+            diagnostic_msg.data = "grid_summation, ERROR, " + str(self.clock)
+            self.diagnostic_publisher.publish(diagnostic_msg)
         
 """
         #Publish Egma
         egma_msg = Egma()
-        egma_msg.header.stamp = self.clock.clock
+        egma_msg.header.stamp = self.clock
         egma_msg.header.frame_id = 'base_link'
         current_stamp = egma_msg.header.stamp
         t = current_stamp.sec + current_stamp.nanosec * 1e-9

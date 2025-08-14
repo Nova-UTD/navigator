@@ -57,7 +57,7 @@
 #include "navigator_msgs/srv/set_route.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
 #include "std_msgs/msg/float32.hpp"
-
+#include "std_msgs/msg/string.hpp"
 #include "map_management/RouteManager.hpp"
 
 #include "yaml-cpp/yaml.h"
@@ -77,6 +77,7 @@ using geometry_msgs::msg::PolygonStamped;
 using geometry_msgs::msg::PoseStamped;
 using geometry_msgs::msg::TransformStamped;
 using rosgraph_msgs::msg::Clock;
+using std_msgs::msg::String;
 
 using SptSolver = lemon::Dijkstra<lemon::SmartDigraph, lemon::SmartDigraph::ArcMap<double>>;
 using lemon::SmartDigraph;
@@ -117,6 +118,7 @@ namespace navigator
             void publishRefinedRoute();
             void publishSmoothRoute();
             void updateRouteWaypoints(Path::SharedPtr msg);
+            void publishDiagnostics();
             std::vector<odr::LaneKey> calculateRoute(odr::LaneKey start, odr::LaneKey end);
             lemon::SmartDigraph *g = nullptr;
 
@@ -144,6 +146,7 @@ namespace navigator
 
             void setPredeterminedRoute();
 
+            rclcpp::Publisher<String>::SharedPtr diagnostic_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr drivable_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr junction_grid_pub_;
             rclcpp::Publisher<OccupancyGrid>::SharedPtr route_dist_grid_pub_;
@@ -162,11 +165,14 @@ namespace navigator
             rclcpp::TimerBase::SharedPtr route_distance_grid_pub_timer_;
             rclcpp::TimerBase::SharedPtr route_timer_;
             rclcpp::TimerBase::SharedPtr smooth_route_timer_;
+            rclcpp::TimerBase::SharedPtr diagnostic_pub_timer_;
 
             std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 
             Clock::SharedPtr clock_;
+            Clock::SharedPtr second_clock_;
+            
             odr::OpenDriveMap *map_ = nullptr;
             std::vector<odr::LanePair> lane_polys_;
             std::vector<odr::Lane> lanes_in_route_;

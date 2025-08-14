@@ -17,10 +17,16 @@ import time
 from navigator_msgs.msg import RoadSignsDetection
 from navigator_msgs.msg import AllLaneDetections
 from navigator_msgs.msg import IntersectionBehavior
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 class IntersectionManager(Node):
     def __init__(self):
         super().__init__('intersection_manager')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
         
         #Create subscriptions
         self.traffic_light_sub = self.create_subscription(TrafficLightDetection, '/traffic_lights/detections', self.trafficLightCallback, 1)
@@ -29,6 +35,7 @@ class IntersectionManager(Node):
         self.speed_sub = self.create_subscription(CarlaSpeedometer, '/speed', self.speedCallback, 1)
         self.current_occupancy_sub = self.create_subscription(OccupancyGrid, '/grid/occupancy/current', self.occupancyCallback, 1)
         self.lane_type_detector_sub = self.create_subscription(AllLaneDetections, '/lane_types/detections', self.laneTypeCallback, 1)
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
 
         #Create publisher
         self.behavior_publisher = self.create_publisher(IntersectionBehavior, '/intersection', 10)
@@ -58,6 +65,20 @@ class IntersectionManager(Node):
         self.numTimesStraightChecked = None
         self.numTimesLeftChecked = None
         self.numTimesRightChecked = None
+
+        self.clock = 0.0
+
+
+    def clock_cb(self, msg: String):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "intersection_manager, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
 
     def laneTypeCallback(self, msg: AllLaneDetections):
@@ -364,6 +385,7 @@ class IntersectionManager(Node):
         
         if (intersection_behavior_message.action != ""):
             self.behavior_publisher.publish(intersection_behavior_message)
+            self.publish_diagnostics()
 
 
 def main(args=None):

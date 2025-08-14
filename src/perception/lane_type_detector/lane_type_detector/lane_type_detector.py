@@ -14,11 +14,17 @@ import cv2
 from ultralytics import YOLO
 import numpy
 import base64
-
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 class LaneTypeDetector(Node):
     def __init__(self):
         super().__init__('lane_type_detector')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
+
 
         #initialize the classification model
         model_path = '/navigator_binaries/lane_detector.pt'
@@ -32,13 +38,27 @@ class LaneTypeDetector(Node):
 
         #create subscriptions
         self.camera_sub = self.create_subscription(Image, '/cameras/camera0', self.image_callback, 10)
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
 
         #create variables to store subscription info
         self.bridge = CvBridge()
         self.image = None
+        self.clock = 0.0
 
         #create publisher
         self.lane_detections_publisher = self.create_publisher(AllLaneDetections, '/lane_types/detections', 10)
+
+
+    def clock_cb(self, msg: String):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "lane_type_detector, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
 
     #callbacks for subscriptions
@@ -109,6 +129,7 @@ class LaneTypeDetector(Node):
         
         lane_detection_msg.lane_detections.append(this_lane_detection)
         self.lane_detections_publisher.publish(lane_detection_msg)
+        self.publish_diagnostics()
 
 
 def main(args=None):

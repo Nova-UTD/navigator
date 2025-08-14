@@ -3,6 +3,8 @@ from rclpy.node import Node
 from navigator_msgs.msg import Object3D, Object3DArray
 from visualization_msgs.msg import Marker, MarkerArray
 from rclpy.duration import Duration
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 # label to color mappings, RGB
 LABEL_TO_COLOR = {
@@ -15,6 +17,10 @@ class ObjectVisualizerNode(Node):
 
     def __init__(self):
         super().__init__('object_visualizer_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         # Declare ROS2 parameters
         self.declare_parameter('topic', '/tracked/objects3d') # or /detected/objects3d
@@ -27,9 +33,21 @@ class ObjectVisualizerNode(Node):
             callback = self.visualize_objects,
             qos_profile = 1
         )
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
+        self.clock = 0.0
 
         self.visualization_publisher = self.create_publisher(MarkerArray, f"viz/{pub_topic}", 10)
 
+    def clock_cb(self, msg: String):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "object_viz_tracked_node, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def visualize_objects(self, msg: Object3DArray):
         
@@ -89,6 +107,7 @@ class ObjectVisualizerNode(Node):
             marker_array.markers.append(tag)
 
         self.visualization_publisher.publish(marker_array)
+        self.publish_diagnostics()
         
 
 def main(args=None):

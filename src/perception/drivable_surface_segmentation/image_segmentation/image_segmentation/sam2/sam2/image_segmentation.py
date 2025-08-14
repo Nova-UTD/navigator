@@ -6,6 +6,8 @@ from cv_bridge import CvBridge
 import numpy as np
 import torch
 import cv2
+from std_msgs.msg import String
+from rosgraph_msgs.msg import Clock
 
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
@@ -13,10 +15,15 @@ from sam2.sam2_image_predictor import SAM2ImagePredictor
 class ImageSegNode(Node):
     def __init__(self):
         super().__init__('image_seg_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         self.signal_image_sub = self.create_subscription(Image, "/ouster/signal_image", self.image_callback, qos_profile_sensor_data)
-
+        self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
         self.segmentation_pub = self.create_publisher(Image, "/segmentation_mask", 10)
+        self.clock = 0.0
 
         self.bridge = CvBridge()
 
@@ -27,6 +34,17 @@ class ImageSegNode(Node):
         self.predictor = SAM2ImagePredictor(build_sam2(self.model_cfg, self.sam_checkpoint))
 
         print("Started!")
+
+    def clock_cb(self, msg: String):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "image_segmentation, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def image_callback(self, msg):
 
@@ -41,6 +59,7 @@ class ImageSegNode(Node):
         mask_msg = self.bridge.cv2_to_imgmsg(segmentation_mask.astype(np.uint8), encoding="mono8")
         mask_msg.header = msg.header
         self.segmentation_pub.publish(mask_msg)
+        self.publish_diagnostics()
 
     def run_sam_segmentation(self, image):
         self.predictor.set_image(image)

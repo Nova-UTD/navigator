@@ -27,6 +27,7 @@ from rosgraph_msgs.msg import Clock
 from builtin_interfaces.msg import Time
 from sensor_msgs.msg import PointCloud2
 from navigator_msgs.msg import Object3DArray
+from std_msgs.msg import String
 
 class LidarDetectionNode(Node):
 
@@ -42,6 +43,10 @@ class LidarDetectionNode(Node):
             for bounding boxes. Choices 0.2 (DEFAULT) | 0.0 - 1.0 
         """
         super().__init__("lidar_detection_node")
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         # Declare default ROS2 node parameters
         self.declare_parameter('device', 'cuda:0')
@@ -82,6 +87,7 @@ class LidarDetectionNode(Node):
         # Subscribes to clock for headers
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 10)
+        self.clock = 0.0
         
         # Publishes array of 3D objects
         self.objects3d_pub = self.create_publisher(
@@ -95,6 +101,15 @@ class LidarDetectionNode(Node):
 
         self.stamp.sec = msg.clock.sec
         self.stamp.nanosec = msg.clock.nanosec
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "object_viz_deteced_node, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def lidar_callback(self, lidar_msg: PointCloud2):
         """! Uses the lidar msg and a 3D object deteciton model to
@@ -121,6 +136,7 @@ class LidarDetectionNode(Node):
         
         # Publishes the Object3DArray msg
         self.objects3d_pub.publish(objecst3d_array)
+        self.publish_diagnostics()
 
 def main(args=None):
     rclpy.init(args=args)

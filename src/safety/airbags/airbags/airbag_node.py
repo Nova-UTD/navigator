@@ -22,11 +22,16 @@ from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 
 from matplotlib.patches import Rectangle
+from std_msgs.msg import String
 
 
 class AirbagNode(Node):
     def __init__(self):
         super().__init__('airbag_node')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         self.speed_limit = 0.  # m/s
         self.current_speed = 0.  # m/s
@@ -58,9 +63,18 @@ class AirbagNode(Node):
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 10)
         self._cached_clock_ = Clock()
+        self.clock = 0.0
 
     def speedCb(self, msg: CarlaSpeedometer):
         self.current_speed = msg.speed
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "airbags, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def distanceToSpeedLimit(self, dist: float):
         """Map distance to max speed. This should be very conservative,
@@ -112,9 +126,11 @@ class AirbagNode(Node):
             msg.brake = speed_over_limit * BRAKING_FORCE
 
         self.command_pub.publish(msg)
+        self.publish_diagnostics()
 
     def clockCb(self, msg: Clock):
         self._cached_clock_ = msg
+        self.clock = msg.clock.sec + msg.clock.nanosec * 1e-9
 
 
 def main(args=None):

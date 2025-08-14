@@ -29,6 +29,7 @@ from rclpy.node import Node
 import time
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
+from std_msgs.msg import String
 
 # Message definitions
 from navigator_msgs.msg import CarlaSpeedometer
@@ -47,6 +48,10 @@ class JunctionManager(Node):
 
     def __init__(self):
         super().__init__('junction_manager')
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         self.target_speed = 0.0
 
@@ -82,15 +87,20 @@ class JunctionManager(Node):
         
         target_speed_sub = self.create_subscription(CarlaSpeedometer, '/planning/target_speed', self.targetSpeedCb,1)
 
-        self.status_pub = self.create_publisher(
-            DiagnosticStatus, '/node_statuses', 1)
-        
         self.is_waiting_pub = self.create_publisher(Bool, '/planning/is_waiting', 1)
 
         
 
     def speedometerCb(self, msg: CarlaSpeedometer):
         self.speed = msg.speed
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "junction_manager, OK, " + str(self.time_sec)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def clockCb(self, msg: Clock):
         self.time_sec = msg.clock.sec + msg.clock.nanosec * 1e-9
@@ -194,6 +204,7 @@ class JunctionManager(Node):
                 is_waiting = Bool()
                 is_waiting.data = False
                 self.is_waiting_pub.publish(is_waiting)
+                self.publish_diagnostics()
 
             elif self.target_speed < 0.0:
                 print("Waiting for button")
@@ -201,6 +212,7 @@ class JunctionManager(Node):
                 is_waiting = Bool()
                 is_waiting.data = True
                 self.is_waiting_pub.publish(is_waiting)
+                self.publish_diagnostics()
 
         if not can_enter:
             eroded_junction = binary_erosion(junction, square(2))
@@ -252,6 +264,7 @@ class JunctionManager(Node):
         stateful_msg.info = msg.info
         stateful_msg.header = msg.header
         self.stateful_grid_pub.publish(stateful_msg)
+        self.publish_diagnostics()
 
     def routeDistGridCb(self, msg: OccupancyGrid):
         self.route_dist_grid = msg

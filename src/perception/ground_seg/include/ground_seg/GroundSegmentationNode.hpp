@@ -13,6 +13,7 @@
 // Message definitions
 #include "rosgraph_msgs/msg/clock.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
+#include "std_msgs/msg/string.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -33,6 +34,7 @@ using namespace std::chrono_literals;
 
 using rosgraph_msgs::msg::Clock;
 using sensor_msgs::msg::PointCloud2;
+using std_msgs::msg::String;
 
 namespace navigator
 {
@@ -49,6 +51,7 @@ namespace navigator
 
       // Publishers
       rclcpp::Publisher<PointCloud2>::SharedPtr filtered_lidar_pub;
+      rclcpp::Publisher<String>::SharedPtr diagnostic_pub_;
 
       // Subscribers
       rclcpp::Subscription<Clock>::SharedPtr clock_sub;
@@ -59,11 +62,12 @@ namespace navigator
 
       // Timers
       // rclcpp::TimerBase::SharedPtr map_marker_timer;
+      rclcpp::TimerBase::SharedPtr diagnostic_pub_timer;
 
       Clock clock;
 
       pcl::PointCloud<pcl::PointXYZI> removeGround(pcl::PointCloud<pcl::PointXYZI> raw_cloud);
-      
+      void publishDiagnostics();
     };
 
   }

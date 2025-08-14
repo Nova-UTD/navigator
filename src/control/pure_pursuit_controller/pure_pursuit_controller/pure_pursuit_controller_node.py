@@ -20,6 +20,7 @@ from geometry_msgs.msg import Pose, PoseStamped, Point, Vector3
 from visualization_msgs.msg import Marker
 
 from navigator_msgs.msg import VehicleControl, VehicleSpeed
+from std_msgs.msg import String
 
 
 class Constants:
@@ -232,11 +233,15 @@ class PursePursuitController(Node):
 
     def __init__(self):
         super().__init__("pure_pursuit_controler")
+        
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
+
+        self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
         self.vehicle_state = VehicleState()
         self.path = PursuitPath()
         self.target_waypoint = None
-        self.clock = Clock().clock
+        self.clock = 0.0
 
         self.route_subscriber = self.create_subscription(
             Path, "/planning/path", self.route_callback, 1
@@ -265,8 +270,16 @@ class PursePursuitController(Node):
             0.1, self.visualize_waypoint_callback
         )
 
-    def clock_callback(self, msg: Clock):
-        self.clock = msg.clock
+    def clock_callback(self, msg):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+
+
+    def publish_diagnostics(self):
+        diagnostic_msg = String()
+        diagnostic_msg.data = "pure_pursuit_controller, OK, " + str(self.clock)
+        self.diagnostic_publisher.publish(diagnostic_msg)
+
+    
 
     def odometry_callback(self, msg: Odometry):
         self.vehicle_state.pose = msg.pose.pose
@@ -291,6 +304,7 @@ class PursePursuitController(Node):
         control_msg.brake = break_value
         control_msg.steer = steer
         self.command_publisher.publish(control_msg)
+        self.publish_diagnostics()
 
     def control_callback(self):
         """Calculate and publish the vehicle control commands based on the pure pursuit algorithm."""
@@ -338,6 +352,7 @@ class PursePursuitController(Node):
         control_msg.brake = brake
         control_msg.steer = steer
         self.command_publisher.publish(control_msg)
+        self.publish_diagnostics()
 
     def visualize_waypoint_callback(self):
         """Visualize the target waypoint in RVIZ."""
@@ -357,6 +372,7 @@ class PursePursuitController(Node):
             color=ColorRGBA(a=0.3, g=1.0, b=1.0),
         )
         self.barrier_marker_pub.publish(radius_marker)
+        self.publish_diagnostics()
 
         arrow_marker = Marker(
             header=Header(frame_id="base_link", stamp=self.clock),
@@ -370,6 +386,7 @@ class PursePursuitController(Node):
         )
 
         self.barrier_marker_pub.publish(arrow_marker)
+        self.publish_diagnostics()
 
     def visualize_path_callback(self):
         """Visualize the path in RVIZ."""
@@ -393,6 +410,7 @@ class PursePursuitController(Node):
             for x, y in path
         ]
 
+        self.publish_diagnostics()
         self.lookahead_path_publisher.publish(path_msg)
 
 
