@@ -68,7 +68,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     // Publishers and subscribers
     drivable_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/drivable", 10, parallel_pub_option);
     junction_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/junction", 10, parallel_pub_option);
-    diagnostic_pub_ = this->create_publisher<String>("/node_statuses", 10, parallel_pub_option);
+    diagnostic_pub_ = this->create_publisher<String>("/node_status_info", 10, parallel_pub_option);
     //route_dist_grid_pub_ = this->create_publisher<OccupancyGrid>("/grid/route_distance", 10);
     route_path_pub_ = this->create_publisher<Path>("/planning/smoothed_route", 10, parallel_pub_option);
     goal_pose_pub_ = this->create_publisher<PoseStamped>("/planning/goal_pose", 1, parallel_pub_option);
@@ -83,7 +83,7 @@ MapManagementNode::MapManagementNode() : Node("map_management_node")
     //route_timer_ = this->create_wall_timer(LOCAL_ROUTE_LS_FREQ, bind(&MapManagementNode::updateLocalRouteLinestring, this));
     
     smooth_route_timer_ = this->create_wall_timer(SMOOTH_ROUTE_LS_FREQ, bind(&MapManagementNode::publishSmoothRoute, this), mutex_group_);
-    diagnostic_pub_timer_ = this->create_wall_timer(DIAGNOSTIC_PUB_FREQUENCY, bind(&MapManagementNode::publishDiagnostics, this), mutex_group_);
+    diagnostic_pub_timer_ = this->create_wall_timer(500ms, bind(&MapManagementNode::publishDiagnostics, this), mutex_group_);
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -159,17 +159,10 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-void publishDiagnostics()
+void MapManagementNode::publishDiagnostics()
 {
-    if (!this->diagnostic_pub_)
-        return;
-    // Do not try to deref clock before it's initialized
-    if (!this->clock_)
-        return;
-
     String msg;
-    msg.data = "map_manager, OK, " + std::to_string(this->clock_->clock->now().seconds());
-
+    msg.data = "map_manager, OK, " + std::to_string(this->clock_->clock.sec) + "." + std::to_string(this->clock_->clock.nanosec);
     diagnostic_pub_->publish(msg);
 }
 
@@ -1060,6 +1053,7 @@ std::vector<odr::LaneKey> MapManagementNode::calculateRoute(odr::LaneKey start, 
 void MapManagementNode::clockCb(Clock::SharedPtr msg)
 {
     this->clock_ = msg;
+    std::cout << "Clock received: " << this->clock_->clock.sec << std::endl;
 }
 
 /**

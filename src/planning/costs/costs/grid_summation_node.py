@@ -52,7 +52,7 @@ class GridSummationNode(Node):
         """
         super().__init__('grid_summation_node')
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -103,10 +103,10 @@ class GridSummationNode(Node):
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)
 
-        self.clock = None
+        self.clock = 0.0
 
     def clockCb(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
 
 
     def publish_diagnostics(self):

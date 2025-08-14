@@ -35,7 +35,7 @@ class RoutingMonitor(Node):
     def __init__(self):
         super().__init__('routing_monitor_node')
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -57,12 +57,14 @@ class RoutingMonitor(Node):
 
         clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1, callback_group=parallel_group)
         self.clock = 0.0
+        self.clock_obj = Clock()
 
         self.service_request = SetRoute.Request()
         self.route_timer = self.create_timer(3.0, self.request_refined_route, callback_group=mutex_group)
 
     def clockCb(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+        self.clock_obj = msg.clock
 
 
     def publish_diagnostics(self):
@@ -82,9 +84,9 @@ class RoutingMonitor(Node):
 
     def smooth_route_pub_tick(self):
         if self.smooth_route_msg is not None:
-            self.smooth_route_msg.header.stamp = self.clock
+            self.smooth_route_msg.header.stamp = self.clock_obj
             for i in range(len(self.smooth_route_msg.poses)):
-                self.smooth_route_msg.poses[i].header.stamp = self.clock
+                self.smooth_route_msg.poses[i].header.stamp = self.clock_obj
             self.smooth_route_pub.publish(self.smooth_route_msg)
             self.publish_diagnostics()
 
@@ -150,7 +152,6 @@ class RoutingMonitor(Node):
         self.future = self.routing_client.call_async(self.service_request)
         rclpy.spin_until_future_complete(self, self.future, self.executor, 3.0)
         result = self.future.result()
-        self.get_logger().info("Got response %s %s" % (str(result.message),str(result.success)))
         if result.success:
             self.get_logger().info("Route was set successfully, moving on.")
             # to do this only once...

@@ -24,7 +24,7 @@ class PedestrianIntentToEnterRoad(Node):
     def __init__(self):
         super().__init__('pedestrian_intent_to_enter_road')
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -40,7 +40,7 @@ class PedestrianIntentToEnterRoad(Node):
         self.detection_model = YOLO("/navigator_binaries/pedestrian_detection_model.pt")
         self.inferencer = MMPoseInferencer('human')
         self.binary_mask = None
-        self.clock = None
+        self.clock = 0.0
 
         self.FACING_RIGHT = "RIGHT"
         self.FACING_LEFT = "LEFT"
@@ -50,7 +50,7 @@ class PedestrianIntentToEnterRoad(Node):
 
 
     def clock_cb(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
 
 
     def publish_diagnostics(self):

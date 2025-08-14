@@ -34,7 +34,7 @@ class guardian_node(Node):
         self.manual_disabled = False
         self.current_mode = None
 
-        status_sub = self.create_subscription(String, '/node_statuses', self.statusCb, 10)
+        status_sub = self.create_subscription(String, '/node_status_info', self.statusCb, 10)
         clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1)
         mode_request_sub = self.create_subscription(Mode, '/requested_mode', self.modeRequestCb, 1)
 
@@ -42,39 +42,39 @@ class guardian_node(Node):
         self.current_mode_pub = self.create_publisher(Mode, '/guardian/mode', 1)
 
         self.mandatory_nodes = {
-            "map_manager": StatusData(),
-            "joy_translation": StatusData(),
-            "gnss_averager": StatusData(),
-            "mcl": StatusData(),
-            "routing_monitor": StatusData(),
-            "grid_route_costmap": StatusData(),
-            "grid_summation": StatusData(),
-            "intersection_manager": StatusData(),
-            "junction_manager": StatusData(),
-            "path_planner": StatusData(),
-            "path_planner_nav2": StatusData(),
-            "pure_pursuit_controller": StatusData(),
-            "airbags": StatusData(),
-            "semantic_projection": StatusData(),
-            "ground_seg": StatusData(),
-            "static_grid": StatusData(),
-            "traffic_light_detector": StatusData(),
-            "prednet_inference": StatusData(),
-            "driveable_area": StatusData(),
-            "road_signs_classifier": StatusData(),
-            "depth_processing": StatusData(),
-            "occupancy_grid_node": StatusData(),
-            "image_segmentation": StatusData(),
-            "lane_type_detector": StatusData(),
+            "map_manager": None,
+            "joy_translation": None,
+            "gnss_averager": None,
+            "mcl": None,
+            "routing_monitor": None,
+            "grid_route_costmap": None,
+            "grid_summation": None,
+            "intersection_manager": None,
+            "junction_manager": None,
+            "path_planner": None,
+            "path_planner_nav2": None,
+            "pure_pursuit_controller": None,
+            "airbags": None,
+            "semantic_projection": None,
+            "ground_seg": None,
+            "static_grid": None,
+            "traffic_light_detector": None,
+            "prednet_inference": None,
+            "driveable_area": None,
+            "road_signs_classifier": None,
+            "depth_processing": None,
+            "occupancy_grid_node": None,
+            "image_segmentation": None,
+            "lane_type_detector": None,
         }
         self.secondary_nodes = {
-            "costmap_recorder": StatusData(),
-            "object_viz_deteced_node": StatusData(),
-            "multi_object_tracker_3d_node": StatusData(),
-            "object_viz_tracked_node": StatusData(),
-            "pedestrian_intent_to_enter_road": StatusData(),
-            "pedestrian_skeleton": StatusData(),
-            "road_user_detector": StatusData(),
+            "costmap_recorder": None,
+            "object_viz_deteced_node": None,
+            "multi_object_tracker_3d_node": None,
+            "object_viz_tracked_node": None,
+            "pedestrian_intent_to_enter_road": None,
+            "pedestrian_skeleton": None,
+            "road_user_detector": None,
         }
 
         status_timer = self.create_timer(0.2, self.publishStatusArray)
@@ -91,7 +91,10 @@ class guardian_node(Node):
             return
         
         node_name, status, timestamp_str = data
-        timestamp = float(timestamp_str)
+        if timestamp_str != 'None':
+            timestamp = float(timestamp_str)
+        else:
+            timestamp = 1000.0
 
         if node_name in self.mandatory_nodes:
             self.mandatory_nodes[node_name] = StatusData(node_name, status, timestamp)
@@ -137,20 +140,20 @@ class guardian_node(Node):
             status_msg = DiagnosticStatus()
             status_msg.name = node_name
 
-            if self.isStale(status_data):
-                self.auto_disabled = True
-                self.manual_disabled = True
-                status_msg.level = DiagnosticStatus.STALE
-                global_status.level = DiagnosticStatus.ERROR
-                global_status.message = f"{node_name} was stale."
-                status_msg.message = f"{node_name} was stale."
-            elif status_data == StatusData():
+            if status_data == None:
                 self.auto_disabled = True
                 self.manual_disabled = True
                 status_msg.level = DiagnosticStatus.ERROR
                 global_status.level = DiagnosticStatus.ERROR
                 global_status.message += f"{node_name} not received."
                 status_msg.message = f"{node_name} not received."
+            elif self.isStale(status_data):
+                self.auto_disabled = True
+                self.manual_disabled = True
+                status_msg.level = DiagnosticStatus.STALE
+                global_status.level = DiagnosticStatus.ERROR
+                global_status.message = f"{node_name} was stale."
+                status_msg.message = f"{node_name} was stale."
             else:
                 if status_data.status == 'OK' and not self.auto_disabled and not self.manual_disabled:
                     self.auto_disabled = False
@@ -174,18 +177,18 @@ class guardian_node(Node):
             status_msg = DiagnosticStatus()
             status_msg.name = node_name
 
-            if self.isStale(status_data):
-                self.manual_disabled = True
-                status_msg.level = DiagnosticStatus.STALE
-                global_status.level = DiagnosticStatus.ERROR
-                global_status.message = f"{node_name} was stale."
-                status_msg.message = f"{node_name} was stale."
-            elif status_data == StatusData():
+            if status_data == None:
                 self.manual_disabled = True
                 status_msg.level = DiagnosticStatus.ERROR
                 global_status.level = DiagnosticStatus.ERROR
                 global_status.message += f"{node_name} not received."
                 status_msg.message = f"{node_name} not received."
+            elif self.isStale(status_data):
+                self.manual_disabled = True
+                status_msg.level = DiagnosticStatus.STALE
+                global_status.level = DiagnosticStatus.ERROR
+                global_status.message = f"{node_name} was stale."
+                status_msg.message = f"{node_name} was stale."
             else:
                 if status_data.status == 'OK' and not self.manual_disabled:
                     self.manual_disabled = False

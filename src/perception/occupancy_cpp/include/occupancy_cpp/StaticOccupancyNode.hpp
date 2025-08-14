@@ -56,7 +56,7 @@ namespace navigator
       // Publishers
       rclcpp::Publisher<OccupancyGrid>::SharedPtr occupancy_grid_pub;
       rclcpp::Publisher<Masses>::SharedPtr masses_pub;
-      rclcpp::Publisher<String>::SharedPtr diagnostic_pub;
+      rclcpp::Publisher<String>::SharedPtr diagnostic_pub_;
 
       // Subscribers
       rclcpp::Subscription<Clock>::SharedPtr clock_sub;

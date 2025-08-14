@@ -41,7 +41,7 @@ class costmap_recorder(Node):
         super().__init__("costmap_recorder")
 
 
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -92,12 +92,10 @@ class costmap_recorder(Node):
             callback_group=MutuallyExclusiveCallbackGroup(),
         )
 
-        self.status_pub = self.create_publisher(DiagnosticStatus, "/node_statuses", 1)
-
 
     def publish_diagnostics(self):
         diagnostic_msg = String()
-        diagnostic_msg.data = "costmap_recorder, OK, " + str(self.clock)
+        diagnostic_msg.data = "costmap_recorder, OK, " + str(self.current_time)
         self.diagnostic_publisher.publish(diagnostic_msg)
 
     
@@ -172,7 +170,6 @@ class costmap_recorder(Node):
         if not self.recording_enabled:
             # Optionally publish status even when idle, or just return silently
             # status_msg = self.getStatus()
-            # self.status_pub.publish(status_msg)
             return  # Return early if not enabled
 
         # Add a check for the directory existence in case setUpDirectory failed
@@ -196,7 +193,6 @@ class costmap_recorder(Node):
 
         # Publish status
         status_msg = self.getStatus()
-        self.status_pub.publish(status_msg)
         self.publish_diagnostics()
 
     def saveCostmapAsImage(self):
@@ -281,7 +277,6 @@ class costmap_recorder(Node):
         state_kv.value = f"idle"
         status_msg.values.append(state_kv)
 
-        self.status_pub.publish(status_msg)
         self.publish_diagnostics()
 
 

@@ -21,7 +21,7 @@ class LaneTypeDetector(Node):
     def __init__(self):
         super().__init__('lane_type_detector')
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -43,14 +43,14 @@ class LaneTypeDetector(Node):
         #create variables to store subscription info
         self.bridge = CvBridge()
         self.image = None
-        self.clock = None
+        self.clock = 0.0
 
         #create publisher
         self.lane_detections_publisher = self.create_publisher(AllLaneDetections, '/lane_types/detections', 10)
 
 
     def clock_cb(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
 
 
     def publish_diagnostics(self):

@@ -49,7 +49,7 @@ class JunctionManager(Node):
     def __init__(self):
         super().__init__('junction_manager')
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -87,9 +87,6 @@ class JunctionManager(Node):
         
         target_speed_sub = self.create_subscription(CarlaSpeedometer, '/planning/target_speed', self.targetSpeedCb,1)
 
-        self.status_pub = self.create_publisher(
-            DiagnosticStatus, '/node_statuses', 1)
-        
         self.is_waiting_pub = self.create_publisher(Bool, '/planning/is_waiting', 1)
 
         
@@ -100,7 +97,7 @@ class JunctionManager(Node):
 
     def publish_diagnostics(self):
         diagnostic_msg = String()
-        diagnostic_msg.data = "junction_manager, OK, " + str(self.clock)
+        diagnostic_msg.data = "junction_manager, OK, " + str(self.time_sec)
         self.diagnostic_publisher.publish(diagnostic_msg)
 
     

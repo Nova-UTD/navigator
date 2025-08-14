@@ -51,7 +51,7 @@ namespace navigator
 
       // Publishers
       rclcpp::Publisher<PointCloud2>::SharedPtr filtered_lidar_pub;
-      rclcpp::Publisher<String>::SharedPtr diagnostic_pub;
+      rclcpp::Publisher<String>::SharedPtr diagnostic_pub_;
 
       // Subscribers
       rclcpp::Subscription<Clock>::SharedPtr clock_sub;

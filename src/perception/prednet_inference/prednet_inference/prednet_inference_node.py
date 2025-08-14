@@ -50,10 +50,11 @@ class PredNetNode(Node):
     def __init__(self):
         super().__init__('prednet_inference_node')
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
+        self.clock = 0.0
         # Set up the global config file
         self.declare_parameter('global_config', 'temp_value')
         self.file_path = self.get_parameter('global_config').value
@@ -136,8 +137,8 @@ class PredNetNode(Node):
             raise Exception("Couldn't eval model")
 
     # Updates the clock for the header
-    def clock_cb(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+    def clock_cb(self, msg):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
 
 
     def publish_diagnostics(self):

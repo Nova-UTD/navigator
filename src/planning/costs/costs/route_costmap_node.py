@@ -48,7 +48,7 @@ class RouteCostmapNode(Node):
     def __init__(self):
         super().__init__('route_costmap_node')
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -84,10 +84,12 @@ class RouteCostmapNode(Node):
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)
 
-        self.clock = None
+        self.clock = 0.0
+        self.clock_obj = Clock()
 
     def clockCb(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+        self.clock_obj = msg
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
 
 
     def publish_diagnostics(self):
@@ -284,7 +286,7 @@ class RouteCostmapNode(Node):
     def publish(self, routemap, goal):
         # Publish path goal, which is the last element of the gridxs,gridys
         path_goal = PoseStamped()
-        path_goal.header.stamp = self.clock
+        path_goal.header.stamp = self.clock_obj.clock
         path_goal.header.frame_id = 'base_link'
         path_goal.pose.position.x = goal[0]
         path_goal.pose.position.y = goal[1]
@@ -308,13 +310,13 @@ class RouteCostmapNode(Node):
 
         # Publish as an OccupancyGrid
         route_cost_msg = OccupancyGrid()
-        route_cost_msg.info.map_load_time = self.clock
+        route_cost_msg.info.map_load_time = self.clock_obj.clock
         route_cost_msg.info.resolution = data['occupancy_grids']['resolution']
         route_cost_msg.info.width = int(data['occupancy_grids']['width'])
         route_cost_msg.info.height = int(data['occupancy_grids']['length'])
         route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
         route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
-        route_cost_msg.header.stamp = self.clock
+        route_cost_msg.header.stamp = self.clock_obj.clock
         route_cost_msg.header.frame_id = 'base_link'
         route_cost_msg.data = routemap.astype(np.int8).flatten().tolist()
 
@@ -401,7 +403,7 @@ class RouteCostmapNode(Node):
     def publish_marker(self, target, c, publisher):
         marker = Marker()
         marker.header.frame_id = 'base_link'
-        marker.header.stamp = self.clock
+        marker.header.stamp = self.clock_obj.clock
         marker.id = 0
         marker.type = Marker.ARROW
         marker.action = Marker.ADD

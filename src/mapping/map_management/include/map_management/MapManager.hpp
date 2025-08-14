@@ -111,7 +111,6 @@ namespace navigator
             std::chrono::milliseconds SMOOTH_ROUTE_LS_FREQ = 1000ms;
             const int GRID_RANGE = 30;
             const float GRID_RES = 0.4;
-            const float DIAGNOSTIC_PUB_FREQUENCY = 0.5;
 
             void clockCb(Clock::SharedPtr msg);
             TransformStamped getEgoTf();
@@ -172,6 +171,8 @@ namespace navigator
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 
             Clock::SharedPtr clock_;
+            Clock::SharedPtr second_clock_;
+            
             odr::OpenDriveMap *map_ = nullptr;
             std::vector<odr::LanePair> lane_polys_;
             std::vector<odr::Lane> lanes_in_route_;

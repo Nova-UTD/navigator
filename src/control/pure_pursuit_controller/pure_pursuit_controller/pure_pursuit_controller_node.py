@@ -234,7 +234,7 @@ class PursePursuitController(Node):
     def __init__(self):
         super().__init__("pure_pursuit_controler")
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -270,8 +270,8 @@ class PursePursuitController(Node):
             0.1, self.visualize_waypoint_callback
         )
 
-    def clock_callback(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+    def clock_callback(self, msg):
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
 
 
     def publish_diagnostics(self):

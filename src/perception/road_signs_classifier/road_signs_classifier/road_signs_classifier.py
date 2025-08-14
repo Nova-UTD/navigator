@@ -22,7 +22,7 @@ class RoadSignsClassifier(Node):
     def __init__(self):
         super().__init__('road_signs_classifier')
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -32,7 +32,7 @@ class RoadSignsClassifier(Node):
         #create subscriptions
         self.camera_sub = self.create_subscription(Image, '/cameras/camera0', self.image_callback, 10)
         self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
-        self.clock = None
+        self.clock = 0.0
 
         #create variables to store subscription info
         self.bridge = CvBridge()
@@ -49,7 +49,7 @@ class RoadSignsClassifier(Node):
         self.classify_sign()
 
     def clock_cb(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
 
 
     def publish_diagnostics(self):

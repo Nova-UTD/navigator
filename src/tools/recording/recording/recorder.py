@@ -154,8 +154,6 @@ class recorder(Node):
 
         append_timer = self.create_timer((1.0/FRAME_RATE), self.addToRecording)
 
-        self.status_pub = self.create_publisher(
-            DiagnosticStatus, '/node_statuses', 1)
 
     def getStatus(self):
         msg = DiagnosticStatus()

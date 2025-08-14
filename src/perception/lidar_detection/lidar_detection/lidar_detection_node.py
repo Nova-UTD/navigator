@@ -44,7 +44,7 @@ class LidarDetectionNode(Node):
         """
         super().__init__("lidar_detection_node")
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -87,7 +87,7 @@ class LidarDetectionNode(Node):
         # Subscribes to clock for headers
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clock_cb, 10)
-        self.clock = None
+        self.clock = 0.0
         
         # Publishes array of 3D objects
         self.objects3d_pub = self.create_publisher(
@@ -101,7 +101,7 @@ class LidarDetectionNode(Node):
 
         self.stamp.sec = msg.clock.sec
         self.stamp.nanosec = msg.clock.nanosec
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
 
 
     def publish_diagnostics(self):

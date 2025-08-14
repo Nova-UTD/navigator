@@ -18,7 +18,7 @@ class ObjectVisualizerNode(Node):
     def __init__(self):
         super().__init__('object_visualizer_node')
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -34,17 +34,17 @@ class ObjectVisualizerNode(Node):
             qos_profile = 1
         )
         self.clock_sub = self.create_subscription(String, '/clock', self.clock_cb, 10)
-        self.clock = None
+        self.clock = 0.0
 
         self.visualization_publisher = self.create_publisher(MarkerArray, f"viz/{pub_topic}", 10)
 
     def clock_cb(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
 
 
     def publish_diagnostics(self):
         diagnostic_msg = String()
-        diagnostic_msg.data = "object_viz_deteced_node, OK, " + str(self.clock)
+        diagnostic_msg.data = "object_viz_tracked_node, OK, " + str(self.clock)
         self.diagnostic_publisher.publish(diagnostic_msg)
 
     

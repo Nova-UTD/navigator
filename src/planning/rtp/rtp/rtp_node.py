@@ -97,7 +97,7 @@ class RecursiveTreePlanner(Node):
             OccupancyGrid, "/grid/speed_cost", self.speed_costmap_callback, 1
         )
 
-        self.status_pub = self.create_publisher(DiagnosticStatus, "/node_statuses", 1)
+        self.status_pub = self.create_publisher(DiagnosticStatus, "/node_status_info", 1)
 
         odom_sub = self.create_subscription(Odometry, "/gnss/odometry", self.odomCb, 1)
 

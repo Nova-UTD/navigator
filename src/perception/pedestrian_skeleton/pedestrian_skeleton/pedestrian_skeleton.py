@@ -13,7 +13,7 @@ class PedestrianSkeleton(Node):
     def __init__(self):
         super().__init__('Pedestrian_Skeleton_detector')
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
         
@@ -30,7 +30,7 @@ class PedestrianSkeleton(Node):
 
         # Publish detection messages
         self.detection_publisher = self.create_publisher(String, 'detection_status', 10)
-        self.clock = None
+        self.clock = 0.0
         
         # Initialize CvBridge
         self.bridge = CvBridge()
@@ -43,7 +43,7 @@ class PedestrianSkeleton(Node):
         self.CONFIDENCE_THRESHOLD = 0.7  # Adjust as needed
 
     def clock_cb(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
 
 
     def publish_diagnostics(self):

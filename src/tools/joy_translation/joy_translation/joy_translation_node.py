@@ -63,7 +63,7 @@ class joy_translation_node(Node):
 
         self.current_speed = 0.0  # m/s
 
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -84,8 +84,7 @@ class joy_translation_node(Node):
             VehicleSpeed, '/speed', self.speedCb, 1)
 
         self.status = DiagnosticStatus()
-        self.status_pub = self.create_publisher(
-            DiagnosticStatus, '/node_statuses', 1)
+        
 
         self.current_mode = Mode.MANUAL
         self.current_mode_sub = self.create_subscription(
@@ -98,7 +97,7 @@ class joy_translation_node(Node):
         self.current_mode = msg.mode
 
     def clockCb(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
 
 
     def publish_diagnostics(self):
@@ -196,7 +195,6 @@ class joy_translation_node(Node):
         requested_mode_keyval.key = 'requested_mode'
         requested_mode_keyval.value = str(requested_mode)
         self.status.values.append(requested_mode_keyval)
-        self.status_pub.publish(self.status)
         self.publish_diagnostics()
 
 

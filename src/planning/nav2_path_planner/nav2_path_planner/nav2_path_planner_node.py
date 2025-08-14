@@ -60,7 +60,7 @@ class Nav2PathPlanner(Node):
     def __init__(self):
         super().__init__('nav2_path_planner_node')
         
-        self.diagnostic_publisher = self.create_publisher(String, '/node_statuses', 10)
+        self.diagnostic_publisher = self.create_publisher(String, '/node_status_info', 10)
 
         self.diagnostic_pub_timer = self.create_timer(0.5, self.publish_diagnostics)
 
@@ -71,13 +71,14 @@ class Nav2PathPlanner(Node):
 
         clock_sub = self.create_subscription(Clock, '/clock', self.clockCb, 1)
         self.clock = 0.0
+        self.clock_obj = Clock()
 
         self.navigator = BasicNavigator(namespace='nav2')
         
         # Nav2 wants an initial pose even though we won't ever use it.
         self.zero_pose = PoseStamped()
         self.zero_pose.header.frame_id = NAV2_BASELINK_FRAME
-        self.zero_pose.header.stamp = self.clock
+        self.zero_pose.header.stamp = self.clock_obj.clock
         self.zero_pose.pose.position.x = 0.0
         self.zero_pose.pose.position.y = 0.0
         self.zero_pose.pose.orientation.z = 0.0
@@ -92,8 +93,7 @@ class Nav2PathPlanner(Node):
         # speed_cost_map_sub = self.create_subscription(
         #     OccupancyGrid, '/grid/speed_cost', self.speedCostMapCb, 1)
 
-        # self.status_pub = self.create_publisher(
-        #     DiagnosticStatus, '/node_statuses', 1)
+        
 
         path_goal_sub = self.create_subscription(
             PoseStamped, '/planning/path_goal', self.pathGoalCb, 1)
@@ -154,7 +154,8 @@ class Nav2PathPlanner(Node):
     #             msg.info.height, msg.info.width)
 
     def clockCb(self, msg: String):
-        self.clock = msg.sec + (msg.nanosec * 1e-9)
+        self.clock = msg.clock.sec + (msg.clock.nanosec * 1e-9)
+        self.clock_obj = msg
 
     # saves the point we want to navigate to (a point along the route)
     def pathGoalCb(self, msg: PoseStamped):
@@ -231,9 +232,7 @@ class Nav2PathPlanner(Node):
             # status.level = DiagnosticStatus.ERROR
             # status.message = "Could not find viable path. Likely too far off course."
             # self.get_logger().error("Could not find viable path")
-            # self.status_pub.publish(status)
 
-            # self.status_pub.publish(status)
             # self.last_status_time = time.time()
 
             ############################ TODO: Just for testing until controller is in place:
@@ -252,7 +251,7 @@ class Nav2PathPlanner(Node):
             self.publish_diagnostics()
 
             command = VehicleControl()
-            command.header.stamp = self.clock
+            command.header.stamp = self.clock_obj.clock
             command.header.frame_id = 'base_link'
             target_steer = np.arctan2(-lookahead_pose.pose.position.y, lookahead_pose.pose.position.x)
             command.steer = target_steer
@@ -321,7 +320,7 @@ class Nav2PathPlanner(Node):
     def publish_marker(self, target, c, publisher):
         marker = Marker()
         marker.header.frame_id = 'base_link'
-        marker.header.stamp = self.clock
+        marker.header.stamp = self.clock_obj.clock
         marker.id = 0
         marker.type = Marker.ARROW
         marker.action = Marker.ADD

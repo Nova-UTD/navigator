@@ -292,9 +292,6 @@ class player(Node):
 
         self.clock_pub = self.create_publisher(Clock, '/clock', 1)
 
-        self.status_pub = self.create_publisher(
-            DiagnosticStatus, '/node_statuses', 1)
-
         # readTimer = self.create_timer((1.0/FRAME_RATE), self.playNextFrame)
 
         while True:
