@@ -71,6 +71,14 @@ class LocalizationNode(Node):
       o3d_pcd.points = o3d.utility.Vector3dVector(pcd)
       o3d_pcd = o3d_pcd.remove_non_finite_points(remove_nan=True, remove_infinite=True)
       o3d_pcd = o3d_pcd.voxel_down_sample(VOXEL_SIZE)
+      local_extent = o3d_pcd.get_axis_aligned_bounding_box().get_extent()
+      buffer = np.array([20.0, 20.0, 20.0])
+      crop_extent = local_extent + buffer * 2
+      scan_center = self.initial_pos[:3, 3]
+      min_bound = scan_center - crop_extent / 2
+      max_bound = scan_center + crop_extent / 2
+      aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+      target_crop = target.crop(aabb)
       radius_normal = VOXEL_SIZE * 2
       o3d_pcd.estimate_normals(
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
@@ -78,21 +86,22 @@ class LocalizationNode(Node):
       pcd_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
         o3d_pcd,
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=100))
-      target.estimate_normals(
+      target_crop.estimate_normals(
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
+      #gurting??
       target_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
-        target,
+        target_crop,
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=100))
       
       distance_threshold = VOXEL_SIZE
       result = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
-        o3d_pcd, target, pcd_fpfh, target_fpfh, True,
+        o3d_pcd, target_crop, pcd_fpfh, target_fpfh, True,
         distance_threshold,
         o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
         3, [
             o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
             o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(distance_threshold),
-        ], o3d.pipelines.registration.RANSACConvergenceCriteria(100000, 0.8), self.initial_pos)
+        ], o3d.pipelines.registration.RANSACConvergenceCriteria(100000, 0.8))
       if result.fitness < 0.5: return
       self.get_logger().info(str(result.transformation[0, 3]) + ", " + str(result.transformation[1, 3]))
       self.odometry.last_pose = result.transformation
