@@ -47,7 +47,7 @@ class SlamRunnerNode(Node):
         self.localizeCount = 0
         self.bag_process_ = None
         self.begin_pcd = o3d.io.read_point_cloud(BEGIN_PCD)
-        self.begin_pcd.voxel_down_sample(VOXEL_SIZE)
+        self.begin_pcd = self.begin_pcd.voxel_down_sample(VOXEL_SIZE)
         self.first = True
         self.gotPoseMessage = True
         self.kiss_config = KISSConfig()
