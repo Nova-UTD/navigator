@@ -26,15 +26,23 @@ INIT = str(os.path.join(get_package_share_directory('lidar_SLAM'),
 VOXEL_SIZE = 1
 
 class LocalizationNode(Node):
+  '''
+  Publishes localized pose, using rough gps pose for an initial pose estimate 
+  and kiss-icp for odometry
+  '''
   def __init__(self):
     super().__init__("localization_node")
     # kiss-icp pipeline setup with pre-made PCD map
     self.kiss_config = KISSConfig()
     self.kiss_config.mapping.voxel_size = VOXEL_SIZE
     self.odometry = KissICP(self.kiss_config, PCD)
+
+    # subscribe to lidar and rough gps pos, publish localized pose.
     self.pcdSub = self.create_subscription(PointCloud2, '/lidar/filtered', self.register, 1)
     self.pcdSub = self.create_subscription(Odometry, '/gnss/odometry', self.initialPos, 1)
     self.stampPosePub = self.create_publisher(Odometry, '/localized_pose', 1)
+    
+    # Variable inits
     self.first = True
     self.initial_pos_gathered = False
     self.get_logger().info("localization node init")
@@ -43,12 +51,14 @@ class LocalizationNode(Node):
     self.initial_pos = np.eye(4)
 
   def initialPos(self, gnss):
+      # Only gather gps pos if we haven't yet successfully performed our initial registration
       if self.first:
         self.gpsPoses[self.gpsCount][0] = gnss.pose.pose.position.x
         self.gpsPoses[self.gpsCount][1] = gnss.pose.pose.position.y
         self.gpsPoses[self.gpsCount][2] = gnss.pose.pose.position.z
         self.gpsCount += 1
 
+        # Collect average of 3 gps readings.
         if self.gpsCount == 3:
           finalGPSPose = np.mean(self.gpsPoses, axis=0)
           self.initial_pos[0][3] = finalGPSPose[0]
@@ -86,7 +96,7 @@ class LocalizationNode(Node):
       aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
       target_crop = target.crop(aabb)
 
-      # Feature-based registration on cropped map
+      # Feature generation
       radius_normal = VOXEL_SIZE * 2
       o3d_pcd.estimate_normals(
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
@@ -101,6 +111,7 @@ class LocalizationNode(Node):
         target_crop,
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=100))
       
+      # Registration
       distance_threshold = VOXEL_SIZE
       result = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
         o3d_pcd, target_crop, pcd_fpfh, target_fpfh, True,
@@ -130,6 +141,7 @@ class LocalizationNode(Node):
     pub_msg.header.frame_id = "map"
     pub_msg.child_frame_id = "lidarCar"
 
+    # populate position
     pub_msg.pose.pose.position.x = current_pose[0, 3]
     pub_msg.pose.pose.position.y = current_pose[1, 3]
     pub_msg.pose.pose.position.z = current_pose[2, 3]
@@ -140,6 +152,7 @@ class LocalizationNode(Node):
 
     q = quaternion_from_matrix(current_pose)
 
+    # populate orientation
     pub_msg.pose.pose.orientation.x = q[0]
     pub_msg.pose.pose.orientation.y = q[1]
     pub_msg.pose.pose.orientation.z = q[2]

@@ -26,12 +26,18 @@ INIT = str(os.path.join(get_package_share_directory('lidar_SLAM'),
 VOXEL_SIZE = 1
 
 class LocalizationNode(Node):
+  '''
+  Publishes localized pose, using global registration for an initial pose estimate 
+  and kiss-icp for odometry
+  '''
   def __init__(self):
     super().__init__("localization_node")
     # kiss-icp pipeline setup with pre-made PCD map
     self.kiss_config = KISSConfig()
     self.kiss_config.mapping.voxel_size = VOXEL_SIZE
     self.odometry = KissICP(self.kiss_config, PCD)
+
+    # Subscribe to lidar, publish localized pose
     self.pcdSub = self.create_subscription(PointCloud2, '/lidar/filtered', self.register, 1)
     self.stampPosePub = self.create_publisher(Odometry, '/localized_pose', 1)
     self.first = True
@@ -51,6 +57,8 @@ class LocalizationNode(Node):
       o3d_pcd.points = o3d.utility.Vector3dVector(pcd)
       o3d_pcd = o3d_pcd.remove_non_finite_points(remove_nan=True, remove_infinite=True)
       o3d_pcd = o3d_pcd.voxel_down_sample(VOXEL_SIZE)
+
+      # Feature generation
       radius_normal = VOXEL_SIZE * 2
       o3d_pcd.estimate_normals(
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
@@ -64,6 +72,7 @@ class LocalizationNode(Node):
         target,
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=100))
       
+      # Global Registration
       distance_threshold = VOXEL_SIZE
       result = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
         o3d_pcd, target, pcd_fpfh, target_fpfh, True,
@@ -73,6 +82,8 @@ class LocalizationNode(Node):
             o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
             o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(distance_threshold),
         ], o3d.pipelines.registration.RANSACConvergenceCriteria(100000, 0.8))
+      
+      # Sanity check for fitness
       if result.fitness < 0.5: return
       self.get_logger().info(str(result.transformation[0, 3]) + ", " + str(result.transformation[1, 3]))
       self.odometry.last_pose = result.transformation
@@ -85,11 +96,13 @@ class LocalizationNode(Node):
 
     current_pose = self.odometry.last_pose
 
+    # Output localized pose
     pub_msg = Odometry()
     pub_msg.header.stamp = self.get_clock().now().to_msg()
     pub_msg.header.frame_id = "map"
     pub_msg.child_frame_id = "lidarCar"
 
+    # Populate message pose
     pub_msg.pose.pose.position.x = current_pose[0, 3]
     pub_msg.pose.pose.position.y = current_pose[1, 3]
     pub_msg.pose.pose.position.z = current_pose[2, 3]
@@ -100,6 +113,7 @@ class LocalizationNode(Node):
 
     q = quaternion_from_matrix(current_pose)
 
+    # Populate message orientation
     pub_msg.pose.pose.orientation.x = q[0]
     pub_msg.pose.pose.orientation.y = q[1]
     pub_msg.pose.pose.orientation.z = q[2]

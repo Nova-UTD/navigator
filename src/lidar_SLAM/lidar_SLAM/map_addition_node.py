@@ -26,6 +26,9 @@ BEGIN_PCD = str(os.path.join(get_package_share_directory('lidar_SLAM'),
 VOXEL_SIZE = 0.5
 
 class SlamRunnerNode(Node):
+    '''
+    Adds to an existing map, using global registration for initial pose estimation
+    '''
     def __init__(self):
         super().__init__('slam_runner_node')
 

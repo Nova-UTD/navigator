@@ -27,6 +27,9 @@ BEGIN_PCD = str(os.path.join(get_package_share_directory('lidar_SLAM'),
 VOXEL_SIZE = 0.5
 
 class SlamRunnerNode(Node):
+    '''
+    Adds to an existing map, using rough gps estimate as starting guess for initial pose detection
+    '''
     def __init__(self):
         super().__init__('slam_runner_node')
 
@@ -80,12 +83,16 @@ class SlamRunnerNode(Node):
         self.get_logger().info(f"Bag recording process started with PID: {self.bag_process_.pid}")
 
     def initialPos(self, gnss):
+      '''
+      Gathers average initial GPS position from 3 estimations.
+      '''
       if not self.initial_pos_gathered:
         self.gpsPoses[self.gpsCount][0] = gnss.pose.pose.position.x
         self.gpsPoses[self.gpsCount][1] = gnss.pose.pose.position.y
         self.gpsPoses[self.gpsCount][2] = gnss.pose.pose.position.z
         self.gpsCount += 1
 
+        # Average of 3 gps readings
         if self.gpsCount == 3:
           finalGPSPose = np.mean(self.gpsPoses, axis=0)
           self.initial_pos[0][3] = finalGPSPose[0]
