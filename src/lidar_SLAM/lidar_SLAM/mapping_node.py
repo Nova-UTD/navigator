@@ -49,6 +49,7 @@ class SlamRunnerNode(Node):
         self.initial_pose = np.eye(4)
         self.second_pose = np.eye(4)
         self.gpsPoses = np.zeros((3,3))
+        self.gpsCount = 0
         self.initial_pos_gathered = False
         self.initial_pose_determined = False
         self.bag_process_ = None
