@@ -27,6 +27,8 @@ setup(
           'mapping_node = lidar_SLAM.mapping_node:main',
           'map_addition_node = lidar_SLAM.map_addition_node:main',
           'map_addition_gpsinit = lidar_SLAM.map_addition_node_gpsinit:main',
+          'map_addition_gpsguess = lidar_SLAM.map_addition_node_gpsguess:main',
+          'localization_gpsguess = lidar_SLAM.localization_node_gpsguess:main',
         ],
     },
 )
