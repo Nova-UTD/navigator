@@ -48,6 +48,7 @@ class SlamRunnerNode(Node):
         # self.initial_imu_sub = self.create_subscription(Imu, '/imu', self.initialOrient, 1)
         self.initial_pose = np.eye(4)
         self.second_pose = np.eye(4)
+        self.gpsPoses = np.zeros((3,3))
         self.initial_pos_gathered = False
         self.initial_pose_determined = False
         self.bag_process_ = None
@@ -72,11 +73,26 @@ class SlamRunnerNode(Node):
 
     def initialPose(self, gnssgt):
       if not self.initial_pos_gathered:
-        self.initial_pose[0][3] = gnssgt.pose.pose.position.x
-        self.initial_pose[1][3] = gnssgt.pose.pose.position.y
-        self.initial_pose[2][3] = gnssgt.pose.pose.position.z
-        self.get_logger().info("Drive directly forward...")
-        self.initial_pos_gathered = True
+        self.gpsPoses[self.gpsCount][0] = gnssgt.pose.pose.position.x
+        self.gpsPoses[self.gpsCount][1] = gnssgt.pose.pose.position.y
+        self.gpsPoses[self.gpsCount][2] = gnssgt.pose.pose.position.z
+
+        if self.gpsCount > 0:
+            THRESHOLD = 0.1
+            if (self.gpsPoses[self.gpsCount][0] - self.gpsPoses[self.gpsCount - 1][0] > THRESHOLD or
+                self.gpsPoses[self.gpsCount][1] - self.gpsPoses[self.gpsCount - 1][1] > THRESHOLD or
+                self.gpsPoses[self.gpsCount][2] - self.gpsPoses[self.gpsCount - 1][2] > THRESHOLD):
+                self.gpsCount -= 1
+        self.gpsCount += 1
+
+        if self.gpsCount == 3:
+          finalGPSPose = np.mean(self.gpsPoses, axis=0)
+          self.initial_pose[0][3] = finalGPSPose[0]
+          self.initial_pose[1][3] = finalGPSPose[1]
+          self.initial_pose[2][3] = finalGPSPose[2]
+          self.initial_pos_gathered = True
+          self.get_logger().info("Determined average GPS pos")
+          self.get_logger().info("Drive directly forward...")
       
       elif not self.initial_pose_determined:
         if ((gnssgt.pose.pose.position.x - self.initial_pose[0][3]) ** 2 + 
