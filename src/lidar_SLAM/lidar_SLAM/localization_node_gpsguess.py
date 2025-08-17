@@ -43,7 +43,7 @@ class LocalizationNode(Node):
     self.initial_pos = np.eye(4)
 
   def initialPos(self, gnss):
-      if not self.initial_pos_gathered:
+      if self.first:
         self.gpsPoses[self.gpsCount][0] = gnss.pose.pose.position.x
         self.gpsPoses[self.gpsCount][1] = gnss.pose.pose.position.y
         self.gpsPoses[self.gpsCount][2] = gnss.pose.pose.position.z
@@ -55,6 +55,7 @@ class LocalizationNode(Node):
           self.initial_pos[1][3] = finalGPSPose[1]
           self.initial_pos[2][3] = finalGPSPose[2]
           self.initial_pos_gathered = True
+          self.gpsCount = 0
           self.get_logger().info("Determined average GPS pos")
 
   def register(self, pcd):
@@ -66,12 +67,16 @@ class LocalizationNode(Node):
     # global registration for initial pose
     if self.first:
       self.get_logger().info("globally registering")
+      
+      # Preprocessing
       target = o3d.io.read_point_cloud(PCD)
       target = target.voxel_down_sample(VOXEL_SIZE)
       o3d_pcd = o3d.geometry.PointCloud()
       o3d_pcd.points = o3d.utility.Vector3dVector(pcd)
       o3d_pcd = o3d_pcd.remove_non_finite_points(remove_nan=True, remove_infinite=True)
       o3d_pcd = o3d_pcd.voxel_down_sample(VOXEL_SIZE)
+      
+      # Global Map Cropping based on gps data
       local_extent = o3d_pcd.get_axis_aligned_bounding_box().get_extent()
       buffer = np.array([20.0, 20.0, 20.0])
       crop_extent = local_extent + buffer * 2
@@ -80,6 +85,8 @@ class LocalizationNode(Node):
       max_bound = scan_center + crop_extent / 2
       aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
       target_crop = target.crop(aabb)
+
+      # Feature-based registration on cropped map
       radius_normal = VOXEL_SIZE * 2
       o3d_pcd.estimate_normals(
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
@@ -103,6 +110,8 @@ class LocalizationNode(Node):
             o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
             o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(distance_threshold),
         ], o3d.pipelines.registration.RANSACConvergenceCriteria(100000, 0.8))
+      
+      # Sanity check of fitness, throw out horrible matches
       if result.fitness < 0.5: return
       self.get_logger().info(str(result.transformation[0, 3]) + ", " + str(result.transformation[1, 3]))
       self.odometry.last_pose = result.transformation
@@ -115,6 +124,7 @@ class LocalizationNode(Node):
 
     current_pose = self.odometry.last_pose
 
+    # Outputting localized pose
     pub_msg = Odometry()
     pub_msg.header.stamp = self.get_clock().now().to_msg()
     pub_msg.header.frame_id = "map"

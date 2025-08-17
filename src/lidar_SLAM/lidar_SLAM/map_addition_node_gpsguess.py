@@ -95,6 +95,8 @@ class SlamRunnerNode(Node):
           self.get_logger().info("Determined average GPS pos")
 
     def register(self, pcd):
+      if not self.initial_pos_gathered: return
+
       if self.localizeCount < 10:
         pcd = rnp.numpify(pcd, PointCloud2)
         num_points = pcd.shape[0]
@@ -103,14 +105,30 @@ class SlamRunnerNode(Node):
 
         # global registration for initial pose
         if self.first:
+
+          # Updating and retrieving local map, target map
           timestamps = np.linspace(0, 1, num=num_points, dtype=np.float32)
           self.initPoseOdomtery.register_frame(pcd, timestamps)
           pcd = self.initPoseOdomtery.local_map.point_cloud()
           target = self.begin_pcd
+
+          # Preprocessing
           o3d_pcd = o3d.geometry.PointCloud()
           o3d_pcd.points = o3d.utility.Vector3dVector(pcd)
           o3d_pcd = o3d_pcd.remove_non_finite_points(remove_nan=True, remove_infinite=True)
           o3d_pcd = o3d_pcd.voxel_down_sample(voxel_size=VOXEL_SIZE)
+
+          # Cropping based on gps data
+          local_extent = o3d_pcd.get_axis_aligned_bounding_box().get_extent()
+          buffer = np.array([30.0, 30.0, 30.0])
+          crop_extent = local_extent + buffer * 2
+          scan_center = self.initial_pos[:3, 3]
+          min_bound = scan_center - crop_extent / 2
+          max_bound = scan_center + crop_extent / 2
+          aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+          target_crop = target.crop(aabb)
+
+          # Feature-based registration
           radius_normal = VOXEL_SIZE * 2
           o3d_pcd.estimate_normals(
             o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
@@ -118,21 +136,23 @@ class SlamRunnerNode(Node):
           pcd_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
             o3d_pcd,
             o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=100))
-          target.estimate_normals(
+          target_crop.estimate_normals(
             o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
           target_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
-            target,
+            target_crop,
             o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=100))
           
           distance_threshold = VOXEL_SIZE * 2
           result = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
-            o3d_pcd, target, pcd_fpfh, target_fpfh, True,
+            o3d_pcd, target_crop, pcd_fpfh, target_fpfh, True,
             distance_threshold,
             o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
             3, [
                 o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
                 o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(distance_threshold),
-            ], o3d.pipelines.registration.RANSACConvergenceCriteria(100000, 0.8), self.initial_pos)
+            ], o3d.pipelines.registration.RANSACConvergenceCriteria(100000, 0.8))
+          
+          # Sanity check fitness
           if result.fitness < 0.5: return
           self.get_logger().info(str(result.transformation[0, 3]) + ", " + str(result.transformation[1, 3]))
           self.odometry.last_pose = result.transformation
