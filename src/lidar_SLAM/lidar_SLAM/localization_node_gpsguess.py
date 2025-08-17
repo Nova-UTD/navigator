@@ -58,6 +58,7 @@ class LocalizationNode(Node):
           self.get_logger().info("Determined average GPS pos")
 
   def register(self, pcd):
+    if not self.initial_pos_gathered: return
     pcd = rnp.numpify(pcd, PointCloud2)
     num_points = pcd.shape[0]
     pcd = np.array([pcd['x'].flatten(), pcd['y'].flatten(), pcd['z'].flatten()]).T
