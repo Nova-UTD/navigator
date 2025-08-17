@@ -1,34 +1,23 @@
-out_dir: /navigator/install/lidar_localization/share/lidar_SLAM/resource/slam_output
-
-odometry:
-    preprocessing:
-        max_range: 100.0
-        min_range: 0.0
-        deskew: true
-    registration:
-        max_num_iterations: 500
-        convergence_criterion: 0.0001
-        max_num_threads: 0
-    mapping:
-        voxel_size: null
-        max_points_per_voxel: 20
-    adaptive_threshold:
-        fixed_threshold: null
-        initial_threshold: 2.0
-        min_motion_th: 0.1
-
+keypose:
+-   - 0.9998112342320781
+    - 0.017670529298714446
+    - 0.008077641836078061
+    - 31.399096115929794
+-   - -0.01761782946490912
+    - 0.9998233429994442
+    - -0.006549418169663302
+    - -304.03176702465055
+-   - -0.008191946549756305
+    - 0.006405871347366426
+    - 0.9999459269500561
+    - -0.3804691134175024
+-   - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
 local_mapper:
-    voxel_size: 0.5
     splitting_distance: 100.0
-
-occupancy_mapper:
-    free_threshold: 0.2
-    occupied_threshold: 0.65
-    resolution: 0.5
-    max_range: null
-    z_min: 0.1
-    z_max: 0.5
-
+    voxel_size: 0.5
 loop_closer:
     detector:
         density_map_resolution: 0.5
@@ -36,6 +25,30 @@ loop_closer:
         hamming_distance_threshold: 50
         inliers_threshold: 5
     overlap_threshold: 0.4
-
+occupancy_mapper:
+    free_threshold: 0.2
+    max_range: null
+    occupied_threshold: 0.65
+    resolution: 0.5
+    z_max: 0.5
+    z_min: 0.1
+odometry:
+    adaptive_threshold:
+        fixed_threshold: null
+        initial_threshold: 2.0
+        min_motion_th: 0.1
+    mapping:
+        max_points_per_voxel: 20
+        voxel_size: null
+    preprocessing:
+        deskew: true
+        max_range: 100.0
+        min_range: 0.0
+    registration:
+        convergence_criterion: 0.0001
+        max_num_iterations: 500
+        max_num_threads: 0
+out_dir: /navigator/install/lidar_localization/share/lidar_SLAM/resource/slam_output
+pcdPath: /navigator/install/lidar_localization/share/lidar_SLAM/resource/combined_map.pcd
 pose_graph_optimizer:
     max_iterations: 10

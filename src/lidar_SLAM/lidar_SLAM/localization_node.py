@@ -35,6 +35,7 @@ class LocalizationNode(Node):
     self.pcdSub = self.create_subscription(PointCloud2, '/lidar/filtered', self.register, 1)
     self.stampPosePub = self.create_publisher(Odometry, '/localized_pose', 1)
     self.first = True
+    self.get_logger().info("localization node init")
 
   def register(self, pcd):
     pcd = rnp.numpify(pcd, PointCloud2)
@@ -43,7 +44,9 @@ class LocalizationNode(Node):
 
     # global registration for initial pose
     if self.first:
+      self.get_logger().info("globally registering")
       target = o3d.io.read_point_cloud(PCD)
+      target.voxel_down_sample(VOXEL_SIZE)
       o3d_pcd = o3d.geometry.PointCloud()
       o3d_pcd.points = o3d.utility.Vector3dVector(pcd)
       o3d_pcd = o3d_pcd.remove_non_finite_points(remove_nan=True, remove_infinite=True)

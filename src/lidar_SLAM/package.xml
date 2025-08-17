@@ -23,6 +23,7 @@
   <exec_depend>kiss-slam</exec_depend>
   <exec_depend>python-open3d</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>readchar</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>

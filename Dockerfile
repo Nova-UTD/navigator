@@ -262,16 +262,27 @@ RUN git clone https://github.com/The-OpenROAD-Project/lemon-graph.git && cd lemo
     && git checkout 62ac753 \
     && mkdir build && cd build && cmake .. && make && make install
 
+RUN pip3 install \
+    readchar==4.2.1 \
+    scikit-build-core==0.11.5 \
+    pyproject-metadata==0.9.1 \
+    pybind11==3.0.0 \
+    ninja==1.13.0 \
+    cmake==4.1.0
+
 # RUN useradd -ms /bin/bash docker
 RUN usermod -a -G dialout root
 RUN usermod -a -G tty root
 # USER docker
 
 ENV ROS_VERSION 2
+WORKDIR /
+RUN git clone https://github.com/pulipakaa24/kiss-icp.git && cd kiss-icp && make custom
+RUN git clone https://github.com/RainerKuemmerle/g2o.git && cd g2o && mkdir build && cd build && cmake .. && make -j && make install
+RUN git clone https://github.com/pulipakaa24/MapClosures.git && cd MapClosures && make custom
+RUN git clone https://github.com/pulipakaa24/kiss-slam.git && cd kiss-slam && make custom
+
 WORKDIR /navigator
-RUN rm -rf kiss-icp
-RUN git clone https://github.com/pulipakaa24/kiss-icp.git && cd kiss-icp && make editable
-RUN pip3 install map-closures==2.0.2 kiss-slam==0.0.2
 
 COPY ./docker/entrypoint.sh /opt/entrypoint.sh
 

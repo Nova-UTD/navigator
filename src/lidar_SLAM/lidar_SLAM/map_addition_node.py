@@ -10,24 +10,22 @@ from datetime import datetime
 from ament_index_python.packages import get_package_share_directory
 import glob
 import open3d as o3d
-from nav_msgs.msg import Odometry
+import ros2_numpy as rnp
+from sensor_msgs.msg import PointCloud2
+from kiss_icp.config import KISSConfig
+from kiss_icp.kiss_icp import KissICP
+from kiss_icp.voxelization import voxel_down_sample
 from math import sqrt
 import yaml
 import threading
 from lidar_SLAM.keyboardListener import keyboard_listener_thread
 
-class SlamRunnerNode(Node):
-    """
-    A ROS2 node that automates the process of SLAM data collection and execution.
+BEGIN_PCD = str(os.path.join(get_package_share_directory('lidar_SLAM'),
+                   'resource', 'combined_map.pcd'))
 
-    This node performs the following steps:
-    1. On startup, it begins recording a rosbag of a specified LiDAR topic.
-    2. It waits until the user signals to save (s).
-    3. On save, it gracefully stops the rosbag recording, ensuring the bag
-       file is properly saved and closed.
-    4. It then immediately launches the KISS-ICP SLAM pipeline, feeding it the
-       bag file that was just recorded.
-    """
+VOXEL_SIZE = 0.5
+
+class SlamRunnerNode(Node):
     def __init__(self):
         super().__init__('slam_runner_node')
 
@@ -44,13 +42,19 @@ class SlamRunnerNode(Node):
 
         self.get_logger().info(f"Node initialized. Will record topic '{self.lidar_topic_}'.")
         self.get_logger().info(f"Output bag file will be saved at: '{os.path.abspath(self.bag_path_)}'")
-        self.initial_pos_sub = self.create_subscription(Odometry, '/gnss_gt/odometry', self.initialPose, 1)
-        # self.initial_imu_sub = self.create_subscription(Imu, '/imu', self.initialOrient, 1)
+        self.initial_pos_sub = self.create_subscription(PointCloud2, '/lidar/filtered', self.register, 1)
         self.initial_pose = np.eye(4)
-        self.second_pose = np.eye(4)
-        self.initial_pos_gathered = False
-        self.initial_pose_determined = False
+        self.localizeCount = 0
         self.bag_process_ = None
+        self.begin_pcd = o3d.io.read_point_cloud(BEGIN_PCD)
+        self.begin_pcd.voxel_down_sample(VOXEL_SIZE)
+        self.first = True
+        self.gotPoseMessage = True
+        self.kiss_config = KISSConfig()
+        self.kiss_config.mapping.voxel_size = VOXEL_SIZE
+        self.odometry = KissICP(self.kiss_config, BEGIN_PCD)
+        self.initPoseOdomtery = KissICP(self.kiss_config)
+        self.initPCD = None
 
     def start_recording(self):
         """
@@ -70,33 +74,61 @@ class SlamRunnerNode(Node):
         self.bag_process_ = subprocess.Popen(command, preexec_fn=os.setsid)
         self.get_logger().info(f"Bag recording process started with PID: {self.bag_process_.pid}")
 
-    def initialPose(self, gnssgt):
-      if not self.initial_pos_gathered:
-        self.initial_pose[0][3] = gnssgt.pose.pose.position.x
-        self.initial_pose[1][3] = gnssgt.pose.pose.position.y
-        self.initial_pose[2][3] = gnssgt.pose.pose.position.z
-        self.get_logger().info("Drive directly forward...")
-        self.initial_pos_gathered = True
-      
-      elif not self.initial_pose_determined:
-        if ((gnssgt.pose.pose.position.x - self.initial_pose[0][3]) ** 2 + 
-            (gnssgt.pose.pose.position.y - self.initial_pose[1][3]) ** 2 + 
-            (gnssgt.pose.pose.position.z - self.initial_pose[2][3]) ** 2) > 25:
-          self.second_pose[0][3] = gnssgt.pose.pose.position.x
-          self.second_pose[1][3] = gnssgt.pose.pose.position.y
-          self.second_pose[2][3] = gnssgt.pose.pose.position.z
-          translationX = self.second_pose[0][3] - self.initial_pose[0][3]
-          translationY = self.second_pose[1][3] - self.initial_pose[1][3]
-          hyp = sqrt(translationX ** 2 + translationY ** 2)
-          sinTheta = translationY / hyp
-          cosTheta = translationX / hyp
-          self.initial_pose[0][0] = cosTheta
-          self.initial_pose[1][1] = cosTheta
-          self.initial_pose[1][0] = sinTheta
-          self.initial_pose[0][1] = -1 * sinTheta
-          self.get_logger().info("Full initial pose determined. Press 's' to save when mapping complete.")
-          self.initial_pose_determined = True
+    def register(self, pcd):
+      if self.localizeCount < 10:
+        pcd = rnp.numpify(pcd, PointCloud2)
+        num_points = pcd.shape[0]
+        pcd = np.array([pcd['x'].flatten(), pcd['y'].flatten(), pcd['z'].flatten()]).T
+        if self.initPCD is None: self.initPCD = pcd
 
+        # global registration for initial pose
+        if self.first:
+          timestamps = np.linspace(0, 1, num=num_points, dtype=np.float32)
+          self.initPoseOdomtery.register_frame(pcd, timestamps)
+          pcd = self.initPoseOdomtery.local_map.point_cloud()
+          target = self.begin_pcd
+          o3d_pcd = o3d.geometry.PointCloud()
+          o3d_pcd.points = o3d.utility.Vector3dVector(pcd)
+          o3d_pcd = o3d_pcd.remove_non_finite_points(remove_nan=True, remove_infinite=True)
+          o3d_pcd = o3d_pcd.voxel_down_sample(voxel_size=VOXEL_SIZE)
+          radius_normal = VOXEL_SIZE * 2
+          o3d_pcd.estimate_normals(
+            o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
+          radius_feature = VOXEL_SIZE * 5
+          pcd_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
+            o3d_pcd,
+            o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=100))
+          target.estimate_normals(
+            o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
+          target_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
+            target,
+            o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=100))
+          
+          distance_threshold = VOXEL_SIZE * 2
+          result = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
+            o3d_pcd, target, pcd_fpfh, target_fpfh, True,
+            distance_threshold,
+            o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
+            3, [
+                o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
+                o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(distance_threshold),
+            ], o3d.pipelines.registration.RANSACConvergenceCriteria(100000, 0.8))
+          if result.fitness < 0.5: return
+          self.get_logger().info(str(result.transformation[0, 3]) + ", " + str(result.transformation[1, 3]))
+          self.odometry.last_pose = result.transformation
+          self.first = False
+          
+        # kiss-icp odometry stepping
+        timestamps = np.linspace(0, 1, num=self.initPCD.shape[0], dtype=np.float32)
+
+        self.odometry.register_frame(self.initPCD, timestamps)
+
+        self.initial_pose = self.odometry.last_pose
+        self.localizeCount += 1
+
+      elif self.gotPoseMessage:
+          self.get_logger().info("Determined initial pose. Press 's' to save when mapping complete.")
+          self.gotPoseMessage = False
           listener = threading.Thread(target=keyboard_listener_thread, args=(self,), daemon=True)
           listener.start()
           
@@ -138,7 +170,7 @@ class SlamRunnerNode(Node):
 
         data["out_dir"] = self.slam_out_path
         data["keypose"] = self.initial_pose.tolist()
-        data["pcdPath"] = ""
+        data["pcdPath"] = BEGIN_PCD
 
         try:
           with open(self.kiss_config_path_, 'w') as file:
@@ -183,13 +215,11 @@ class SlamRunnerNode(Node):
             pcd = o3d.io.read_point_cloud(local_map_file)
             combined_pcd += pcd
 
-        # combined_pcd.transform(self.initial_pose)
-        print(f"Before: {len(combined_pcd.points)}")
-        combined_pcd = combined_pcd.voxel_down_sample(voxel_size=0.5)
-        print(f"After: {len(combined_pcd.points)}")
+        print(f"path: {BEGIN_PCD}")
+        combined_pcd += self.begin_pcd
+        combined_pcd = combined_pcd.voxel_down_sample(voxel_size=VOXEL_SIZE)
 
-        pcdpath = os.path.join(self.resourceDir, 'combined_map.pcd')
-        o3d.io.write_point_cloud(pcdpath, combined_pcd)
+        o3d.io.write_point_cloud(BEGIN_PCD, combined_pcd)
         o3d.io.write_point_cloud('combined_map.pcd', combined_pcd)
     
     def trigger_shutdown_and_slam(self):

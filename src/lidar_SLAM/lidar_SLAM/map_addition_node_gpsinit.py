@@ -10,24 +10,22 @@ from datetime import datetime
 from ament_index_python.packages import get_package_share_directory
 import glob
 import open3d as o3d
+import ros2_numpy as rnp
+from sensor_msgs.msg import PointCloud2
 from nav_msgs.msg import Odometry
+from kiss_icp.config import KISSConfig
+from kiss_icp.kiss_icp import KissICP
 from math import sqrt
 import yaml
 import threading
 from lidar_SLAM.keyboardListener import keyboard_listener_thread
 
-class SlamRunnerNode(Node):
-    """
-    A ROS2 node that automates the process of SLAM data collection and execution.
+BEGIN_PCD = str(os.path.join(get_package_share_directory('lidar_SLAM'),
+                   'resource', 'combined_map.pcd'))
 
-    This node performs the following steps:
-    1. On startup, it begins recording a rosbag of a specified LiDAR topic.
-    2. It waits until the user signals to save (s).
-    3. On save, it gracefully stops the rosbag recording, ensuring the bag
-       file is properly saved and closed.
-    4. It then immediately launches the KISS-ICP SLAM pipeline, feeding it the
-       bag file that was just recorded.
-    """
+VOXEL_SIZE = 0.5
+
+class SlamRunnerNode(Node):
     def __init__(self):
         super().__init__('slam_runner_node')
 
@@ -44,13 +42,14 @@ class SlamRunnerNode(Node):
 
         self.get_logger().info(f"Node initialized. Will record topic '{self.lidar_topic_}'.")
         self.get_logger().info(f"Output bag file will be saved at: '{os.path.abspath(self.bag_path_)}'")
-        self.initial_pos_sub = self.create_subscription(Odometry, '/gnss_gt/odometry', self.initialPose, 1)
-        # self.initial_imu_sub = self.create_subscription(Imu, '/imu', self.initialOrient, 1)
+        self.gps_pose_sub = self.create_subscription(Odometry, '/gnss_gt/odometry', self.getGPSpose, 1)
         self.initial_pose = np.eye(4)
-        self.second_pose = np.eye(4)
-        self.initial_pos_gathered = False
-        self.initial_pose_determined = False
         self.bag_process_ = None
+        self.begin_pcd = o3d.io.read_point_cloud(BEGIN_PCD)
+        self.gpsCount = 0
+        self.gpsPoses = np.zeros((3,3))
+        self.gotGPSPos = False
+        self.gotGPSOrient = False
 
     def start_recording(self):
         """
@@ -70,23 +69,39 @@ class SlamRunnerNode(Node):
         self.bag_process_ = subprocess.Popen(command, preexec_fn=os.setsid)
         self.get_logger().info(f"Bag recording process started with PID: {self.bag_process_.pid}")
 
-    def initialPose(self, gnssgt):
-      if not self.initial_pos_gathered:
-        self.initial_pose[0][3] = gnssgt.pose.pose.position.x
-        self.initial_pose[1][3] = gnssgt.pose.pose.position.y
-        self.initial_pose[2][3] = gnssgt.pose.pose.position.z
-        self.get_logger().info("Drive directly forward...")
-        self.initial_pos_gathered = True
-      
-      elif not self.initial_pose_determined:
-        if ((gnssgt.pose.pose.position.x - self.initial_pose[0][3]) ** 2 + 
-            (gnssgt.pose.pose.position.y - self.initial_pose[1][3]) ** 2 + 
-            (gnssgt.pose.pose.position.z - self.initial_pose[2][3]) ** 2) > 25:
-          self.second_pose[0][3] = gnssgt.pose.pose.position.x
-          self.second_pose[1][3] = gnssgt.pose.pose.position.y
-          self.second_pose[2][3] = gnssgt.pose.pose.position.z
-          translationX = self.second_pose[0][3] - self.initial_pose[0][3]
-          translationY = self.second_pose[1][3] - self.initial_pose[1][3]
+    def getGPSpose(self, msg):
+      if not self.gotGPSPos:
+        self.gpsPoses[self.gpsCount][0] = msg.pose.pose.position.x
+        self.gpsPoses[self.gpsCount][1] = msg.pose.pose.position.y
+        self.gpsPoses[self.gpsCount][2] = msg.pose.pose.position.z
+
+        if self.gpsCount > 0:
+            THRESHOLD = 0.1
+            if (self.gpsPoses[self.gpsCount][0] - self.gpsPoses[self.gpsCount - 1][0] > THRESHOLD or
+                self.gpsPoses[self.gpsCount][1] - self.gpsPoses[self.gpsCount - 1][1] > THRESHOLD or
+                self.gpsPoses[self.gpsCount][2] - self.gpsPoses[self.gpsCount - 1][2] > THRESHOLD):
+                self.gpsCount -= 1
+        self.gpsCount += 1
+
+        if self.gpsCount == 3:
+          finalGPSPose = np.mean(self.gpsPoses, axis=0)
+          self.initial_pose[0][3] = finalGPSPose[0]
+          self.initial_pose[1][3] = finalGPSPose[1]
+          self.initial_pose[2][3] = finalGPSPose[2]
+          self.gotGPSPos = True
+          self.get_logger().info("Determined average GPS pos")
+          self.get_logger().info("Drive directly forward...")
+
+      elif not self.gotGPSOrient:
+        if ((msg.pose.pose.position.x - self.initial_pose[0][3]) ** 2 + 
+            (msg.pose.pose.position.y - self.initial_pose[1][3]) ** 2 + 
+            (msg.pose.pose.position.z - self.initial_pose[2][3]) ** 2) > 25:
+          second_pose = np.eye(4)
+          second_pose[0][3] = msg.pose.pose.position.x
+          second_pose[1][3] = msg.pose.pose.position.y
+          second_pose[2][3] = msg.pose.pose.position.z
+          translationX = second_pose[0][3] - self.initial_pose[0][3]
+          translationY = second_pose[1][3] - self.initial_pose[1][3]
           hyp = sqrt(translationX ** 2 + translationY ** 2)
           sinTheta = translationY / hyp
           cosTheta = translationX / hyp
@@ -95,7 +110,7 @@ class SlamRunnerNode(Node):
           self.initial_pose[1][0] = sinTheta
           self.initial_pose[0][1] = -1 * sinTheta
           self.get_logger().info("Full initial pose determined. Press 's' to save when mapping complete.")
-          self.initial_pose_determined = True
+          self.gotGPSOrient = True
 
           listener = threading.Thread(target=keyboard_listener_thread, args=(self,), daemon=True)
           listener.start()
@@ -138,7 +153,7 @@ class SlamRunnerNode(Node):
 
         data["out_dir"] = self.slam_out_path
         data["keypose"] = self.initial_pose.tolist()
-        data["pcdPath"] = ""
+        data["pcdPath"] = BEGIN_PCD
 
         try:
           with open(self.kiss_config_path_, 'w') as file:
@@ -183,15 +198,13 @@ class SlamRunnerNode(Node):
             pcd = o3d.io.read_point_cloud(local_map_file)
             combined_pcd += pcd
 
-        # combined_pcd.transform(self.initial_pose)
-        print(f"Before: {len(combined_pcd.points)}")
-        combined_pcd = combined_pcd.voxel_down_sample(voxel_size=0.5)
-        print(f"After: {len(combined_pcd.points)}")
+        print(f"path: {BEGIN_PCD}")
+        combined_pcd += self.begin_pcd
+        combined_pcd = combined_pcd.voxel_down_sample(voxel_size=VOXEL_SIZE)
 
-        pcdpath = os.path.join(self.resourceDir, 'combined_map.pcd')
-        o3d.io.write_point_cloud(pcdpath, combined_pcd)
+        o3d.io.write_point_cloud(BEGIN_PCD, combined_pcd)
         o3d.io.write_point_cloud('combined_map.pcd', combined_pcd)
-    
+
     def trigger_shutdown_and_slam(self):
         self.stop_recording()
           
@@ -215,7 +228,7 @@ def main(args=None):
         rclpy.spin(node)
 
     except KeyboardInterrupt:
-        node.get_logger().info("KeyboardInterrupt received, initiating shutdown sequence.")
+        node.get_logger().info("KeyboardInterrupt received, shutting down.")
         node.stop_recording()
         node.destroy_node()
 

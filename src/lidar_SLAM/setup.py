@@ -24,7 +24,9 @@ setup(
     entry_points={
         'console_scripts': [
           'localization_node = lidar_SLAM.localization_node:main',
-          'mapping_node = lidar_SLAM.mapping_node:main'
+          'mapping_node = lidar_SLAM.mapping_node:main',
+          'map_addition_node = lidar_SLAM.map_addition_node:main',
+          'map_addition_gpsinit = lidar_SLAM.map_addition_node_gpsinit:main',
         ],
     },
 )
