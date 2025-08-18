@@ -17,7 +17,8 @@ In addition, ```map_addition_gpsinit``` uses the same initial pose gathering sys
 - This pipeline has been tested with vehicle spawner disabled in carla, and using carla_manual_control. Set these in carla launchfile
 
 ## Usage
-- The lidar_SLAM package uses ```combined_map.pcd``` located in ```resource/``` for localization nodes, and writes this file when mapping nodes are run and saved. To replace this manually, ```combined_map.pcd``` must be replaced with another pointcloud file of the same name and extension. Since the file in the build directory is referenced, you must ```colcon build``` if manually replacing the ```combined_map.pcd``` file.
+- The lidar_SLAM package uses ```combined_map.pcd``` located in ```resource/``` for localization nodes, and writes to the current working directory as well as the build resource directory when mapping nodes are run and saved. To update the localization map, ```combined_map.pcd``` must be replaced with another pointcloud file of the same name and extension. Since the file in the build directory is referenced, you must ```colcon build``` when replacing the ```combined_map.pcd``` file.
+  - Essentially, after running a mapping node, copy the pointcloud file from the directory where the node was run to the ```src/lidar_SLAM/resource``` directory
 
 - The localization node is automatically run with navigator when ```launch launches/launch.carla.py``` is executed, but it can also be run by executing ```run lidar_SLAM localization_gpsguess``` (or ```localization_node``` for global registration initial estimate)
   - Rviz should be set up on this branch to show the gnss_gt vector alongside the vector returned by the localization node, but if not:

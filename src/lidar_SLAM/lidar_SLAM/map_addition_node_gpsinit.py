@@ -25,6 +25,8 @@ BEGIN_PCD = str(os.path.join(get_package_share_directory('lidar_SLAM'),
 
 VOXEL_SIZE = 0.5
 
+NUM_GPS_SAMPLES = 3
+
 class SlamRunnerNode(Node):
     def __init__(self):
         super().__init__('slam_runner_node')
@@ -47,9 +49,10 @@ class SlamRunnerNode(Node):
         self.bag_process_ = None
         self.begin_pcd = o3d.io.read_point_cloud(BEGIN_PCD)
         self.gpsCount = 0
-        self.gpsPoses = np.zeros((3,3))
+        self.gpsPoses = np.zeros((NUM_GPS_SAMPLES,3))
         self.gotGPSPos = False
         self.gotGPSOrient = False
+        self.stopMSG = True
 
     def start_recording(self):
         """
@@ -83,7 +86,7 @@ class SlamRunnerNode(Node):
                 self.gpsCount -= 1
         self.gpsCount += 1
 
-        if self.gpsCount == 3:
+        if self.gpsCount == NUM_GPS_SAMPLES:
           finalGPSPose = np.mean(self.gpsPoses, axis=0)
           self.initial_pose[0][3] = finalGPSPose[0]
           self.initial_pose[1][3] = finalGPSPose[1]
@@ -91,29 +94,54 @@ class SlamRunnerNode(Node):
           self.gotGPSPos = True
           self.get_logger().info("Determined average GPS pos")
           self.get_logger().info("Drive directly forward...")
+          self.gpsCount = 0
 
       elif not self.gotGPSOrient:
-        if ((msg.pose.pose.position.x - self.initial_pose[0][3]) ** 2 + 
-            (msg.pose.pose.position.y - self.initial_pose[1][3]) ** 2 + 
-            (msg.pose.pose.position.z - self.initial_pose[2][3]) ** 2) > 25:
-          second_pose = np.eye(4)
-          second_pose[0][3] = msg.pose.pose.position.x
-          second_pose[1][3] = msg.pose.pose.position.y
-          second_pose[2][3] = msg.pose.pose.position.z
-          translationX = second_pose[0][3] - self.initial_pose[0][3]
-          translationY = second_pose[1][3] - self.initial_pose[1][3]
-          hyp = sqrt(translationX ** 2 + translationY ** 2)
-          sinTheta = translationY / hyp
-          cosTheta = translationX / hyp
-          self.initial_pose[0][0] = cosTheta
-          self.initial_pose[1][1] = cosTheta
-          self.initial_pose[1][0] = sinTheta
-          self.initial_pose[0][1] = -1 * sinTheta
-          self.get_logger().info("Full initial pose determined. Press 's' to save when mapping complete.")
-          self.gotGPSOrient = True
+        self.gpsPoses[self.gpsCount][0] = msg.pose.pose.position.x
+        self.gpsPoses[self.gpsCount][1] = msg.pose.pose.position.y
+        self.gpsPoses[self.gpsCount][2] = msg.pose.pose.position.z
 
-          listener = threading.Thread(target=keyboard_listener_thread, args=(self,), daemon=True)
-          listener.start()
+        if self.stopMSG and ((self.gpsPoses[self.gpsCount][0] - self.initial_pose[0][3]) ** 2 + 
+              (self.gpsPoses[self.gpsCount][1] - self.initial_pose[1][3]) ** 2 + 
+              (self.gpsPoses[self.gpsCount][2] - self.initial_pose[2][3]) ** 2) > 25:
+            self.get_logger().info("You seem to be far enough away from your starting point. Come to a complete stop to begin mapping.")
+            self.stopMSG = False
+
+        if self.gpsCount > 0:
+            THRESHOLD = 0.1
+            if (self.gpsPoses[self.gpsCount][0] - self.gpsPoses[self.gpsCount - 1][0] > THRESHOLD or
+                self.gpsPoses[self.gpsCount][1] - self.gpsPoses[self.gpsCount - 1][1] > THRESHOLD or
+                self.gpsPoses[self.gpsCount][2] - self.gpsPoses[self.gpsCount - 1][2] > THRESHOLD):
+                self.gpsCount = -1
+        self.gpsCount += 1
+
+        if self.gpsCount == NUM_GPS_SAMPLES:
+          second_pose = np.eye(4)
+          finalGPSPose = np.mean(self.gpsPoses, axis=0)
+          second_pose[0][3] = finalGPSPose[0]
+          second_pose[1][3] = finalGPSPose[1]
+          second_pose[2][3] = finalGPSPose[2]
+
+          if ((second_pose[0][3] - self.initial_pose[0][3]) ** 2 + 
+              (second_pose[1][3] - self.initial_pose[1][3]) ** 2 + 
+              (second_pose[2][3] - self.initial_pose[2][3]) ** 2) > 25:
+            translationX = second_pose[0][3] - self.initial_pose[0][3]
+            translationY = second_pose[1][3] - self.initial_pose[1][3]
+            hyp = sqrt(translationX ** 2 + translationY ** 2)
+            sinTheta = translationY / hyp
+            cosTheta = translationX / hyp
+            self.initial_pose[0][0] = cosTheta
+            self.initial_pose[1][1] = cosTheta
+            self.initial_pose[1][0] = sinTheta
+            self.initial_pose[0][1] = -1 * sinTheta
+            self.get_logger().info("Full initial pose determined. Press 's' to save when mapping complete.")
+            self.gotGPSOrient = True
+
+            listener = threading.Thread(target=keyboard_listener_thread, args=(self,), daemon=True)
+            listener.start()
+
+          else:
+            self.gpsCount = 0
           
     def stop_recording(self):
         """

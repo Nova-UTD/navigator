@@ -268,7 +268,8 @@ RUN pip3 install \
     pyproject-metadata==0.9.1 \
     pybind11==3.0.0 \
     ninja==1.13.0 \
-    cmake==4.1.0
+    # this version of cmake is being used to build custom kiss-icp, map-closures, kiss-slam libraries.
+    cmake==4.1.0 
 
 # RUN useradd -ms /bin/bash docker
 RUN usermod -a -G dialout root
@@ -277,10 +278,10 @@ RUN usermod -a -G tty root
 
 ENV ROS_VERSION 2
 WORKDIR /
-RUN git clone https://github.com/pulipakaa24/kiss-icp.git && cd kiss-icp && make custom
+RUN git clone https://github.com/Nova-UTD/kiss-icp.git && cd kiss-icp && make custom
 RUN git clone https://github.com/RainerKuemmerle/g2o.git && cd g2o && mkdir build && cd build && cmake .. && make -j && make install
-RUN git clone https://github.com/pulipakaa24/MapClosures.git && cd MapClosures && make custom
-RUN git clone https://github.com/pulipakaa24/kiss-slam.git && cd kiss-slam && make custom
+RUN git clone https://github.com/Nova-UTD/MapClosures.git && cd MapClosures && make custom
+RUN git clone https://github.com/Nova-UTD/kiss-slam.git && cd kiss-slam && make custom
 
 WORKDIR /navigator
 
