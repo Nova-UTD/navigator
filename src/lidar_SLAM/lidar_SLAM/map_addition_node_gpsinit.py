@@ -1,0 +1,264 @@
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+import subprocess
+import numpy as np
+import os
+import signal
+import time
+from datetime import datetime
+from ament_index_python.packages import get_package_share_directory
+import glob
+import open3d as o3d
+import ros2_numpy as rnp
+from sensor_msgs.msg import PointCloud2
+from nav_msgs.msg import Odometry
+from kiss_icp.config import KISSConfig
+from kiss_icp.kiss_icp import KissICP
+from math import sqrt
+import yaml
+import threading
+from lidar_SLAM.keyboardListener import keyboard_listener_thread
+
+BEGIN_PCD = str(os.path.join(get_package_share_directory('lidar_SLAM'),
+                   'resource', 'combined_map.pcd'))
+
+VOXEL_SIZE = 0.5
+
+NUM_GPS_SAMPLES = 3
+
+class SlamRunnerNode(Node):
+    def __init__(self):
+        super().__init__('slam_runner_node')
+
+        self.lidar_topic_ = '/lidar/filtered'
+
+        # Generate a unique name for the bag file based on the current timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        bag_name = f"slam_run_{timestamp}"
+        self.resourceDir = os.path.join(get_package_share_directory('lidar_SLAM'), 'resource')
+        self.bag_path_ = os.path.join(self.resourceDir, bag_name)
+        
+        self.slam_out_path = os.path.abspath(os.path.join(self.resourceDir, 'slam_output'))
+        self.kiss_config_path_ = os.path.join(self.resourceDir, 'kiss_slam.yaml')
+
+        self.get_logger().info(f"Node initialized. Will record topic '{self.lidar_topic_}'.")
+        self.get_logger().info(f"Output bag file will be saved at: '{os.path.abspath(self.bag_path_)}'")
+        self.gps_pose_sub = self.create_subscription(Odometry, '/gnss_gt/odometry', self.getGPSpose, 1)
+        self.initial_pose = np.eye(4)
+        self.bag_process_ = None
+        self.begin_pcd = o3d.io.read_point_cloud(BEGIN_PCD)
+        self.gpsCount = 0
+        self.gpsPoses = np.zeros((NUM_GPS_SAMPLES,3))
+        self.gotGPSPos = False
+        self.gotGPSOrient = False
+        self.stopMSG = True
+
+    def start_recording(self):
+        """
+        Starts the 'ros2 bag record' process as a subprocess.
+        """
+        command = [
+            'ros2', 'bag', 'record',
+            '-o', self.bag_path_,
+            self.lidar_topic_
+        ]
+        self.get_logger().info(f"Starting rosbag recording with command: {' '.join(command)}")
+        
+        # Using preexec_fn=os.setsid creates a new process group.
+        # This allows us to send a signal to the entire process group,
+        # ensuring that the ros2 bag command and any of its children
+        # receive the signal and shut down gracefully.
+        self.bag_process_ = subprocess.Popen(command, preexec_fn=os.setsid)
+        self.get_logger().info(f"Bag recording process started with PID: {self.bag_process_.pid}")
+
+    def getGPSpose(self, msg):
+      if not self.gotGPSPos:
+        self.gpsPoses[self.gpsCount][0] = msg.pose.pose.position.x
+        self.gpsPoses[self.gpsCount][1] = msg.pose.pose.position.y
+        self.gpsPoses[self.gpsCount][2] = msg.pose.pose.position.z
+
+        if self.gpsCount > 0:
+            THRESHOLD = 0.1
+            if (self.gpsPoses[self.gpsCount][0] - self.gpsPoses[self.gpsCount - 1][0] > THRESHOLD or
+                self.gpsPoses[self.gpsCount][1] - self.gpsPoses[self.gpsCount - 1][1] > THRESHOLD or
+                self.gpsPoses[self.gpsCount][2] - self.gpsPoses[self.gpsCount - 1][2] > THRESHOLD):
+                self.gpsCount -= 1
+        self.gpsCount += 1
+
+        if self.gpsCount == NUM_GPS_SAMPLES:
+          finalGPSPose = np.mean(self.gpsPoses, axis=0)
+          self.initial_pose[0][3] = finalGPSPose[0]
+          self.initial_pose[1][3] = finalGPSPose[1]
+          self.initial_pose[2][3] = finalGPSPose[2]
+          self.gotGPSPos = True
+          self.get_logger().info("Determined average GPS pos")
+          self.get_logger().info("Drive directly forward...")
+          self.gpsCount = 0
+
+      elif not self.gotGPSOrient:
+        self.gpsPoses[self.gpsCount][0] = msg.pose.pose.position.x
+        self.gpsPoses[self.gpsCount][1] = msg.pose.pose.position.y
+        self.gpsPoses[self.gpsCount][2] = msg.pose.pose.position.z
+
+        if self.stopMSG and ((self.gpsPoses[self.gpsCount][0] - self.initial_pose[0][3]) ** 2 + 
+              (self.gpsPoses[self.gpsCount][1] - self.initial_pose[1][3]) ** 2 + 
+              (self.gpsPoses[self.gpsCount][2] - self.initial_pose[2][3]) ** 2) > 25:
+            self.get_logger().info("You seem to be far enough away from your starting point. Come to a complete stop to begin mapping.")
+            self.stopMSG = False
+
+        if self.gpsCount > 0:
+            THRESHOLD = 0.1
+            if (self.gpsPoses[self.gpsCount][0] - self.gpsPoses[self.gpsCount - 1][0] > THRESHOLD or
+                self.gpsPoses[self.gpsCount][1] - self.gpsPoses[self.gpsCount - 1][1] > THRESHOLD or
+                self.gpsPoses[self.gpsCount][2] - self.gpsPoses[self.gpsCount - 1][2] > THRESHOLD):
+                self.gpsCount = -1
+        self.gpsCount += 1
+
+        if self.gpsCount == NUM_GPS_SAMPLES:
+          second_pose = np.eye(4)
+          finalGPSPose = np.mean(self.gpsPoses, axis=0)
+          second_pose[0][3] = finalGPSPose[0]
+          second_pose[1][3] = finalGPSPose[1]
+          second_pose[2][3] = finalGPSPose[2]
+
+          if ((second_pose[0][3] - self.initial_pose[0][3]) ** 2 + 
+              (second_pose[1][3] - self.initial_pose[1][3]) ** 2 + 
+              (second_pose[2][3] - self.initial_pose[2][3]) ** 2) > 25:
+            translationX = second_pose[0][3] - self.initial_pose[0][3]
+            translationY = second_pose[1][3] - self.initial_pose[1][3]
+            hyp = sqrt(translationX ** 2 + translationY ** 2)
+            sinTheta = translationY / hyp
+            cosTheta = translationX / hyp
+            self.initial_pose[0][0] = cosTheta
+            self.initial_pose[1][1] = cosTheta
+            self.initial_pose[1][0] = sinTheta
+            self.initial_pose[0][1] = -1 * sinTheta
+            self.get_logger().info("Full initial pose determined. Press 's' to save when mapping complete.")
+            self.gotGPSOrient = True
+
+            listener = threading.Thread(target=keyboard_listener_thread, args=(self,), daemon=True)
+            listener.start()
+
+          else:
+            self.gpsCount = 0
+          
+    def stop_recording(self):
+        """
+        Gracefully stops the rosbag recording process by sending a SIGINT signal.
+        """
+        if self.bag_process_ and self.bag_process_.poll() is None:
+            print("Stopping rosbag recording process...")
+            
+            # Send SIGINT (Ctrl+C) to the process group to trigger a clean shutdown
+            os.killpg(os.getpgid(self.bag_process_.pid), signal.SIGINT)
+            
+            # Wait for the process to terminate
+            self.bag_process_.wait()
+            print("Rosbag recording stopped and file finalized.")
+        else:
+            print("Bag recording process was not running or already stopped.")
+
+    def run_slam(self):
+        """
+        Launches the KISS-ICP pipeline using the recorded bag file.
+        """
+        data = {}
+        if self.kiss_config_path_ and os.path.exists(self.kiss_config_path_):
+            try:
+              with open(self.kiss_config_path_, 'r') as file:
+                loaded_data = yaml.safe_load(file)
+                if loaded_data is not None:
+                    data = loaded_data
+                print(f"File '{self.kiss_config_path_}' loaded successfully.")
+            except yaml.YAMLError as e:
+                print(f"Error parsing YAML from {self.kiss_config_path_}: {e}")
+            except Exception as e:
+                print(f"An unexpected error occurred while loading {self.kiss_config_path_}: {e}")
+                return
+        else:
+            print("No base KISS config file provided. Creating one with just the output directory.")
+
+        data["out_dir"] = self.slam_out_path
+        data["keypose"] = self.initial_pose.tolist()
+        data["pcdPath"] = BEGIN_PCD
+
+        try:
+          with open(self.kiss_config_path_, 'w') as file:
+              yaml.dump(data, file, default_flow_style=False, indent=4)
+          print(f"File '{self.kiss_config_path_}' updated successfully.")
+        except IOError as e:
+            print(f"Error writing to file {self.kiss_config_path_}: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred while writing to {self.kiss_config_path_}: {e}")
+
+        print(f"Wrote SLAM config: {self.kiss_config_path_}")
+        print(f"SLAM output will be saved to: {self.slam_out_path}")
+
+        print("Starting KISS-SLAM pipeline...")
+        # NOTE: The path to the bag file for kiss_icp is the directory itself.
+        command = [
+            'kiss_slam_pipeline',
+            '--config', os.path.abspath(self.kiss_config_path_),
+            '--topic', self.lidar_topic_,
+            os.path.abspath(self.bag_path_)
+        ]
+        print(f"Executing SLAM command: {' '.join(command)}")
+
+        try:
+            # Use subprocess.run as we want to wait for it to complete.
+            result = subprocess.run(command, check=True)
+            if result.returncode == 0:
+                print("KISS-SLAM pipeline finished successfully.")
+            else:
+                 print(f"KISS-SLAM pipeline exited with error code {result.returncode}.")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to execute KISS-SLAM: {e}")
+        except FileNotFoundError:
+            print("The 'kiss_slam_pipeline' command was not found. Is kiss_slam installed?")
+
+        local_maps_dir = os.path.join(self.slam_out_path, 'latest', 'local_maps', 'plys')
+        local_map_files = sorted(glob.glob(local_maps_dir + '/*.ply'))
+
+        combined_pcd = o3d.geometry.PointCloud()
+
+        for local_map_file in local_map_files:
+            pcd = o3d.io.read_point_cloud(local_map_file)
+            combined_pcd += pcd
+
+        print(f"path: {BEGIN_PCD}")
+        combined_pcd += self.begin_pcd
+        combined_pcd = combined_pcd.voxel_down_sample(voxel_size=VOXEL_SIZE)
+
+        o3d.io.write_point_cloud(BEGIN_PCD, combined_pcd)
+        o3d.io.write_point_cloud('combined_map.pcd', combined_pcd)
+
+    def trigger_shutdown_and_slam(self):
+        self.stop_recording()
+          
+        # Give a moment for the file system to catch up if needed
+        time.sleep(1)
+
+        # 2. Run the SLAM pipeline on the completed bag file.
+        self.run_slam()
+
+        # 3. Clean up the node.
+        self.destroy_node()
+
+        rclpy.shutdown()
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = None
+    try:
+        node = SlamRunnerNode()
+        node.start_recording()
+        rclpy.spin(node)
+
+    except KeyboardInterrupt:
+        node.get_logger().info("KeyboardInterrupt received, shutting down.")
+        node.stop_recording()
+        node.destroy_node()
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,16 @@
+adaptive_threshold:
+  fixed_threshold: null
+  initial_threshold: 2.0
+  min_motion_th: 0.1
+data:
+  deskew: true
+  max_range: 100.0
+  min_range: 0.0
+mapping:
+  max_points_per_voxel: 20
+  voxel_size: 1.0
+out_dir: slam_output
+registration:
+  convergence_criterion: 0.0001
+  max_num_iterations: 500
+  max_num_threads: 0

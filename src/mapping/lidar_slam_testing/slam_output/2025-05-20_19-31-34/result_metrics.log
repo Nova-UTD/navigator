@@ -1,0 +1,8 @@
+────────────────── Results for RosbagDataset Sequence rosbag2_2025_05_19-19_43_05 ──────────────────
++--------------------------+-------+----------+
+|                   Metric | Value | Units    |
++==========================+=======+==========+
+|        Average Frequency |  404  | Hz       |
+|          Average Runtime |   3   | ms       |
+| Number of closures found |   5   | closures |
++--------------------------+-------+----------+

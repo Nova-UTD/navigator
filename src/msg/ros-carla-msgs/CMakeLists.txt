@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.10)
 project(carla_msgs)
 
 find_package(ros_environment REQUIRED)
@@ -44,7 +44,7 @@ if(${ROS_VERSION} EQUAL 1)
 
 elseif(${ROS_VERSION} EQUAL 2)
 
-  cmake_minimum_required(VERSION 3.5)
+  cmake_minimum_required(VERSION 3.10)
 
   if(NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
