@@ -19,7 +19,7 @@ from std_msgs.msg import String
 from geometry_msgs.msg import Pose
 
 import math
-from typing import Optional
+from typing import Optional, Tuple
 
 from autonomous_cruise.lateral_controller import PurePursuitController
 from autonomous_cruise.longitudinal_controller import AdaptiveLongitudinalController
