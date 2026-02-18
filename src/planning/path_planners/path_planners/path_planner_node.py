@@ -228,12 +228,32 @@ class PathPlannerNode(Node):
         start_i = int(round(self.origin_y / self.grid_res))
         start_j = int(round(self.origin_x / self.grid_res))
 
+        if start_i < 0:
+            start_i = 0
+        elif start_i >= self.costmap.info.height / self.grid_res:
+            start_i = int(self.costmap.info.height / self.grid_res) - 1
+
+        if start_j < 0:
+            start_j = 0
+        elif start_j >= self.costmap.info.width / self.grid_res:
+            start_j = int(self.costmap.info.width / self.grid_res) - 1
+
         goal_i = int(
             round((self.path_goal.pose.position.y + self.origin_y) / self.grid_res)
         )
         goal_j = int(
             round((self.path_goal.pose.position.x + self.origin_x) / self.grid_res)
         )
+
+        if goal_i < 0:
+            goal_i = 0
+        elif goal_i >= self.costmap.info.height / self.grid_res:
+            goal_i = int(self.costmap.info.height / self.grid_res) - 1
+
+        if goal_j < 0:
+            goal_j = 0
+        elif goal_j >= self.costmap.info.width / self.grid_res:
+            goal_j = int(self.costmap.info.width / self.grid_res) - 1
 
         # Prepare costmap data
         data_dim = (self.costmap.info.height / self.grid_res) * (self.costmap.info.width / self.grid_res)
@@ -246,7 +266,7 @@ class PathPlannerNode(Node):
             self.costmap.data = self.costmap.data[:data_dim]
 
         costmap_np = np.asarray(self.costmap.data, dtype=np.int32).reshape(
-            self.costmap.info.height, self.costmap.info.width
+            int(self.costmap.info.height / self.grid_res), int(self.costmap.info.width / self.grid_res)
         )
 
         # Pad obstacles for safety
