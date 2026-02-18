@@ -195,16 +195,23 @@ class PathPlannerNode(Node):
             self.get_logger().warning("Incoming cost map dimensions were zero.")
             return
         self.costmap = msg
-        self.get_logger().debug(f"Received costmap: {msg.info.width}x{msg.info.height}")
 
     def path_goal_callback(self, msg: PoseStamped):
         self.path_goal = msg
-        self.get_logger().debug(
-            f"Received goal: ({msg.pose.position.x}, {msg.pose.position.y})"
-        )
+
+    def scale_grid_numpy(self, data, old_h, old_w, new_h, new_w):
+        old = np.array(data).reshape(old_h, old_w)
+
+        zoom_y = new_h / old_h
+        zoom_x = new_w / old_w
+
+        # Nearest neighbor so obstacles remain discrete
+        new = scipy.ndimage.zoom(old, (zoom_y, zoom_x), order=0)
+
+        return new.astype(np.int32)
+
 
     def generate_path(self):
-        """Main function to generate the path using the selected planner."""
         if self.costmap is None:
             self.get_logger().warning("Have not received costmap yet...")
             return
@@ -212,41 +219,62 @@ class PathPlannerNode(Node):
             self.get_logger().warning("Have not received goal for path yet...")
             return
 
-        # Check if we're already at the goal
-        if (
-            np.sqrt(
-                self.path_goal.pose.position.x**2 + self.path_goal.pose.position.y**2
-            )
-            < 0.5
-        ):
-            self.get_logger().info(
-                f"Vehicle has reached the goal ({self.path_goal.pose.position.x:.2f},{self.path_goal.pose.position.y:.2f})!"
-            )
+        resolution = self.costmap.info.resolution
+        raw_height = self.costmap.info.height
+        raw_width = self.costmap.info.width
+
+        if len(self.costmap.data) != raw_height * raw_width:
+            self.get_logger().error("Costmap size mismatch.")
             return
 
-        # Convert from ROS coordinates to grid indices
-        start_i = int(round(self.origin_y / self.grid_res))
-        start_j = int(round(self.origin_x / self.grid_res))
+        # ----------------------------
+        # SCALE MAP TO 60m x 60m
+        # ----------------------------
+        target_cells = int(60.0 / resolution)
 
-        goal_i = int(
-            round((self.path_goal.pose.position.y + self.origin_y) / self.grid_res)
+        costmap_np = np.asarray(self.costmap.data, dtype=np.int32).reshape(raw_height, raw_width)
+
+        if raw_height != target_cells or raw_width != target_cells:
+            costmap_np = self.scale_grid_numpy(
+                self.costmap.data,
+                raw_height,
+                raw_width,
+                target_cells,
+                target_cells
+            )
+
+        height, width = costmap_np.shape
+
+        # ----------------------------
+        # Compute start and goal AFTER scaling
+        # ----------------------------
+
+        start_i = int(round(self.origin_y / resolution))
+        start_j = int(round(self.origin_x / resolution))
+
+        goal_i = int(round((self.path_goal.pose.position.y + self.origin_y) / resolution))
+        goal_j = int(round((self.path_goal.pose.position.x + self.origin_x) / resolution))
+
+        # Clamp using SCALED dimensions
+        start_i = max(0, min(start_i, height - 1))
+        start_j = max(0, min(start_j, width - 1))
+        goal_i = max(0, min(goal_i, height - 1))
+        goal_j = max(0, min(goal_j, width - 1))
+
+        # ----------------------------
+        # Pad obstacles
+        # ----------------------------
+        padded_costmap = pad_obstacles(
+            costmap_np,
+            self.obstacle_threshold,
+            self.obstacle_padding
         )
-        goal_j = int(
-            round((self.path_goal.pose.position.x + self.origin_x) / self.grid_res)
-        )
 
-        # Prepare costmap data
-        costmap_np = np.asarray(self.costmap.data, dtype=np.int32).reshape(
-            self.costmap.info.height, self.costmap.info.width
-        )
-
-        # Pad obstacles for safety
-        padded_costmap = pad_obstacles(costmap_np, self.obstacle_threshold, self.obstacle_padding)
-
-        # Plan path using the selected planner
+        # ----------------------------
+        # Run Planner
+        # ----------------------------
         path = None
-        
-        # Different planners have slightly different interfaces, handle each case
+
         if isinstance(self.planner, ARAStarPlanner):
             self.planner.s_start = (start_i, start_j)
             self.planner.s_goal = (goal_i, goal_j)
@@ -254,65 +282,71 @@ class PathPlannerNode(Node):
             self.planner.obstacle_threshold = self.obstacle_threshold
             self.planner.create_graph_from_costmap()
             path = self.planner.arastar()
-            
+
         elif isinstance(self.planner, DijkstraPathPlanner):
-            path = self.planner.shortest_path(padded_costmap, (start_i, start_j), (goal_i, goal_j), self.obstacle_threshold)
-            
+            path = self.planner.shortest_path(
+                padded_costmap,
+                (start_i, start_j),
+                (goal_i, goal_j),
+                self.obstacle_threshold
+            )
+
         elif isinstance(self.planner, DPPathPlanner):
-            # For DP planner, we need to set parameters and run value iteration
             self.planner.costmap_data = padded_costmap
             self.planner.obstacle_threshold = self.obstacle_threshold
             success = self.planner.run_value_iteration(start_i, start_j, goal_i, goal_j)
             if success:
-                path = self.planner.extract_path((start_i, start_j), (goal_i, goal_j))
-                
+                path = self.planner.extract_path(
+                    (start_i, start_j),
+                    (goal_i, goal_j)
+                )
+
         elif isinstance(self.planner, NeuralPathPlanner):
-            # Neural network planner has a different interface
-            path = self.planner.predict_path(padded_costmap, (start_i, start_j), (goal_i, goal_j))
-            
+            path = self.planner.predict_path(
+                padded_costmap,
+                (start_i, start_j),
+                (goal_i, goal_j)
+            )
+
         elif isinstance(self.planner, TRRTStarPathPlanner):
-            # TRRT* planner has a specific method
-            path = self.planner.trrtstar_path(padded_costmap, (start_i, start_j), (goal_i, goal_j), self.obstacle_threshold)
+            path = self.planner.trrtstar_path(
+                padded_costmap,
+                (start_i, start_j),
+                (goal_i, goal_j),
+                self.obstacle_threshold
+            )
 
         if path is None or len(path) == 0:
             self.get_logger().warning("!!! Pathfinding returned a path as None !!!")
-            self.get_logger().debug(f"No path for ({start_i},{start_j})-->({goal_i},{goal_j})")
             return
 
-        # Apply path smoothing
-        path = rolling_smoothing(path, look_ahead=self.smoothing_look_ahead, depth=self.smoothing_depth)
-        
-        self.get_logger().debug(
-            f"Path ({start_i},{start_j})-->({goal_i},{goal_j}) returned with {len(path)} elements"
+        # ----------------------------
+        # Smooth Path
+        # ----------------------------
+        path = rolling_smoothing(
+            path,
+            look_ahead=self.smoothing_look_ahead,
+            depth=self.smoothing_depth
         )
 
-        # Convert path to ROS message
+        # ----------------------------
+        # Convert to ROS Path
+        # ----------------------------
         path_msg = Path()
         path_msg.header.stamp = self.clock.clock
         path_msg.header.frame_id = "base_link"
-        path_msg.poses = []
 
-        for i in range(len(path)):
+        for node in path:
             p = PoseStamped()
             p.header.stamp = self.clock.clock
             p.header.frame_id = "base_link"
 
-            # Convert grid coordinates back to base_link frame
-            # Note: Different planners may return paths in different formats (i,j) vs (j,i)
-            # Handle both cases by checking the path format
-            if isinstance(path[i], tuple) and len(path[i]) == 2:
-                # Most planners return (i, j) format
-                p.pose.position.x = path[i][1] * self.grid_res - self.origin_x
-                p.pose.position.y = path[i][0] * self.grid_res - self.origin_y
-            else:
-                # Some planners might return a different format
-                p.pose.position.x = path[i][1] * self.grid_res - self.origin_x
-                p.pose.position.y = path[i][0] * self.grid_res - self.origin_y
-                
+            p.pose.position.x = node[1] * resolution - self.origin_x
+            p.pose.position.y = node[0] * resolution - self.origin_y
             p.pose.position.z = 0.0
+
             path_msg.poses.append(p)
 
-        # Publish the path
         self.path_pub.publish(path_msg)
 
 
