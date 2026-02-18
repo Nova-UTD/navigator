@@ -14,6 +14,7 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 import time
 import yaml
+import cv2
 
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import OccupancyGrid
@@ -339,53 +340,16 @@ class GridSummationNode(Node):
             steering_cost_msg = OccupancyGrid()
             steering_cost_msg.info.map_load_time = self.clock.clock
             steering_cost_msg.info.resolution = data['occupancy_grids']['resolution']
-            steering_cost_msg.info.width = steering_cost.shape[1]
-            steering_cost_msg.info.height = steering_cost.shape[0]
             steering_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
             steering_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
             steering_cost_msg.header.stamp = self.clock.clock
             steering_cost_msg.header.frame_id = 'base_link'
-            steering_cost_msg.data = steering_cost.astype(np.int8).flatten().tolist()
 
-            # Resize occupancy grid to match size specified in config file
-            if steering_cost_msg.info.height != data['occupancy_grids']['length']:
-                diff = (data['occupancy_grids']['length'] - steering_cost_msg.info.height) / steering_cost_msg.info.resolution
-                diff = int(diff)  # Convert to integer
-                
-                if diff < 0:
-                    steering_cost_msg.data = steering_cost_msg.data[:int(diff * steering_cost_msg.info.width)]
-                elif diff > 0:
-                    steering_cost_msg.data.extend([-1] * int(diff * steering_cost_msg.info.width))
-                
-                steering_cost_msg.info.height = int(data['occupancy_grids']['length'])
+            resized_grid = cv2.resize(steering_cost, (60, 60), interpolation=cv2.INTER_NEAREST)
+            steering_cost_msg.data = resized_grid.astype(np.int8).flatten().tolist()
+            steering_cost_msg.info.width = int(data['occupancy_grids']['width'])
+            steering_cost_msg.info.height = int(data['occupancy_grids']['length'])
             
-            if steering_cost_msg.info.width != data['occupancy_grids']['width']:
-                diff = (data['occupancy_grids']['width'] - steering_cost_msg.info.width) / steering_cost_msg.info.resolution     
-                diff = int(diff)  # Convert to integer
-            
-                if diff < 0:
-                    new_grid = [-1] * int(data['occupancy_grids']['width'] * steering_cost_msg.info.height)
-                    offset = int(diff / 2 * -1)
-                    
-                    for i in range(int(steering_cost_msg.info.height)):
-                        start = int(i * data['occupancy_grids']['width'] + offset)
-                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
-
-                        new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = steering_cost_msg.data[start:end]
-
-                    steering_cost_msg.data = new_grid
-
-                elif diff > 0:
-                    new_grid = [-1] * int(data['occupancy_grids']['width'] * steering_cost_msg.info.height)
-                    offset = int(diff / 2)
-                    for i in range(int(steering_cost_msg.info.height)):
-                        start = int(i * data['occupancy_grids']['width'] + offset)
-                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
-                        new_grid[start:end] = steering_cost_msg.data[int(i * steering_cost_msg.info.width):int((i + 1) * steering_cost_msg.info.width)]
-                    steering_cost_msg.data = new_grid
-            
-                steering_cost_msg.info.width = int(data['occupancy_grids']['width'])
-
             self.steering_cost_pub.publish(steering_cost_msg)
 
             speed_cost_msg = OccupancyGrid()
