@@ -307,6 +307,12 @@ class GridSummationNode(Node):
             if grid_name == 'occupancy' or grid_name == 'future_occupancy':
                 weighted_grid_arr = self.resizeOccupancyGrid(weighted_grid_arr)
 
+            if weighted_grid_arr.shape != steering_cost.shape:
+                steering_cost = np.zeros(weighted_grid_arr.shape)
+
+            if weighted_grid_arr.shape != speed_cost.shape:
+                speed_cost = np.zeros(weighted_grid_arr.shape)
+
             if grid_name == 'drivable':
                 steering_cost = np.maximum( steering_cost , weighted_grid_arr )
             elif grid_name == 'junction':
