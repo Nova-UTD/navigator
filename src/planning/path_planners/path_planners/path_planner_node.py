@@ -236,7 +236,7 @@ class PathPlannerNode(Node):
         )
 
         # Prepare costmap data
-        data_dim = self.costmap.info.height * self.costmap.info.width
+        data_dim = (self.costmap.info.height / self.grid_res) * (self.costmap.info.width / self.grid_res)
         data_dim = int(data_dim)
 
         if (len(self.costmap.data) < data_dim):
