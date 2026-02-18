@@ -279,6 +279,15 @@ class GridSummationNode(Node):
             if grid is None or len(grid.data) == 0:
                 print("GRID NOT FOUND")
                 continue
+
+            data_dim = grid.info.height * grid.info.width
+            data_dim = int(data_dim)
+
+            if (len(grid.data) < data_dim):
+                for i in range(data_dim - len(grid.data)):
+                    grid.data.append(0)
+            elif (len(grid.data) > data_dim):
+                grid.data = grid.data[:data_dim]
             
             stale = self.checkForStaleness(grid)
             if stale > 0:
