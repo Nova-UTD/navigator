@@ -280,7 +280,7 @@ class GridSummationNode(Node):
                 print("GRID NOT FOUND")
                 continue
 
-            data_dim = (grid.info.height / grid.info.resolution) * (grid.info.width / grid.info.resolution)
+            data_dim = grid.info.height * grid.info.width
             data_dim = int(data_dim)
 
             if (len(grid.data) < data_dim):
