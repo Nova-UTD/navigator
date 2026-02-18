@@ -236,6 +236,15 @@ class PathPlannerNode(Node):
         )
 
         # Prepare costmap data
+        data_dim = self.costmap.info.height * self.costmap.info.width
+        data_dim = int(data_dim)
+
+        if (len(self.costmap.data) < data_dim):
+            for i in range(data_dim - len(self.costmap.data)):
+                self.costmap.data.append(0)
+        elif (len(self.costmap.data) > data_dim):
+            self.costmap.data = self.costmap.data[:data_dim]
+
         costmap_np = np.asarray(self.costmap.data, dtype=np.int32).reshape(
             self.costmap.info.height, self.costmap.info.width
         )
