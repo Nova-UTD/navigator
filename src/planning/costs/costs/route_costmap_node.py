@@ -87,7 +87,7 @@ class RouteCostmapNode(Node):
     # TODO: currently implemented, the route cannot be changed once it is first received
     def routeCb(self, msg: Path):
         if self.route is None:
-            self.get_logger().debug('Received the route.')
+            self.get_logger().info('Received the route.')
             self.route = msg.poses
             self.route_remaining = msg.poses
 
@@ -191,7 +191,7 @@ class RouteCostmapNode(Node):
             
             # self.get_logger().info('\n'+'\n'.join([ '%1.2f, %1.2f' % (gridxs[i],gridys[i]) for i in range(len(gridxs))] ) )
             self.get_logger().debug('grid route has %i points' % len(gridxs))
-            self.get_logger().debug('path goal point:  %1.2f, %1.2f' % goal )
+            #self.get_logger().debug('path goal point:  %1.2f, %1.2f' % goal )
 
             # If we have only 1 or 0 in the list, there isn't really anything to show
             if len(gridxs) < 2:
@@ -332,6 +332,7 @@ class RouteCostmapNode(Node):
                 route_cost_msg.data = new_grid
 
         self.route_dist_grid_pub.publish(route_cost_msg)
+        self.get_logger().info('Published route costmap with goal at %1.2f, %1.2f' % goal )
 
     def is_within_costmap(self, x, y):
         # Open the config file
