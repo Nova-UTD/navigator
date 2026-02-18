@@ -275,157 +275,152 @@ class GridSummationNode(Node):
                  ('junction', self.junction_grid, JUNCTION_GRID_SCALE)
                 ] 
 
-        try:
-            for grid_name, grid, scale in grids:
-                if grid is None or len(grid.data) == 0:
-                    print("GRID NOT FOUND")
-                    continue
-                
-                stale = self.checkForStaleness(grid)
-                if stale > 0:
-                    ff_grid = self.fastforward(grid)
-                    weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
-                else:
-                    ff_grid = occupancygrid_to_numpy(grid)
-                    if grid_name == 'occupancy' or grid_name == 'future_occupancy':
-                        ff_grid = self.resizeOccupancyGrid(ff_grid)
-                    weighted_grid_arr = ff_grid*scale
-
-                if isinstance(ff_grid, np.ndarray):
-                    weighted_grid_arr = self.getWeightedArrayFromNumpy(ff_grid, scale)
-                else:
-                    weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
-                
+        for grid_name, grid, scale in grids:
+            if grid is None or len(grid.data) == 0:
+                print("GRID NOT FOUND")
+                continue
+            
+            stale = self.checkForStaleness(grid)
+            if stale > 0:
+                ff_grid = self.fastforward(grid)
+                weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
+            else:
+                ff_grid = occupancygrid_to_numpy(grid)
                 if grid_name == 'occupancy' or grid_name == 'future_occupancy':
-                    weighted_grid_arr = self.resizeOccupancyGrid(weighted_grid_arr)
+                    ff_grid = self.resizeOccupancyGrid(ff_grid)
+                weighted_grid_arr = ff_grid*scale
 
-                if grid_name == 'drivable':
-                    steering_cost = np.maximum( steering_cost , weighted_grid_arr )
-                elif grid_name == 'junction':
-                    speed_cost = np.maximum( speed_cost , weighted_grid_arr )
-                else:
-                    steering_cost = np.maximum( steering_cost , weighted_grid_arr )
-
-            # Cap this to 100
-            steering_cost = np.clip(steering_cost, 0, 100)
-            speed_cost = np.clip(speed_cost, 0, 100)
-
-            # Open the config file
-            try:
-                with open(self.file_path, 'r') as file:
-                    data = yaml.safe_load(file)
-            except FileNotFoundError:
-                print("Error: config.yaml not found.")
-            except yaml.YAMLError as e:
-                print(f"Error parsing YAML file: {e}")
-
-            # Publish as an OccupancyGrid
-            steering_cost_msg = OccupancyGrid()
-            steering_cost_msg.info.map_load_time = self.clock.clock
-            steering_cost_msg.info.resolution = data['occupancy_grids']['resolution']
-            steering_cost_msg.info.width = steering_cost.shape[1]
-            steering_cost_msg.info.height = steering_cost.shape[0]
-            steering_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
-            steering_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
-            steering_cost_msg.header.stamp = self.clock.clock
-            steering_cost_msg.header.frame_id = 'base_link'
-            steering_cost_msg.data = steering_cost.astype(np.int8).flatten().tolist()
-
-            # Resize occupancy grid to match size specified in config file
-            if steering_cost_msg.info.height != data['occupancy_grids']['length']:
-                diff = (data['occupancy_grids']['length'] - steering_cost_msg.info.height) / steering_cost_msg.info.resolution
-                diff = int(diff)  # Convert to integer
-                
-                if diff < 0:
-                    steering_cost_msg.data = steering_cost_msg.data[:int(diff * steering_cost_msg.info.width)]
-                elif diff > 0:
-                    steering_cost_msg.data.extend([-1] * int(diff * steering_cost_msg.info.width))
-                
-                steering_cost_msg.info.height = int(data['occupancy_grids']['length'])
+            if isinstance(ff_grid, np.ndarray):
+                weighted_grid_arr = self.getWeightedArrayFromNumpy(ff_grid, scale)
+            else:
+                weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
             
-            if steering_cost_msg.info.width != data['occupancy_grids']['width']:
-                diff = (data['occupancy_grids']['width'] - steering_cost_msg.info.width) / steering_cost_msg.info.resolution     
-                diff = int(diff)  # Convert to integer
+            if grid_name == 'occupancy' or grid_name == 'future_occupancy':
+                weighted_grid_arr = self.resizeOccupancyGrid(weighted_grid_arr)
+
+            if grid_name == 'drivable':
+                steering_cost = np.maximum( steering_cost , weighted_grid_arr )
+            elif grid_name == 'junction':
+                speed_cost = np.maximum( speed_cost , weighted_grid_arr )
+            else:
+                steering_cost = np.maximum( steering_cost , weighted_grid_arr )
+
+        # Cap this to 100
+        steering_cost = np.clip(steering_cost, 0, 100)
+        speed_cost = np.clip(speed_cost, 0, 100)
+
+        # Open the config file
+        try:
+            with open(self.file_path, 'r') as file:
+                data = yaml.safe_load(file)
+        except FileNotFoundError:
+            print("Error: config.yaml not found.")
+        except yaml.YAMLError as e:
+            print(f"Error parsing YAML file: {e}")
+
+        # Publish as an OccupancyGrid
+        steering_cost_msg = OccupancyGrid()
+        steering_cost_msg.info.map_load_time = self.clock.clock
+        steering_cost_msg.info.resolution = data['occupancy_grids']['resolution']
+        steering_cost_msg.info.width = steering_cost.shape[1]
+        steering_cost_msg.info.height = steering_cost.shape[0]
+        steering_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
+        steering_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
+        steering_cost_msg.header.stamp = self.clock.clock
+        steering_cost_msg.header.frame_id = 'base_link'
+        steering_cost_msg.data = steering_cost.astype(np.int8).flatten().tolist()
+
+        # Resize occupancy grid to match size specified in config file
+        if steering_cost_msg.info.height != data['occupancy_grids']['length']:
+            diff = (data['occupancy_grids']['length'] - steering_cost_msg.info.height) / steering_cost_msg.info.resolution
+            diff = int(diff)  # Convert to integer
             
-                if diff < 0:
-                    new_grid = [-1] * int(data['occupancy_grids']['width'] * steering_cost_msg.info.height)
-                    offset = int(diff / 2 * -1)
-                    
-                    for i in range(int(steering_cost_msg.info.height)):
-                        start = int(i * data['occupancy_grids']['width'] + offset)
-                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
-
-                        new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = steering_cost_msg.data[start:end]
-
-                    steering_cost_msg.data = new_grid
-
-                elif diff > 0:
-                    new_grid = [-1] * int(data['occupancy_grids']['width'] * steering_cost_msg.info.height)
-                    offset = int(diff / 2)
-                    for i in range(int(steering_cost_msg.info.height)):
-                        start = int(i * data['occupancy_grids']['width'] + offset)
-                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
-                        new_grid[start:end] = steering_cost_msg.data[int(i * steering_cost_msg.info.width):int((i + 1) * steering_cost_msg.info.width)]
-                    steering_cost_msg.data = new_grid
+            if diff < 0:
+                steering_cost_msg.data = steering_cost_msg.data[:int(diff * steering_cost_msg.info.width)]
+            elif diff > 0:
+                steering_cost_msg.data.extend([-1] * int(diff * steering_cost_msg.info.width))
             
-                steering_cost_msg.info.width = int(data['occupancy_grids']['width'])
-
-            self.steering_cost_pub.publish(steering_cost_msg)
-
-            speed_cost_msg = OccupancyGrid()
-            speed_cost_msg.info.map_load_time = self.clock.clock
-            speed_cost_msg.info.resolution = data['occupancy_grids']['resolution']
-            speed_cost_msg.info.width = speed_cost.shape[1]
-            speed_cost_msg.info.height = speed_cost.shape[0]
-            speed_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
-            speed_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
-            speed_cost_msg.header.stamp = self.clock.clock
-            speed_cost_msg.header.frame_id = 'base_link'
-            speed_cost_msg.data = speed_cost.astype(np.int8).flatten().tolist()
-
-            # Resize occupancy grid to match size specified in config file
-            if speed_cost_msg.info.height != data['occupancy_grids']['length']:
-                diff = (data['occupancy_grids']['length'] - speed_cost_msg.info.height) / speed_cost_msg.info.resolution
-                diff = int(diff)  # Convert to integer
-                
-                if diff < 0:
-                    speed_cost_msg.data = speed_cost_msg.data[:int(diff * speed_cost_msg.info.width)]
-                elif diff > 0:
-                    speed_cost_msg.data.extend([-1] * int(diff * speed_cost_msg.info.width))
-                
-                speed_cost_msg.info.height = int(data['occupancy_grids']['length'])
-            
-            if speed_cost_msg.info.width != data['occupancy_grids']['width']:
-                diff = (data['occupancy_grids']['width'] - speed_cost_msg.info.width) / speed_cost_msg.info.resolution 
-                diff = int(diff)  # Convert to integer
-            
-                if diff < 0:
-                    new_grid = [-1] * int(data['occupancy_grids']['width'] * speed_cost_msg.info.height)
-                    offset = int(diff / 2 * -1)
-                    
-                    for i in range(int(speed_cost_msg.info.height)):
-                        start = int(i * data['occupancy_grids']['width'] + offset)
-                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
-
-                        new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = speed_cost_msg.data[start:end]
-
-                    speed_cost_msg.data = new_grid
-                elif diff > 0:
-                    new_grid = [-1] * int(data['occupancy_grids']['width'] * speed_cost_msg.info.height)
-                    offset = int(diff / 2)
-                    for i in range(int(speed_cost_msg.info.height)):
-                        start = int(i * data['occupancy_grids']['width'] + offset)
-                        end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
-                        new_grid[start:end] = speed_cost_msg.data[int(i * speed_cost_msg.info.width):int((i + 1) * speed_cost_msg.info.width)]
-                    speed_cost_msg.data = new_grid
-            
-                speed_cost_msg.info.width = int(data['occupancy_grids']['width'])
-
-            self.speed_cost_pub.publish(speed_cost_msg)
+            steering_cost_msg.info.height = int(data['occupancy_grids']['length'])
         
-        except(Exception) as e:
-            self.get_logger().warn('Error composing aggregate cost map - likely waiting for Transform Buffer.')
-            self.get_logger().warn(str(e))
+        if steering_cost_msg.info.width != data['occupancy_grids']['width']:
+            diff = (data['occupancy_grids']['width'] - steering_cost_msg.info.width) / steering_cost_msg.info.resolution     
+            diff = int(diff)  # Convert to integer
+        
+            if diff < 0:
+                new_grid = [-1] * int(data['occupancy_grids']['width'] * steering_cost_msg.info.height)
+                offset = int(diff / 2 * -1)
+                
+                for i in range(int(steering_cost_msg.info.height)):
+                    start = int(i * data['occupancy_grids']['width'] + offset)
+                    end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+
+                    new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = steering_cost_msg.data[start:end]
+
+                steering_cost_msg.data = new_grid
+
+            elif diff > 0:
+                new_grid = [-1] * int(data['occupancy_grids']['width'] * steering_cost_msg.info.height)
+                offset = int(diff / 2)
+                for i in range(int(steering_cost_msg.info.height)):
+                    start = int(i * data['occupancy_grids']['width'] + offset)
+                    end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+                    new_grid[start:end] = steering_cost_msg.data[int(i * steering_cost_msg.info.width):int((i + 1) * steering_cost_msg.info.width)]
+                steering_cost_msg.data = new_grid
+        
+            steering_cost_msg.info.width = int(data['occupancy_grids']['width'])
+
+        self.steering_cost_pub.publish(steering_cost_msg)
+
+        speed_cost_msg = OccupancyGrid()
+        speed_cost_msg.info.map_load_time = self.clock.clock
+        speed_cost_msg.info.resolution = data['occupancy_grids']['resolution']
+        speed_cost_msg.info.width = speed_cost.shape[1]
+        speed_cost_msg.info.height = speed_cost.shape[0]
+        speed_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
+        speed_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
+        speed_cost_msg.header.stamp = self.clock.clock
+        speed_cost_msg.header.frame_id = 'base_link'
+        speed_cost_msg.data = speed_cost.astype(np.int8).flatten().tolist()
+
+        # Resize occupancy grid to match size specified in config file
+        if speed_cost_msg.info.height != data['occupancy_grids']['length']:
+            diff = (data['occupancy_grids']['length'] - speed_cost_msg.info.height) / speed_cost_msg.info.resolution
+            diff = int(diff)  # Convert to integer
+            
+            if diff < 0:
+                speed_cost_msg.data = speed_cost_msg.data[:int(diff * speed_cost_msg.info.width)]
+            elif diff > 0:
+                speed_cost_msg.data.extend([-1] * int(diff * speed_cost_msg.info.width))
+            
+            speed_cost_msg.info.height = int(data['occupancy_grids']['length'])
+        
+        if speed_cost_msg.info.width != data['occupancy_grids']['width']:
+            diff = (data['occupancy_grids']['width'] - speed_cost_msg.info.width) / speed_cost_msg.info.resolution 
+            diff = int(diff)  # Convert to integer
+        
+            if diff < 0:
+                new_grid = [-1] * int(data['occupancy_grids']['width'] * speed_cost_msg.info.height)
+                offset = int(diff / 2 * -1)
+                
+                for i in range(int(speed_cost_msg.info.height)):
+                    start = int(i * data['occupancy_grids']['width'] + offset)
+                    end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+
+                    new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = speed_cost_msg.data[start:end]
+
+                speed_cost_msg.data = new_grid
+            elif diff > 0:
+                new_grid = [-1] * int(data['occupancy_grids']['width'] * speed_cost_msg.info.height)
+                offset = int(diff / 2)
+                for i in range(int(speed_cost_msg.info.height)):
+                    start = int(i * data['occupancy_grids']['width'] + offset)
+                    end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
+                    new_grid[start:end] = speed_cost_msg.data[int(i * speed_cost_msg.info.width):int((i + 1) * speed_cost_msg.info.width)]
+                speed_cost_msg.data = new_grid
+        
+            speed_cost_msg.info.width = int(data['occupancy_grids']['width'])
+
+        self.speed_cost_pub.publish(speed_cost_msg)
         
 """
         #Publish Egma
