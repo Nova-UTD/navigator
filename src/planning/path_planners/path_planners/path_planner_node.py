@@ -203,6 +203,18 @@ class PathPlannerNode(Node):
             f"Received goal: ({msg.pose.position.x}, {msg.pose.position.y})"
         )
 
+    def scale_grid_numpy(self, data):
+        old = np.array(data).reshape(60, 60)
+        new = np.zeros((150, 150), dtype=old.dtype)
+
+        for y in range(150):
+            for x in range(150):
+                y_old = int(y * 60 / 150)
+                x_old = int(x * 60 / 150)
+                new[y, x] = old[y_old, x_old]
+
+        return new.flatten().tolist()
+
     def generate_path(self):
         """Main function to generate the path using the selected planner."""
         if self.costmap is None:
@@ -261,8 +273,7 @@ class PathPlannerNode(Node):
         self.get_logger().info(f"Reshaping costmap data to dimensions: {int(self.costmap.info.height / self.grid_res)}x{int(self.costmap.info.width / self.grid_res)} (total cells: {data_dim})")
 
         if (len(self.costmap.data) < data_dim):
-            for i in range(data_dim - len(self.costmap.data)):
-                self.costmap.data.append(0)
+            self.costmap.data = self.scale_grid_numpy(self.costmap.data)
         elif (len(self.costmap.data) > data_dim):
             self.costmap.data = self.costmap.data[:data_dim]
 
