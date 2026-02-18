@@ -195,13 +195,9 @@ class PathPlannerNode(Node):
             self.get_logger().warning("Incoming cost map dimensions were zero.")
             return
         self.costmap = msg
-        self.get_logger().info(f"Received costmap: {msg.info.width}x{msg.info.height}")
 
     def path_goal_callback(self, msg: PoseStamped):
         self.path_goal = msg
-        self.get_logger().info(
-            f"Received goal: ({msg.pose.position.x}, {msg.pose.position.y})"
-        )
 
     def scale_grid_numpy(self, data):
         old = np.array(data).reshape(60, 60)
@@ -270,7 +266,6 @@ class PathPlannerNode(Node):
         # Prepare costmap data
         data_dim = (self.costmap.info.height / self.grid_res) * (self.costmap.info.width / self.grid_res)
         data_dim = int(data_dim)
-        self.get_logger().info(f"Reshaping costmap data to dimensions: {int(self.costmap.info.height / self.grid_res)}x{int(self.costmap.info.width / self.grid_res)} (total cells: {data_dim})")
 
         if (len(self.costmap.data) < data_dim):
             self.costmap.data = self.scale_grid_numpy(self.costmap.data)

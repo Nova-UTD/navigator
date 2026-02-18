@@ -332,7 +332,6 @@ class RouteCostmapNode(Node):
                 route_cost_msg.data = new_grid
 
         self.route_dist_grid_pub.publish(route_cost_msg)
-        self.get_logger().info('Published route costmap with goal at %1.2f, %1.2f' % goal )
 
     def is_within_costmap(self, x, y):
         # Open the config file
