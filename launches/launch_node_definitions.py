@@ -249,3 +249,21 @@ road_user_detector = Node(
     package='road_user_detection',
     executable='road_user_detection'
 )
+
+autonomous_cruise_controller = Node(
+    package='autonomous_cruise',
+    executable='autonomous_cruise_node',
+    name='autonomous_cruise_controller',
+    output='screen',
+    parameters=['/navigator/param/autonomous_cruise_params.yaml'],
+    emulate_tty=True
+)
+
+autonomous_cruise_intersection_controller = Node(
+    package='autonomous_cruise',
+    executable='autonomous_cruise_intersection_node',
+    name='autonomous_cruise_controller',
+    output='screen',
+    parameters=['/navigator/param/gem_e6_intersection_params.yaml'],
+    emulate_tty=True
+)

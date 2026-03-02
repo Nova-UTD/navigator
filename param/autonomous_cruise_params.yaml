@@ -1,0 +1,38 @@
+autonomous_cruise_controller:
+  ros__parameters:
+    # Topic names
+    path_topic: "/planning/path"
+    odom_topic: "/gnss/odometry"
+    objects_topic: "/tracked/objects3d"
+    control_topic: "/vehicle/control"
+    
+    # Control parameters
+    control_rate: 20.0  # Hz
+    enabled: true
+    
+    # Vehicle parameters
+    wheelbase: 2.875  # meters (typical sedan)
+    
+    # Lateral control (Pure Pursuit) parameters
+    min_lookahead: 3.0  # meters
+    max_lookahead: 15.0  # meters
+    lookahead_gain: 0.5  # dimensionless (lookahead = min + gain * speed)
+    max_steer: 1.0  # radians (±57 degrees)
+    
+    # Longitudinal control (PID) parameters
+    target_speed: 6.0  # m/s (~13.4 mph, ~21.6 km/h)
+    kp: 1.2  # Proportional gain
+    ki: 0.15  # Integral gain
+    kd: 0.05  # Derivative gain
+    max_accel: 2.5  # m/s² (comfortable acceleration)
+    max_decel: -3.5  # m/s² (comfortable deceleration)
+    max_jerk: 3.0  # m/s³ (jerk limiting for comfort)
+    max_throttle: 0.75  # Maximum throttle (0-1)
+    max_brake: 1.0  # Maximum brake (0-1)
+    integral_limit: 5.0  # Anti-windup limit
+    
+    # Adaptive cruise control parameters
+    time_gap: 1.5  # seconds (desired time gap to lead vehicle)
+    min_following_distance: 5.0  # meters (minimum safe distance)
+    max_detection_distance: 50.0  # meters (max range for object detection)
+    detection_angle: 0.3  # radians (~17 degrees, half-angle of detection cone)
