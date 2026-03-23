@@ -37,7 +37,7 @@ FUTURE_OCCUPANCY_SCALE = 1.0 #3.0
 DRIVABLE_GRID_SCALE = 1.0 #0.75
 ROUTE_DISTANCE_GRID_SCALE = 1.0
 JUNCTION_GRID_SCALE = 1.0
-
+GRID_SIZE = 300
 
 class GridSummationNode(Node):
 
@@ -149,7 +149,7 @@ class GridSummationNode(Node):
         old_dim = grid_img.shape[0]
         grid_res = grid.info.resolution
 
-        if old_dim == 128:  
+        if old_dim != GRID_SIZE:  
             dim_bef_resize = old_dim
 
             grid_img = self.resizeOccupancyGrid(grid_img)
@@ -190,8 +190,8 @@ class GridSummationNode(Node):
 
         # sometimes grid_img emerges with 152 pixels..
         prezoom_rows = grid_img.shape[0]
-        if prezoom_rows != 151:
-            grid_img = ndimage.zoom(grid_img, 151.0/float(grid_img.shape[0]))
+        if prezoom_rows != GRID_SIZE:
+            grid_img = ndimage.zoom(grid_img, float(GRID_SIZE)/float(grid_img.shape[0]))
 
         grid_out = OccupancyGrid()
         grid_out.info.map_load_time = self.clock.clock
@@ -256,7 +256,7 @@ class GridSummationNode(Node):
         downsampled = downsampled[:, 3:]
 
         # Now make sure downsampled has the correct shape for the background
-        background = np.zeros((151, 151))
+        background = np.zeros((GRID_SIZE, GRID_SIZE))
         h, w = downsampled.shape
         background[22:22+h, 0:w] = downsampled
         
@@ -264,8 +264,8 @@ class GridSummationNode(Node):
 
     def createCostMap(self):
         # self.get_logger().info('Composing aggregate costmap...')
-        steering_cost = np.zeros((151, 151))
-        speed_cost = np.zeros((151, 151))
+        steering_cost = np.zeros((GRID_SIZE, GRID_SIZE))
+        speed_cost = np.zeros((GRID_SIZE, GRID_SIZE))
 
         # Calculate the weighted cost map layers
         grids = [('occupancy', self.current_occupancy_grid, CURRENT_OCCUPANCY_SCALE),
@@ -332,7 +332,7 @@ class GridSummationNode(Node):
             steering_cost_msg.data = steering_cost.astype(np.int8).flatten().tolist()
 
             # Resize occupancy grid to match size specified in config file
-            if steering_cost_msg.info.height != data['occupancy_grids']['length']:
+            if steering_cost_msg.info.height != GRID_SIZE:
                 diff = (data['occupancy_grids']['length'] - steering_cost_msg.info.height) / steering_cost_msg.info.resolution
                 diff = int(diff)  # Convert to integer
                 
@@ -343,7 +343,7 @@ class GridSummationNode(Node):
                 
                 steering_cost_msg.info.height = int(data['occupancy_grids']['length'])
             
-            if steering_cost_msg.info.width != data['occupancy_grids']['width']:
+            if steering_cost_msg.info.width != GRID_SIZE:
                 diff = (data['occupancy_grids']['width'] - steering_cost_msg.info.width) / steering_cost_msg.info.resolution     
                 diff = int(diff)  # Convert to integer
             

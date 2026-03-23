@@ -17,6 +17,8 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 import yaml
 
+GRID_SIZE = 300
+
 # Message definitions
 from navigator_msgs.msg import CarlaSpeedometer
 from diagnostic_msgs.msg import DiagnosticStatus
@@ -95,7 +97,7 @@ class RouteCostmapNode(Node):
     def buildRouteCostmap(self):
         # self.get_logger().info('Creating route costmap...')
         # assign some baseline cost for not following the route
-        routemap = np.zeros((151, 151)) + 25.0
+        routemap = np.zeros((GRID_SIZE, GRID_SIZE)) + 25.0
         
         if self.route is None:
             self.get_logger().warning('Route Costmap Node has not received route yet.')
@@ -289,8 +291,8 @@ class RouteCostmapNode(Node):
         route_cost_msg = OccupancyGrid()
         route_cost_msg.info.map_load_time = self.clock.clock
         route_cost_msg.info.resolution = data['occupancy_grids']['resolution']
-        route_cost_msg.info.width = int(data['occupancy_grids']['width'])
-        route_cost_msg.info.height = int(data['occupancy_grids']['length'])
+        route_cost_msg.info.width = GRID_SIZE
+        route_cost_msg.info.height = GRID_SIZE
         route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
         route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
         route_cost_msg.header.stamp = self.clock.clock
@@ -368,7 +370,7 @@ class RouteCostmapNode(Node):
         ymax = data['occupancy_grids']['vehicle_latitudinal_location'] # 40m right of the car
         gridres = data['occupancy_grids']['resolution']
         
-        costmap = np.zeros((151,151))
+        costmap = np.zeros((GRID_SIZE,GRID_SIZE))
         for i in range(costmap.shape[0]):
             for j in range(costmap.shape[1]):
                 x,y = gridres*j +xmin , gridres*i + ymin
