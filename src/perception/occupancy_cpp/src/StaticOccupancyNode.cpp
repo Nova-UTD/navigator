@@ -347,8 +347,8 @@ void StaticOccupancyNode::publishOccupancyGrid()
   msg.info.width = GRID_SIZE;
   msg.info.height = GRID_SIZE;
   msg.info.origin.position.z = 0.2;
-  msg.info.origin.position.x = -1 * params_data["occupancy_grids"]["vehicle_latitudinal_location"].as<float>();
-  msg.info.origin.position.y = -1 * params_data["occupancy_grids"]["vehicle_longitudinal_location"].as<float>();
+  msg.info.origin.position.x = -1 * params_data["occupancy_grids"]["vehicle_longitudinal_location"].as<float>();
+  msg.info.origin.position.y = -1 * params_data["occupancy_grids"]["vehicle_latitudinal_location"].as<float>();
   //-----------------//
 
   //--Masses--//
@@ -369,73 +369,6 @@ void StaticOccupancyNode::publishOccupancyGrid()
       masses_msg.occ.push_back(updated_occ[i][j]);
       masses_msg.free.push_back(updated_free[i][j]);
     }
-  }
-
-  // Resize the occupancy grid data to match the expected size
-  if (msg.info.height != params_data["occupancy_grids"]["length"].as<float>())
-  {
-    msg.data.resize(msg.info.width * (params_data["occupancy_grids"]["length"].as<float>()), -1);
-    msg.info.height = params_data["occupancy_grids"]["length"].as<float>();
-  }
-
-  if (msg.info.width != params_data["occupancy_grids"]["width"].as<float>())
-  {
-    float diff = (params_data["occupancy_grids"]["width"].as<float>() - msg.info.width) / msg.info.resolution;     
-    int conv_diff = (int)diff;  // Convert to integer
-  
-    if (conv_diff < 0)
-    {
-      int trimmed_width = static_cast<int>(params_data["occupancy_grids"]["width"].as<float>());
-      int trimmed_height = static_cast<int>(msg.info.height);
-      std::vector<signed char> new_grid(trimmed_width * trimmed_height, -1);
-
-      int amount_to_trim_each_side = std::abs(conv_diff) / 2;
-
-      for (int i = 0; i < trimmed_height; i++)
-      {
-        int row_start = i * msg.info.width;
-        int new_row_start = i * trimmed_width;
-        int start = row_start + amount_to_trim_each_side;
-        int end = row_start + msg.info.width - amount_to_trim_each_side;
-
-        // Ensure bounds are valid
-        if (start < row_start) start = row_start;
-        if (end > static_cast<int>(row_start + msg.info.width)) end = row_start + msg.info.width;
-
-        int copy_len = end - start;
-        if (copy_len > 0 && static_cast<long unsigned int>(new_row_start + copy_len) <= new_grid.size() && static_cast<long unsigned int>(start + copy_len) <= msg.data.size())
-        {
-          std::copy(msg.data.begin() + start, msg.data.begin() + end, new_grid.begin() + new_row_start);
-        }
-      }
-
-      msg.data = new_grid;
-    }
-    else if (conv_diff > 0)
-    {
-      std::vector<signed char> new_grid = {-1};
-      new_grid.resize(params_data["occupancy_grids"]["width"].as<float>() * msg.info.height, -1);
-
-      int offset = (int)(conv_diff / 2);
-      
-      int k = 0;
-
-      for (unsigned int i = 0; i < msg.info.height; i++)
-      {
-        int start = i * (int)(params_data["occupancy_grids"]["width"].as<float>()) + offset;
-        int end = (i + 1) * (int)(params_data["occupancy_grids"]["width"].as<float>()) - 1 - offset;
-
-        for (int j = start; j < end; j++)
-        {
-          new_grid.at(j) = msg.data.at(k);
-          k += 1;
-        }
-      }
-      
-      msg.data = new_grid;
-    }
-        
-    msg.info.width = params_data["occupancy_grids"]["width"].as<float>();
   }
 
   occupancy_grid_pub->publish(msg);
