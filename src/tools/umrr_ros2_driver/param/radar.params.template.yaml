@@ -1,0 +1,40 @@
+/smart_radar:
+  ros__parameters:
+    master_inst_serial_type: "port_based"
+    master_data_serial_type: "port_based"
+    adapters:
+      adapter_0:
+        hw_type: "eth"
+        hw_dev_id: 2
+        hw_iface_name: "enp3s0"
+        port: 55555
+    sensors:
+      # As many as 10 sensors all named as "sensor_<number>" in increasing order of numbers,
+      # e.g., sensor_0, sensor_1, etc. The list must start with sensor_0.
+      #
+      # Sensor `model` names if using link type:
+      # can: 'umrra4_can_mse_v1_0_0', 'umrra4_can_mse_v2_1_0', 'umrr9f_can_mse_v1_1_0', 'umrr9f_can_mse_v1_0_0', 'umrr96_can_v1_2_2', 'umrr11_can_v1_1_2', 'umrr9f_can_v2_1_1', 'umrr9f_can_v2_2_1',
+      #      'umrr9f_can_v2_4_1', 'umrr9f_can_v3_0_0', 'umrr9d_can_v1_0_3', 'umrr9d_can_v1_2_2', 'umrr9d_can_v1_4_1', 'umrr9d_can_v1_5_0', 'umrra4_can_v1_0_1', 'umrra4_can_v1_2_1', 'umrra4_can_v1_4_0'
+      #
+      # port: 'umrra1_v2_0_0', 'umrra1_v1_0_0', 'umrra4_mse_v1_0_0', 'umrra4_mse_v2_1_0', 'umrr9f_mse_v1_3_0', 'umrr9f_mse_v1_1_0', 'umrr9f_mse_v1_0_0', 'umrr96_v1_2_2', 'umrr11_v1_1_2', 'umrr9f_v2_1_1', 'umrr9f_v2_2_1', 'umrr9f_v2_4_1',
+      #       'umrr9f_v3_0_0', 'umrr9d_v1_0_3', 'umrr9d_v1_2_2', 'umrr9d_v1_4_1', 'umrr9d_v1_5_0', 'umrra4_v1_0_1', 'umrra4_v1_2_1', 'umrra4_v1_4_0'
+      sensor_0:
+        link_type: "eth"
+        pub_type: "target"
+        # Update model to match your sensor firmware version:
+        #   V2.4.0 -> umrr9f_v2_4_1 (uifmajorv: 2, uifminorv: 4, uifpatchv: 1)
+        #   V2.2.0 -> umrr9f_v2_2_1 (uifmajorv: 2, uifminorv: 2, uifpatchv: 1)
+        #   V2.0.1 -> umrr9f_v2_1_1 (uifmajorv: 2, uifminorv: 1, uifpatchv: 1)
+        model: "umrr9f_v2_4_1"
+        dev_id: 2
+        id: 100
+        ip: "192.168.11.11"
+        port: 55555
+        frame_id: "umrr"
+        history_size: 10
+        inst_type: "port_based"
+        data_type: "port_based"
+        uifname: "umrr9f_t169_automotive"
+        uifmajorv: 2
+        uifminorv: 4
+        uifpatchv: 1

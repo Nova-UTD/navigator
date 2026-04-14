@@ -1,0 +1,9 @@
+{
+    "clients": [
+        {
+            "can_network_id": 0
+        }
+    ],
+    "name": "Client Routing Table",
+    "version": "1.0.0"
+}
