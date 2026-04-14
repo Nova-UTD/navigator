@@ -287,8 +287,8 @@ class GridSummationNode(Node):
                     weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
                 else:
                     ff_grid = occupancygrid_to_numpy(grid)
-                    if grid_name == 'occupancy' or grid_name == 'future_occupancy':
-                        ff_grid = self.resizeOccupancyGrid(ff_grid)
+                    #if grid_name == 'occupancy' or grid_name == 'future_occupancy':
+                        #ff_grid = self.resizeOccupancyGrid(ff_grid)
                     weighted_grid_arr = ff_grid*scale
 
                 if isinstance(ff_grid, np.ndarray):
@@ -296,8 +296,8 @@ class GridSummationNode(Node):
                 else:
                     weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
                 
-                if grid_name == 'occupancy' or grid_name == 'future_occupancy':
-                    weighted_grid_arr = self.resizeOccupancyGrid(weighted_grid_arr)
+               # if grid_name == 'occupancy' or grid_name == 'future_occupancy':
+                #    weighted_grid_arr = self.resizeOccupancyGrid(weighted_grid_arr)
 
                 if grid_name == 'drivable':
                     steering_cost = np.maximum( steering_cost , weighted_grid_arr )
@@ -325,8 +325,8 @@ class GridSummationNode(Node):
             steering_cost_msg.info.resolution = data['occupancy_grids']['resolution']
             steering_cost_msg.info.width = steering_cost.shape[1]
             steering_cost_msg.info.height = steering_cost.shape[0]
-            steering_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
-            steering_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
+            steering_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
+            steering_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
             steering_cost_msg.header.stamp = self.clock.clock
             steering_cost_msg.header.frame_id = 'base_link'
             steering_cost_msg.data = steering_cost.astype(np.int8).flatten().tolist()

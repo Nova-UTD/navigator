@@ -293,8 +293,8 @@ class RouteCostmapNode(Node):
         route_cost_msg.info.resolution = data['occupancy_grids']['resolution']
         route_cost_msg.info.width = GRID_SIZE
         route_cost_msg.info.height = GRID_SIZE
-        route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
-        route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
+        route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
+        route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
         route_cost_msg.header.stamp = self.clock.clock
         route_cost_msg.header.frame_id = 'base_link'
         route_cost_msg.data = routemap.astype(np.int8).flatten().tolist()

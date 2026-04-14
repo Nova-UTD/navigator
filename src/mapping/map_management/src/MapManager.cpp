@@ -604,6 +604,12 @@ void MapManagementNode::publishGrids(float top_dist, float bottom_dist, float si
 
     // Get the search region
     TransformStamped vehicle_tf = getEgoTf();
+    if (!has_valid_tf_)
+    {
+        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                             "No valid TF received yet. Skipping grid publish.");
+        return;
+    }
     auto vehicle_pos = vehicle_tf.transform.translation;
     double range_plus = top_dist * 1.4; // This is a little leeway to account for map->base_link rotation
     odr::point bounding_box_min = odr::point(vehicle_pos.x - range_plus, vehicle_pos.y - range_plus);
@@ -623,9 +629,8 @@ void MapManagementNode::publishGrids(float top_dist, float bottom_dist, float si
         RCLCPP_WARN(get_logger(), "There are no lane shapes nearby.");
     }
 
-    // This was commented out...
+    // Build a local R-tree from nearby lane bounding boxes
     bgi::rtree<odr::value, bgi::rstar<16, 4>> local_tree;
-    std::unordered_map< unsigned int, odr::polygon> box_to_poly_map;
     for (unsigned i = 0; i < lane_shapes_in_range.size(); ++i){
         std::deque<odr::polygon> output;
         odr::polygon a;
@@ -633,19 +638,12 @@ void MapManagementNode::publishGrids(float top_dist, float bottom_dist, float si
 
         bg::assign(a, lane_shapes_in_range.at(i).first);
         bg::assign(b, search_region);
-        bg::intersection(a,b, output);
-        if(output.size()>1){
-            local_tree.insert(lane_shapes_in_range.at(i));
-            odr::polygon poly;
-            bg::convert(lane_shapes_in_range.at(i).first, poly);
-            box_to_poly_map[lane_shapes_in_range.at(i).second] = poly;
-            
-        } else{
-            local_tree.insert(lane_shapes_in_range.at(i));
-            box_to_poly_map[lane_shapes_in_range.at(i).second] = output[0];
-        }         
+        bg::intersection(a, b, output);
+        if (output.empty()) {
+            continue;  // Skip lanes with no valid intersection
+        }
+        local_tree.insert(lane_shapes_in_range.at(i));
     }
-    // down to here
 
     int area = 0;
     int width = 0;
@@ -653,15 +651,9 @@ void MapManagementNode::publishGrids(float top_dist, float bottom_dist, float si
     BoostPoint goal_pt;
     // bool goal_is_set = false;
     auto q = vehicle_tf.transform.rotation;
-    float h;
-
-    if (q.z < 0)
-        h = abs(2 * acos(q.w) - 2 * M_PI);
-    else
-        h = 2 * acos(q.w);
-
-    if (h > M_PI)
-        h -= 2 * M_PI;
+    // Use atan2 for numerically stable yaw extraction (acos can return NaN
+    // when q.w is slightly outside [-1, 1] due to floating-point imprecision)
+    float h = 2.0f * atan2(static_cast<float>(q.z), static_cast<float>(q.w));
 
     std::vector<odr::polygon> nearby_junctions;
 
@@ -1049,23 +1041,23 @@ void MapManagementNode::clockCb(Clock::SharedPtr msg)
  */
 TransformStamped MapManagementNode::getEgoTf()
 {
-    TransformStamped t;
     try
     {
-        t = tf_buffer_->lookupTransform(
+        auto t = tf_buffer_->lookupTransform(
             "map", "base_link",
             tf2::TimePointZero);
+        last_valid_tf_ = t;
+        has_valid_tf_ = true;
+        return t;
     }
     catch (const tf2::TransformException &ex)
     {
-        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
-                             "Could not get base_link->map tf: %s. This will republish every 5 seconds.", ex.what());
+        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                             "Could not get base_link->map tf: %s. Using last valid transform.", ex.what());
+        if (has_valid_tf_)
+            return last_valid_tf_;
         return TransformStamped();
     }
-
-    // RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
-    //                          "Returning empty transform.");
-    return t;
 }
 
 /**

@@ -20,7 +20,7 @@ from geometry_msgs.msg import Pose, PoseStamped, Point, Vector3
 from visualization_msgs.msg import Marker
 
 from navigator_msgs.msg import VehicleControl, VehicleSpeed
-
+from tf_transformations import euler_from_quaternion
 
 class Constants:
     # Look ahead distance in meters
@@ -236,6 +236,7 @@ class PursePursuitController(Node):
         self.vehicle_state = VehicleState()
         self.path = PursuitPath()
         self.target_waypoint = None
+        self.global_path = []
         self.clock = Clock().clock
 
         self.route_subscriber = self.create_subscription(
@@ -275,15 +276,10 @@ class PursePursuitController(Node):
         self.vehicle_state.velocity = msg.speed
 
     def route_callback(self, msg: Path):
-        """Callback function for the path subscriber.
-
-        Recalculates the path and target waypoint based on the received path message.
-        """
-        path = [
-            (pose_stamped.pose.position.x, pose_stamped.pose.position.y)
-            for pose_stamped in msg.poses
+        self.global_path = [
+        (pose_stamped.pose.position.x, pose_stamped.pose.position.y)
+        for pose_stamped in msg.poses
         ]
-        self.path.set_path(path)
 
     def stop_vehicle(self, steer: float, break_value: float):
         """Stop the vehicle by applying the break."""
@@ -295,6 +291,22 @@ class PursePursuitController(Node):
     def control_callback(self):
         """Calculate and publish the vehicle control commands based on the pure pursuit algorithm."""
         # Calculate the waypoint just outside the lookahead distance.
+        # Transform global path to local frame each cycle
+        if self.vehicle_state.pose is not None and len(self.global_path) > 0:        
+            vx = self.vehicle_state.pose.position.x
+            vy = self.vehicle_state.pose.position.y
+            q = self.vehicle_state.pose.orientation
+            _, _, yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
+
+        local_path = []
+        for (gx, gy) in self.global_path:
+            dx = gx - vx
+            dy = gy - vy
+            lx = dx * math.cos(-yaw) - dy * math.sin(-yaw)
+            ly = dx * math.sin(-yaw) + dy * math.cos(-yaw)
+            local_path.append((lx, ly))
+        self.path.set_path(local_path)
+
         self.target_waypoint = self.path.calc_target_point(self.vehicle_state)
 
         # If no target waypoint, do nothing.

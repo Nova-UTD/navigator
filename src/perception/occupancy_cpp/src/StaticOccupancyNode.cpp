@@ -23,6 +23,25 @@ StaticOccupancyNode::StaticOccupancyNode() : Node("static_occupancy_node")
   // Get path to the config file
   this->declare_parameter<std::string>("global_config", "temp_value");
 
+  // Load YAML config and compute vehicle grid position
+  std::string config_path = this->get_parameter("global_config").as_string();
+  try {
+    YAML::Node params_data = YAML::LoadFile(config_path);
+    float res = params_data["occupancy_grids"]["resolution"].as<float>();
+    float long_loc = params_data["occupancy_grids"]["vehicle_longitudinal_location"].as<float>();
+    float lat_loc = params_data["occupancy_grids"]["vehicle_latitudinal_location"].as<float>();
+    VEHICLE_X = (int)(long_loc / res);
+    VEHICLE_Y = (int)(lat_loc / res);
+    X_POS_MAX = GRID_SIZE - VEHICLE_X;
+    X_NEG_MAX = VEHICLE_X;
+    Y_POS_MAX = GRID_SIZE - VEHICLE_Y;
+    Y_NEG_MAX = VEHICLE_Y;
+    RCLCPP_INFO(this->get_logger(), "Vehicle grid position: (%d, %d), extents: +x=%d -x=%d +y=%d -y=%d",
+                VEHICLE_X, VEHICLE_Y, X_POS_MAX, X_NEG_MAX, Y_POS_MAX, Y_NEG_MAX);
+  } catch (const YAML::BadFile& e) {
+    RCLCPP_WARN(this->get_logger(), "Could not load YAML config: %s. Using default centered position.", e.what());
+  }
+
   //------Subscribers-------//
   // Subscribe to and use CARLA's clock
   clock_sub = this->create_subscription<Clock>(
@@ -121,8 +140,7 @@ void StaticOccupancyNode::add_points_to_the_DST(pcl::PointCloud<pcl::PointXYZI> 
       std::printf("Point was above max height, skipping.\n");
       continue;
     }
-
-    if (x < (-1 * HALF_SIZE) || y < (-1 * HALF_SIZE) || x >= HALF_SIZE || y >= HALF_SIZE)
+    if (x < -X_NEG_MAX || x >= X_POS_MAX || y < -Y_NEG_MAX || y >= Y_POS_MAX)
     {
       // std::printf("Point was outside grid boundaries, skipping.\n");
       continue;
@@ -206,66 +224,66 @@ void StaticOccupancyNode::add_free_spaces_to_the_DST()
       int x, y;
       if (angle > 0.0f && angle <= 45.0f)
       {
-        x = HALF_SIZE;
+        x = X_POS_MAX;
         y = (int)(tan(angle * M_PI / 180.0f) * x);
       }
       else if (angle > 45.0f && angle < 90.0f)
       {
-        y = HALF_SIZE;
+        y = Y_POS_MAX;
         x = (int)(y / tan(angle * M_PI / 180.0f));
       }
       else if (angle > 90.0f && angle <= 135.0f)
       {
-        y = HALF_SIZE;
+        y = Y_POS_MAX;
         x = (int)(y / tan((angle - 180.0f) * M_PI / 180.0f));
       }
       else if (angle > 135.0f && angle < 180.0f)
       {
-        x = -HALF_SIZE;
+        x = -X_NEG_MAX;
         y = (int)(tan((angle - 180.0) * M_PI / 180.0f) * x);
       }
       else if (angle > 180.0f && angle <= 225.0f)
       {
-        x = -HALF_SIZE;
+        x = -X_NEG_MAX;
         y = (int)(tan((angle - 180.0f) * M_PI / 180.0f) * x);
       }
       else if (angle > 225.0f && angle < 270.0f)
       {
-        y = -HALF_SIZE;
+        y = -Y_NEG_MAX;
         x = (int)(y / tan((angle - 180.0f) * M_PI / 180.0f));
       }
       else if (angle > 270.0f && angle <= 315.0f)
       {
-        y = -HALF_SIZE;
+        y = -Y_NEG_MAX;
         x = (int)(y / tan((angle - 360.0f) * M_PI / 180.0f));
       }
       else if (angle > 315.0f && angle < 360.0f)
       {
-        x = HALF_SIZE;
+        x = X_POS_MAX;
         y = (int)(tan((angle - 360.0f) * M_PI / 180.0f) * x);
       }
       else if (angle == 0.0f || angle == 360.0f)
       {
-        ray_tracing_horizontal(HALF_SIZE);
+        ray_tracing_horizontal(Y_POS_MAX);
         continue;
       }
       else if (angle == 90.0f)
       {
-        ray_tracing_vertical(HALF_SIZE);
+        ray_tracing_vertical(Y_POS_MAX);
         continue;
       }
       else if (angle == 180.0f)
       {
-        ray_tracing_horizontal_n(-HALF_SIZE);
+        ray_tracing_horizontal_n(-Y_NEG_MAX);
         continue;
       }
       else if (angle == 270.0f)
       {
-        ray_tracing_vertical_n(-HALF_SIZE);
+        ray_tracing_vertical_n(-Y_NEG_MAX);
         continue;
       }
 
-      if (x >= -HALF_SIZE && y >= -HALF_SIZE && x <= HALF_SIZE && y <= HALF_SIZE)
+      if (x >= -X_NEG_MAX && y >= -Y_NEG_MAX && x <= X_POS_MAX && y <= Y_POS_MAX)
       {
         float slope = (float)(y) / (x);
 
@@ -313,10 +331,10 @@ void StaticOccupancyNode::add_free_spaces_to_the_DST()
  */
 void StaticOccupancyNode::addEgoMask()
 {
-  // Vehicle shape.
-  for (unsigned int i = 60; i < 68; i++)
+  // Vehicle shape centered around vehicle position.
+  for (unsigned int i = VEHICLE_X - 4; i < VEHICLE_X + 4; i++)
   {
-    for (unsigned int j = 62; j < 67; j++)
+    for (unsigned int j = VEHICLE_Y - 3; j < VEHICLE_Y + 2; j++)
     {
       measured_occ[i][j] = 1.0;
       measured_free[i][j] = 0.0;
@@ -541,12 +559,12 @@ void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x2, int y2, 
   for (int x = x1, y = y1; x < x2; x++)
   {
     // checks if the point is occupied
-    if (measured_occ[flip_x * x + HALF_SIZE][flip_y * y + HALF_SIZE] == meas_mass)
+    if (measured_occ[flip_x * x + VEHICLE_X][flip_y * y + VEHICLE_Y] == meas_mass)
     {
       break;
     }
 
-    measured_free[flip_x * x + HALF_SIZE][flip_y * y + HALF_SIZE] = meas_mass;
+    measured_free[flip_x * x + VEHICLE_X][flip_y * y + VEHICLE_Y] = meas_mass;
 
     slope_error += slope;
     if (slope_error >= 0)
@@ -559,8 +577,8 @@ void StaticOccupancyNode::ray_tracing_approximation_y_increment(int x2, int y2, 
   // if the point ray-traced to is occupied
   if (inclusive == false)
   {
-    int x_coordinate = flip_x * x2 + HALF_SIZE;
-    int y_coordinate = flip_y * y2 + HALF_SIZE;
+    int x_coordinate = flip_x * x2 + VEHICLE_X;
+    int y_coordinate = flip_y * y2 + VEHICLE_Y;
     measured_occ[x_coordinate][y_coordinate] = meas_mass;
     measured_free[x_coordinate][y_coordinate] = 0.0;
   }
@@ -575,12 +593,12 @@ void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x2, int y2, 
   for (int x = x1, y = y1; y < y2; y++)
   {
     // checks if the point is occupied
-    if (measured_occ[flip_x * x + HALF_SIZE][flip_y * y + HALF_SIZE] == meas_mass)
+    if (measured_occ[flip_x * x + VEHICLE_X][flip_y * y + VEHICLE_Y] == meas_mass)
     {
       break;
     }
 
-    measured_free[flip_x * x + HALF_SIZE][flip_y * y + HALF_SIZE] = meas_mass;
+    measured_free[flip_x * x + VEHICLE_X][flip_y * y + VEHICLE_Y] = meas_mass;
 
     slope_error += slope;
     if (slope_error >= 0)
@@ -593,8 +611,8 @@ void StaticOccupancyNode::ray_tracing_approximation_x_increment(int x2, int y2, 
   // if the point ray-traced to is occupied
   if (inclusive == false)
   {
-    int x_coordinate = flip_x * x2 + HALF_SIZE;
-    int y_coordinate = flip_y * y2 + HALF_SIZE;
+    int x_coordinate = flip_x * x2 + VEHICLE_X;
+    int y_coordinate = flip_y * y2 + VEHICLE_Y;
     measured_occ[x_coordinate][y_coordinate] = meas_mass;
     measured_free[x_coordinate][y_coordinate] = 0.0;
   }
@@ -609,16 +627,16 @@ void StaticOccupancyNode::ray_tracing_vertical(int x2)
   for (int x = x1; x <= x2; x++)
   {
     // checks if the point is occupied
-    if (measured_occ[HALF_SIZE][x + HALF_SIZE] == meas_mass)
+    if (measured_occ[VEHICLE_X][x + VEHICLE_Y] == meas_mass)
     {
       printf("BROKE! VERTICAL + \n\n");
       break;
     }
 
-    measured_free[x + HALF_SIZE][HALF_SIZE] = meas_mass;
+    measured_free[VEHICLE_X][x + VEHICLE_Y] = meas_mass;
   }
 
-  measured_free[x2 + HALF_SIZE][HALF_SIZE] = 0.0;
+  measured_free[VEHICLE_X][x2 + VEHICLE_Y] = 0.0;
 }
 
 // VERTICLE -
@@ -629,16 +647,16 @@ void StaticOccupancyNode::ray_tracing_vertical_n(int x1)
 
   for (int x = x1; x <= x2; x++)
   {
-    if (measured_occ[HALF_SIZE][x + HALF_SIZE] == meas_mass)
+    if (measured_occ[VEHICLE_X][x + VEHICLE_Y] == meas_mass)
     {
       printf("BROKE! VERTICAL - \n\n");
       break;
     }
 
-    measured_free[x + HALF_SIZE][HALF_SIZE] = meas_mass;
+    measured_free[VEHICLE_X][x + VEHICLE_Y] = meas_mass;
   }
 
-  measured_free[x2 + HALF_SIZE][HALF_SIZE] = 0.0;
+  measured_free[VEHICLE_X][x2 + VEHICLE_Y] = 0.0;
 }
 
 // HORIZONTAL +
@@ -649,12 +667,12 @@ void StaticOccupancyNode::ray_tracing_horizontal(int y2)
 
   for (int y = y1; y <= y2; y++)
   {
-    if (measured_occ[HALF_SIZE][y + HALF_SIZE] == meas_mass)
+    if (measured_occ[VEHICLE_X][y + VEHICLE_Y] == meas_mass)
     {
       printf("BROKE! HORIZONTAL + \n\n");
       break;
     }
-    measured_free[HALF_SIZE][y + HALF_SIZE] = meas_mass;
+    measured_free[VEHICLE_X][y + VEHICLE_Y] = meas_mass;
   }
 }
 
@@ -667,15 +685,15 @@ void StaticOccupancyNode::ray_tracing_horizontal_n(int y1)
   for (int y = y1; y <= y2; y++)
   {
     if (
-        measured_occ[HALF_SIZE][y + HALF_SIZE] == meas_mass)
+        measured_occ[VEHICLE_X][y + VEHICLE_Y] == meas_mass)
     {
       printf("BROKE! HORIZONTAL - \n\n");
       break;
     }
-    measured_free[HALF_SIZE][y + HALF_SIZE] = meas_mass;
+    measured_free[VEHICLE_X][y + VEHICLE_Y] = meas_mass;
   }
 
-  measured_free[HALF_SIZE][y2 + HALF_SIZE] = 0.0;
+  measured_free[VEHICLE_X][y2 + VEHICLE_Y] = 0.0;
 }
 
 void StaticOccupancyNode::clear()

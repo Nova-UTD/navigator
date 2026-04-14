@@ -165,6 +165,8 @@ namespace navigator
 
             std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
             std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+            TransformStamped last_valid_tf_;
+            bool has_valid_tf_ = false;
 
             Clock::SharedPtr clock_;
             odr::OpenDriveMap *map_ = nullptr;

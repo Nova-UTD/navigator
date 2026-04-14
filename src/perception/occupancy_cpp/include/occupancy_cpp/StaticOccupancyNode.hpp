@@ -93,6 +93,16 @@ namespace navigator
       
       const int HALF_SIZE = GRID_SIZE / 2;
 
+      // Vehicle cell position in the grid, initialized from YAML config in constructor
+      int VEHICLE_X = GRID_SIZE / 2;  // longitudinal (forward/back), default centered
+      int VEHICLE_Y = GRID_SIZE / 2;  // latitudinal (left/right), default centered
+
+      // Max extent from vehicle to each grid edge
+      int X_POS_MAX = GRID_SIZE - VEHICLE_X;
+      int X_NEG_MAX = VEHICLE_X;
+      int Y_POS_MAX = GRID_SIZE - VEHICLE_Y;
+      int Y_NEG_MAX = VEHICLE_Y;
+
       // Resolution.
       constexpr static float RES = 0.2f;
 

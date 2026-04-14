@@ -127,7 +127,7 @@ class PathPlannerNode(Node):
         super().__init__("path_planner_node")
 
         # Parameters
-        self.grid_res = 0.4  # Grid resolution in meters/cell
+        self.grid_res = 0.2  # Grid resolution in meters/cell
         self.origin_x = 20.0  # Origin offset in X
         self.origin_y = 30.0  # Origin offset in Y
         self.obstacle_threshold = 90  # Values above this are considered obstacles
