@@ -1,0 +1,27 @@
+/smart_radar:
+  ros__parameters:
+    master_inst_serial_type: "port_based"
+    master_data_serial_type: "port_based"
+    adapters:
+      adapter_0:
+        hw_type: "eth"
+        hw_dev_id: 2
+        hw_iface_name: "enp3s0"
+        port: 55555
+    sensors:
+      sensor_0:
+        link_type: "eth"
+        pub_type: "target"
+        model: "umrr9f_v2_4_1"
+        dev_id: 2
+        id: 100
+        ip: "192.168.11.11"
+        port: 55555
+        frame_id: "umrr"
+        history_size: 10
+        inst_type: "port_based"
+        data_type: "port_based"
+        uifname: "umrr9f_t169_automotive"
+        uifmajorv: 2
+        uifminorv: 4
+        uifpatchv: 1
