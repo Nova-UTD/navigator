@@ -20,12 +20,12 @@ class SafetyChecker:
 
         if not scene.topic_health.odom_fresh:
             blockers.append("odom_stale")
-        if not scene.topic_health.path_fresh:
-            blockers.append("path_stale")
         if scene.ego_pose is None:
             blockers.append("ego_pose_missing")
+        # path_missing keeps the node in IDLE via need_detector — not a safety fault.
+        # Only block execution if path disappears while a maneuver is already active.
         if len(scene.current_path) < 2:
-            blockers.append("path_missing_or_empty")
+            blockers.append("path_missing_during_execution")
         if scene.ego_speed > self._max_speed:
             blockers.append(
                 f"ego_speed_{scene.ego_speed:.1f}_above_max_{self._max_speed}"

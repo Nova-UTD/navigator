@@ -58,10 +58,12 @@ class LaneChangeStateMachine:
         safety: SafetyResult,
     ) -> LCState:
 
-        # Hard-fault: required inputs stale
-        if not scene.topic_health.odom_fresh or not scene.topic_health.path_fresh:
+        # Hard-fault: odometry is safety-critical — we cannot know where we are.
+        # Missing path is handled gracefully by need_detector (returns no_need),
+        # so the node stays IDLE rather than faulting when the planner is offline.
+        if not scene.topic_health.odom_fresh:
             if self.state != LCState.FAULT:
-                self._go(LCState.FAULT, "required_inputs_stale")
+                self._go(LCState.FAULT, "odom_stale")
             return self.state
 
         state = self.state
