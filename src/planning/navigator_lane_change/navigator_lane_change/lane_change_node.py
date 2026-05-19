@@ -35,6 +35,7 @@ class LaneChangeNode(Node):
         self.declare_parameter("path_topic", "/planning/path")
         self.declare_parameter("objects_topic", "/objdet3d_tracked")
         self.declare_parameter("intersection_topic", "/intersection_status")
+        self.declare_parameter("command_topic", "/behavior/lane_change_command")
 
         # Need detection
         self.declare_parameter("lookahead_distance_m", 35.0)
@@ -115,6 +116,9 @@ class LaneChangeNode(Node):
         self.create_subscription(
             String, p("intersection_topic").value, self._cb_intersection, 10
         )
+        self.create_subscription(
+            String, p("command_topic").value, self._cb_command, 10
+        )
         self._subscribe_objects(p("objects_topic").value)
 
         # ----------------------------------------------------------------
@@ -167,6 +171,14 @@ class LaneChangeNode(Node):
 
     def _cb_intersection(self, msg) -> None:
         self._scene.update_intersection(msg)
+
+    def _cb_command(self, msg) -> None:
+        direction = msg.data.strip().lower()
+        if direction in ("left", "right", "cancel"):
+            self._scene.update_command(direction)
+            self.get_logger().info(f"[LC] command received: {direction}")
+        else:
+            self.get_logger().warn(f"[LC] unknown command ignored: '{msg.data}'")
 
     # ------------------------------------------------------------------
     # Main loop

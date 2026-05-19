@@ -23,6 +23,7 @@ class GapSelector:
         min_side_clearance_m: float = 2.0,
         lookback_m: float = 40.0,
         lookahead_m: float = 60.0,
+        merging_conflict_lat_speed_mps: float = 0.4,
     ):
         self._min_front = min_front_gap_m
         self._min_rear = min_rear_gap_m
@@ -30,6 +31,7 @@ class GapSelector:
         self._side_clear = min_side_clearance_m
         self._lookback = lookback_m
         self._lookahead = lookahead_m
+        self._merge_lat_thresh = merging_conflict_lat_speed_mps
 
         # Half-width of the band considered "in target lane"
         self._lane_band = 1.6  # m from target lane center
@@ -49,6 +51,7 @@ class GapSelector:
         front_obj, front_gap = self._front(scene, ego, path, lat_off)
         rear_obj, rear_gap = self._rear(scene, ego, path, lat_off)
         side_overlap = self._side(scene, ego, path, lat_off)
+        merge_conflict = self._merging_conflict(scene, ego, path, lat_off)
 
         # Rear TTC
         if rear_obj is not None:
@@ -67,6 +70,8 @@ class GapSelector:
             fails.append(f"rear_ttc_{rear_ttc:.1f}s<{self._min_ttc}s")
         if side_overlap:
             fails.append("side_overlap")
+        if merge_conflict:
+            fails.append("merging_conflict_in_target_lane")
 
         safe = len(fails) == 0
         return GapAssessment(
@@ -75,6 +80,7 @@ class GapSelector:
             rear_gap_m=rear_gap,
             rear_ttc_s=min(rear_ttc, 999.0),
             side_overlap=side_overlap,
+            merging_conflict=merge_conflict,
             reason="gap_accepted" if safe else "; ".join(fails),
         )
 
@@ -124,6 +130,29 @@ class GapSelector:
                 continue
             if abs(lat - lat_off) < self._side_clear:
                 return True
+        return False
+
+    def _merging_conflict(self, scene: Scene, ego, path, lat_off: float) -> bool:
+        """True if a vehicle in the target lane is merging laterally toward ego's lane."""
+        from .frenet_utils import _path_tangent_at
+        ux, uy = _path_tangent_at(ego.x, ego.y, path)
+        # Lateral unit vector (positive = left of forward direction)
+        lx, ly = -uy, ux
+
+        for obj in scene.nearby_objects:
+            rel_s, lat = project_relative_to_ego(obj.x, obj.y, path, ego.x, ego.y)
+            if rel_s < -self._lookback or rel_s > self._lookahead:
+                continue
+            if abs(lat - lat_off) > self._lane_band + obj.width / 2.0:
+                continue
+            # Project object velocity onto lateral axis
+            obj_lat_vel = obj.vx * lx + obj.vy * ly
+            # Moving toward ego lane: left-lane object moving right, or right-lane object moving left
+            if lat_off > 0 and obj_lat_vel < -self._merge_lat_thresh:
+                return True
+            if lat_off < 0 and obj_lat_vel > self._merge_lat_thresh:
+                return True
+
         return False
 
     @staticmethod

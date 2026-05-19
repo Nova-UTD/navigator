@@ -48,6 +48,7 @@ class Scene:
     nearby_objects: List[TrackedObject]
     intersection_stop: bool
     topic_health: TopicHealth
+    commanded_direction: str = "none"  # "left" | "right" | "cancel" | "none"
 
 
 @dataclass
@@ -77,6 +78,7 @@ class GapAssessment:
     rear_ttc_s: float
     side_overlap: bool
     reason: str
+    merging_conflict: bool = False
 
 
 @dataclass

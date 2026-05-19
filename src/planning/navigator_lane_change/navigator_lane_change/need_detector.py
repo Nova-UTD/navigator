@@ -40,6 +40,19 @@ class NeedDetector:
             self._reset()
             return self._no("intersection_stop_active")
 
+        # Explicit operator / planner command takes priority over obstacle detection.
+        if scene.commanded_direction in ("left", "right"):
+            return LaneChangeNeed(
+                needed=True,
+                reason="commanded_lane_change",
+                urgency="normal",
+                blockage_distance_m=float("inf"),
+                suggested_direction=scene.commanded_direction,
+            )
+        if scene.commanded_direction == "cancel":
+            self._reset()
+            return self._no("command_cancel")
+
         blocking, dist = self._find_blocking_object(scene)
 
         if blocking is None:

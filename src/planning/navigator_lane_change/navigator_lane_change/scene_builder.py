@@ -26,6 +26,10 @@ class SceneBuilder:
         self._t_objects = 0.0
         self._t_intersection = 0.0
 
+        self._commanded_direction = "none"
+        self._t_command = 0.0
+        self._command_timeout_s = 30.0
+
     # ------------------------------------------------------------------
     # ROS callback handlers — store latest message + receipt timestamp
     # ------------------------------------------------------------------
@@ -46,12 +50,23 @@ class SceneBuilder:
         self._intersection = msg
         self._t_intersection = time.time()
 
+    def update_command(self, direction: str) -> None:
+        """Store an operator or planner lane-change command. Expires after command_timeout_s."""
+        self._commanded_direction = direction
+        self._t_command = time.time()
+
     # ------------------------------------------------------------------
     # Build Scene
     # ------------------------------------------------------------------
 
     def build(self) -> Scene:
         now = time.time()
+
+        # Command expires after timeout to prevent stale commands driving behaviour.
+        commanded = self._commanded_direction
+        if commanded != "none" and (now - self._t_command) > self._command_timeout_s:
+            commanded = "none"
+            self._commanded_direction = "none"
 
         health = TopicHealth(
             odom_fresh=(now - self._t_odom) < self._stale,
@@ -88,6 +103,7 @@ class SceneBuilder:
             nearby_objects=objects,
             intersection_stop=intersection_stop,
             topic_health=health,
+            commanded_direction=commanded,
         )
 
     # ------------------------------------------------------------------

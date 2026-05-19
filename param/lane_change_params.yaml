@@ -8,6 +8,7 @@ lane_change_node:
     path_topic: /planning/path
     objects_topic: /objdet3d_tracked
     intersection_topic: /intersection_status
+    command_topic: /behavior/lane_change_command
 
     # Need detection
     lookahead_distance_m: 35.0
@@ -27,6 +28,7 @@ lane_change_node:
     min_rear_gap_m: 10.0
     min_rear_ttc_s: 4.0
     min_side_clearance_m: 2.0
+    merging_conflict_lat_speed_mps: 0.4  # m/s lateral — flags vehicle merging into target lane
 
     # Execution constraints (not used in shadow mode — reserved for PR 3)
     max_lane_change_speed_mps: 8.0
