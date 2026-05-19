@@ -250,6 +250,13 @@ road_user_detector = Node(
     executable='road_user_detection'
 )
 
+lane_change_controller = Node(
+    package='navigator_lane_change',
+    executable='lane_change_node',
+    name='lane_change_node',
+    output='screen',
+    parameters=[NAVIGATOR_DIR + 'param/lane_change_params.yaml']
+)
 autonomous_cruise_controller = Node(
     package='autonomous_cruise',
     executable='autonomous_cruise_node',

@@ -1,0 +1,43 @@
+lane_change_node:
+  ros__parameters:
+    loop_rate_hz: 10.0
+    shadow_mode: true           # Set false only after CARLA shadow validation
+
+    # Topics — match current Navigator stack names
+    odom_topic: /gnss/odometry
+    path_topic: /planning/path
+    objects_topic: /objdet3d_tracked
+    intersection_topic: /intersection_status
+    command_topic: /behavior/lane_change_command
+
+    # Need detection
+    lookahead_distance_m: 35.0
+    blocked_path_distance_m: 20.0
+    stopped_object_speed_mps: 0.5   # m/s — below this = "stopped"
+    min_blockage_duration_s: 1.0    # seconds obstacle must persist before triggering
+
+    # Lane selection
+    lane_width_m: 3.5
+    allow_left_lane_change: true
+    allow_right_lane_change: true
+    require_same_direction_lane: true
+    min_target_lane_confidence: 0.6
+
+    # Gap selection
+    min_front_gap_m: 12.0
+    min_rear_gap_m: 10.0
+    min_rear_ttc_s: 4.0
+    min_side_clearance_m: 2.0
+    merging_conflict_lat_speed_mps: 0.4  # m/s lateral — flags vehicle merging into target lane
+
+    # Execution constraints (not used in shadow mode — reserved for PR 3)
+    max_lane_change_speed_mps: 8.0
+    speed_cap_during_lane_change_mps: 5.0
+    lane_change_length_m: 30.0
+    lane_change_duration_s: 4.0
+
+    # State-machine timing
+    wait_for_gap_timeout_s: 8.0
+    abort_cooldown_s: 3.0
+    complete_stabilization_time_s: 1.0
+    stale_input_timeout_s: 0.5
