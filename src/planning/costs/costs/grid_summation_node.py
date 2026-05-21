@@ -294,8 +294,15 @@ class GridSummationNode(Node):
                 elif len(grid.data) > data_dim:
                     grid.data = grid.data[:data_dim]
 
+                # Only sensor grids (occupancy) need fast-forwarding when stale.
+                # Map-based grids (drivable, route_dist, junction, lane_control) are
+                # already computed for the current vehicle pose — fast-forwarding them
+                # applies TF noise + ndimage transforms on every cycle, causing visible
+                # jitter in RViz (especially since drivable publishes at ~0.7 Hz and is
+                # therefore always "stale" by the 0.25 s threshold).
+                SENSOR_GRIDS = ('occupancy', 'future_occupancy')
                 stale = self.checkForStaleness(grid)
-                if stale > 0:
+                if stale > 0 and grid_name in SENSOR_GRIDS:
                     ff_grid = self.fastforward(grid)
                     weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
                 else:
@@ -303,8 +310,7 @@ class GridSummationNode(Node):
                     # np.asarray(arr, ...) converts values — safe for masked arrays and
                     # plain ndarrays alike.  Do NOT use arr.data which is a raw byte
                     # buffer and reinterprets memory, causing a reshape ValueError when
-                    # the source dtype is wider than float16 (e.g. float64 from
-                    # resizeOccupancyGrid's np.zeros output).
+                    # the source dtype is wider than float16.
                     # NOTE: occupancy grids now publish at 300×300 (from StaticOccupancyNode
                     # fix); resizeOccupancyGrid expected 128×128 input and will crash with
                     # 300×300 — do not call it here.
