@@ -5,6 +5,11 @@ Package: grids
 
 Subscribes to cost maps, calculates their weighted sum, and
 publishes the result as a finished cost map.
+
+[Nova UTD — laneControlledCostmap PR]
+Added /grid/lane_control subscription and entry in createCostMap grids list.
+The lane_control layer goes to steering_cost via the existing else branch
+(np.maximum), so no routing logic changes were needed.
 '''
 
 import rclpy
@@ -38,6 +43,7 @@ FUTURE_OCCUPANCY_SCALE = 1.0 #3.0
 DRIVABLE_GRID_SCALE = 1.0 #0.75
 ROUTE_DISTANCE_GRID_SCALE = 1.0
 JUNCTION_GRID_SCALE = 1.0
+LANE_CONTROL_SCALE      = 1.0  # lane_controlled_costmap_node output
 
 
 class GridSummationNode(Node):
@@ -48,6 +54,7 @@ class GridSummationNode(Node):
         - Drivable surface  (~5 Hz)
         - Route distance
         - Current occupancy (~8 Hz)
+        - Lane control      (~20 Hz)  ← new
 
         """
         super().__init__('grid_summation_node')
@@ -79,6 +86,12 @@ class GridSummationNode(Node):
         self.route_dist_grid_sub = self.create_subscription(
             OccupancyGrid, '/grid/route_distance', self.routeDistGridCb, 1)
         self.route_dist_grid = None
+
+        # ── Lane control layer ─────────────────────────────────────────────────
+        self.lane_control_sub = self.create_subscription(
+            OccupancyGrid, '/grid/lane_control', self.laneControlCb, 1)
+        self.lane_control_grid = None
+        # ──────────────────────────────────────────────────────────────────────
 
         self.steering_cost_pub = self.create_publisher(
             OccupancyGrid, '/grid/steering_cost', 1)
@@ -125,6 +138,10 @@ class GridSummationNode(Node):
         if self.route_dist_grid is None or msg.header.stamp.sec + msg.header.stamp.nanosec*1e-9 > self.route_dist_grid.header.stamp.sec + self.route_dist_grid.header.stamp.nanosec*1e-9:
             self.route_dist_grid = msg
 
+    def laneControlCb(self, msg: OccupancyGrid):
+        if self.lane_control_grid is None or msg.header.stamp.sec + msg.header.stamp.nanosec*1e-9 > self.lane_control_grid.header.stamp.sec + self.lane_control_grid.header.stamp.nanosec*1e-9:
+            self.lane_control_grid = msg
+
     def checkForStaleness(self, grid: OccupancyGrid):
         stamp = grid.header.stamp
         stamp_in_seconds = stamp.sec + stamp.nanosec*1e-9
@@ -133,7 +150,7 @@ class GridSummationNode(Node):
         stale_time = current_time_in_seconds - stamp_in_seconds
         stale = stale_time > STALENESS_TOLERANCE
         print("Stale for " + str(stale_time) + " seconds")
-        
+
         if stale:
             self.status.level = DiagnosticStatus.WARN
             self.status.message = "Current occupancy was stale."
@@ -144,13 +161,13 @@ class GridSummationNode(Node):
     def fastforward(self, grid: OccupancyGrid):
         if grid is None:
             return grid
-        
+
         # convert the grid to numpy array, we'll treat it as an image
         grid_img = occupancygrid_to_numpy(grid)
         old_dim = grid_img.shape[0]
         grid_res = grid.info.resolution
 
-        if old_dim == 128:  
+        if old_dim == 128:
             dim_bef_resize = old_dim
 
             grid_img = self.resizeOccupancyGrid(grid_img)
@@ -160,7 +177,7 @@ class GridSummationNode(Node):
         # find that transform between base_link frames from when the message was made until now
         t = self.tf_buffer.lookup_transform_full(
             target_frame='base_link',
-            target_time=rclpy.time.Time(),  # this requests the most recent time available, self.clock.clock might ask for a time more recent that we have data for...
+            target_time=rclpy.time.Time(),
             source_frame='base_link',
             source_time=grid.header.stamp,
             fixed_frame='map',
@@ -177,17 +194,16 @@ class GridSummationNode(Node):
         except yaml.YAMLError as e:
             print(f"Error parsing YAML file: {e}")
 
-        # use 10 here because it is the distance from the center of the occupancy grid to the vehicle
         x = t.transform.translation.x + ((0.5 * data['occupancy_grids']['vehicle_longitudinal_location']) - (0.5 * data['occupancy_grids']['vehicle_longitudinal_location'])*np.cos(-yaw))
         y = t.transform.translation.y - (0.5 * data['occupancy_grids']['vehicle_longitudinal_location'])*np.sin(-yaw)
-        
+
         shift = [y/grid_res, x/grid_res]
 
         grid_img = ndimage.rotate(grid_img, np.degrees(-yaw), reshape=True)
         new_dim = grid_img.shape[0]
         diff = int((new_dim-old_dim)/2)
-        grid_img = ndimage.shift(grid_img,shift)
-        grid_img = grid_img[diff:new_dim-diff,diff:new_dim-diff]
+        grid_img = ndimage.shift(grid_img, shift)
+        grid_img = grid_img[diff:new_dim-diff, diff:new_dim-diff]
 
         # sometimes grid_img emerges with 152 pixels..
         prezoom_rows = grid_img.shape[0]
@@ -197,10 +213,13 @@ class GridSummationNode(Node):
         grid_out = OccupancyGrid()
         grid_out.info.map_load_time = self.clock.clock
         grid_out.info.resolution = (grid_res * old_dim / (new_dim - diff)) * prezoom_rows / grid_img.shape[0]
-        grid_out.info.width = int(grid_img.shape[0])
-        grid_out.info.height = int(grid_img.shape[1])
-        grid_out.info.origin.position.x = grid_img.shape[0] * grid_out.info.resolution * 2 / 3 * -1
-        grid_out.info.origin.position.y = grid_img.shape[1] * grid_out.info.resolution * 1 / 2 * -1
+        # shape[0]=rows=height (y/lateral), shape[1]=cols=width (x/longitudinal).
+        # Assigning shape[0] to width and shape[1] to height was the x/y flip bug:
+        # downstream reshape(height, width) would silently transpose non-square grids.
+        grid_out.info.width  = grid_img.shape[1]   # cols → x extent (width)
+        grid_out.info.height = grid_img.shape[0]   # rows → y extent (height)
+        grid_out.info.origin.position.x = grid_img.shape[1] * grid_out.info.resolution * 2 / 3 * -1
+        grid_out.info.origin.position.y = grid_img.shape[0] * grid_out.info.resolution * 1 / 2 * -1
         grid_out.header.stamp = self.clock.clock
         grid_out.header.frame_id = 'base_link'
         grid_out.data = grid_img.astype(np.int8).flatten().tolist()
@@ -208,36 +227,21 @@ class GridSummationNode(Node):
         return grid_out
 
     def getWeightedArrayFromNumpy(self, msg: OccupancyGrid, scale: float) -> np.ndarray:
-        """Converts the OccupancyGrid message into a numpy array, then multiplies it by scale
-
-        Args:
-            msg (OccupancyGrid)
-            scale (float)
-
-        Returns:
-            np.ndarray: Weighted ndarray
-        """
         height, width = msg.shape
 
         height = int(height)
         width = int(width)
 
-        arr = np.asarray(msg.data, dtype=np.float16).reshape(height, width)
+        # np.asarray converts values safely for masked arrays and plain ndarrays.
+        # Do NOT use msg.data here — on a numpy array that is the raw byte buffer,
+        # which reinterprets memory and causes a reshape ValueError.
+        arr = np.asarray(msg, dtype=np.float16).reshape(height, width)
 
         arr *= scale
 
         return arr
 
     def getWeightedArrayFromOccupancyGrid(self, msg: OccupancyGrid, scale: float) -> np.ndarray:
-        """Converts the OccupancyGrid message into a numpy array, then multiplies it by scale
-
-        Args:
-            msg (OccupancyGrid)
-            scale (float)
-
-        Returns:
-            np.ndarray: Weighted ndarray
-        """
         arr = np.asarray(msg.data, dtype=np.float16).reshape(msg.info.height, msg.info.width)
 
         arr *= scale
@@ -260,22 +264,21 @@ class GridSummationNode(Node):
         background = np.zeros((151, 151))
         h, w = downsampled.shape
         background[22:22+h, 0:w] = downsampled
-        
+
         return background
 
     def createCostMap(self):
-        # self.get_logger().info('Composing aggregate costmap...')
         steering_cost = np.zeros((151, 151))
         speed_cost = np.zeros((151, 151))
 
-        # Calculate the weighted cost map layers
-        grids = [('occupancy', self.current_occupancy_grid, CURRENT_OCCUPANCY_SCALE),
-                 ('future_occupancy', self.future_occupancy_grid, FUTURE_OCCUPANCY_SCALE),
-                 ('drivable', self.drivable_grid, DRIVABLE_GRID_SCALE),
-                 ('route_dist', self.route_dist_grid, ROUTE_DISTANCE_GRID_SCALE),
-                 ('junction', self.junction_grid, JUNCTION_GRID_SCALE)
-                ] 
-        
+        grids = [('occupancy',        self.current_occupancy_grid,  CURRENT_OCCUPANCY_SCALE),
+                 ('future_occupancy', self.future_occupancy_grid,   FUTURE_OCCUPANCY_SCALE),
+                 ('drivable',         self.drivable_grid,           DRIVABLE_GRID_SCALE),
+                 ('route_dist',       self.route_dist_grid,         ROUTE_DISTANCE_GRID_SCALE),
+                 ('junction',         self.junction_grid,           JUNCTION_GRID_SCALE),
+                 ('lane_control',     self.lane_control_grid,       LANE_CONTROL_SCALE),  # ← new
+                ]
+
         try:
 
             for grid_name, grid, scale in grids:
@@ -283,45 +286,48 @@ class GridSummationNode(Node):
                     print("GRID NOT FOUND")
                     continue
 
-                data_dim = grid.info.height * grid.info.width
-                data_dim = int(data_dim)
-
-                if (len(grid.data) < data_dim):
+                # Pad or trim data array to match declared dimensions
+                data_dim = int(grid.info.height * grid.info.width)
+                if len(grid.data) < data_dim:
                     for i in range(data_dim - len(grid.data)):
                         grid.data.append(0)
-                elif (len(grid.data) > data_dim):
+                elif len(grid.data) > data_dim:
                     grid.data = grid.data[:data_dim]
-                
+
                 stale = self.checkForStaleness(grid)
                 if stale > 0:
                     ff_grid = self.fastforward(grid)
                     weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
                 else:
                     ff_grid = occupancygrid_to_numpy(grid)
-                    if grid_name == 'occupancy' or grid_name == 'future_occupancy':
+                    # Occupancy sensors publish at 128×128; resize to 151×151 once here.
+                    if grid_name in ('occupancy', 'future_occupancy'):
                         ff_grid = self.resizeOccupancyGrid(ff_grid)
-                    weighted_grid_arr = ff_grid*scale
+                    # np.asarray(arr, ...) converts values — safe for masked arrays and
+                    # plain ndarrays alike.  Do NOT use arr.data which is a raw byte
+                    # buffer and reinterprets memory, causing a reshape ValueError when
+                    # the source dtype is wider than float16 (e.g. float64 from
+                    # resizeOccupancyGrid's np.zeros output).
+                    weighted_grid_arr = np.asarray(ff_grid, dtype=np.float16) * scale
 
-                if isinstance(ff_grid, np.ndarray):
-                    weighted_grid_arr = self.getWeightedArrayFromNumpy(ff_grid, scale)
-                else:
-                    weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
-                
-                if grid_name == 'occupancy' or grid_name == 'future_occupancy':
-                    weighted_grid_arr = self.resizeOccupancyGrid(weighted_grid_arr)
-
-                if weighted_grid_arr.shape != steering_cost.shape:
-                    steering_cost = np.zeros(weighted_grid_arr.shape)
-
-                if weighted_grid_arr.shape != speed_cost.shape:
-                    speed_cost = np.zeros(weighted_grid_arr.shape)
+                # Normalise every layer to 151×151 before accumulation.
+                # drivable / route_dist / junction grids arrive at 300×300;
+                # zoom them down so np.maximum doesn't raise a broadcast error.
+                if weighted_grid_arr.shape != (151, 151):
+                    factor = 151.0 / weighted_grid_arr.shape[0]
+                    weighted_grid_arr = ndimage.zoom(
+                        weighted_grid_arr.astype(np.float32), factor
+                    ).astype(np.float16)
+                    # zoom output may be 151 or 152 due to float rounding — clip
+                    weighted_grid_arr = weighted_grid_arr[:151, :151]
 
                 if grid_name == 'drivable':
-                    steering_cost = np.maximum( steering_cost , weighted_grid_arr )
+                    steering_cost = np.maximum(steering_cost, weighted_grid_arr)
                 elif grid_name == 'junction':
-                    speed_cost = np.maximum( speed_cost , weighted_grid_arr )
+                    speed_cost = np.maximum(speed_cost, weighted_grid_arr)
                 else:
-                    steering_cost = np.maximum( steering_cost , weighted_grid_arr )
+                    # occupancy, future_occupancy, route_dist, lane_control → steering
+                    steering_cost = np.maximum(steering_cost, weighted_grid_arr)
 
             # Cap this to 100
             steering_cost = np.clip(steering_cost, 0, 100)
@@ -336,7 +342,7 @@ class GridSummationNode(Node):
             except yaml.YAMLError as e:
                 print(f"Error parsing YAML file: {e}")
 
-            # Publish as an OccupancyGrid
+            # Publish steering cost — resized to config dimensions via cv2
             steering_cost_msg = OccupancyGrid()
             steering_cost_msg.info.map_load_time = self.clock.clock
             steering_cost_msg.info.resolution = data['occupancy_grids']['resolution']
@@ -347,46 +353,45 @@ class GridSummationNode(Node):
 
             resized_grid = cv2.resize(steering_cost, (60, 60), interpolation=cv2.INTER_NEAREST)
             steering_cost_msg.data = resized_grid.astype(np.int8).flatten().tolist()
-            steering_cost_msg.info.width = int(data['occupancy_grids']['width'])
+            steering_cost_msg.info.width  = int(data['occupancy_grids']['width'])
             steering_cost_msg.info.height = int(data['occupancy_grids']['length'])
-            
+
             self.steering_cost_pub.publish(steering_cost_msg)
 
             speed_cost_msg = OccupancyGrid()
             speed_cost_msg.info.map_load_time = self.clock.clock
             speed_cost_msg.info.resolution = data['occupancy_grids']['resolution']
-            speed_cost_msg.info.width = speed_cost.shape[1]
-            speed_cost_msg.info.height = speed_cost.shape[0]
+            speed_cost_msg.info.width  = speed_cost.shape[1]  # cols = x (width)
+            speed_cost_msg.info.height = speed_cost.shape[0]  # rows = y (height)
             speed_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
             speed_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
             speed_cost_msg.header.stamp = self.clock.clock
             speed_cost_msg.header.frame_id = 'base_link'
             speed_cost_msg.data = speed_cost.astype(np.int8).flatten().tolist()
 
-            # Resize occupancy grid to match size specified in config file
+            # Resize speed cost grid to match size specified in config file
             if speed_cost_msg.info.height != data['occupancy_grids']['length']:
                 diff = (data['occupancy_grids']['length'] - speed_cost_msg.info.height) / speed_cost_msg.info.resolution
-                diff = int(diff)  # Convert to integer
-                
+                diff = int(diff)
+
                 if diff < 0:
                     speed_cost_msg.data = speed_cost_msg.data[:int(diff * speed_cost_msg.info.width)]
                 elif diff > 0:
                     speed_cost_msg.data.extend([-1] * int(diff * speed_cost_msg.info.width))
-                
+
                 speed_cost_msg.info.height = int(data['occupancy_grids']['length'])
-            
+
             if speed_cost_msg.info.width != data['occupancy_grids']['width']:
-                diff = (data['occupancy_grids']['width'] - speed_cost_msg.info.width) / speed_cost_msg.info.resolution 
-                diff = int(diff)  # Convert to integer
-            
+                diff = (data['occupancy_grids']['width'] - speed_cost_msg.info.width) / speed_cost_msg.info.resolution
+                diff = int(diff)
+
                 if diff < 0:
                     new_grid = [-1] * int(data['occupancy_grids']['width'] * speed_cost_msg.info.height)
                     offset = int(diff / 2 * -1)
-                    
+
                     for i in range(int(speed_cost_msg.info.height)):
                         start = int(i * data['occupancy_grids']['width'] + offset)
                         end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
-
                         new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = speed_cost_msg.data[start:end]
 
                     speed_cost_msg.data = new_grid
@@ -398,32 +403,14 @@ class GridSummationNode(Node):
                         end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
                         new_grid[start:end] = speed_cost_msg.data[int(i * speed_cost_msg.info.width):int((i + 1) * speed_cost_msg.info.width)]
                     speed_cost_msg.data = new_grid
-            
+
                 speed_cost_msg.info.width = int(data['occupancy_grids']['width'])
 
             self.speed_cost_pub.publish(speed_cost_msg)
         except (Exception) as e:
             self.get_logger().warn('Error composing aggregate cost map - likely waiting for Transform Buffer.')
             self.get_logger().warn(str(e))
-        
-"""
-        #Publish Egma
-        egma_msg = Egma()
-        egma_msg.header.stamp = self.clock.clock
-        egma_msg.header.frame_id = 'base_link'
-        current_stamp = egma_msg.header.stamp
-        t = current_stamp.sec + current_stamp.nanosec * 1e-9
-        for i in range(15):
-            frame = steering_cost_msg
-            t += 0.1  
-            next_stamp = current_stamp
-            next_stamp.sec = int(t)
-            next_stamp.nanosec = int(t * 1e9 % 1e9)
-            steering_cost_msg.header.stamp = next_stamp
-            steering_cost_msg.header.frame_id = 'base_link'
-            egma_msg.egma.append(frame)
-        self.combined_egma_pub.publish(egma_msg)
-"""
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -436,4 +423,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
