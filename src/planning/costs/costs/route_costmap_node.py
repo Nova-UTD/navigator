@@ -34,6 +34,7 @@ from tf_transformations import quaternion_multiply, euler_from_quaternion
 from ros2_numpy.occupancy_grid import occupancygrid_to_numpy, numpy_to_occupancy_grid
 # to do image rotations/shifts for fast forwarding occupancy grids
 from scipy import ndimage
+import cv2
 
 from visualization_msgs.msg import Marker
 from std_msgs.msg import ColorRGBA
@@ -285,51 +286,29 @@ class RouteCostmapNode(Node):
         except yaml.YAMLError as e:
             print(f"Error parsing YAML file: {e}")
 
-        # Publish as an OccupancyGrid
+        # Publish as an OccupancyGrid, resized to config dimensions via cv2
+        resolution = data['occupancy_grids']['resolution']
+        grid_cols = int(data['occupancy_grids']['width']  / resolution)  # 300
+        grid_rows = int(data['occupancy_grids']['length'] / resolution)  # 300
+
         route_cost_msg = OccupancyGrid()
         route_cost_msg.info.map_load_time = self.clock.clock
-        route_cost_msg.info.resolution = data['occupancy_grids']['resolution']
-        route_cost_msg.info.width = int(data['occupancy_grids']['width'])
-        route_cost_msg.info.height = int(data['occupancy_grids']['length'])
-        route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
-        route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
+        route_cost_msg.info.resolution = resolution
+        route_cost_msg.info.width  = grid_cols
+        route_cost_msg.info.height = grid_rows
+        # origin is the lower-left corner of the map in base_link:
+        # x = forward (longitudinal), y = left (latitudinal)
+        route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
+        route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
         route_cost_msg.header.stamp = self.clock.clock
         route_cost_msg.header.frame_id = 'base_link'
-        route_cost_msg.data = routemap.astype(np.int8).flatten().tolist()
 
-        # Resize occupancy grid to match size specified in config file
-        if routemap.shape[0] != route_cost_msg.info.height:
-            diff = (route_cost_msg.info.height - routemap.shape[0]) / route_cost_msg.info.resolution
-            diff = int(diff)  # Convert to integer
-            
-            if diff < 0:
-                route_cost_msg.data = route_cost_msg.data[:int(diff * routemap.shape[1])]
-            elif diff > 0:
-                route_cost_msg.data.extend([-1] * int(diff * routemap.shape[1]))
-        
-        if routemap.shape[1] != route_cost_msg.info.width:
-            diff = (route_cost_msg.info.width - routemap.shape[1]) / route_cost_msg.info.resolution     
-            diff = int(diff)  # Convert to integer
-        
-            if diff < 0:
-                new_grid = [-1] * int(data['occupancy_grids']['width'] * route_cost_msg.info.height)
-                offset = int(diff / 2 * -1)
-                
-                for i in range(int(route_cost_msg.info.height)):
-                    start = int(i * data['occupancy_grids']['width'] + offset)
-                    end = int(((i + 1) * data['occupancy_grids']['width']) - 1 - offset)
-
-                    new_grid[int(i * data['occupancy_grids']['width']):int((i + 1) * data['occupancy_grids']['width'] - 1)] = route_cost_msg.data[start:end]
-
-                route_cost_msg.data = new_grid
-            elif diff > 0:
-                new_grid = [-1] * int(route_cost_msg.info.width * route_cost_msg.info.height)
-                offset = int(diff / 2)
-                for i in range(int(route_cost_msg.info.height)):
-                    start = int(i * route_cost_msg.info.width + offset)
-                    end = int(((i + 1) * route_cost_msg.info.width) - 1 - offset)
-                    new_grid[start:end] = route_cost_msg.data[int(i * routemap.shape[1]):int((i + 1) * routemap.shape[1])]
-                route_cost_msg.data = new_grid
+        resized_routemap = cv2.resize(
+            routemap.astype(np.float32),
+            (grid_cols, grid_rows),
+            interpolation=cv2.INTER_NEAREST
+        )
+        route_cost_msg.data = np.clip(resized_routemap, -128, 127).astype(np.int8).flatten().tolist()
 
         self.route_dist_grid_pub.publish(route_cost_msg)
 
