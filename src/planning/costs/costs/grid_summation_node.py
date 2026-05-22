@@ -63,6 +63,13 @@ class GridSummationNode(Node):
         self.declare_parameter('global_config', 'temp_value')
         self.file_path = self.get_parameter('global_config').value
 
+        # Cache fastforward results keyed by (grid_name, stamp_secs) so we
+        # don't re-run TF lookup + ndimage.rotate/shift/zoom for the same
+        # grid on every 20 Hz timer tick — repeated calls with the same stale
+        # grid produce slightly different rotations due to TF floating-point
+        # noise, which causes visible shimmering in RViz.
+        self._ff_cache = {}  # {grid_name: (stamp_secs, weighted_arr)}
+
         # Subscriptions and publishers
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -301,10 +308,19 @@ class GridSummationNode(Node):
                 # jitter in RViz (especially since drivable publishes at ~0.7 Hz and is
                 # therefore always "stale" by the 0.25 s threshold).
                 SENSOR_GRIDS = ('occupancy', 'future_occupancy')
+                stamp_secs = grid.header.stamp.sec + grid.header.stamp.nanosec * 1e-9
                 stale = self.checkForStaleness(grid)
                 if stale > 0 and grid_name in SENSOR_GRIDS:
-                    ff_grid = self.fastforward(grid)
-                    weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
+                    # Use cached fastforward result if the grid stamp hasn't changed.
+                    # Without this, the same stale grid is re-rotated/shifted on every
+                    # 20 Hz tick with slightly different TF values, producing shimmer.
+                    cached = self._ff_cache.get(grid_name)
+                    if cached is not None and abs(cached[0] - stamp_secs) < 1e-6:
+                        weighted_grid_arr = cached[1]
+                    else:
+                        ff_grid = self.fastforward(grid)
+                        weighted_grid_arr = self.getWeightedArrayFromOccupancyGrid(ff_grid, scale)
+                        self._ff_cache[grid_name] = (stamp_secs, weighted_grid_arr)
                 else:
                     ff_grid = occupancygrid_to_numpy(grid)
                     # np.asarray(arr, ...) converts values — safe for masked arrays and
