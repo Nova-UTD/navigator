@@ -42,8 +42,6 @@ from std_msgs.msg import ColorRGBA
 
 from skimage.morphology import erosion
 
-import matplotlib.pyplot as plt
-
 class RouteCostmapNode(Node):
 
     def __init__(self):
@@ -70,6 +68,7 @@ class RouteCostmapNode(Node):
             Path, '/planning/route', self.routeCb, 1)
         self.route = None
         self.not_visited = None
+        self._warned_no_route = False
 
         # TODO: implement status book keeping
         # self.status_pub = self.create_publisher(
@@ -92,6 +91,7 @@ class RouteCostmapNode(Node):
             self.get_logger().debug('Received the route.')
             self.route = msg.poses
             self.route_remaining = msg.poses
+            self._warned_no_route = False
 
     # TODO: this logic could be revisited.
     def buildRouteCostmap(self):
@@ -100,7 +100,9 @@ class RouteCostmapNode(Node):
         routemap = np.zeros((GRID_SIZE, GRID_SIZE)) + 25.0
         
         if self.route is None:
-            self.get_logger().warning('Route Costmap Node has not received route yet.')
+            if not self._warned_no_route:
+                self.get_logger().warning('Route Costmap Node has not received route yet.')
+                self._warned_no_route = True
             self.publish(routemap,(0.0,0.0))
             return
 

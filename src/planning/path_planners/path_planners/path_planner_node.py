@@ -41,13 +41,6 @@ from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
 from visualization_msgs.msg import Marker
 from std_msgs.msg import ColorRGBA
 
-# Import all path planner classes
-from path_planners.arastar_path_planner import ARAStarPlanner
-from path_planners.dijkstra_path_planner import DijkstraPathPlanner
-from path_planners.dp_path_planner import DPPathPlanner
-from path_planners.neural_network_path_planner import NeuralPathPlanner
-from path_planners.trrtstar_path_planner import TRRTStarPathPlanner
-
 def pad_obstacles(cmap, threshold, padding):
     """Apply padding to obstacles in the costmap."""
     obstacles = 0 * cmap
@@ -161,6 +154,8 @@ class PathPlannerNode(Node):
             PoseStamped, "/planning/path_goal", self.path_goal_callback, 1
         )
         self.path_goal = None
+        self._warned_no_costmap = False
+        self._warned_no_goal = False
 
         # Publishers
         self.path_pub = self.create_publisher(Path, "/planning/path", 1)
@@ -174,18 +169,34 @@ class PathPlannerNode(Node):
         )
 
         # Initialize path planners
-        if self.planner_type == 'dijkstra':
-            self.planner = DijkstraPathPlanner()
-        elif self.planner_type == 'ara-star':
-            self.planner = ARAStarPlanner()
-        elif self.planner_type == 'dynamic-programming':
-            self.planner = DPPathPlanner()
-        elif self.planner_type == 'neural-network':
-            self.planner = NeuralPathPlanner()
-        elif self.planner_type == 'trrt-star':
-            self.planner = TRRTStarPathPlanner()
+        self.planner = self._create_planner(self.planner_type)
 
         self.get_logger().info(f"Path Planner Node initialized using {self.planner.__class__.__name__}")
+
+    def _create_planner(self, planner_type: str):
+        # Import only the selected planner so optional plotting dependencies from other
+        # planners do not execute during startup.
+        if planner_type == 'dijkstra':
+            from path_planners.dijkstra_path_planner import DijkstraPathPlanner
+            return DijkstraPathPlanner()
+        if planner_type == 'ara-star':
+            from path_planners.arastar_path_planner import ARAStarPlanner
+            return ARAStarPlanner()
+        if planner_type == 'dynamic-programming':
+            from path_planners.dp_path_planner import DPPathPlanner
+            return DPPathPlanner()
+        if planner_type == 'neural-network':
+            from path_planners.neural_network_path_planner import NeuralPathPlanner
+            return NeuralPathPlanner()
+        if planner_type == 'trrt-star':
+            from path_planners.trrtstar_path_planner import TRRTStarPathPlanner
+            return TRRTStarPathPlanner()
+
+        self.get_logger().warning(
+            f"Unknown planner '{planner_type}', defaulting to dijkstra"
+        )
+        from path_planners.dijkstra_path_planner import DijkstraPathPlanner
+        return DijkstraPathPlanner()
 
     def clock_callback(self, msg: Clock):
         self.clock = msg
@@ -195,21 +206,29 @@ class PathPlannerNode(Node):
             self.get_logger().warning("Incoming cost map dimensions were zero.")
             return
         self.costmap = msg
+        self._warned_no_costmap = False
         self.get_logger().debug(f"Received costmap: {msg.info.width}x{msg.info.height}")
 
     def path_goal_callback(self, msg: PoseStamped):
         self.path_goal = msg
+        self._warned_no_goal = False
         self.get_logger().debug(
             f"Received goal: ({msg.pose.position.x}, {msg.pose.position.y})"
+            f (recieved goal_ nned to be in base_link frame, but we will handle transforms if not)
+            int syslink= 90+i
         )
 
     def generate_path(self):
         """Main function to generate the path using the selected planner."""
         if self.costmap is None:
-            self.get_logger().warning("Have not received costmap yet...")
+            if not self._warned_no_costmap:
+                self.get_logger().warning("Have not received costmap yet...")
+                self._warned_no_costmap = True
             return
         if self.path_goal is None:
-            self.get_logger().warning("Have not received goal for path yet...")
+            if not self._warned_no_goal:
+                self.get_logger().warning("Have not received goal for path yet...")
+                self._warned_no_goal = True
             return
 
         # Check if we're already at the goal
@@ -247,7 +266,8 @@ class PathPlannerNode(Node):
         path = None
         
         # Different planners have slightly different interfaces, handle each case
-        if isinstance(self.planner, ARAStarPlanner):
+        planner_name = self.planner.__class__.__name__
+        if planner_name == "ARAStarPlanner":
             self.planner.s_start = (start_i, start_j)
             self.planner.s_goal = (goal_i, goal_j)
             self.planner.cmap = padded_costmap
@@ -255,10 +275,10 @@ class PathPlannerNode(Node):
             self.planner.create_graph_from_costmap()
             path = self.planner.arastar()
             
-        elif isinstance(self.planner, DijkstraPathPlanner):
+        elif planner_name == "DijkstraPathPlanner":
             path = self.planner.shortest_path(padded_costmap, (start_i, start_j), (goal_i, goal_j), self.obstacle_threshold)
             
-        elif isinstance(self.planner, DPPathPlanner):
+        elif planner_name == "DPPathPlanner":
             # For DP planner, we need to set parameters and run value iteration
             self.planner.costmap_data = padded_costmap
             self.planner.obstacle_threshold = self.obstacle_threshold
@@ -266,11 +286,11 @@ class PathPlannerNode(Node):
             if success:
                 path = self.planner.extract_path((start_i, start_j), (goal_i, goal_j))
                 
-        elif isinstance(self.planner, NeuralPathPlanner):
+        elif planner_name == "NeuralPathPlanner":
             # Neural network planner has a different interface
             path = self.planner.predict_path(padded_costmap, (start_i, start_j), (goal_i, goal_j))
             
-        elif isinstance(self.planner, TRRTStarPathPlanner):
+        elif planner_name == "TRRTStarPathPlanner":
             # TRRT* planner has a specific method
             path = self.planner.trrtstar_path(padded_costmap, (start_i, start_j), (goal_i, goal_j), self.obstacle_threshold)
 

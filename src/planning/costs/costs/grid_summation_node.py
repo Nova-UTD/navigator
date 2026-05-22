@@ -27,8 +27,6 @@ from ros2_numpy.occupancy_grid import occupancygrid_to_numpy
 
 from scipy import ndimage
 
-import matplotlib.pyplot as plt
-
 
 STALENESS_TOLERANCE = 0.25  # seconds. Grids older than this will be ignored.
 
