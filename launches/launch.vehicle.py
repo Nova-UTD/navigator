@@ -68,18 +68,18 @@ def generate_launch_description():
                         # rqt,
                         # camera_streamer,
                         # PERCEPTION
-                        #*perception_launch_entities,
+                        *perception_launch_entities,
                         # PLANNING
                         # routing_monitor,
                         routing_hardcoded,  # Use this to load a manual route saved as a csv. Comment out routing_monitor
                         grid_route_costmap,
                         grid_summation,
-                        #intersection_manager,
+                        intersection_manager,
                         # junction_manager,
                         path_planner,
                         # *nav2_launch_entities,
                         # path_planner_nav2,
-                        #pure_pursuit_controller,
+                        # pure_pursuit_controller,
                         # SAFETY
                         ##airbags,
                         ##guardian,

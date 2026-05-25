@@ -6,13 +6,11 @@ Author:    Bennett
 Dijkstra Path Planner
 '''
 
-from matplotlib import pyplot as plt
 import numpy as np
 import networkx as nx
 from scipy.interpolate import splrep, BSpline
 import scipy.ndimage
 from PIL import Image
-from matplotlib.patches import Rectangle
 
 
 class DijkstraPathPlanner:
