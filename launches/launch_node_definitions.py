@@ -75,6 +75,11 @@ gnss_averager = Node(
     executable='gnss_averaging_node'
 )
 
+
+hybrid_grid = Node(
+    package='segmentation',
+    executable='hybrid_perception_grid_node',
+)
 image_segmentation = Node(
     package='segmentation',
     executable='image_segmentation_node'
@@ -192,7 +197,8 @@ sounds = Node(
 
 static_grid = Node(
     package='occupancy_cpp',
-    executable='static_grid_exe'
+    executable='static_grid_exe',
+    remappings=[('/grid/occupancy/current', '/grid/occupancy/lidar')]
 )
 
 web_bridge = Node(

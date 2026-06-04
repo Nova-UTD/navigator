@@ -25,6 +25,7 @@ setup(
         'console_scripts': [
             'image_segmentation_node = segmentation.image_segmentation_node:main',
             'image_projection_node = segmentation.image_projection_node:main',
+            'hybrid_perception_grid_node = segmentation.hybrid_perception_grid_node:main',
         ],
     },
 )
