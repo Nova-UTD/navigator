@@ -80,6 +80,11 @@ hybrid_grid = Node(
     package='segmentation',
     executable='hybrid_perception_grid_node',
 )
+
+hybrid_drivable_grid = Node(
+    package='segmentation',
+    executable='hybrid_drivable_grid_node',
+)
 image_segmentation = Node(
     package='segmentation',
     executable='image_segmentation_node'
@@ -116,7 +121,8 @@ map_manager_carla = Node(
     executable='map_management_node',
     parameters=[
         {'from_file': False}
-    ]#,
+    ],
+    remappings=[('/grid/drivable', '/grid/drivable/hdmap')],
     #prefix=['xterm -e gdb -ex run --args']
 )
 
