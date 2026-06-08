@@ -21,6 +21,7 @@ Publishes:
 """
 
 import math
+import threading
 import numpy as np
 import time
 from typing import List, Tuple, Optional
@@ -131,7 +132,10 @@ class PathPlannerNode(Node):
         self.origin_x = 20.0  # Origin offset in X
         self.origin_y = 30.0  # Origin offset in Y
         self.obstacle_threshold = 90  # Values above this are considered obstacles
-        self.obstacle_padding = 3  # Cells to pad around obstacles
+        self.obstacle_padding = 1  # Cells to pad around obstacles (1 = 0.2m margin)
+
+        # Thread safety: costmap callback and generate_path run on different threads
+        self._costmap_lock = threading.Lock()
         
         # Path smoothing parameters
         self.smoothing_look_ahead = 2
@@ -194,7 +198,9 @@ class PathPlannerNode(Node):
         if msg.info.height == 0 or msg.info.width == 0:
             self.get_logger().warning("Incoming cost map dimensions were zero.")
             return
-        self.costmap = msg
+        # Guard against race where generate_path reads costmap mid-update
+        with self._costmap_lock:
+            self.costmap = msg
 
     def path_goal_callback(self, msg: PoseStamped):
         self.path_goal = msg
@@ -212,18 +218,22 @@ class PathPlannerNode(Node):
 
 
     def generate_path(self):
-        if self.costmap is None:
+        # Snapshot costmap under lock to prevent race with callback thread
+        with self._costmap_lock:
+            costmap_snap = self.costmap
+
+        if costmap_snap is None:
             self.get_logger().warning("Have not received costmap yet...")
             return
         if self.path_goal is None:
             self.get_logger().warning("Have not received goal for path yet...")
             return
 
-        resolution = self.costmap.info.resolution
-        raw_height = self.costmap.info.height
-        raw_width = self.costmap.info.width
+        resolution = costmap_snap.info.resolution
+        raw_height = costmap_snap.info.height
+        raw_width  = costmap_snap.info.width
 
-        if len(self.costmap.data) != raw_height * raw_width:
+        if len(costmap_snap.data) != raw_height * raw_width:
             self.get_logger().error("Costmap size mismatch.")
             return
 
@@ -232,11 +242,11 @@ class PathPlannerNode(Node):
         # ----------------------------
         target_cells = int(60.0 / resolution)
 
-        costmap_np = np.asarray(self.costmap.data, dtype=np.int32).reshape(raw_height, raw_width)
+        costmap_np = np.asarray(costmap_snap.data, dtype=np.int32).reshape(raw_height, raw_width)
 
         if raw_height != target_cells or raw_width != target_cells:
             costmap_np = self.scale_grid_numpy(
-                self.costmap.data,
+                costmap_snap.data,
                 raw_height,
                 raw_width,
                 target_cells,
@@ -269,6 +279,35 @@ class PathPlannerNode(Node):
             self.obstacle_threshold,
             self.obstacle_padding
         )
+
+        # ----------------------------
+        # Goal snap: if goal landed in an obstacle cell (e.g. grid edge
+        # dilation or boundary), walk back along the line toward start
+        # until we find the furthest free cell.
+        # ----------------------------
+        if padded_costmap[goal_i, goal_j] >= self.obstacle_threshold:
+            steps = max(abs(goal_i - start_i), abs(goal_j - start_j))
+            if steps > 0:
+                snapped = False
+                for s in range(steps, -1, -1):
+                    t = s / steps
+                    ci = int(round(start_i + t * (goal_i - start_i)))
+                    cj = int(round(start_j + t * (goal_j - start_j)))
+                    ci = max(0, min(ci, height - 1))
+                    cj = max(0, min(cj, width - 1))
+                    if padded_costmap[ci, cj] < self.obstacle_threshold:
+                        goal_i, goal_j = ci, cj
+                        snapped = True
+                        break
+                if snapped:
+                    self.get_logger().info(
+                        f'Goal snapped to nearest free cell: ({goal_i},{goal_j})',
+                        throttle_duration_sec=2.0)
+                else:
+                    self.get_logger().warning(
+                        'No free cell found along start→goal line; path will be empty.',
+                        throttle_duration_sec=2.0)
+                    return
 
         # ----------------------------
         # Run Planner

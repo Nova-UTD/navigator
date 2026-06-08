@@ -70,6 +70,12 @@ class RouteCostmapNode(Node):
         self.route = None
         self.not_visited = None
 
+        # Subscribe to drivable grid so we can pick the furthest
+        # visible/mapped goal point on the route.
+        self.drivable_sub = self.create_subscription(
+            OccupancyGrid, '/grid/drivable', self._drivable_cb, 1)
+        self._drivable_grid: np.ndarray | None = None
+
         # TODO: implement status book keeping
         # self.status_pub = self.create_publisher(
         #     DiagnosticStatus, '/node_status', 1)
@@ -85,6 +91,25 @@ class RouteCostmapNode(Node):
     def clockCb(self, msg: Clock):
         self.clock = msg
 
+    def _drivable_cb(self, msg: OccupancyGrid):
+        """Cache the latest drivable grid for goal visibility checks."""
+        if msg.info.height > 0 and msg.info.width > 0:
+            self._drivable_grid = np.array(msg.data, dtype=np.int8).reshape(
+                msg.info.height, msg.info.width)
+
+    def _is_drivable(self, x_bl: float, y_bl: float) -> bool:
+        """Return True if (x, y) in base_link maps to a drivable cell (<90) in
+        the 300×300 perception/HD-map drivable grid (origin -20, -30, res 0.2)."""
+        if self._drivable_grid is None:
+            return True  # no data yet — optimistic
+        col = int(round((x_bl + 20.0) / 0.2))
+        row = int(round((y_bl + 30.0) / 0.2))
+        if row < 0 or row >= self._drivable_grid.shape[0]:
+            return False
+        if col < 0 or col >= self._drivable_grid.shape[1]:
+            return False
+        return int(self._drivable_grid[row, col]) < 90
+
     # TODO: currently implemented, the route cannot be changed once it is first received
     def routeCb(self, msg: Path):
         if self.route is None:
@@ -92,11 +117,10 @@ class RouteCostmapNode(Node):
             self.route = msg.poses
             self.route_remaining = msg.poses
 
-    # TODO: this logic could be revisited.
     def buildRouteCostmap(self):
-        # self.get_logger().info('Creating route costmap...')
-        # assign some baseline cost for not following the route
-        routemap = np.zeros((151, 151)) + 25.0
+        # Baseline: gray (50) — off-route areas are medium cost.
+        # Route corridor will be painted white (0) below.
+        routemap = np.zeros((151, 151)) + 50.0
         
         if self.route is None:
             self.get_logger().warning('Route Costmap Node has not received route yet.')
@@ -161,101 +185,62 @@ class RouteCostmapNode(Node):
             route_baselink_y = route_baselink_y[start_idx:]
             self.get_logger().debug('route has %i points' % len(route_baselink_x))
 
-            # this loop interpolates between the route points so we have a point for every cell of the cost map
-            # gridxs and gridys are in x/y coordinates - in meters
+            # ------------------------------------------------------------------
+            # Interpolate route into per-cell points (gridxs, gridys in m,
+            # base_link).  Collect ALL points in the costmap.
+            # ------------------------------------------------------------------
             gridxs = []
             gridys = []
-            goal = None
-            for i in range(1,len(route_baselink_x)):
-                dx = route_baselink_x[i] - route_baselink_x[i-1]
-                dy = route_baselink_y[i] - route_baselink_y[i-1]
-                
-                steps = int(np.ceil(max(abs(dx),abs(dy)) / gridres)) # find the axis that changes the most
-                
-                ts = np.linspace(0,1,steps+1)
-                for t in ts[1:]:
-                    newx = route_baselink_x[i-1] + t*dx
-                    newy = route_baselink_y[i-1] + t*dy
-                    # gridxs.append( newx )
-                    # gridys.append( newy )
-                    # the goal should be the last point in the route that is within the costmap
-                    if self.is_within_costmap(newx,newy):
-                        goal = (newx,newy)
-                        gridxs.append( newx )
-                        gridys.append( newy )
-                    # else:
-                    #     break
+            for idx in range(1, len(route_baselink_x)):
+                dx = route_baselink_x[idx] - route_baselink_x[idx-1]
+                dy = route_baselink_y[idx] - route_baselink_y[idx-1]
+                steps = int(np.ceil(max(abs(dx), abs(dy)) / gridres))
+                if steps == 0:
+                    continue
+                for t in np.linspace(0, 1, steps + 1)[1:]:
+                    newx = route_baselink_x[idx-1] + t * dx
+                    newy = route_baselink_y[idx-1] + t * dy
+                    if self.is_within_costmap(newx, newy):
+                        gridxs.append(newx)
+                        gridys.append(newy)
 
-                # stop if we have left the costmap region
-                # if not self.is_within_costmap(route_baselink_x[i],route_baselink_y[i]):
-                #     break
-            
-            # self.get_logger().info('\n'+'\n'.join([ '%1.2f, %1.2f' % (gridxs[i],gridys[i]) for i in range(len(gridxs))] ) )
             self.get_logger().debug('grid route has %i points' % len(gridxs))
-            #self.get_logger().debug('path goal point:  %1.2f, %1.2f' % goal )
 
-            # If we have only 1 or 0 in the list, there isn't really anything to show
             if len(gridxs) < 2:
                 self.get_logger().info('You have reached the end of the route.')
-                self.publish(routemap,(0.0,0.0))
+                self.publish(routemap, (0.0, 0.0))
                 return
-            
-            # now we paint a low cost valley along the gridxs,gridys
-            pixel_steps = [1,2,3,4] # how many costmap cells are painted to either "side" according to the cost_gradient below
-            cost_gradient = [5,20,40,50]
+
+            # ------------------------------------------------------------------
+            # Paint the route corridor: white (0) with half-width = HALF_W cells.
+            # Everything off-corridor stays at the 50 baseline.
+            # ------------------------------------------------------------------
+            HALF_W = 6  # cells each side (~1.2 m at 0.2 m/cell after resize)
             for r in range(len(gridxs)):
-                # conversion from x,y in base_link to grid indices 
-                # TODO: Avoid hard coding this
-                i,j = round((gridys[r] + ymax) / gridres), round((gridxs[r] + data['occupancy_grids']['vehicle_longitudinal_location']) / gridres)
-                try:
-                    routemap[i,j] = 0
-                except:
-                    continue
-                if r > 1:
-                    if jold<j: # last point is behind current one
-                        for d in pixel_steps:
-                            try: # all the try/excepts are to catch when i+d, i-d, j+d, j-d go outside the bounds of the costmap
-                                routemap[i-d,j] = min(routemap[i-d,j],cost_gradient[d-1])
-                                routemap[i+d,j] = min(routemap[i+d,j],cost_gradient[d-1])
-                            except:
-                                continue
-                        if iold==i: # route is heading straight forward
-                            pass
-                        elif iold<i: # route is turning left                            
-                            for d in pixel_steps:
-                                try:
-                                    routemap[i-d,j+d] = min(routemap[i-d,j+d],cost_gradient[d-1])
-                                    routemap[i+d,j-d] = min(routemap[i+d,j-d],cost_gradient[d-1])
-                                    routemap[i-d,j+d-1] = min(routemap[i-d,j+d-1],cost_gradient[d-1])
-                                    routemap[i+d-1,j-d] = min(routemap[i+d-1,j-d],cost_gradient[d-1])
-                                    routemap[i-d+1,j+d] = min(routemap[i-d+1,j+d],cost_gradient[d-1])
-                                    routemap[i+d,j-d+1] = min(routemap[i+d,j-d+1],cost_gradient[d-1])
-                                except:
-                                    continue
+                ci = int(round((gridys[r] + ymax) / gridres))
+                cj = int(round((gridxs[r] + data['occupancy_grids']['vehicle_longitudinal_location']) / gridres))
+                for di in range(-HALF_W, HALF_W + 1):
+                    for dj in range(-HALF_W, HALF_W + 1):
+                        ni, nj = ci + di, cj + dj
+                        if 0 <= ni < routemap.shape[0] and 0 <= nj < routemap.shape[1]:
+                            routemap[ni, nj] = 0
 
-                        elif iold>i: # route is turning right
-                            for d in pixel_steps:
-                                try:
-                                    routemap[i-d,j-d] = min(routemap[i-d,j-d],cost_gradient[d-1])
-                                    routemap[i+d,j+d] = min(routemap[i+d,j+d],cost_gradient[d-1])
-                                    routemap[i-d+1,j-d] = min(routemap[i-d+1,j-d],cost_gradient[d-1])
-                                    routemap[i+d-1,j+d] = min(routemap[i+d-1,j+d],cost_gradient[d-1])
-                                    routemap[i-d,j-d+1] = min(routemap[i-d,j-d+1],cost_gradient[d-1])
-                                    routemap[i+d,j+d-1] = min(routemap[i+d,j+d-1],cost_gradient[d-1])
-                                except:
-                                    continue
-                                
-                    else: # route is heading sideways
-                        for d in pixel_steps:
-                            try:
-                                routemap[i,j-d] = min(routemap[i,j-d],cost_gradient[d-1])
-                                routemap[i,j+d] = min(routemap[i,j+d],cost_gradient[d-1])
-                            except:
-                                continue
-                    
-                iold,jold = i,j
+            # ------------------------------------------------------------------
+            # Goal selection: furthest point along the route that is within
+            # the camera-mapped drivable area (drivable_grid cell < 90).
+            # Walk from far end toward vehicle; first hit is the goal.
+            # Fall back to last in-costmap point if no drivable cell found.
+            # ------------------------------------------------------------------
+            goal = (gridxs[-1], gridys[-1])  # fallback: furthest costmap point
+            for r in range(len(gridxs) - 1, -1, -1):
+                if self._is_drivable(gridxs[r], gridys[r]):
+                    goal = (gridxs[r], gridys[r])
+                    break
 
-            self.publish(routemap, goal )
+            self.get_logger().debug(
+                'path goal (drivable-snapped): %.2f, %.2f' % goal)
+
+            self.publish(routemap, goal)
 
         except(LookupException, ExtrapolationException, ConnectivityException) as e: # typically get some errors on startup as the tf buffer fills
             self.get_logger().warning("!!! Error finding transform to build route grid !!!")
