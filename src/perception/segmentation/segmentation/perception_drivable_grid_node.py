@@ -12,7 +12,7 @@ Pipeline  (10 Hz)
   7. Road dilation into blind spots (expand road into uncertain, not obstacle)
   8. LiDAR ground fill (uncertain cells confirmed by LiDAR ground returns -> drivable)
   9. Connected road fill (flood fill from vehicle footprint through all non-obstacle cells)
- 10. Straight road corridor fill (large close on non-intersection segments — cleans speckles)
+ 10. Road corridor fill (column-wise span fill — cleans speckles, intersection-safe by geometry)
  11. Morphological cleanup
 
 Cameras (hardcoded from carla_objects.json):
@@ -414,29 +414,40 @@ class PerceptionDrivableGridNode(Node):
         ev_out[fill] = np.maximum(ev_out[fill], CC_FILL_VALUE)
         return ev_out
 
-    # ── step 10: straight road corridor fill ─────────────────────────────────
+    # ── step 10: road corridor fill ───────────────────────────────────────────
 
     @staticmethod
-    def _straight_road_fill(ev):
-        """Fill the road corridor cleanly on straight (non-intersection) segments.
+    def _corridor_fill(ev):
+        """Fill uncertain cells within the road corridor column-by-column.
 
-        Camera projection LUTs give uneven cell coverage, leaving speckles and
-        gaps inside the road.  A large morphological close fills these without
-        touching real obstacles (anything with ev <= 0.28 is left alone).
-
-        Skipped at intersections (road_cells > 1800) so the branch structure
-        from connected_road_fill is not over-written by a bulk corridor fill."""
-        road = (ev > 0.62).astype(np.uint8)
-        road_cells = int(road.sum())
-        if road_cells < 30 or road_cells > 1800:
+        For each grid column (x = forward direction), span = first..last road
+        row.  Any uncertain cell inside that span gets boosted to drivable.
+        Cross-streets run in the row direction and have only 1-2 road cells
+        per column, so they are naturally skipped by the min_cells_per_col=4
+        guard — no road_cells threshold needed, intersections safe by geometry."""
+        road = ev > 0.62
+        if not road.any():
             return ev
-        # 21-cell (~4m) elliptical close fills holes within the straight corridor
-        k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (21, 21))
-        filled = cv2.morphologyEx(road, cv2.MORPH_CLOSE, k)
+
+        # Vectorised per-column span detection
+        road_count  = road.sum(axis=0)                            # (300,)
+        has_enough  = road_count >= 4                             # need >= 4 cells in col
+
+        # first True row per column (argmax returns 0 when col is all-False — mask later)
+        first_row = np.argmax(road, axis=0).astype(np.int32)
+        last_row  = (GRID_SIZE - 1 - np.argmax(road[::-1, :], axis=0)).astype(np.int32)
+        span      = last_row - first_row                          # corridor height
+
+        # Guard: skip columns where span > 80 cells (16 m) — not a real road
+        valid_cols = has_enough & (span <= 80)
+
+        # Build corridor mask (300×300)
+        rows       = np.arange(GRID_SIZE, dtype=np.int32).reshape(-1, 1)  # (300,1)
+        in_corridor = (rows >= first_row) & (rows <= last_row) & valid_cols  # (300,300)
+
+        fill = in_corridor & (ev > 0.28) & (ev < 0.70)
         ev_out = ev.copy()
-        # Only boost uncertain cells inside the corridor — real obstacles (ev<=0.28) are untouched
-        fill_mask = (filled > 0) & (ev > 0.28) & (ev < 0.70)
-        ev_out[fill_mask] = np.maximum(ev_out[fill_mask], 0.75)
+        ev_out[fill] = np.maximum(ev_out[fill], 0.75)
         return ev_out
 
     # ── step 11: morpho cleanup ───────────────────────────────────────────────
@@ -444,9 +455,10 @@ class PerceptionDrivableGridNode(Node):
     @staticmethod
     def _morpho_cleanup(ev):
         binary  = (ev > 0.55).astype(np.uint8) * 255
-        k       = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        cleaned = cv2.morphologyEx(binary, cv2.MORPH_OPEN,  k)
-        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, k)
+        k_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+        cleaned = cv2.morphologyEx(binary, cv2.MORPH_OPEN,  k_open)
+        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, k_close)
         out = ev.copy()
         out[(binary > 0) & (cleaned == 0)] = np.minimum(out[(binary > 0) & (cleaned == 0)], 0.45)
         out[(binary == 0) & (cleaned > 0)] = np.maximum(out[(binary == 0) & (cleaned > 0)], 0.60)
@@ -478,7 +490,7 @@ class PerceptionDrivableGridNode(Node):
         ev = self._dilate_into_blindspots(ev)      # step 7
         ev = self._lidar_ground_fill(ev, gnd_cnt)  # step 8
         ev = self._connected_road_fill(ev)         # step 9 — topology-aware fill
-        ev = self._straight_road_fill(ev)          # step 10 — clean corridor on straight roads
+        ev = self._corridor_fill(ev)               # step 10 — column-wise corridor fill
         ev = self._morpho_cleanup(ev)              # step 11
 
         grid_out = np.clip(np.round((1.0 - ev) * 100.0), 0, 100).astype(np.int8)
