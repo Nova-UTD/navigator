@@ -269,6 +269,9 @@ class PerceptionDrivableGridNode(Node):
         dx   = x   - self._last_x
         dy   = y   - self._last_y
         dyaw = (yaw - self._last_yaw + math.pi) % (2 * math.pi) - math.pi
+        # Skip for sub-cell movements (GNSS noise at ~4 Hz causes micro-jitter)
+        if abs(dx) < 0.02 and abs(dy) < 0.02 and abs(dyaw) < 0.008:
+            return
         sc = -dx / RESOLUTION
         sr = -dy / RESOLUTION
         vc = (0.0 - ORIGIN_X) / RESOLUTION
@@ -331,12 +334,23 @@ class PerceptionDrivableGridNode(Node):
 
     @staticmethod
     def _dilate_into_blindspots(ev):
-        road_mask = (ev > 0.65).astype(np.uint8)
-        uncertain = (ev >= 0.40) & (ev <= 0.60)
-        kernel    = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
-        dilated   = cv2.dilate(road_mask, kernel).astype(bool)
-        fill      = dilated & uncertain
-        ev_out    = ev.copy()
+        road_mask  = (ev > 0.65).astype(np.uint8)
+        # Widen uncertain band slightly so cells that were briefly seen as
+        # very-low-confidence road can still be filled by neighbours
+        uncertain  = (ev >= 0.36) & (ev <= 0.64)
+
+        road_cells = int(road_mask.sum())
+        # At intersections (large road area) use a much larger radius so the
+        # dilation bridges across the gap to the perpendicular cross-road.
+        # Standard: 2.5 m radius (25 cells).  Intersection: 5 m radius (51 cells).
+        if road_cells > 1500:
+            ksize = 51   # ~5 m radius at 0.2 m/cell
+        else:
+            ksize = 25   # ~2.5 m radius
+        kernel  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (ksize, ksize))
+        dilated = cv2.dilate(road_mask, kernel).astype(bool)
+        fill    = dilated & uncertain
+        ev_out  = ev.copy()
         ev_out[fill] = PRIOR_DILATION
         return ev_out
 
@@ -385,7 +399,9 @@ class PerceptionDrivableGridNode(Node):
 
         ev = self._smooth_boundaries(ev)
         ev = self._dilate_into_blindspots(ev)
-        ev = self._intersection_corridor(ev)
+        # intersection_corridor removed: cos^2 weighting suppressed cross-road
+        # branches at intersections — exactly the cells we want to mark drivable.
+        # The adaptive dilation above handles intersection coverage instead.
         ev = self._morpho_cleanup(ev)
 
         grid_out = np.clip(np.round((1.0 - ev) * 100.0), 0, 100).astype(np.int8)
