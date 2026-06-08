@@ -11,7 +11,8 @@ Pipeline  (10 Hz)
   6. Gaussian boundary smoothing
   7. Road dilation into blind spots (expand road into uncertain, not obstacle)
   8. LiDAR ground fill (uncertain cells confirmed by LiDAR ground returns -> drivable)
-  9. Morphological cleanup
+  9. Connected road fill (flood fill from vehicle footprint through all non-obstacle cells)
+ 10. Morphological cleanup
 
 Cameras (hardcoded from carla_objects.json):
   K: fx=fy=571.12, cx=400, cy=300  (fov=70, 800x600)
@@ -34,6 +35,7 @@ import rclpy
 from cv_bridge import CvBridge
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.node import Node
+from scipy.ndimage import label as sp_label
 from scipy.spatial.transform import Rotation
 from sensor_msgs.msg import Image, PointCloud2
 
@@ -44,14 +46,17 @@ ORIGIN_Y    = -30.0
 MAX_PROJ_DIST = 40.0
 
 # LiDAR evidence thresholds — count-based, not max-height
-# Ground return: any point with z < LIDAR_GROUND_Z is a road/flat-surface hit
-# Obstacle return: any point with z >= LIDAR_OBS_Z is a real obstacle (wall, vehicle)
-# Points between these two are ignored (curb, slight slope, noise)
 LIDAR_GROUND_Z     =  0.35   # road surface + 35 cm tolerance for slope/noise
 LIDAR_OBS_Z        =  1.20   # true obstacle (building wall, vehicle body)
 LIDAR_GND_MIN_HITS =  2      # need >= 2 ground returns to call cell "road"
 LIDAR_GND_DRIVABLE =  0.85   # evidence value for LiDAR-confirmed road cells
 LIDAR_GND_BOOST    =  0.72   # boost for uncertain camera cells with LiDAR ground support
+
+# Connected-component fill thresholds
+CC_TRAVERSABLE_MIN = 0.22   # cells with ev > this are "not obstacle" for flood fill
+CC_UNCERTAIN_LO    = 0.35   # flood fill only boosts cells in this uncertain band
+CC_UNCERTAIN_HI    = 0.65
+CC_FILL_VALUE      = 0.70   # evidence assigned to flood-fill-reached uncertain cells
 
 ALPHA_BLEND   = 0.65
 DECAY_RATE    = 0.992
@@ -250,9 +255,7 @@ class PerceptionDrivableGridNode(Node):
         gc = ((xs - ORIGIN_X) / RESOLUTION).astype(np.int32)
         gr = ((ys - ORIGIN_Y) / RESOLUTION).astype(np.int32)
         ing = (gc >= 0) & (gc < GRID_SIZE) & (gr >= 0) & (gr < GRID_SIZE)
-        # Ground: z near road surface (base_link z=0 is at ground level)
         gnd_mask = ing & (zs >= -0.30) & (zs < LIDAR_GROUND_Z)
-        # Obstacle: tall enough to be a wall, vehicle, or other real obstacle
         obs_mask = ing & (zs >= LIDAR_OBS_Z)
         if gnd_mask.any():
             np.add.at(gnd_cnt, (gr[gnd_mask], gc[gnd_mask]), 1)
@@ -268,31 +271,24 @@ class PerceptionDrivableGridNode(Node):
         frame_obs[cam_seen] = obs_sum[cam_seen] / (obs_count[cam_seen] * 100.0)
         observed[cam_seen]  = True
 
-        # Camera road cells: veto with LiDAR obstacle evidence
         cam_road = cam_seen & (frame_obs >= 0.70)
         frame_obs[cam_road & (obs_cnt > 0)] = 0.0
-
-        # Camera road cells: small boost when LiDAR also sees flat ground
         boost_mask = cam_road & (gnd_cnt >= LIDAR_GND_MIN_HITS) & (obs_cnt == 0)
         frame_obs[boost_mask] = np.minimum(1.0, frame_obs[boost_mask] * 1.05)
 
-        # LiDAR-only cells (not seen by any camera)
         has_ground = gnd_cnt >= LIDAR_GND_MIN_HITS
         has_obs    = obs_cnt > 0
         lidar_hit  = (gnd_cnt > 0) | (obs_cnt > 0)
         lidar_only = lidar_hit & ~cam_seen
 
-        # Flat ground with no tall obstacles -> road
         road_lidar = lidar_only & has_ground & ~has_obs
         frame_obs[road_lidar] = LIDAR_GND_DRIVABLE
         observed[road_lidar]  = True
 
-        # Tall obstacle -> non-drivable
         obs_lidar = lidar_only & has_obs
         frame_obs[obs_lidar] = 0.05
         observed[obs_lidar]  = True
 
-        # Mixed (ground + obstacle = curb/edge) -> uncertain
         mixed_lidar = lidar_only & has_ground & has_obs
         frame_obs[mixed_lidar] = 0.45
         observed[mixed_lidar]  = True
@@ -305,7 +301,6 @@ class PerceptionDrivableGridNode(Node):
         dx   = x   - self._last_x
         dy   = y   - self._last_y
         dyaw = (yaw - self._last_yaw + math.pi) % (2 * math.pi) - math.pi
-        # Skip for sub-cell movements (GNSS noise at ~4 Hz causes micro-jitter)
         if abs(dx) < 0.02 and abs(dy) < 0.02 and abs(dyaw) < 0.008:
             return
         sc = -dx / RESOLUTION
@@ -328,8 +323,6 @@ class PerceptionDrivableGridNode(Node):
     # ── steps 4+5: vehicle footprint + path priors ────────────────────────────
 
     def _apply_priors(self):
-        """Stamp vehicle footprint and driven path as high-confidence drivable.
-        Must be called with self._lock held."""
         r0 = max(0, _VR - FOOTPRINT_HALF_W)
         r1 = min(GRID_SIZE, _VR + FOOTPRINT_HALF_W + 1)
         c0 = max(0, _VC - FOOTPRINT_REAR)
@@ -384,9 +377,7 @@ class PerceptionDrivableGridNode(Node):
 
     @staticmethod
     def _lidar_ground_fill(ev, gnd_cnt):
-        """Boost cells that cameras are uncertain about but LiDAR sees as ground.
-        Fills blind spots that dilation didn't reach (e.g. intersection branches,
-        side roads disconnected from the main road cluster)."""
+        """Boost uncertain cells that LiDAR sees as flat ground."""
         uncertain = (ev >= 0.38) & (ev <= 0.62)
         confirmed = (gnd_cnt >= LIDAR_GND_MIN_HITS)
         boost = uncertain & confirmed
@@ -396,7 +387,33 @@ class PerceptionDrivableGridNode(Node):
         ev_out[boost] = np.maximum(ev_out[boost], LIDAR_GND_BOOST)
         return ev_out
 
-    # ── step 9: morpho cleanup ────────────────────────────────────────────────
+    # ── step 9: connected road fill ───────────────────────────────────────────
+
+    @staticmethod
+    def _connected_road_fill(ev):
+        """Flood fill from the vehicle footprint through all non-obstacle cells.
+
+        Any cell reachable from the vehicle without crossing an obstacle is
+        topologically connected to the road the vehicle is on — mark it drivable.
+        This fills intersection branches and any blind spot that shares road
+        connectivity with the vehicle, regardless of geometric distance.
+
+        scipy.ndimage.label runs O(n) on the 300x300 grid (~90k cells) in <1ms."""
+        traversable = ev > CC_TRAVERSABLE_MIN
+        labeled, _ = sp_label(traversable)
+        veh_lbl = labeled[_VR, _VC]
+        if veh_lbl == 0:
+            return ev
+        connected = labeled == veh_lbl
+        uncertain = (ev >= CC_UNCERTAIN_LO) & (ev <= CC_UNCERTAIN_HI)
+        fill = connected & uncertain
+        if not fill.any():
+            return ev
+        ev_out = ev.copy()
+        ev_out[fill] = np.maximum(ev_out[fill], CC_FILL_VALUE)
+        return ev_out
+
+    # ── step 10: morpho cleanup ───────────────────────────────────────────────
 
     @staticmethod
     def _morpho_cleanup(ev):
@@ -431,10 +448,11 @@ class PerceptionDrivableGridNode(Node):
             self._apply_priors()
             ev = self._evidence.copy()
 
-        ev = self._smooth_boundaries(ev)        # step 6
-        ev = self._dilate_into_blindspots(ev)   # step 7
-        ev = self._lidar_ground_fill(ev, gnd_cnt)  # step 8 — fill remaining blind spots
-        ev = self._morpho_cleanup(ev)           # step 9
+        ev = self._smooth_boundaries(ev)           # step 6
+        ev = self._dilate_into_blindspots(ev)      # step 7
+        ev = self._lidar_ground_fill(ev, gnd_cnt)  # step 8
+        ev = self._connected_road_fill(ev)         # step 9 — topology-aware fill
+        ev = self._morpho_cleanup(ev)              # step 10
 
         grid_out = np.clip(np.round((1.0 - ev) * 100.0), 0, 100).astype(np.int8)
 
