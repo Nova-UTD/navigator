@@ -138,29 +138,28 @@ class HybridDrivableGridNode(Node):
         if hdmap is not None:
             hdmap = _resize(hdmap)
 
-        # ── step 1: build base drivability — perception-primary ───────────────
-        if perc is not None:
-            # Default everything to obstacle; perception and HD map will open cells.
-            output = np.full(target_shape, np.int8(100), dtype=np.int8)
-
-            # High-confidence perception road → open regardless of HD map
-            output[perc < PERC_ROAD_THRESHOLD] = np.int8(0)
-
-            # Uncertain perception → fall back to HD map
-            uncertain = perc >= PERC_ROAD_THRESHOLD
-            if hdmap is not None:
-                # HD map says road in uncertain zone → trust HD map
-                output[uncertain & (hdmap == np.int8(0))] = np.int8(0)
-                # HD map intermediate (partially blocked road) → pass through
-                hd_mid = uncertain & (hdmap > np.int8(0)) & (hdmap < np.int8(100))
-                output[hd_mid] = hdmap[hd_mid]
-                # HD map hard boundary in uncertain zone → stays obstacle (safety)
+        # ── step 1: build base drivability ───────────────────────────────────
+        # Start from HD map as the base (preserves all mapped road/boundary/unknown
+        # values exactly as before). Perception can only OPEN cells — it never adds
+        # new obstacles. Obstacle detection is the occupancy grid's job (step 2).
+        # This ensures unmapped/uncertain areas keep their HD map values and the
+        # path planner always has a navigable route through mapped road.
+        if hdmap is not None:
+            output = hdmap.copy()
         else:
-            # No perception yet — full HD map fallback (startup / topic gap)
+            # No HD map — start permissive (unknown=50) so planner can still route
+            output = np.full(target_shape, np.int8(50), dtype=np.int8)
+
+        if perc is not None:
+            # High-confidence perception road → open, overrides HD map boundaries
+            # This extends drivable area into unmapped/uncharted road.
+            output[perc < PERC_ROAD_THRESHOLD] = np.int8(0)
+            # Uncertain perception cells: HD map base is preserved unchanged.
+            # Perception does NOT close cells — no new obstacles from perception.
+        else:
             self.get_logger().warn(
                 'Perception grid not yet received, using HD map only.',
                 throttle_duration_sec=10.0)
-            output = hdmap.copy()
 
         # ── step 2: occupancy obstacle veto on all confirmed road cells ────────
         if occ is not None:
