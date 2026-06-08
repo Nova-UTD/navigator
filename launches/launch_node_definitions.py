@@ -80,11 +80,6 @@ hybrid_grid = Node(
     package='segmentation',
     executable='hybrid_perception_grid_node',
 )
-
-hybrid_drivable_grid = Node(
-    package='segmentation',
-    executable='hybrid_drivable_grid_node',
-)
 image_segmentation = Node(
     package='segmentation',
     executable='image_segmentation_node'
@@ -121,8 +116,7 @@ map_manager_carla = Node(
     executable='map_management_node',
     parameters=[
         {'from_file': False}
-    ],
-    remappings=[('/grid/drivable', '/grid/drivable/hdmap')],
+    ]#,
     #prefix=['xterm -e gdb -ex run --args']
 )
 
@@ -276,6 +270,14 @@ autonomous_cruise_controller = Node(
     output='screen',
     parameters=['/navigator/param/autonomous_cruise_params.yaml'],
     emulate_tty=True
+)
+
+
+perception_drivable_grid = Node(
+    package="segmentation",
+    executable="perception_drivable_grid_node",
+    name="perception_drivable_grid_node",
+    output="screen",
 )
 
 autonomous_cruise_intersection_controller = Node(
