@@ -2,38 +2,37 @@
 """
 hybrid_drivable_grid_node.py
 
-Fuses the HD-map drivable surface, the hybrid occupancy grid, and the
-perception-based drivable grid to produce a real-time /grid/drivable
-OccupancyGrid.
+Fuses the perception-based drivable grid, the HD-map, and the hybrid occupancy
+grid to produce a real-time /grid/drivable OccupancyGrid.
+
+Perception is the PRIMARY source.  HD map is a FALLBACK for cells where
+perception is uncertain.  Occupancy grid provides real-time obstacle veto.
 
 Fusion rules (per cell, in priority order):
-  1. HD map == 100 (outside legal lane)
-       -> always 100.  Camera/perception cannot override legal boundaries.
-  2. HD map ==   0 (inside legal lane):
-       a. occupancy >= OCC_BLOCK_THRESHOLD (real obstacle inside lane)
-            -> mark as blocked (100)
-       b. occupancy in (0, OCC_BLOCK_THRESHOLD) (partial hazard inside lane)
-            -> pass through occupancy value for costmap nuance
-       c. otherwise
-            -> keep 0 (road confirmed by HD map)
-  3. HD map != 0 and != 100 (uncharted / unknown area):
-       -> If perception grid says high-confidence road (perc_occ < PERC_ROAD_THRESHOLD)
-            -> open as road (0) so planner can use uncharted but visually confirmed roads
-       -> Otherwise keep HD map value (safe: do not open unconfirmed areas)
+  1. Perception high-confidence road (perc_occ < PERC_ROAD_THRESHOLD, i.e. evidence > 0.70)
+       -> open as road (0), regardless of HD map.
+       -> Perception has seen this cell clearly; HD map boundaries do not override.
+  2. Perception uncertain (perc_occ >= PERC_ROAD_THRESHOLD)
+       -> fall back to HD map:
+            HD map == 0   (mapped road)    -> road (0)
+            HD map other  (boundary/unknown)-> obstacle (100), safe default
+  3. No perception data yet (startup / topic gap)
+       -> full HD map fallback, identical to previous behaviour.
+  4. Occupancy grid obstacle veto applied last on all confirmed road cells:
+       occ >= OCC_BLOCK_THRESHOLD -> blocked (100)
+       0 < occ < threshold        -> hazard value passed through
 
-This means:
-  - The HD map remains the authoritative source for all mapped areas.
-  - The perception grid acts as a fallback/extension for unmapped areas only.
-  - Speckles or uncertain perception cells (occupancy >= PERC_ROAD_THRESHOLD)
-    never open uncharted cells, so noise cannot create false road.
-  - Obstacle detection in mapped road areas is unchanged (HybridPerceptionGridNode
-    -> /grid/occupancy/current is still the sole obstacle source).
-  - No downstream changes needed: /grid/drivable topic and message format unchanged.
+This gives three-layer failsafe with correct priority:
+  Perception (10 Hz, map-free)  — primary
+  HD map (slow, map-dependent)  — fallback when perception is uncertain
+  Occupancy (LiDAR+camera obs)  — real-time obstacle veto
+
+No downstream changes: /grid/drivable topic and OccupancyGrid format unchanged.
 
 Inputs:
-  /grid/drivable/hdmap         MapManager OccupancyGrid (remapped in launch)
-  /grid/occupancy/current      HybridPerceptionGridNode output
-  /grid/drivable/segmented     PerceptionDrivableGridNode output (new)
+  /grid/drivable/segmented     PerceptionDrivableGridNode  (primary)
+  /grid/drivable/hdmap         MapManager OccupancyGrid    (fallback, remapped in launch)
+  /grid/occupancy/current      HybridPerceptionGridNode    (obstacle veto)
 
 Output:
   /grid/drivable               300x300 OccupancyGrid, 0.2m/cell, base_link
@@ -45,13 +44,12 @@ import rclpy
 from rclpy.node    import Node
 from nav_msgs.msg  import OccupancyGrid
 
-# Occupancy value at or above which a road cell is treated as blocked.
+# Occupancy value at or above which a confirmed road cell is treated as blocked.
 OCC_BLOCK_THRESHOLD = np.int8(80)
 
-# Perception occupancy must be BELOW this to open an uncharted cell as road.
-# Corresponds to evidence > 0.70 — only high-confidence perception road cells
-# can extend the drivable area beyond HD map coverage.
-# Speckles and uncertain cells (occupancy >= 30) are ignored.
+# Perception occupancy BELOW this threshold → high-confidence road.
+# Evidence > 0.70 (occupancy < 30).  Only these cells can override HD map
+# boundaries.  Speckles / uncertain cells (occ >= 30) fall back to HD map.
 PERC_ROAD_THRESHOLD = np.int8(30)
 
 
@@ -81,12 +79,12 @@ class HybridDrivableGridNode(Node):
 
         self.pub = self.create_publisher(OccupancyGrid, '/grid/drivable', 10)
 
-        self.create_timer(0.2, self._publish_loop)
+        self.create_timer(0.1, self._publish_loop)
 
         self._last_hdmap_stamp = None
         self._last_occ_stamp   = None
 
-        self.get_logger().info('HybridDrivableGridNode ready (HD map + occupancy + perception).')
+        self.get_logger().info('HybridDrivableGridNode ready — perception-primary, HD map fallback.')
 
     # -------------------------------------------------------------------------
 
@@ -118,41 +116,59 @@ class HybridDrivableGridNode(Node):
             occ   = self._occ.copy()   if self._occ   is not None else None
             perc  = self._perc.copy()  if self._perc  is not None else None
 
-        if hdmap is None:
+        if perc is None and hdmap is None:
             self.get_logger().warn(
-                'HD map not yet received.', throttle_duration_sec=5.0)
+                'No perception or HD map data yet.', throttle_duration_sec=5.0)
             return
 
-        output = hdmap.copy()
+        # ── helper: resize any grid to 300×300 ───────────────────────────────
+        target_shape = (300, 300)
 
-        # ── helper: resize grid to hdmap shape if needed ──────────────────────
         def _resize(arr):
-            if arr.shape == hdmap.shape:
+            if arr.shape == target_shape:
                 return arr
             import cv2
             return cv2.resize(arr.astype(np.float32),
-                              (hdmap.shape[1], hdmap.shape[0]),
+                              (target_shape[1], target_shape[0]),
                               interpolation=cv2.INTER_NEAREST).astype(np.int8)
 
-        # ── step 1: perception extends uncharted areas ─────────────────────────
-        # Must run before occupancy so that opened cells can then be blocked
-        # by real obstacles in the same pass.
         if perc is not None:
             perc = _resize(perc)
-            # Only touch cells that the HD map has not confirmed as road (!=0)
-            # and has not marked as hard boundary (!=100).
-            uncharted = (hdmap != 0) & (hdmap != np.int8(100))
-            # Open cell only when perception has high confidence (low occupancy)
-            perc_road = uncharted & (perc < PERC_ROAD_THRESHOLD)
-            output[perc_road] = np.int8(0)
 
-        # ── step 2: occupancy blocks/hazards inside confirmed road ─────────────
+        if hdmap is not None:
+            hdmap = _resize(hdmap)
+
+        # ── step 1: build base drivability — perception-primary ───────────────
+        if perc is not None:
+            # Default everything to obstacle; perception and HD map will open cells.
+            output = np.full(target_shape, np.int8(100), dtype=np.int8)
+
+            # High-confidence perception road → open regardless of HD map
+            output[perc < PERC_ROAD_THRESHOLD] = np.int8(0)
+
+            # Uncertain perception → fall back to HD map
+            uncertain = perc >= PERC_ROAD_THRESHOLD
+            if hdmap is not None:
+                # HD map says road in uncertain zone → trust HD map
+                output[uncertain & (hdmap == np.int8(0))] = np.int8(0)
+                # HD map intermediate (partially blocked road) → pass through
+                hd_mid = uncertain & (hdmap > np.int8(0)) & (hdmap < np.int8(100))
+                output[hd_mid] = hdmap[hd_mid]
+                # HD map hard boundary in uncertain zone → stays obstacle (safety)
+        else:
+            # No perception yet — full HD map fallback (startup / topic gap)
+            self.get_logger().warn(
+                'Perception grid not yet received, using HD map only.',
+                throttle_duration_sec=10.0)
+            output = hdmap.copy()
+
+        # ── step 2: occupancy obstacle veto on all confirmed road cells ────────
         if occ is not None:
             occ = _resize(occ)
-            road = (output == 0)   # includes cells just opened by perception
+            road    = (output == np.int8(0))
             blocked = road & (occ >= OCC_BLOCK_THRESHOLD)
             output[blocked] = np.int8(100)
-            hazard = road & (occ > 0) & (occ < OCC_BLOCK_THRESHOLD)
+            hazard  = road & (occ > np.int8(0)) & (occ < OCC_BLOCK_THRESHOLD)
             output[hazard] = occ[hazard]
 
         # ── publish ────────────────────────────────────────────────────────────
@@ -160,8 +176,8 @@ class HybridDrivableGridNode(Node):
         msg.header.stamp              = self.get_clock().now().to_msg()
         msg.header.frame_id           = 'base_link'
         msg.info.resolution           = 0.2
-        msg.info.width                = output.shape[1]
-        msg.info.height               = output.shape[0]
+        msg.info.width                = target_shape[1]
+        msg.info.height               = target_shape[0]
         msg.info.origin.position.x    = -20.0
         msg.info.origin.position.y    = -30.0
         msg.info.origin.position.z    = 0.0
