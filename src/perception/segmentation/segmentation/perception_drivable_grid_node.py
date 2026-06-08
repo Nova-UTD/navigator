@@ -12,7 +12,8 @@ Pipeline  (10 Hz)
   7. Road dilation into blind spots (expand road into uncertain, not obstacle)
   8. LiDAR ground fill (uncertain cells confirmed by LiDAR ground returns -> drivable)
   9. Connected road fill (flood fill from vehicle footprint through all non-obstacle cells)
- 10. Morphological cleanup
+ 10. Straight road corridor fill (large close on non-intersection segments — cleans speckles)
+ 11. Morphological cleanup
 
 Cameras (hardcoded from carla_objects.json):
   K: fx=fy=571.12, cx=400, cy=300  (fov=70, 800x600)
@@ -413,7 +414,32 @@ class PerceptionDrivableGridNode(Node):
         ev_out[fill] = np.maximum(ev_out[fill], CC_FILL_VALUE)
         return ev_out
 
-    # ── step 10: morpho cleanup ───────────────────────────────────────────────
+    # ── step 10: straight road corridor fill ─────────────────────────────────
+
+    @staticmethod
+    def _straight_road_fill(ev):
+        """Fill the road corridor cleanly on straight (non-intersection) segments.
+
+        Camera projection LUTs give uneven cell coverage, leaving speckles and
+        gaps inside the road.  A large morphological close fills these without
+        touching real obstacles (anything with ev <= 0.28 is left alone).
+
+        Skipped at intersections (road_cells > 1800) so the branch structure
+        from connected_road_fill is not over-written by a bulk corridor fill."""
+        road = (ev > 0.62).astype(np.uint8)
+        road_cells = int(road.sum())
+        if road_cells < 30 or road_cells > 1800:
+            return ev
+        # 21-cell (~4m) elliptical close fills holes within the straight corridor
+        k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (21, 21))
+        filled = cv2.morphologyEx(road, cv2.MORPH_CLOSE, k)
+        ev_out = ev.copy()
+        # Only boost uncertain cells inside the corridor — real obstacles (ev<=0.28) are untouched
+        fill_mask = (filled > 0) & (ev > 0.28) & (ev < 0.70)
+        ev_out[fill_mask] = np.maximum(ev_out[fill_mask], 0.75)
+        return ev_out
+
+    # ── step 11: morpho cleanup ───────────────────────────────────────────────
 
     @staticmethod
     def _morpho_cleanup(ev):
@@ -452,7 +478,8 @@ class PerceptionDrivableGridNode(Node):
         ev = self._dilate_into_blindspots(ev)      # step 7
         ev = self._lidar_ground_fill(ev, gnd_cnt)  # step 8
         ev = self._connected_road_fill(ev)         # step 9 — topology-aware fill
-        ev = self._morpho_cleanup(ev)              # step 10
+        ev = self._straight_road_fill(ev)          # step 10 — clean corridor on straight roads
+        ev = self._morpho_cleanup(ev)              # step 11
 
         grid_out = np.clip(np.round((1.0 - ev) * 100.0), 0, 100).astype(np.int8)
 
