@@ -29,7 +29,8 @@ def generate_launch_description():
         ],
         remappings=[
             ('/carla/hero/lidar', '/lidar/fused'),
-            ('/carla/hero/rgb_center/image', '/cameras/camera0')
+            ('/carla/hero/rgb_center/image', '/cameras/camera0'),
+            ('/carla/hero/rgb_back/image',   '/cameras/camera2')
         ]
     )
 
