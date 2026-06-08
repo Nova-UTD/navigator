@@ -4,13 +4,13 @@ perception_drivable_grid_node.py  —  Camera-first real-time drivable area grid
 
 Pipeline  (10 Hz)
   1. Project PSPNet semantic images -> per-cell road observations (LUT at init)
-  2. Cross-validate with LiDAR height
+  2. Cross-validate with LiDAR ground/obstacle evidence
   3. Temporal accumulation with odometry pose compensation
   4. Vehicle footprint prior (always drivable)
   5. Driven path prior (last N odom positions = drivable)
   6. Gaussian boundary smoothing
   7. Road dilation into blind spots (expand road into uncertain, not obstacle)
-  8. Intersection corridor weighting
+  8. LiDAR ground fill (uncertain cells confirmed by LiDAR ground returns -> drivable)
   9. Morphological cleanup
 
 Cameras (hardcoded from carla_objects.json):
@@ -43,11 +43,15 @@ ORIGIN_X    = -20.0
 ORIGIN_Y    = -30.0
 MAX_PROJ_DIST = 40.0
 
-LIDAR_Z_MIN  = -0.50
-LIDAR_Z_FLAT =  0.05
-LIDAR_Z_CURB =  0.15
-LIDAR_Z_OBS  =  0.30
-LIDAR_Z_MAX  =  3.50
+# LiDAR evidence thresholds — count-based, not max-height
+# Ground return: any point with z < LIDAR_GROUND_Z is a road/flat-surface hit
+# Obstacle return: any point with z >= LIDAR_OBS_Z is a real obstacle (wall, vehicle)
+# Points between these two are ignored (curb, slight slope, noise)
+LIDAR_GROUND_Z     =  0.35   # road surface + 35 cm tolerance for slope/noise
+LIDAR_OBS_Z        =  1.20   # true obstacle (building wall, vehicle body)
+LIDAR_GND_MIN_HITS =  2      # need >= 2 ground returns to call cell "road"
+LIDAR_GND_DRIVABLE =  0.85   # evidence value for LiDAR-confirmed road cells
+LIDAR_GND_BOOST    =  0.72   # boost for uncertain camera cells with LiDAR ground support
 
 ALPHA_BLEND   = 0.65
 DECAY_RATE    = 0.992
@@ -218,13 +222,17 @@ class PerceptionDrivableGridNode(Node):
             np.add.at(obs_count, (lut.gr[use], lut.gc[use]), 1.0)
         return obs_sum, obs_count
 
-    # ── step 2: lidar + fusion ────────────────────────────────────────────────
+    # ── step 2: lidar evidence grid ───────────────────────────────────────────
 
-    def _lidar_height_grid(self, msg):
-        hg = np.full((GRID_SIZE, GRID_SIZE), np.nan, dtype=np.float32)
+    def _lidar_evidence_grid(self, msg):
+        """Count ground hits (z < LIDAR_GROUND_Z) and obstacle hits (z >= LIDAR_OBS_Z)
+        per grid cell.  Using counts rather than max-height avoids single-outlier
+        returns from road slope or sensor noise marking a whole cell as obstacle."""
+        gnd_cnt = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.int16)
+        obs_cnt = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.int16)
         n = msg.width * msg.height
         if n == 0:
-            return hg
+            return gnd_cnt, obs_cnt
         ps = msg.point_step
         x_off = y_off = z_off = 0
         for f in msg.fields:
@@ -235,32 +243,60 @@ class PerceptionDrivableGridNode(Node):
         xs  = np.frombuffer(raw[:, x_off:x_off+4].tobytes(), dtype=np.float32)
         ys  = np.frombuffer(raw[:, y_off:y_off+4].tobytes(), dtype=np.float32)
         zs  = np.frombuffer(raw[:, z_off:z_off+4].tobytes(), dtype=np.float32)
-        ok  = np.isfinite(xs) & np.isfinite(zs) & (zs > LIDAR_Z_MIN) & (zs < LIDAR_Z_MAX)
+        ok  = np.isfinite(xs) & np.isfinite(zs)
         xs, ys, zs = xs[ok], ys[ok], zs[ok]
         if not len(zs):
-            return hg
+            return gnd_cnt, obs_cnt
         gc = ((xs - ORIGIN_X) / RESOLUTION).astype(np.int32)
         gr = ((ys - ORIGIN_Y) / RESOLUTION).astype(np.int32)
         ing = (gc >= 0) & (gc < GRID_SIZE) & (gr >= 0) & (gr < GRID_SIZE)
-        np.maximum.at(hg, (gr[ing], gc[ing]), zs[ing])
-        return hg
+        # Ground: z near road surface (base_link z=0 is at ground level)
+        gnd_mask = ing & (zs >= -0.30) & (zs < LIDAR_GROUND_Z)
+        # Obstacle: tall enough to be a wall, vehicle, or other real obstacle
+        obs_mask = ing & (zs >= LIDAR_OBS_Z)
+        if gnd_mask.any():
+            np.add.at(gnd_cnt, (gr[gnd_mask], gc[gnd_mask]), 1)
+        if obs_mask.any():
+            np.add.at(obs_cnt, (gr[obs_mask], gc[obs_mask]), 1)
+        return gnd_cnt, obs_cnt
 
-    def _fuse_camera_lidar(self, obs_sum, obs_count, hg):
+    def _fuse_camera_lidar(self, obs_sum, obs_count, gnd_cnt, obs_cnt):
         frame_obs = np.full((GRID_SIZE, GRID_SIZE), -1.0, dtype=np.float32)
         observed  = np.zeros((GRID_SIZE, GRID_SIZE), dtype=bool)
-        cam_seen  = obs_count > 0
+
+        cam_seen = obs_count > 0
         frame_obs[cam_seen] = obs_sum[cam_seen] / (obs_count[cam_seen] * 100.0)
         observed[cam_seen]  = True
-        lidar_has = np.isfinite(hg)
-        cam_road  = cam_seen & (frame_obs >= 0.70)
-        frame_obs[cam_road & lidar_has & (hg > LIDAR_Z_OBS)] = 0.0
-        frame_obs[cam_road & lidar_has & (hg < LIDAR_Z_FLAT)] = np.minimum(
-            1.0, frame_obs[cam_road & lidar_has & (hg < LIDAR_Z_FLAT)] * 1.05)
-        lidar_only = lidar_has & ~cam_seen
-        z = hg[lidar_only]
-        frame_obs[lidar_only] = np.where(z < LIDAR_Z_FLAT, 1.0,
-                                np.where(z < LIDAR_Z_CURB, 0.5, 0.0))
-        observed[lidar_only] = True
+
+        # Camera road cells: veto with LiDAR obstacle evidence
+        cam_road = cam_seen & (frame_obs >= 0.70)
+        frame_obs[cam_road & (obs_cnt > 0)] = 0.0
+
+        # Camera road cells: small boost when LiDAR also sees flat ground
+        boost_mask = cam_road & (gnd_cnt >= LIDAR_GND_MIN_HITS) & (obs_cnt == 0)
+        frame_obs[boost_mask] = np.minimum(1.0, frame_obs[boost_mask] * 1.05)
+
+        # LiDAR-only cells (not seen by any camera)
+        has_ground = gnd_cnt >= LIDAR_GND_MIN_HITS
+        has_obs    = obs_cnt > 0
+        lidar_hit  = (gnd_cnt > 0) | (obs_cnt > 0)
+        lidar_only = lidar_hit & ~cam_seen
+
+        # Flat ground with no tall obstacles -> road
+        road_lidar = lidar_only & has_ground & ~has_obs
+        frame_obs[road_lidar] = LIDAR_GND_DRIVABLE
+        observed[road_lidar]  = True
+
+        # Tall obstacle -> non-drivable
+        obs_lidar = lidar_only & has_obs
+        frame_obs[obs_lidar] = 0.05
+        observed[obs_lidar]  = True
+
+        # Mixed (ground + obstacle = curb/edge) -> uncertain
+        mixed_lidar = lidar_only & has_ground & has_obs
+        frame_obs[mixed_lidar] = 0.45
+        observed[mixed_lidar]  = True
+
         return frame_obs, observed
 
     # ── step 3: pose compensation + blend ─────────────────────────────────────
@@ -294,7 +330,6 @@ class PerceptionDrivableGridNode(Node):
     def _apply_priors(self):
         """Stamp vehicle footprint and driven path as high-confidence drivable.
         Must be called with self._lock held."""
-        # current vehicle footprint (base_link origin = grid centre)
         r0 = max(0, _VR - FOOTPRINT_HALF_W)
         r1 = min(GRID_SIZE, _VR + FOOTPRINT_HALF_W + 1)
         c0 = max(0, _VC - FOOTPRINT_REAR)
@@ -310,8 +345,8 @@ class PerceptionDrivableGridNode(Node):
 
         for (wx, wy) in self._path_history:
             dx, dy = wx - cx, wy - cy
-            lx = ca * dx - sa * dy   # forward in base_link
-            ly = sa * dx + ca * dy   # lateral in base_link
+            lx = ca * dx - sa * dy
+            ly = sa * dx + ca * dy
             gc = int((lx - ORIGIN_X) / RESOLUTION)
             gr = int((ly - ORIGIN_Y) / RESOLUTION)
             if not (PATH_STAMP_HALF <= gc < GRID_SIZE - PATH_STAMP_HALF and
@@ -335,18 +370,9 @@ class PerceptionDrivableGridNode(Node):
     @staticmethod
     def _dilate_into_blindspots(ev):
         road_mask  = (ev > 0.65).astype(np.uint8)
-        # Widen uncertain band slightly so cells that were briefly seen as
-        # very-low-confidence road can still be filled by neighbours
         uncertain  = (ev >= 0.36) & (ev <= 0.64)
-
         road_cells = int(road_mask.sum())
-        # At intersections (large road area) use a much larger radius so the
-        # dilation bridges across the gap to the perpendicular cross-road.
-        # Standard: 2.5 m radius (25 cells).  Intersection: 5 m radius (51 cells).
-        if road_cells > 1500:
-            ksize = 51   # ~5 m radius at 0.2 m/cell
-        else:
-            ksize = 25   # ~2.5 m radius
+        ksize = 51 if road_cells > 1500 else 25
         kernel  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (ksize, ksize))
         dilated = cv2.dilate(road_mask, kernel).astype(bool)
         fill    = dilated & uncertain
@@ -354,18 +380,21 @@ class PerceptionDrivableGridNode(Node):
         ev_out[fill] = PRIOR_DILATION
         return ev_out
 
-    # ── step 8: intersection corridor ─────────────────────────────────────────
+    # ── step 8: LiDAR ground fill ─────────────────────────────────────────────
 
     @staticmethod
-    def _intersection_corridor(ev):
-        if int((ev > 0.55).sum()) < 2000:
+    def _lidar_ground_fill(ev, gnd_cnt):
+        """Boost cells that cameras are uncertain about but LiDAR sees as ground.
+        Fills blind spots that dilation didn't reach (e.g. intersection branches,
+        side roads disconnected from the main road cluster)."""
+        uncertain = (ev >= 0.38) & (ev <= 0.62)
+        confirmed = (gnd_cnt >= LIDAR_GND_MIN_HITS)
+        boost = uncertain & confirmed
+        if not boost.any():
             return ev
-        cols = np.arange(GRID_SIZE, dtype=np.float32)
-        rows = np.arange(GRID_SIZE, dtype=np.float32)
-        cc, rr = np.meshgrid(cols, rows)
-        ang    = np.arctan2(rr * RESOLUTION + ORIGIN_Y, cc * RESOLUTION + ORIGIN_X)
-        weight = np.where(ev > 0.55, 0.60 + 0.40 * np.cos(ang)**2, 1.0)
-        return (ev * weight).astype(np.float32)
+        ev_out = ev.copy()
+        ev_out[boost] = np.maximum(ev_out[boost], LIDAR_GND_BOOST)
+        return ev_out
 
     # ── step 9: morpho cleanup ────────────────────────────────────────────────
 
@@ -388,21 +417,24 @@ class PerceptionDrivableGridNode(Node):
             cloud_snap = self._lidar_cloud
 
         obs_sum, obs_count = self._camera_obs_grid(sem_snap)
-        hg = (self._lidar_height_grid(cloud_snap) if cloud_snap is not None
-              else np.full((GRID_SIZE, GRID_SIZE), np.nan, dtype=np.float32))
-        frame_obs, observed = self._fuse_camera_lidar(obs_sum, obs_count, hg)
+
+        if cloud_snap is not None:
+            gnd_cnt, obs_cnt = self._lidar_evidence_grid(cloud_snap)
+        else:
+            gnd_cnt = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.int16)
+            obs_cnt = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.int16)
+
+        frame_obs, observed = self._fuse_camera_lidar(obs_sum, obs_count, gnd_cnt, obs_cnt)
 
         with self._lock:
             self._blend_evidence(frame_obs, observed)
             self._apply_priors()
             ev = self._evidence.copy()
 
-        ev = self._smooth_boundaries(ev)
-        ev = self._dilate_into_blindspots(ev)
-        # intersection_corridor removed: cos^2 weighting suppressed cross-road
-        # branches at intersections — exactly the cells we want to mark drivable.
-        # The adaptive dilation above handles intersection coverage instead.
-        ev = self._morpho_cleanup(ev)
+        ev = self._smooth_boundaries(ev)        # step 6
+        ev = self._dilate_into_blindspots(ev)   # step 7
+        ev = self._lidar_ground_fill(ev, gnd_cnt)  # step 8 — fill remaining blind spots
+        ev = self._morpho_cleanup(ev)           # step 9
 
         grid_out = np.clip(np.round((1.0 - ev) * 100.0), 0, 100).astype(np.int8)
 
