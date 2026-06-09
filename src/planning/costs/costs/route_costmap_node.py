@@ -117,14 +117,39 @@ class RouteCostmapNode(Node):
             self.route = msg.poses
             self.route_remaining = msg.poses
 
+    def _load_config(self):
+        """Load and cache the global parameters yaml once."""
+        if hasattr(self, '_cfg'):
+            return self._cfg
+        try:
+            with open(self.file_path, 'r') as f:
+                self._cfg = yaml.safe_load(f)
+        except Exception as e:
+            self.get_logger().error(f'Cannot load config: {e}')
+            self._cfg = None
+        return self._cfg
+
     def buildRouteCostmap(self):
-        # Baseline: gray (50) — off-route areas are medium cost.
+        # ── grid dimensions from config ──────────────────────────────────────
+        cfg = self._load_config()
+        if cfg is None:
+            return
+
+        resolution  = cfg['occupancy_grids']['resolution']            # 0.2 m
+        grid_cols   = int(cfg['occupancy_grids']['width']   / resolution)  # 300
+        grid_rows   = int(cfg['occupancy_grids']['length']  / resolution)  # 300
+        veh_long    = cfg['occupancy_grids']['vehicle_longitudinal_location']  # 20 m
+        veh_lat     = cfg['occupancy_grids']['vehicle_latitudinal_location']   # 30 m
+
+        # Baseline: gray (50) — off-route areas have medium cost.
         # Route corridor will be painted white (0) below.
-        routemap = np.zeros((151, 151)) + 50.0
-        
+        # Canvas is now the SAME size as the published OccupancyGrid (300×300)
+        # so no resize is needed and every coordinate maps exactly.
+        routemap = np.full((grid_rows, grid_cols), 50.0)
+
         if self.route is None:
             self.get_logger().warning('Route Costmap Node has not received route yet.')
-            self.publish(routemap,(0.0,0.0))
+            self.publish(routemap, (0.0, 0.0), cfg)
             return
 
         try:
@@ -137,20 +162,11 @@ class RouteCostmapNode(Node):
             
             roll, pitch, yaw = euler_from_quaternion(quat_to_numpy(ego_tf.transform.rotation))
 
-            # Open the config file
-            try:
-                with open(self.file_path, 'r') as file:
-                    data = yaml.safe_load(file)
-            except FileNotFoundError:
-                print("Error: config.yaml not found.")
-            except yaml.YAMLError as e:
-                print(f"Error parsing YAML file: {e}")
-
-            xmax = data['occupancy_grids']['length'] - data['occupancy_grids']['vehicle_longitudinal_location'] # 40m in front of the car
-            xmin = -1 * data['occupancy_grids']['vehicle_longitudinal_location'] # 20m in back of the car
-            ymin = -1 * data['occupancy_grids']['vehicle_latitudinal_location'] # 40m left of the car
-            ymax = data['occupancy_grids']['vehicle_latitudinal_location'] # 40m right of the car
-            gridres = data['occupancy_grids']['resolution']
+            xmax    =  cfg['occupancy_grids']['length'] - veh_long   # +40 m ahead
+            xmin    = -veh_long                                        # -20 m behind
+            ymin    = -veh_lat                                         # -30 m right
+            ymax    =  veh_lat                                         # +30 m left
+            gridres =  resolution
 
             # transform the route points to base_link 
             route_baselink_x = np.zeros(len(self.route_remaining))
@@ -171,7 +187,7 @@ class RouteCostmapNode(Node):
             if len(keep_idxs) == 0:
                 self.get_logger().warning('Did not find any route points ahead of the vehicle.')
                 self.route_remaining = []
-                self.publish(routemap,(0.0,0.0))
+                self.publish(routemap, (0.0, 0.0), cfg)
                 return
             
             # the route may make some turns such that part of the future path goes behind the vehicle
@@ -213,16 +229,19 @@ class RouteCostmapNode(Node):
 
             # ------------------------------------------------------------------
             # Paint the route corridor: white (0) with half-width = HALF_W cells.
-            # Everything off-corridor stays at the 50 baseline.
+            # Canvas is 300×300 so the coordinate formula maps exactly:
+            #   row ci = (y_baselink + veh_lat)  / resolution   (0 = -30 m, 299 = +29.8 m)
+            #   col cj = (x_baselink + veh_long) / resolution   (0 = -20 m, 299 = +39.8 m)
+            # Vehicle sits at row=150, col=100 — matching the drivable/occupancy grids.
             # ------------------------------------------------------------------
-            HALF_W = 6  # cells each side (~1.2 m at 0.2 m/cell after resize)
+            HALF_W = 6  # cells each side = 1.2 m corridor half-width at 0.2 m/cell
             for r in range(len(gridxs)):
-                ci = int(round((gridys[r] + ymax) / gridres))
-                cj = int(round((gridxs[r] + data['occupancy_grids']['vehicle_longitudinal_location']) / gridres))
+                ci = int(round((gridys[r] + veh_lat)  / gridres))
+                cj = int(round((gridxs[r] + veh_long) / gridres))
                 for di in range(-HALF_W, HALF_W + 1):
                     for dj in range(-HALF_W, HALF_W + 1):
                         ni, nj = ci + di, cj + dj
-                        if 0 <= ni < routemap.shape[0] and 0 <= nj < routemap.shape[1]:
+                        if 0 <= ni < grid_rows and 0 <= nj < grid_cols:
                             routemap[ni, nj] = 0
 
             # ------------------------------------------------------------------
@@ -240,14 +259,14 @@ class RouteCostmapNode(Node):
             self.get_logger().debug(
                 'path goal (drivable-snapped): %.2f, %.2f' % goal)
 
-            self.publish(routemap, goal)
+            self.publish(routemap, goal, cfg)
 
         except(LookupException, ExtrapolationException, ConnectivityException) as e: # typically get some errors on startup as the tf buffer fills
             self.get_logger().warning("!!! Error finding transform to build route grid !!!")
             self.get_logger().error('failed to get transform {} \n'.format(repr(e)))
 
-    def publish(self, routemap, goal):
-        # Publish path goal, which is the last element of the gridxs,gridys
+    def publish(self, routemap, goal, cfg):
+        # Publish path goal
         path_goal = PoseStamped()
         path_goal.header.stamp = self.clock.clock
         path_goal.header.frame_id = 'base_link'
@@ -255,64 +274,42 @@ class RouteCostmapNode(Node):
         path_goal.pose.position.y = goal[1]
         self.path_goal_pub.publish(path_goal)
 
-        # create a marker for rviz
-        self.publish_marker(path_goal,(0.0,1.0,0.4),self.goal_marker_pub)
+        # Marker for RViz goal arrow
+        self.publish_marker(path_goal, (0.0, 1.0, 0.4), self.goal_marker_pub)
 
-        # create and combine radial gradient overlay
-        #waypoint_costmap = self.make_waypoint_costmap(path_goal.pose)
-        #routemap = np.clip( routemap + waypoint_costmap , 0, 100)
-
-        # Open the config file
-        try:
-            with open(self.file_path, 'r') as file:
-                data = yaml.safe_load(file)
-        except FileNotFoundError:
-            print("Error: config.yaml not found.")
-        except yaml.YAMLError as e:
-            print(f"Error parsing YAML file: {e}")
-
-        # Publish as an OccupancyGrid, resized to config dimensions via cv2
-        resolution = data['occupancy_grids']['resolution']
-        grid_cols = int(data['occupancy_grids']['width']  / resolution)  # 300
-        grid_rows = int(data['occupancy_grids']['length'] / resolution)  # 300
+        # Publish OccupancyGrid.
+        # routemap is already 300×300 — no resize needed.
+        resolution = cfg['occupancy_grids']['resolution']
+        grid_cols  = int(cfg['occupancy_grids']['width']   / resolution)
+        grid_rows  = int(cfg['occupancy_grids']['length']  / resolution)
 
         route_cost_msg = OccupancyGrid()
-        route_cost_msg.info.map_load_time = self.clock.clock
-        route_cost_msg.info.resolution = resolution
-        route_cost_msg.info.width  = grid_cols
-        route_cost_msg.info.height = grid_rows
-        # origin is the lower-left corner of the map in base_link:
-        # x = forward (longitudinal), y = left (latitudinal)
-        route_cost_msg.info.origin.position.x = -1 * data['occupancy_grids']['vehicle_longitudinal_location']
-        route_cost_msg.info.origin.position.y = -1 * data['occupancy_grids']['vehicle_latitudinal_location']
-        route_cost_msg.header.stamp = self.clock.clock
-        route_cost_msg.header.frame_id = 'base_link'
+        route_cost_msg.info.map_load_time               = self.clock.clock
+        route_cost_msg.info.resolution                   = resolution
+        route_cost_msg.info.width                        = grid_cols
+        route_cost_msg.info.height                       = grid_rows
+        route_cost_msg.info.origin.position.x            = -cfg['occupancy_grids']['vehicle_longitudinal_location']
+        route_cost_msg.info.origin.position.y            = -cfg['occupancy_grids']['vehicle_latitudinal_location']
+        route_cost_msg.info.origin.orientation.w         = 1.0
+        route_cost_msg.header.stamp                      = self.clock.clock
+        route_cost_msg.header.frame_id                   = 'base_link'
 
-        resized_routemap = cv2.resize(
-            routemap.astype(np.float32),
-            (grid_cols, grid_rows),
-            interpolation=cv2.INTER_NEAREST
+        # Clamp and flatten — routemap shape matches (grid_rows, grid_cols)
+        route_cost_msg.data = (
+            np.clip(routemap, -128, 127).astype(np.int8).flatten().tolist()
         )
-        route_cost_msg.data = np.clip(resized_routemap, -128, 127).astype(np.int8).flatten().tolist()
 
         self.route_dist_grid_pub.publish(route_cost_msg)
 
     def is_within_costmap(self, x, y):
-        # Open the config file
-        try:
-            with open(self.file_path, 'r') as file:
-                data = yaml.safe_load(file)
-        except FileNotFoundError:
-            print("Error: config.yaml not found.")
-        except yaml.YAMLError as e:
-            print(f"Error parsing YAML file: {e}")
-
-        xmax = data['occupancy_grids']['length'] - data['occupancy_grids']['vehicle_longitudinal_location'] 
-        xmin = -1 * data['occupancy_grids']['vehicle_longitudinal_location'] 
-        ymin = -1 * data['occupancy_grids']['vehicle_latitudinal_location'] 
-        ymax = data['occupancy_grids']['vehicle_latitudinal_location']
-
-        return x>=xmin and x<=xmax and y>=ymin and y<=ymax
+        cfg  = self._load_config()
+        if cfg is None:
+            return False
+        xmax =  cfg['occupancy_grids']['length'] - cfg['occupancy_grids']['vehicle_longitudinal_location']
+        xmin = -cfg['occupancy_grids']['vehicle_longitudinal_location']
+        ymin = -cfg['occupancy_grids']['vehicle_latitudinal_location']
+        ymax =  cfg['occupancy_grids']['vehicle_latitudinal_location']
+        return xmin <= x <= xmax and ymin <= y <= ymax
 
     # this creates a radial costmap centered on the goal waypoint
     # creates a gradual cost landscape to drive the path towards the end
