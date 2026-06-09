@@ -60,7 +60,6 @@ class HybridDrivableGridNode(Node):
         self._lock = threading.Lock()
 
         self._hdmap: np.ndarray | None  = None
-        self._occ:   np.ndarray | None  = None
         self._perc:  np.ndarray | None  = None   # /grid/drivable/segmented
 
         qos1 = rclpy.qos.QoSProfile(
@@ -72,8 +71,6 @@ class HybridDrivableGridNode(Node):
 
         self.create_subscription(OccupancyGrid, '/grid/drivable/hdmap',
             self._cb_hdmap, qos1)
-        self.create_subscription(OccupancyGrid, '/grid/occupancy/current',
-            self._cb_occ, qos1)
         self.create_subscription(OccupancyGrid, '/grid/drivable/segmented',
             self._cb_perc, qos_be)
 
@@ -82,7 +79,6 @@ class HybridDrivableGridNode(Node):
         self.create_timer(0.1, self._publish_loop)
 
         self._last_hdmap_stamp = None
-        self._last_occ_stamp   = None
 
         self.get_logger().info('HybridDrivableGridNode ready — perception-primary, HD map fallback.')
 
@@ -95,13 +91,6 @@ class HybridDrivableGridNode(Node):
             self._hdmap = arr
             self._last_hdmap_stamp = msg.header.stamp
 
-    def _cb_occ(self, msg: OccupancyGrid):
-        arr = np.array(msg.data, dtype=np.int8).reshape(
-            msg.info.height, msg.info.width)
-        with self._lock:
-            self._occ = arr
-            self._last_occ_stamp = msg.header.stamp
-
     def _cb_perc(self, msg: OccupancyGrid):
         arr = np.array(msg.data, dtype=np.int8).reshape(
             msg.info.height, msg.info.width)
@@ -113,7 +102,6 @@ class HybridDrivableGridNode(Node):
     def _publish_loop(self):
         with self._lock:
             hdmap = self._hdmap.copy() if self._hdmap is not None else None
-            occ   = self._occ.copy()   if self._occ   is not None else None
             perc  = self._perc.copy()  if self._perc  is not None else None
 
         if perc is None and hdmap is None:
@@ -161,14 +149,11 @@ class HybridDrivableGridNode(Node):
                 'Perception grid not yet received, using HD map only.',
                 throttle_duration_sec=10.0)
 
-        # ── step 2: occupancy obstacle veto on all confirmed road cells ────────
-        if occ is not None:
-            occ = _resize(occ)
-            road    = (output == np.int8(0))
-            blocked = road & (occ >= OCC_BLOCK_THRESHOLD)
-            output[blocked] = np.int8(100)
-            hazard  = road & (occ > np.int8(0)) & (occ < OCC_BLOCK_THRESHOLD)
-            output[hazard] = occ[hazard]
+        # NOTE: No occupancy veto here.
+        # /grid/occupancy/current already flows into grid_summation_node as its
+        # own independent channel and is combined via np.maximum with steering cost.
+        # Applying it again here would double-count obstacle evidence and incorrectly
+        # mark road cells as 100, blocking the path planner from finding any route.
 
         # ── publish ────────────────────────────────────────────────────────────
         msg                           = OccupancyGrid()

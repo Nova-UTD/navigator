@@ -27,6 +27,7 @@ setup(
             'image_projection_node = segmentation.image_projection_node:main',
             'hybrid_perception_grid_node = segmentation.hybrid_perception_grid_node:main',
             'perception_drivable_grid_node = segmentation.perception_drivable_grid_node:main',
+            'hybrid_drivable_grid_node = segmentation.hybrid_drivable_grid_node:main',
         ],
     },
 )
