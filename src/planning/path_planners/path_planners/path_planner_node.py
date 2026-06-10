@@ -136,6 +136,9 @@ class PathPlannerNode(Node):
 
         # Thread safety: costmap callback and generate_path run on different threads
         self._costmap_lock = threading.Lock()
+
+        # Temporal costmap smoothing: blend previous frame to dampen steering_cost flicker
+        self._prev_costmap_np = None
         
         # Path smoothing parameters
         self.smoothing_look_ahead = 2
@@ -252,6 +255,14 @@ class PathPlannerNode(Node):
                 target_cells,
                 target_cells
             )
+
+        # Temporal smoothing: exponential blend with previous frame.
+        # Dampens single-frame spikes in steering_cost from duplicate-node flicker
+        # or route_distance jitter so Dijkstra produces a stable path.
+        # Alpha=0.65: ~3 frames (300ms) to fully absorb a sudden grid change.
+        if self._prev_costmap_np is not None and self._prev_costmap_np.shape == costmap_np.shape:
+            costmap_np = (0.65 * self._prev_costmap_np + 0.35 * costmap_np.astype(np.float32)).astype(np.int32)
+        self._prev_costmap_np = costmap_np.astype(np.float32)
 
         height, width = costmap_np.shape
 
