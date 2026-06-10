@@ -93,6 +93,8 @@ class RouteCostmapNode(Node):
         # every callback and causing Dijkstra to oscillate between two routes.
         self._last_paint_tx = None
         self._last_paint_ty = None
+        self._cached_routemap = None
+        self._cached_goal = None
 
     def clockCb(self, msg: Clock):
         self.clock = msg
@@ -182,16 +184,20 @@ class RouteCostmapNode(Node):
             
             roll, pitch, yaw = euler_from_quaternion(quat_to_numpy(ego_tf.transform.rotation))
 
-            # Position hysteresis: skip corridor repaint if vehicle hasn't moved enough.
+            # Position hysteresis: skip expensive corridor repaint when vehicle
+            # hasn't moved >=0.3 m, but always re-publish the cached goal/map
+            # so the path_planner's stale-goal timer never expires.
             tx = ego_tf.transform.translation.x
             ty = ego_tf.transform.translation.y
+            skip_repaint = False
             if self._last_paint_tx is not None:
                 dx = tx - self._last_paint_tx
                 dy = ty - self._last_paint_ty
                 if dx*dx + dy*dy < 0.09:   # < 0.3 m
-                    return
-            self._last_paint_tx = tx
-            self._last_paint_ty = ty
+                    skip_repaint = True
+            if not skip_repaint:
+                self._last_paint_tx = tx
+                self._last_paint_ty = ty
 
             xmax    =  cfg['occupancy_grids']['length'] - veh_long   # +40 m ahead
             xmin    = -veh_long                                        # -20 m behind
@@ -200,6 +206,11 @@ class RouteCostmapNode(Node):
             gridres =  resolution
 
             # transform the route points to base_link 
+            # If vehicle hasn't moved enough, re-publish cached result and skip
+            if skip_repaint and hasattr(self, '_cached_routemap') and self._cached_routemap is not None:
+                self.publish(self._cached_routemap, self._cached_goal, cfg)
+                return
+
             route_baselink_x = np.zeros(len(self.route_remaining))
             route_baselink_y = np.zeros(len(self.route_remaining))
             # dist_to_car = np.zeros(len(self.route_remaining))
@@ -346,6 +357,8 @@ class RouteCostmapNode(Node):
                 'path goal: x=%.2f y=%.2f' % goal,
                 throttle_duration_sec=2.0)
 
+            self._cached_routemap = routemap
+            self._cached_goal = goal
             self.publish(routemap, goal, cfg)
 
         except(LookupException, ExtrapolationException, ConnectivityException) as e: # typically get some errors on startup as the tf buffer fills
