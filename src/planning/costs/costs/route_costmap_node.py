@@ -110,6 +110,20 @@ class RouteCostmapNode(Node):
             return False
         return int(self._drivable_grid[row, col]) < 90
 
+    def _is_camera_confirmed_drivable(self, x_bl: float, y_bl: float) -> bool:
+        """Return True only if drivable_grid == 0 at this cell.
+        drivable == 0 means perception actively classified it as road surface.
+        drivable == 50 means HD-map default / unmapped — beyond camera horizon."""
+        if self._drivable_grid is None:
+            return False  # conservative: no perception data yet
+        col = int(round((x_bl + 20.0) / 0.2))
+        row = int(round((y_bl + 30.0) / 0.2))
+        if not (0 <= row < self._drivable_grid.shape[0]):
+            return False
+        if not (0 <= col < self._drivable_grid.shape[1]):
+            return False
+        return int(self._drivable_grid[row, col]) == 0
+
     # TODO: currently implemented, the route cannot be changed once it is first received
     def routeCb(self, msg: Path):
         if self.route is None:
@@ -234,30 +248,86 @@ class RouteCostmapNode(Node):
             #   col cj = (x_baselink + veh_long) / resolution   (0 = -20 m, 299 = +39.8 m)
             # Vehicle sits at row=150, col=100 — matching the drivable/occupancy grids.
             # ------------------------------------------------------------------
-            HALF_W = 6  # cells each side = 1.2 m corridor half-width at 0.2 m/cell
+            # Two-tier corridor:
+            #   0  = camera-confirmed drivable (drivable == 0): safe, drives there
+            #   20 = unconfirmed ahead (drivable == 50): shows route direction but
+            #        occupancy will override to 100 in unmapped cells anyway
+            # Visually shows in RViz exactly how far the camera has confirmed road.
+            # As the vehicle advances and camera maps more, the white (0) zone grows.
+            # Gradient corridor: centerline lowest cost, padding slightly higher.
+            # Path hugs the exact route center; deviates only when an obstacle
+            # (occupancy=100 -> sc=100 via np.maximum) blocks the centerline.
+            HALF_W = 6               # padding half-width cells (1.2m at 0.2m/cell)
+            CENTER_CONFIRMED   = 0   # exact route centerline, camera confirmed
+            CENTER_UNCONFIRMED = 20  # exact route centerline, HD-map only
+            SIDE_CONFIRMED     = 10  # side padding band, camera confirmed
+            SIDE_UNCONFIRMED   = 30  # side padding band, HD-map only
             for r in range(len(gridxs)):
+                confirmed = self._is_camera_confirmed_drivable(gridxs[r], gridys[r])
+                center_val = CENTER_CONFIRMED if confirmed else CENTER_UNCONFIRMED
+                side_val   = SIDE_CONFIRMED   if confirmed else SIDE_UNCONFIRMED
                 ci = int(round((gridys[r] + veh_lat)  / gridres))
                 cj = int(round((gridxs[r] + veh_long) / gridres))
+                # Paint padding band first, then stamp centerline on top
                 for di in range(-HALF_W, HALF_W + 1):
                     for dj in range(-HALF_W, HALF_W + 1):
                         ni, nj = ci + di, cj + dj
                         if 0 <= ni < grid_rows and 0 <= nj < grid_cols:
-                            routemap[ni, nj] = 0
+                            if routemap[ni, nj] > side_val:
+                                routemap[ni, nj] = side_val
+                # Exact centerline always lowest cost
+                if 0 <= ci < grid_rows and 0 <= cj < grid_cols:
+                    if routemap[ci, cj] > center_val:
+                        routemap[ci, cj] = center_val
 
             # ------------------------------------------------------------------
-            # Goal selection: furthest point along the route that is within
-            # the camera-mapped drivable area (drivable_grid cell < 90).
-            # Walk from far end toward vehicle; first hit is the goal.
-            # Fall back to last in-costmap point if no drivable cell found.
+            # Goal selection: camera-horizon receding-goal strategy.
+            #
+            # drivable == 0  → perception confirmed road surface here
+            # drivable == 50 → HD-map default / unmapped (beyond camera horizon)
+            #
+            # Setting the goal beyond the camera horizon causes path instability:
+            # the occupancy grid predicts obstacles (value 100) in unmapped cells,
+            # making the steering_cost there fluctuate frame-to-frame.  Dijkstra
+            # routes differently through that flickering zone every 100 ms.
+            #
+            # Fix: limit the goal to the furthest camera-CONFIRMED cell (== 0).
+            # The path then stays entirely within the stable, confirmed zone.
+            # As the vehicle moves forward and the camera maps more road ahead,
+            # the confirmed zone grows and the goal automatically advances —
+            # this is the receding-horizon (rolling lookahead) behaviour.
+            #
+            # Fallback order:
+            #   1. Furthest camera-confirmed (drivable == 0) cell along route
+            #   2. Furthest any-drivable (< 90) cell  — startup / perception off
+            #   3. First route point just ahead of vehicle — last resort
             # ------------------------------------------------------------------
-            goal = (gridxs[-1], gridys[-1])  # fallback: furthest costmap point
-            for r in range(len(gridxs) - 1, -1, -1):
-                if self._is_drivable(gridxs[r], gridys[r]):
-                    goal = (gridxs[r], gridys[r])
-                    break
+            # Forward walk: advance through consecutive confirmed cells from the
+            # vehicle end, stop at the FIRST gap (drivable != 0).  Gives the
+            # end of the CONTIGUOUS confirmed zone so Dijkstra can always reach
+            # it without crossing any sc==100 obstacle wall.
+            goal = None
+            for r in range(len(gridxs)):
+                if gridxs[r] < 0.0:
+                    continue  # skip behind-vehicle route points
+                if self._is_camera_confirmed_drivable(gridxs[r], gridys[r]):
+                    goal = (gridxs[r], gridys[r])  # keep extending horizon
+                else:
+                    break  # first unconfirmed gap: stop here
 
-            self.get_logger().debug(
-                'path goal (drivable-snapped): %.2f, %.2f' % goal)
+            # Fallback: any drivable cell (startup / perception warming up)
+            if goal is None:
+                for r in range(len(gridxs) - 1, -1, -1):
+                    if self._is_drivable(gridxs[r], gridys[r]):
+                        goal = (gridxs[r], gridys[r])
+                        break
+
+            if goal is None:
+                goal = (gridxs[0], gridys[0])
+
+            self.get_logger().info(
+                'path goal: x=%.2f y=%.2f' % goal,
+                throttle_duration_sec=2.0)
 
             self.publish(routemap, goal, cfg)
 

@@ -137,8 +137,8 @@ class PathPlannerNode(Node):
         # Thread safety: costmap callback and generate_path run on different threads
         self._costmap_lock = threading.Lock()
 
-        # Temporal costmap smoothing: blend previous frame to dampen steering_cost flicker
-        self._prev_costmap_np = None
+        # Ghost-rejection: track the best (most recent) path_goal stamp seen
+        self._best_goal_stamp = 0.0
         
         # Path smoothing parameters
         self.smoothing_look_ahead = 2
@@ -206,6 +206,20 @@ class PathPlannerNode(Node):
             self.costmap = msg
 
     def path_goal_callback(self, msg: PoseStamped):
+        # Ghost rejection — two layers:
+        # 1. Monotonic: never accept a goal older than the best seen so far.
+        #    Once we have a fresh goal from the live publisher, all ghost
+        #    retransmissions (which carry an older stamp) are silently dropped.
+        # 2. Clock-relative: drop anything more than 3 s behind sim time.
+        msg_sec = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        # Monotonic check
+        if msg_sec < self._best_goal_stamp:
+            return
+        # Clock-relative check (only once sim clock is valid)
+        clk_sec = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
+        if clk_sec > 0 and (clk_sec - msg_sec) > 3.0:
+            return
+        self._best_goal_stamp = msg_sec
         self.path_goal = msg
 
     def scale_grid_numpy(self, data, old_h, old_w, new_h, new_w):
@@ -232,6 +246,15 @@ class PathPlannerNode(Node):
             self.get_logger().warning("Have not received goal for path yet...")
             return
 
+        # Use-time ghost check: if cached goal is now stale vs sim clock, clear it
+        clk_sec  = self.clock.clock.sec  + self.clock.clock.nanosec  * 1e-9
+        goal_sec = self.path_goal.header.stamp.sec + self.path_goal.header.stamp.nanosec * 1e-9
+        if clk_sec > 0 and (clk_sec - goal_sec) > 3.0:
+            self.get_logger().warning(
+                "Stale path_goal cleared (ghost?)", throttle_duration_sec=5.0)
+            self.path_goal = None
+            return
+
         resolution = costmap_snap.info.resolution
         raw_height = costmap_snap.info.height
         raw_width  = costmap_snap.info.width
@@ -256,13 +279,6 @@ class PathPlannerNode(Node):
                 target_cells
             )
 
-        # Temporal smoothing: exponential blend with previous frame.
-        # Dampens single-frame spikes in steering_cost from duplicate-node flicker
-        # or route_distance jitter so Dijkstra produces a stable path.
-        # Alpha=0.65: ~3 frames (300ms) to fully absorb a sudden grid change.
-        if self._prev_costmap_np is not None and self._prev_costmap_np.shape == costmap_np.shape:
-            costmap_np = (0.65 * self._prev_costmap_np + 0.35 * costmap_np.astype(np.float32)).astype(np.int32)
-        self._prev_costmap_np = costmap_np.astype(np.float32)
 
         height, width = costmap_np.shape
 
