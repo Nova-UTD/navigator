@@ -134,6 +134,11 @@ class PathPlannerNode(Node):
         self.obstacle_threshold = 90  # Values above this are considered obstacles
         self.obstacle_padding = 1  # Cells to pad around obstacles (1 = 0.2m margin)
 
+        # Path re-use: cache the last valid Dijkstra result.
+        # Replan only when an obstacle blocks the cached path or the goal moves.
+        self._cached_path_cells = None
+        self._cached_goal = None
+
         # Thread safety: costmap callback and generate_path run on different threads
         self._costmap_lock = threading.Lock()
 
@@ -337,6 +342,35 @@ class PathPlannerNode(Node):
                     return
 
         # ----------------------------
+        # PATH RE-USE: skip Dijkstra when cached path is still obstacle-free
+        #   and the goal hasn't moved significantly.
+        # Replan only when: (a) a new obstacle blocks the path, or
+        #                   (b) the goal shifted > GOAL_THRESHOLD cells.
+        # ----------------------------
+        GOAL_REPLAN_THRESHOLD = 10   # cells  (~2 m)
+        must_replan = True
+
+        if (self._cached_path_cells is not None
+                and self._cached_goal is not None
+                and len(self._cached_path_cells) > 5):
+            gi_old, gj_old = self._cached_goal
+            goal_shifted = (abs(gi_old - goal_i) > GOAL_REPLAN_THRESHOLD
+                            or abs(gj_old - goal_j) > GOAL_REPLAN_THRESHOLD)
+            if not goal_shifted:
+                path_blocked = any(
+                    padded_costmap[r, c] >= self.obstacle_threshold
+                    for (r, c) in self._cached_path_cells
+                )
+                if not path_blocked:
+                    must_replan = False
+                else:
+                    self.get_logger().info(
+                        "Obstacle on path — replanning", throttle_duration_sec=1.0)
+            else:
+                self.get_logger().info(
+                    "Goal changed — replanning", throttle_duration_sec=1.0)
+
+        # ----------------------------
         # Run Planner
         # ----------------------------
         path = None
@@ -350,12 +384,15 @@ class PathPlannerNode(Node):
             path = self.planner.arastar()
 
         elif isinstance(self.planner, DijkstraPathPlanner):
-            path = self.planner.shortest_path(
-                padded_costmap,
-                (start_i, start_j),
-                (goal_i, goal_j),
-                self.obstacle_threshold
-            )
+            if must_replan:
+                path = self.planner.shortest_path(
+                    padded_costmap,
+                    (start_i, start_j),
+                    (goal_i, goal_j),
+                    self.obstacle_threshold
+                )
+            else:
+                path = self._cached_path_cells
 
         elif isinstance(self.planner, DPPathPlanner):
             self.planner.costmap_data = padded_costmap
@@ -383,8 +420,14 @@ class PathPlannerNode(Node):
             )
 
         if path is None or len(path) == 0:
-            self.get_logger().warning("!!! Pathfinding returned a path as None !!!")
+            self.get_logger().warning("!!! Pathfinding returned a path as None !!!",
+                                      throttle_duration_sec=2.0)
             return
+
+        # Cache the valid path
+        if must_replan:
+            self._cached_path_cells = list(path)
+            self._cached_goal = (goal_i, goal_j)
 
         # ----------------------------
         # Smooth Path

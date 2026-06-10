@@ -81,12 +81,18 @@ class RouteCostmapNode(Node):
         #     DiagnosticStatus, '/node_status', 1)
         # self.status = DiagnosticStatus()
 
-        self.costmap_timer = self.create_timer(0.05, self.buildRouteCostmap, callback_group=MutuallyExclusiveCallbackGroup())
+        self.costmap_timer = self.create_timer(0.15, self.buildRouteCostmap, callback_group=MutuallyExclusiveCallbackGroup())
 
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)
 
         self.clock = Clock()
+
+        # Position hysteresis: only repaint corridor when vehicle moved >= 0.3 m.
+        # Prevents TF sub-cell jitter from shifting the corridor 1 cell left/right
+        # every callback and causing Dijkstra to oscillate between two routes.
+        self._last_paint_tx = None
+        self._last_paint_ty = None
 
     def clockCb(self, msg: Clock):
         self.clock = msg
@@ -175,6 +181,17 @@ class RouteCostmapNode(Node):
                 rclpy.time.Duration(seconds=5.0))
             
             roll, pitch, yaw = euler_from_quaternion(quat_to_numpy(ego_tf.transform.rotation))
+
+            # Position hysteresis: skip corridor repaint if vehicle hasn't moved enough.
+            tx = ego_tf.transform.translation.x
+            ty = ego_tf.transform.translation.y
+            if self._last_paint_tx is not None:
+                dx = tx - self._last_paint_tx
+                dy = ty - self._last_paint_ty
+                if dx*dx + dy*dy < 0.09:   # < 0.3 m
+                    return
+            self._last_paint_tx = tx
+            self._last_paint_ty = ty
 
             xmax    =  cfg['occupancy_grids']['length'] - veh_long   # +40 m ahead
             xmin    = -veh_long                                        # -20 m behind
