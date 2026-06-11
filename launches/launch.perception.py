@@ -41,4 +41,9 @@ def generate_launch_description():
         # lane_type_detector,
         # pedestrian_skeleton
         road_user_detector,
+        image_segmentation,
+        ground_seg,
+        static_grid,
+        hybrid_grid,
+        perception_drivable_grid,
     ])

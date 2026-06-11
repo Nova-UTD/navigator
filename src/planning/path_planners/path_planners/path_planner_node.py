@@ -21,6 +21,7 @@ Publishes:
 """
 
 import math
+import threading
 import numpy as np
 import time
 from typing import List, Tuple, Optional
@@ -131,7 +132,18 @@ class PathPlannerNode(Node):
         self.origin_x = 20.0  # Origin offset in X
         self.origin_y = 30.0  # Origin offset in Y
         self.obstacle_threshold = 90  # Values above this are considered obstacles
-        self.obstacle_padding = 3  # Cells to pad around obstacles
+        self.obstacle_padding = 1  # Cells to pad around obstacles (1 = 0.2m margin)
+
+        # Path re-use: cache the last valid Dijkstra result.
+        # Replan only when an obstacle blocks the cached path or the goal moves.
+        self._cached_path_cells = None
+        self._cached_goal = None
+
+        # Thread safety: costmap callback and generate_path run on different threads
+        self._costmap_lock = threading.Lock()
+
+        # Ghost-rejection: track the best (most recent) path_goal stamp seen
+        self._best_goal_stamp = 0.0
         
         # Path smoothing parameters
         self.smoothing_look_ahead = 2
@@ -194,9 +206,25 @@ class PathPlannerNode(Node):
         if msg.info.height == 0 or msg.info.width == 0:
             self.get_logger().warning("Incoming cost map dimensions were zero.")
             return
-        self.costmap = msg
+        # Guard against race where generate_path reads costmap mid-update
+        with self._costmap_lock:
+            self.costmap = msg
 
     def path_goal_callback(self, msg: PoseStamped):
+        # Ghost rejection — two layers:
+        # 1. Monotonic: never accept a goal older than the best seen so far.
+        #    Once we have a fresh goal from the live publisher, all ghost
+        #    retransmissions (which carry an older stamp) are silently dropped.
+        # 2. Clock-relative: drop anything more than 3 s behind sim time.
+        msg_sec = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        # Monotonic check
+        if msg_sec < self._best_goal_stamp:
+            return
+        # Clock-relative check (only once sim clock is valid)
+        clk_sec = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
+        if clk_sec > 0 and (clk_sec - msg_sec) > 3.0:
+            return
+        self._best_goal_stamp = msg_sec
         self.path_goal = msg
 
     def scale_grid_numpy(self, data, old_h, old_w, new_h, new_w):
@@ -212,18 +240,31 @@ class PathPlannerNode(Node):
 
 
     def generate_path(self):
-        if self.costmap is None:
+        # Snapshot costmap under lock to prevent race with callback thread
+        with self._costmap_lock:
+            costmap_snap = self.costmap
+
+        if costmap_snap is None:
             self.get_logger().warning("Have not received costmap yet...")
             return
         if self.path_goal is None:
             self.get_logger().warning("Have not received goal for path yet...")
             return
 
-        resolution = self.costmap.info.resolution
-        raw_height = self.costmap.info.height
-        raw_width = self.costmap.info.width
+        # Use-time ghost check: if cached goal is now stale vs sim clock, clear it
+        clk_sec  = self.clock.clock.sec  + self.clock.clock.nanosec  * 1e-9
+        goal_sec = self.path_goal.header.stamp.sec + self.path_goal.header.stamp.nanosec * 1e-9
+        if clk_sec > 0 and (clk_sec - goal_sec) > 3.0:
+            self.get_logger().warning(
+                "Stale path_goal cleared (ghost?)", throttle_duration_sec=5.0)
+            self.path_goal = None
+            return
 
-        if len(self.costmap.data) != raw_height * raw_width:
+        resolution = costmap_snap.info.resolution
+        raw_height = costmap_snap.info.height
+        raw_width  = costmap_snap.info.width
+
+        if len(costmap_snap.data) != raw_height * raw_width:
             self.get_logger().error("Costmap size mismatch.")
             return
 
@@ -232,16 +273,17 @@ class PathPlannerNode(Node):
         # ----------------------------
         target_cells = int(60.0 / resolution)
 
-        costmap_np = np.asarray(self.costmap.data, dtype=np.int32).reshape(raw_height, raw_width)
+        costmap_np = np.asarray(costmap_snap.data, dtype=np.int32).reshape(raw_height, raw_width)
 
         if raw_height != target_cells or raw_width != target_cells:
             costmap_np = self.scale_grid_numpy(
-                self.costmap.data,
+                costmap_snap.data,
                 raw_height,
                 raw_width,
                 target_cells,
                 target_cells
             )
+
 
         height, width = costmap_np.shape
 
@@ -271,6 +313,64 @@ class PathPlannerNode(Node):
         )
 
         # ----------------------------
+        # Goal snap: if goal landed in an obstacle cell (e.g. grid edge
+        # dilation or boundary), walk back along the line toward start
+        # until we find the furthest free cell.
+        # ----------------------------
+        if padded_costmap[goal_i, goal_j] >= self.obstacle_threshold:
+            steps = max(abs(goal_i - start_i), abs(goal_j - start_j))
+            if steps > 0:
+                snapped = False
+                for s in range(steps, -1, -1):
+                    t = s / steps
+                    ci = int(round(start_i + t * (goal_i - start_i)))
+                    cj = int(round(start_j + t * (goal_j - start_j)))
+                    ci = max(0, min(ci, height - 1))
+                    cj = max(0, min(cj, width - 1))
+                    if padded_costmap[ci, cj] < self.obstacle_threshold:
+                        goal_i, goal_j = ci, cj
+                        snapped = True
+                        break
+                if snapped:
+                    self.get_logger().info(
+                        f'Goal snapped to nearest free cell: ({goal_i},{goal_j})',
+                        throttle_duration_sec=2.0)
+                else:
+                    self.get_logger().warning(
+                        'No free cell found along start→goal line; path will be empty.',
+                        throttle_duration_sec=2.0)
+                    return
+
+        # ----------------------------
+        # PATH RE-USE: skip Dijkstra when cached path is still obstacle-free
+        #   and the goal hasn't moved significantly.
+        # Replan only when: (a) a new obstacle blocks the path, or
+        #                   (b) the goal shifted > GOAL_THRESHOLD cells.
+        # ----------------------------
+        GOAL_REPLAN_THRESHOLD = 10   # cells  (~2 m)
+        must_replan = True
+
+        if (self._cached_path_cells is not None
+                and self._cached_goal is not None
+                and len(self._cached_path_cells) > 5):
+            gi_old, gj_old = self._cached_goal
+            goal_shifted = (abs(gi_old - goal_i) > GOAL_REPLAN_THRESHOLD
+                            or abs(gj_old - goal_j) > GOAL_REPLAN_THRESHOLD)
+            if not goal_shifted:
+                path_blocked = any(
+                    padded_costmap[r, c] >= self.obstacle_threshold
+                    for (r, c) in self._cached_path_cells
+                )
+                if not path_blocked:
+                    must_replan = False
+                else:
+                    self.get_logger().info(
+                        "Obstacle on path — replanning", throttle_duration_sec=1.0)
+            else:
+                self.get_logger().info(
+                    "Goal changed — replanning", throttle_duration_sec=1.0)
+
+        # ----------------------------
         # Run Planner
         # ----------------------------
         path = None
@@ -284,12 +384,15 @@ class PathPlannerNode(Node):
             path = self.planner.arastar()
 
         elif isinstance(self.planner, DijkstraPathPlanner):
-            path = self.planner.shortest_path(
-                padded_costmap,
-                (start_i, start_j),
-                (goal_i, goal_j),
-                self.obstacle_threshold
-            )
+            if must_replan:
+                path = self.planner.shortest_path(
+                    padded_costmap,
+                    (start_i, start_j),
+                    (goal_i, goal_j),
+                    self.obstacle_threshold
+                )
+            else:
+                path = self._cached_path_cells
 
         elif isinstance(self.planner, DPPathPlanner):
             self.planner.costmap_data = padded_costmap
@@ -317,8 +420,14 @@ class PathPlannerNode(Node):
             )
 
         if path is None or len(path) == 0:
-            self.get_logger().warning("!!! Pathfinding returned a path as None !!!")
+            self.get_logger().warning("!!! Pathfinding returned a path as None !!!",
+                                      throttle_duration_sec=2.0)
             return
+
+        # Cache the valid path
+        if must_replan:
+            self._cached_path_cells = list(path)
+            self._cached_goal = (goal_i, goal_j)
 
         # ----------------------------
         # Smooth Path

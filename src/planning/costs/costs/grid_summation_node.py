@@ -275,8 +275,8 @@ class GridSummationNode(Node):
         return background
 
     def createCostMap(self):
-        steering_cost = np.zeros((151, 151))
-        speed_cost = np.zeros((151, 151))
+        steering_cost = np.zeros((300, 300))
+        speed_cost = np.zeros((300, 300))
 
         grids = [('occupancy',        self.current_occupancy_grid,  CURRENT_OCCUPANCY_SCALE),
                  ('future_occupancy', self.future_occupancy_grid,   FUTURE_OCCUPANCY_SCALE),
@@ -332,16 +332,16 @@ class GridSummationNode(Node):
                     # 300×300 — do not call it here.
                     weighted_grid_arr = np.asarray(ff_grid, dtype=np.float16) * scale
 
-                # Normalise every layer to 151×151 before accumulation.
-                # drivable / route_dist / junction grids arrive at 300×300;
-                # zoom them down so np.maximum doesn't raise a broadcast error.
-                if weighted_grid_arr.shape != (151, 151):
-                    factor = 151.0 / weighted_grid_arr.shape[0]
-                    weighted_grid_arr = ndimage.zoom(
-                        weighted_grid_arr.astype(np.float32), factor
+                # Normalise every layer to 300×300 before accumulation.
+                # Sensor grids (occupancy) may arrive at 151×151 after fastforward;
+                # resize with INTER_NEAREST (no interpolation shimmer) so np.maximum
+                # doesn't raise a broadcast error.
+                if weighted_grid_arr.shape != (300, 300):
+                    weighted_grid_arr = cv2.resize(
+                        weighted_grid_arr.astype(np.float32),
+                        (300, 300),
+                        interpolation=cv2.INTER_NEAREST
                     ).astype(np.float16)
-                    # zoom output may be 151 or 152 due to float rounding — clip
-                    weighted_grid_arr = weighted_grid_arr[:151, :151]
 
                 if grid_name == 'drivable':
                     steering_cost = np.maximum(steering_cost, weighted_grid_arr)

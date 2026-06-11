@@ -323,6 +323,27 @@ Visualization Manager:
       Name: Cameras
     - Class: rviz_common/Group
       Displays:
+        - Alpha: 0.7
+          Class: rviz_default_plugins/Map
+          Color Scheme: map
+          Draw Behind: true
+          Enabled: true
+          Name: Perception Drivable
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /grid/drivable/segmented
+          Update Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /grid/drivable/segmented_updates
+          Use Timestamp: false
+          Value: true
         - Alpha: 0.699999988079071
           Class: rviz_default_plugins/Map
           Color Scheme: map
