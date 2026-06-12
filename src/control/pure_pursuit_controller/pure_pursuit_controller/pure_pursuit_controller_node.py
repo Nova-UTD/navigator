@@ -24,9 +24,9 @@ from navigator_msgs.msg import VehicleControl, VehicleSpeed
 
 class Constants:
     # Look ahead distance in meters
-    LD: float = 3.0
+    LD: float = 6.0
     # Look forward gain in meters (gain in look ahead distance per m/s of speed)
-    kf: float = 0.1
+    kf: float = 0.3
     # Wheel base (distance between front and rear wheels) in meter
     WHEEL_BASE: float = 3.5
     # Max throttle and acceleration (out of 1)

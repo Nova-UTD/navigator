@@ -218,7 +218,7 @@ road_signs_classifier = Node(
    	parameters=[],
 )
 
-image_segmentation = Node(
+image_seg_yolo = Node(
     package='image_segmentation',
     executable='image_seg_node'
 )
@@ -277,6 +277,13 @@ perception_drivable_grid = Node(
     package="segmentation",
     executable="perception_drivable_grid_node",
     name="perception_drivable_grid_node",
+    output="screen",
+)
+
+hybrid_drivable_grid = Node(
+    package="segmentation",
+    executable="hybrid_drivable_grid_node",
+    name="hybrid_drivable_grid_node",
     output="screen",
 )
 

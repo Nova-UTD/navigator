@@ -81,7 +81,7 @@ class RouteCostmapNode(Node):
         #     DiagnosticStatus, '/node_status', 1)
         # self.status = DiagnosticStatus()
 
-        self.costmap_timer = self.create_timer(0.15, self.buildRouteCostmap, callback_group=MutuallyExclusiveCallbackGroup())
+        self.costmap_timer = self.create_timer(0.05, self.buildRouteCostmap, callback_group=MutuallyExclusiveCallbackGroup())
 
         self.clock_sub = self.create_subscription(
             Clock, '/clock', self.clockCb, 1)
@@ -285,7 +285,7 @@ class RouteCostmapNode(Node):
             # Gradient corridor: centerline lowest cost, padding slightly higher.
             # Path hugs the exact route center; deviates only when an obstacle
             # (occupancy=100 -> sc=100 via np.maximum) blocks the centerline.
-            HALF_W = 6               # padding half-width cells (1.2m at 0.2m/cell)
+            HALF_W = 10               # padding half-width cells (2.0m at 0.2m/cell)
             CENTER_CONFIRMED   = 0   # exact route centerline, camera confirmed
             CENTER_UNCONFIRMED = 20  # exact route centerline, HD-map only
             SIDE_CONFIRMED     = 10  # side padding band, camera confirmed
