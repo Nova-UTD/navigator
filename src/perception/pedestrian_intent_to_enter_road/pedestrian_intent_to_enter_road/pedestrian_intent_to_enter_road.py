@@ -95,8 +95,8 @@ class PedestrianIntentToEnterRoad(Node):
                     else:
                         continue
 
-                    height, width, channels = self.image.shape
-                    midpoint_x = width / 2
+                    img_h, img_w = self.image.shape[:2]
+                    midpoint_x = img_w / 2
 
                     if (((direction_facing == self.FACING_RIGHT) and (center_x < midpoint_x)) or ((direction_facing == self.FACING_LEFT) and (center_x > midpoint_x))):
                         # for pedestrians facing the road, determine the distance between them and the road
