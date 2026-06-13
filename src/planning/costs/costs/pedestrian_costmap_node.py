@@ -88,6 +88,12 @@ class PedestrianCostmapNode(Node):
             cost = distance_to_cost(ped.distance, self._d_max)
             if cost <= 0:
                 continue
+            # A non-forward pose means a degenerate bbox (estimate_depth -> 0)
+            # or a detection at/behind the camera plane — not a forward
+            # obstacle. Skip it so it can never paint a phantom cost on the ego
+            # cell (pos=(0,0) -> ego cell under the default zero camera offset).
+            if ped.pos_x <= 0.0:
+                continue
             rc = pose_to_grid_coords(
                 ped.pos_x, ped.pos_y, ORIGIN_X, ORIGIN_Y, RESOLUTION, GRID_SIZE)
             if rc is None:
