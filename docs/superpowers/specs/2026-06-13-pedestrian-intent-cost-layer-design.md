@@ -20,10 +20,17 @@ produce one.
 
 ## 2. Scope
 
-**In scope (this PR):**
+**Split into two PRs** (downstream check confirmed `PedestrianInfo` has no
+consumers — the bugfix changes no live behavior, so it stands alone):
+
+- **PR 1 — bugfix (prerequisite):** the §5.1 variable-shadowing fix plus its §10
+  regression test. Self-contained; mergeable independently.
+- **PR 2 — feature:** items 1, 3–5 below; rebases on PR 1.
+
+**In scope (PR 2 — feature):**
 1. Extend `navigator_msgs/PedestrianInfo.msg` with metric position fields.
-2. Update `pedestrian_intent_to_enter_road` to populate those fields **and fix a
-   pre-existing variable-shadowing bug** there (see §5.1).
+2. Update `pedestrian_intent_to_enter_road` to populate those fields. (The
+   variable-shadowing bug it depended on is fixed separately in PR 1 — see §5.1.)
 3. New `pedestrian_costmap_node` (in the `costs` package), split into a pure-logic
    module (`pedestrian_costmap.py`) and a thin ROS node, that subscribes to
    `/pedestrians`, paints a graded cost grid, and publishes `/grid/pedestrian`.
@@ -35,12 +42,14 @@ produce one.
 **NOT** registered in `grid_summation_node`. The planned path is therefore
 unaffected by this PR.
 
-**Out of scope (documented for the follow-up):**
+**Out of scope (deferred to Phase 3, PR 3 — fully specified in §11):**
 - Registering `/grid/pedestrian` in `grid_summation_node` and adding a dedicated
   routing branch that feeds **both** `steering_cost` and `speed_cost` (makes it
-  live — see §7; this is more than a one-line change).
-- Real camera extrinsics (a static offset param is provided as the hook).
-- Documentation updates to `docs/` (tracked in §11).
+  live — behavior in §7, wiring in §11.1; more than a one-line change).
+- Real camera extrinsics / constant re-validation (a static offset param is the
+  hook — §11.2).
+- Parameter tuning once the layer affects motion (§11.3).
+- Documentation updates to `docs/` (tracked in §12).
 
 ## 3. Data flow
 
@@ -71,10 +80,11 @@ Existing fields retained: `x, y, width, height` (camera pixels) and `distance`
 
 ## 5. Producer changes
 
-### 5.1 Pre-existing bug fix (variable shadowing)
+### 5.1 Pre-existing bug fix (variable shadowing) — **PR 1, shipped separately**
 
 `detect_pedestrians()` in `pedestrian_intent_to_enter_road.py` has a latent bug
-that must be fixed before the projection math can work:
+that must be fixed before the projection math can work. It ships as its own PR
+(PR 1) since it has no downstream consumers and changes no live behavior:
 
 - L75 binds the bounding box: `center_x, center_y, width, height = xywh`
 - L98 then **clobbers** them: `height, width, channels = self.image.shape`
@@ -86,8 +96,8 @@ that must be fixed before the projection math can work:
 (and use a distinct name such as `img_h, img_w` for the image shape at L98).
 Assign the real bbox dimensions to the message fields. The bbox pixel height for
 the depth estimate comes from `xyxy` (`bbox_pixel_height = BRy - TLy`), which is
-already in scope. This is a small, well-contained bugfix bundled with the
-feature because we are editing exactly this code path.
+already in scope. This is a small, well-contained bugfix; it ships as PR 1 ahead
+of the feature so the corrected `width`/`height` fields land independently.
 
 ### 5.2 Projection math
 
@@ -254,7 +264,54 @@ Pure-function unit tests against `costs/pedestrian_costmap.py` (no ROS spin),
   and a regression assertion that the message `width`/`height` now carry **bbox**
   dimensions, not full-image dimensions (guards the §5.1 fix).
 
-## 11. Risks & limitations
+## 11. Phase 3 — Live wiring (follow-up PR)
+
+PRs 1–2 leave `/grid/pedestrian` published but unconsumed (shadow). This phase
+flips it live and is where the deferred accuracy decisions (#3 camera geometry,
+#4 parameter defaults) finally matter — because once the grid feeds the planner,
+wrong geometry or tuning changes how the vehicle steers and slows. Treat this as
+its own PR (PR 3), gated on real-world/sim validation.
+
+### 11.1 Route the grid into the planner (the §7 work)
+Implement the §7 routing in `grid_summation_node`: a dedicated `'pedestrian'`
+branch in `createCostMap` that applies `np.maximum` into **both** `steering_cost`
+(in-road peds become obstacles the Dijkstra planner routes around) **and**
+`speed_cost` (edge-of-road peds slow the vehicle without bending the path), plus
+the subscription, newest-message callback, `SCALE` constant, and `grids`-list
+entry. Not a one-line change (see §7).
+
+### 11.2 Resolve #3 — real camera geometry (now behavior-affecting)
+The identity-extrinsics and pinhole constants were acceptable while shadow-only;
+live, a mislocated pedestrian paints cost in the wrong cell and can misroute the
+planner. Before wiring:
+- Set `cam_offset_x` / `cam_offset_y` from the **measured** camera→`base_link`
+  mount (the params exist precisely so this needs no code change).
+- Re-validate the in-node constants against the actual rig: focal `470` and
+  `1.0913 = tan(HFOV/2)` are tied to the ~672×376 capture resolution (§5.2). If
+  the deployed resolution or lens differs, correct them — they drive both
+  `distance` (cost magnitude) and lateral `pos_y` (paint location).
+- If a straight-forward, origin-mounted approximation proves too coarse in
+  validation, add camera pitch/yaw to the projection rather than offset-only.
+
+### 11.3 Resolve #4 — tune parameter defaults (now behavior-affecting)
+Shadow-mode defaults only shaped the RViz grid; live, they shape motion. Tune on
+real/sim data before merge:
+- `d_max_m` — cost falloff distance (gap-to-road-edge at which a ped stops
+  contributing). Set the shadow default conservatively; confirm it here.
+- `inflation_radius_m` (`0.8`) — too small clips the footprint, too large
+  phantom-blocks lanes. Validate against observed routing.
+- `publish_rate_hz` (`15.0`) — confirm it keeps pace with `/pedestrians` and the
+  planner without starving the summation loop.
+
+### 11.4 Acceptance before going live
+- In sim/replay: in-road pedestrian (cost ≈ 100 ≥ 90) makes the planner route
+  around; edge-of-road pedestrian reduces target speed without re-routing.
+- Projected `pos_x`/`pos_y` land in plausible cells against a known-geometry
+  scene (extrinsics sanity check).
+- No regression in baseline routing when no pedestrians are present (all-zero
+  grid contributes nothing through `np.maximum`).
+
+## 12. Risks & limitations
 
 - **Monocular depth** (`depth = f·H / h_px`) is sensitive to bbox height noise;
   range is approximate. Acceptable for a shadow layer and inflation absorbs some
