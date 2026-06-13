@@ -61,3 +61,33 @@ def pose_to_grid_coords(pos_x_m: float, pos_y_m: float,
     if 0 <= row < grid_size and 0 <= col < grid_size:
         return (row, col)
     return None
+
+
+def paint_disk(grid: np.ndarray, row: int, col: int,
+               radius_m: float, resolution_m: float, cost: int) -> None:
+    """Paint a filled disk of `cost` into `grid`, combined via np.maximum.
+
+    Mutates `grid` in place. Overlapping disks (multiple pedestrians) combine
+    by taking the per-cell maximum, never summing. Out-of-bounds cells are
+    skipped. Grid dtype is preserved (work in int16).
+
+    @param grid          2D int16 cost array (modified in place).
+    @param row           Disk center row index.
+    @param col           Disk center col index.
+    @param radius_m      Disk radius in meters (footprint + safety pad).
+    @param resolution_m  Cell size (m/cell).
+    @param cost          Cost value to paint.
+    """
+    radius_cells = radius_m / resolution_m
+    r_int = int(np.ceil(radius_cells))
+    rows, cols = grid.shape
+
+    r_lo, r_hi = max(0, row - r_int), min(rows, row + r_int + 1)
+    c_lo, c_hi = max(0, col - r_int), min(cols, col + r_int + 1)
+    if r_lo >= r_hi or c_lo >= c_hi:
+        return
+
+    rr, cc = np.ogrid[r_lo:r_hi, c_lo:c_hi]
+    mask = (rr - row) ** 2 + (cc - col) ** 2 <= radius_cells ** 2
+    sub = grid[r_lo:r_hi, c_lo:c_hi]
+    sub[mask] = np.maximum(sub[mask], cost)

@@ -62,3 +62,37 @@ class TestPoseToGridCoords:
     def test_off_grid_returns_none(self):
         assert grid_coords(1000.0, 0.0) is None
         assert grid_coords(0.0, 1000.0) is None
+
+
+from costs.pedestrian_costmap import paint_disk
+
+
+class TestPaintDisk:
+    def test_disk_is_centered_on_cell(self):
+        grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.int16)
+        paint_disk(grid, 75, 50, 0.8, RESOLUTION, 100)
+        assert grid[75, 50] == 100
+
+    def test_radius_extends_to_neighbors(self):
+        # radius 0.8 m / 0.4 = 2 cells -> a cell 2 away is painted
+        grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.int16)
+        paint_disk(grid, 75, 50, 0.8, RESOLUTION, 100)
+        assert grid[75, 52] == 100   # 2 cells along the row, within radius
+        assert grid[75, 53] == 0     # 3 cells away, outside radius
+
+    def test_dtype_stays_int16(self):
+        grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.int16)
+        paint_disk(grid, 75, 50, 0.8, RESOLUTION, 100)
+        assert grid.dtype == np.int16
+
+    def test_overlap_combines_via_maximum(self):
+        grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.int16)
+        paint_disk(grid, 75, 50, 0.8, RESOLUTION, 40)
+        paint_disk(grid, 75, 51, 0.8, RESOLUTION, 90)
+        # cell (75,50) is inside both disks -> the larger cost wins
+        assert grid[75, 50] == 90
+
+    def test_disk_near_edge_is_clipped_safely(self):
+        grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.int16)
+        paint_disk(grid, 0, 0, 0.8, RESOLUTION, 100)  # must not raise
+        assert grid[0, 0] == 100
