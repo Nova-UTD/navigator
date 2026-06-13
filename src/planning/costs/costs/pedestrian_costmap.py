@@ -37,3 +37,27 @@ def distance_to_cost(distance_m: float, d_max_m: float) -> int:
         return 0
     cost = 100.0 * (1.0 - distance_m / d_max_m)
     return int(round(float(np.clip(cost, 0, 100))))
+
+
+def pose_to_grid_coords(pos_x_m: float, pos_y_m: float,
+                        origin_x_m: float, origin_y_m: float,
+                        resolution_m: float, grid_size: int
+                        ) -> Optional[Tuple[int, int]]:
+    """Convert a base_link metric pose to (row, col) grid indices.
+
+    cols track longitudinal +x (ahead), rows track lateral +y (left), matching
+    the layer's grid contract. Returns None if the pose falls outside the grid.
+
+    @param pos_x_m       Forward position in base_link (m).
+    @param pos_y_m       Lateral position in base_link (m).
+    @param origin_x_m    Grid origin x (longitudinal min, m).
+    @param origin_y_m    Grid origin y (lateral min, m).
+    @param resolution_m  Cell size (m/cell).
+    @param grid_size     Grid edge length (cells).
+    @return              (row, col) tuple, or None if off-grid.
+    """
+    col = int(round((pos_x_m - origin_x_m) / resolution_m))
+    row = int(round((pos_y_m - origin_y_m) / resolution_m))
+    if 0 <= row < grid_size and 0 <= col < grid_size:
+        return (row, col)
+    return None
