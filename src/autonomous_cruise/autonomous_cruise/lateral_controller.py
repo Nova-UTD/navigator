@@ -199,7 +199,7 @@ class PurePursuitController:
         # Pure Pursuit formula: steering = atan(2 * L * sin(alpha) / ld)
         # where alpha is the angle to the target point
         alpha = math.atan2(target_y, target_x)
-        steering = math.atan2(2.0 * self.wheelbase * math.sin(alpha), ld)
+        steering = -math.atan2(2.0 * self.wheelbase * math.sin(alpha), ld)
 
         return steering
 
