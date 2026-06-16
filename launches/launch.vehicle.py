@@ -79,7 +79,7 @@ def generate_launch_description():
                         path_planner,
                         # *nav2_launch_entities,
                         # path_planner_nav2,
-                        pure_pursuit_controller,
+                        autonomous_cruise_controller,
                         # SAFETY
                         ##airbags,
                         ##guardian,
