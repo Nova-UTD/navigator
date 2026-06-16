@@ -141,16 +141,14 @@ class PurePursuitController:
         if self.path is None:
             return None, -1
 
-        current_x = current_pose.position.x
-        current_y = current_pose.position.y
-
+        # Path is in base_link frame; vehicle is at the origin
         # Find the closest point on the path
         min_dist = float('inf')
         closest_idx = 0
 
         for i, pose_stamped in enumerate(self.path.poses):
-            dx = pose_stamped.pose.position.x - current_x
-            dy = pose_stamped.pose.position.y - current_y
+            dx = pose_stamped.pose.position.x
+            dy = pose_stamped.pose.position.y
             dist = math.sqrt(dx * dx + dy * dy)
 
             if dist < min_dist:
@@ -160,8 +158,8 @@ class PurePursuitController:
         # Search forward from closest point for lookahead point
         for i in range(closest_idx, len(self.path.poses)):
             pose_stamped = self.path.poses[i]
-            dx = pose_stamped.pose.position.x - current_x
-            dy = pose_stamped.pose.position.y - current_y
+            dx = pose_stamped.pose.position.x
+            dy = pose_stamped.pose.position.y
             dist = math.sqrt(dx * dx + dy * dy)
 
             if dist >= lookahead_dist:
@@ -188,18 +186,9 @@ class PurePursuitController:
         Returns:
             Steering angle (radians).
         """
-        # Transform target point to vehicle frame
-        dx = target_point.x - current_pose.position.x
-        dy = target_point.y - current_pose.position.y
-
-        # Get vehicle heading from quaternion
-        yaw = self._quaternion_to_yaw(current_pose.orientation)
-
-        # Rotate to vehicle frame
-        cos_yaw = math.cos(-yaw)
-        sin_yaw = math.sin(-yaw)
-        target_x = dx * cos_yaw - dy * sin_yaw
-        target_y = dx * sin_yaw + dy * cos_yaw
+        # Path is in base_link frame; target_point is already vehicle-local
+        target_x = target_point.x
+        target_y = target_point.y
 
         # Compute lookahead distance
         ld = math.sqrt(target_x * target_x + target_y * target_y)
@@ -227,8 +216,9 @@ class PurePursuitController:
         if self.path is None or len(self.path.poses) < 2:
             return 0.0
 
-        current_x = current_pose.position.x
-        current_y = current_pose.position.y
+        # Vehicle is at origin in base_link frame
+        current_x = 0.0
+        current_y = 0.0
 
         min_dist = float('inf')
 
