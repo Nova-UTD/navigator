@@ -14,7 +14,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
 from nav_msgs.msg import Odometry, Path
-from navigator_msgs.msg import VehicleControl, Object3DArray, VehicleSpeed
+from navigator_msgs.msg import VehicleControl, Object3DArray, VehicleSpeed, IntersectionBehavior
 from std_msgs.msg import String
 from geometry_msgs.msg import Pose
 
@@ -78,6 +78,7 @@ class AutonomousCruiseController(Node):
         self.current_odom: Optional[Odometry] = None
         self.current_objects: Optional[Object3DArray] = None
         self.current_speed: float = 0.0
+        self.intersection_action: str = 'Proceed'  # 'Wait' = stop, 'Proceed' = go
         self.last_control_time = self.get_clock().now()
         self.enabled = True
 
@@ -121,6 +122,13 @@ class AutonomousCruiseController(Node):
             '/speed',
             self.speed_callback,
             qos_best_effort
+        )
+
+        self.intersection_sub = self.create_subscription(
+            IntersectionBehavior,
+            '/intersection',
+            self.intersection_callback,
+            qos_reliable
         )
 
         # Publishers
@@ -272,6 +280,10 @@ class AutonomousCruiseController(Node):
         """Callback for vehicle speed from GNSS processor."""
         self.current_speed = msg.speed
 
+    def intersection_callback(self, msg: IntersectionBehavior):
+        """Callback for intersection manager commands (Wait / Proceed)."""
+        self.intersection_action = msg.action
+
     def control_loop(self):
         """Main control loop executed at control_rate Hz."""
         if not self.enabled:
@@ -318,6 +330,11 @@ class AutonomousCruiseController(Node):
                 dt
             )
         )
+
+        # Intersection / traffic light override — stop on red
+        if self.intersection_action == 'Wait':
+            throttle = 0.0
+            brake = 1.0
 
         # Create and publish control message
         control_msg = VehicleControl()
