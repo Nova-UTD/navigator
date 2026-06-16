@@ -14,7 +14,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
 from nav_msgs.msg import Odometry, Path
-from navigator_msgs.msg import VehicleControl, Object3DArray
+from navigator_msgs.msg import VehicleControl, Object3DArray, VehicleSpeed
 from std_msgs.msg import String
 from geometry_msgs.msg import Pose
 
@@ -77,6 +77,7 @@ class AutonomousCruiseController(Node):
         self.current_path: Optional[Path] = None
         self.current_odom: Optional[Odometry] = None
         self.current_objects: Optional[Object3DArray] = None
+        self.current_speed: float = 0.0
         self.last_control_time = self.get_clock().now()
         self.enabled = True
 
@@ -113,6 +114,13 @@ class AutonomousCruiseController(Node):
             self.objects_topic,
             self.objects_callback,
             qos_reliable
+        )
+
+        self.speed_sub = self.create_subscription(
+            VehicleSpeed,
+            '/speed',
+            self.speed_callback,
+            qos_best_effort
         )
 
         # Publishers
@@ -260,6 +268,10 @@ class AutonomousCruiseController(Node):
             f'Received {len(msg.objects)} detected objects'
         )
 
+    def speed_callback(self, msg: VehicleSpeed):
+        """Callback for vehicle speed from GNSS processor."""
+        self.current_speed = msg.speed
+
     def control_loop(self):
         """Main control loop executed at control_rate Hz."""
         if not self.enabled:
@@ -290,10 +302,7 @@ class AutonomousCruiseController(Node):
 
         # Extract current state
         current_pose = self.current_odom.pose.pose
-        current_velocity = self.current_odom.twist.twist.linear
-        current_speed = math.sqrt(
-            current_velocity.x**2 + current_velocity.y**2
-        )
+        current_speed = self.current_speed
 
         # Lateral control (steering)
         steer, cross_track_error = self.lateral_controller.compute_steering(
