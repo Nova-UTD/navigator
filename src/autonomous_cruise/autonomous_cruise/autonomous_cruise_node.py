@@ -332,7 +332,7 @@ class AutonomousCruiseController(Node):
                 wx, wy = wx[ahead], wy[ahead]
                 dx = xs_f[:, None] - wx[None, :]
                 dy = ys_f[:, None] - wy[None, :]
-                on_path = np.sqrt(dx**2 + dy**2).min(axis=1) < 1.0
+                on_path = np.sqrt(dx**2 + dy**2).min(axis=1) < 0.6
                 self.lidar_obstacle_distance = float(xs_f[on_path].min()) if on_path.sum() >= 5 else float('inf')
                 return
 
@@ -379,12 +379,15 @@ class AutonomousCruiseController(Node):
         )
 
         # LiDAR-based speed limit — scale down as obstacle approaches
-        SLOW_DIST = 12.0  # m — begin decelerating
-        STOP_DIST = 3.5   # m — full stop
+        SLOW_DIST = 7.0   # m — begin decelerating
+        STOP_DIST = 2.0   # m — full stop
+        CREEP = 1.0       # m/s — minimum speed while obstacle present (lets planner replan)
         d = self.lidar_obstacle_distance
-        if d < SLOW_DIST:
-            ratio = max(0.0, (d - STOP_DIST) / (SLOW_DIST - STOP_DIST))
-            self.longitudinal_controller.target_speed = self.target_speed * ratio
+        if d < STOP_DIST:
+            self.longitudinal_controller.target_speed = 0.0
+        elif d < SLOW_DIST:
+            ratio = (d - STOP_DIST) / (SLOW_DIST - STOP_DIST)
+            self.longitudinal_controller.target_speed = max(CREEP, self.target_speed * ratio)
         else:
             self.longitudinal_controller.target_speed = self.target_speed
 
