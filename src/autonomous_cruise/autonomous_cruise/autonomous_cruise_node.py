@@ -306,8 +306,8 @@ class AutonomousCruiseController(Node):
         ys = raw[1::step]
         zs = raw[2::step]
         # Forward corridor: ahead of bumper, within ~vehicle width, above ground
-        mask = (xs > 2.0) & (xs < 15.0) & (np.abs(ys) < 1.5) & (zs > 0.15)
-        self.lidar_obstacle_distance = float(xs[mask].min()) if mask.any() else float('inf')
+        mask = (xs > 3.0) & (xs < 20.0) & (np.abs(ys) < 0.9) & (zs > 0.3)
+        self.lidar_obstacle_distance = float(xs[mask].min()) if mask.sum() >= 5 else float('inf')
 
     def control_loop(self):
         """Main control loop executed at control_rate Hz."""
