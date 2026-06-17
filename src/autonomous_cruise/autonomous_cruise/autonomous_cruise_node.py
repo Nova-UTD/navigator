@@ -81,6 +81,7 @@ class AutonomousCruiseController(Node):
         self.current_objects: Optional[Object3DArray] = None
         self.current_speed: float = 0.0
         self.intersection_action: str = 'Proceed'  # 'Wait' = stop, 'Proceed' = go
+        self.traffic_light_red: bool = False
         self.lidar_obstacle_distance: float = float('inf')  # m to nearest forward obstacle
         self.last_control_time = self.get_clock().now()
         self.enabled = True
@@ -131,6 +132,11 @@ class AutonomousCruiseController(Node):
             IntersectionBehavior,
             '/intersection',
             self.intersection_callback,
+        )
+        self.traffic_light_sub = self.create_subscription(
+            String,
+            "/carla/traffic_light_state",
+            self.traffic_light_callback,
             qos_reliable
         )
 
@@ -388,7 +394,7 @@ class AutonomousCruiseController(Node):
         )
 
         # Intersection / traffic light override — stop on red
-        if self.intersection_action == 'Wait':
+        if self.intersection_action == 'Wait' or self.traffic_light_red:
             throttle = 0.0
             brake = 1.0
 
