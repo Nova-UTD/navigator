@@ -132,6 +132,7 @@ class AutonomousCruiseController(Node):
             IntersectionBehavior,
             '/intersection',
             self.intersection_callback,
+            qos_reliable
         )
         self.traffic_light_sub = self.create_subscription(
             String,
@@ -299,6 +300,9 @@ class AutonomousCruiseController(Node):
     def intersection_callback(self, msg: IntersectionBehavior):
         """Callback for intersection manager commands (Wait / Proceed)."""
         self.intersection_action = msg.action
+
+    def traffic_light_callback(self, msg: String):
+        self.traffic_light_red = (msg.data == "Red")
 
     def lidar_callback(self, msg: PointCloud2):
         """Scan ground-segmented LiDAR for obstacles on the planned path only."""
