@@ -295,19 +295,40 @@ class AutonomousCruiseController(Node):
         self.intersection_action = msg.action
 
     def lidar_callback(self, msg: PointCloud2):
-        """Scan ground-segmented LiDAR for obstacles in the forward corridor."""
+        """Scan ground-segmented LiDAR for obstacles on the planned path only."""
         if msg.width == 0 or msg.point_step == 0:
             return
-        step = msg.point_step // 4  # floats per point
+        step = msg.point_step // 4
         raw = np.frombuffer(bytes(msg.data), dtype=np.float32)
         if len(raw) < step:
             return
         xs = raw[0::step]
         ys = raw[1::step]
         zs = raw[2::step]
-        # Forward corridor: ahead of bumper, within ~vehicle width, above ground
-        mask = (xs > 3.0) & (xs < 20.0) & (np.abs(ys) < 0.9) & (zs > 0.3)
-        self.lidar_obstacle_distance = float(xs[mask].min()) if mask.sum() >= 5 else float('inf')
+
+        # Pre-filter: ahead of bumper, not too far, above ground
+        pre = (xs > 2.5) & (xs < 20.0) & (zs > 0.3)
+        if not pre.any():
+            self.lidar_obstacle_distance = float('inf')
+            return
+        xs_f, ys_f = xs[pre], ys[pre]
+
+        path = self.current_path
+        if path is not None and len(path.poses) > 1:
+            wx = np.array([p.pose.position.x for p in path.poses])
+            wy = np.array([p.pose.position.y for p in path.poses])
+            ahead = (wx > 1.0) & (wx < 20.0)
+            if ahead.any():
+                wx, wy = wx[ahead], wy[ahead]
+                dx = xs_f[:, None] - wx[None, :]
+                dy = ys_f[:, None] - wy[None, :]
+                on_path = np.sqrt(dx**2 + dy**2).min(axis=1) < 1.0
+                self.lidar_obstacle_distance = float(xs_f[on_path].min()) if on_path.sum() >= 5 else float('inf')
+                return
+
+        # Fallback: tight rectangular corridor when no path available
+        mask = (np.abs(ys_f) < 0.9)
+        self.lidar_obstacle_distance = float(xs_f[mask].min()) if mask.sum() >= 5 else float('inf')
 
     def control_loop(self):
         """Main control loop executed at control_rate Hz."""
