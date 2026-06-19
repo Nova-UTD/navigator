@@ -2,6 +2,11 @@
 int32 cam_to_world
 int32 cam_to_pixel
 int32 world_to_pixel
+
+float32 x
+float32 y
+float32 z
+
 string camera_name
 builtin_interfaces/Time stamp
 ---
