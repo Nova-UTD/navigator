@@ -180,8 +180,7 @@ class PerceptionDrivableGridNode(Node):
         self.create_subscription(Odometry, '/gnss/odometry',    self._cb_odom,  qos_be)
 
         self.pub = self.create_publisher(OccupancyGrid, '/grid/drivable/segmented', 10)
-        # 20-Hz (matches route_costmap_node/ACC control rate)
-        self.create_timer(0.05, self._publish_loop)
+        self.create_timer(0.1, self._publish_loop)
         self.get_logger().info('PerceptionDrivableGridNode ready — /grid/drivable/segmented')
 
     # ── callbacks ─────────────────────────────────────────────────────────────

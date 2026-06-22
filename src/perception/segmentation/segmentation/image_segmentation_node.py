@@ -4,14 +4,6 @@ Runs PSPNet (mmseg v1.x) on 4 CARLA cameras in a round-robin background thread.
 Callbacks only store the latest frame — no blocking inference in the spin thread.
 """
 
-import torch
-# PyTorch defaults to using half the machine's cores for CPU inference
-# (32 threads on this 64-core box). With no GPU available here, that was
-# pegging the whole machine at load average ~40, starving CARLA's own
-# engine/physics and the rest of the ROS stack. Cap it to something that
-# leaves room for everything else sharing this box.
-torch.set_num_threads(4)
-
 import threading
 import rclpy
 from rclpy.node import Node

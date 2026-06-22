@@ -96,15 +96,6 @@ class RouteCostmapNode(Node):
         self._cached_routemap = None
         self._cached_goal = None
 
-        # Cap how far ahead the camera-confirmed goal search is allowed to
-        # reach. The camera can nominally confirm road tens of metres out in
-        # a single frame, but that far boundary is the noisiest part of the
-        # signal (segmentation error, stale round-robin camera updates), so
-        # reaching for it let the goal snap several metres between ticks.
-        # Matches the old LiDAR-only behaviour: a short, continuously
-        # updated target only as far as can be reliably confirmed right now.
-        self._max_goal_ahead_m = 8.0
-
     def clockCb(self, msg: Clock):
         self.clock = msg
 
@@ -340,38 +331,21 @@ class RouteCostmapNode(Node):
             #   3. First route point just ahead of vehicle — last resort
             # ------------------------------------------------------------------
             # Forward walk: advance through consecutive confirmed cells from the
-            # vehicle end. Tolerates bridging over a SHORT gap (e.g. a tree
-            # overhanging the road, a momentary segmentation miss) if
-            # confirmed road resumes within MAX_GAP_M — otherwise the goal
-            # got pinned right before any such obstruction and never asked
-            # the planner to reach anywhere past it, so it had no reason to
-            # detour around it; it just stopped short. A gap that doesn't
-            # resolve within that distance is treated as the genuine edge of
-            # known road, same as before.
-            MAX_GAP_M = 2.0
+            # vehicle end, stop at the FIRST gap (drivable != 0).  Gives the
+            # end of the CONTIGUOUS confirmed zone so Dijkstra can always reach
+            # it without crossing any sc==100 obstacle wall.
             goal = None
-            gap_start = None
             for r in range(len(gridxs)):
                 if gridxs[r] < 0.0:
                     continue  # skip behind-vehicle route points
-                if np.hypot(gridxs[r], gridys[r]) > self._max_goal_ahead_m:
-                    break  # stop reaching once past the short, reliable range
                 if self._is_camera_confirmed_drivable(gridxs[r], gridys[r]):
                     goal = (gridxs[r], gridys[r])  # keep extending horizon
-                    gap_start = None
                 else:
-                    if gap_start is None:
-                        gap_start = (gridxs[r], gridys[r])
-                    gap_dist = np.hypot(gridxs[r] - gap_start[0], gridys[r] - gap_start[1])
-                    if gap_dist > MAX_GAP_M:
-                        break  # gap too long: genuine edge of known road
+                    break  # first unconfirmed gap: stop here
 
-            # Fallback: any drivable cell (startup / perception warming up).
-            # Same short-range cap applies here too.
+            # Fallback: any drivable cell (startup / perception warming up)
             if goal is None:
                 for r in range(len(gridxs) - 1, -1, -1):
-                    if np.hypot(gridxs[r], gridys[r]) > self._max_goal_ahead_m:
-                        continue
                     if self._is_drivable(gridxs[r], gridys[r]):
                         goal = (gridxs[r], gridys[r])
                         break
