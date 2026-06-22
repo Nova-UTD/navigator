@@ -132,7 +132,15 @@ class PathPlannerNode(Node):
         self.origin_x = 20.0  # Origin offset in X
         self.origin_y = 30.0  # Origin offset in Y
         self.obstacle_threshold = 90  # Values above this are considered obstacles
-        self.obstacle_padding = 5  # Cells to pad around obstacles (5 = 1.0m, ~vehicle half-width)
+        # Cells to pad around obstacles. Was 5 (1.0m, ~vehicle half-width), but
+        # that left detour paths within ~1.0m of an obstacle's mapped
+        # footprint — fine for solid obstacles, but irregular ones like tree
+        # canopy extend past their occupancy-grid footprint in reality, so a
+        # detour that close still falls inside the ACC's 0.6m on-path LiDAR
+        # check (autonomous_cruise_node.py) and re-triggers braking exactly
+        # while routing around it. Raised to give real standoff margin.
+        self.obstacle_padding = 9  # 1.8m
+
 
         # Path re-use: cache the last valid Dijkstra result.
         # Replan only when an obstacle blocks the cached path or the goal moves.
@@ -314,33 +322,50 @@ class PathPlannerNode(Node):
 
 
         # ----------------------------
-        # Goal snap: if goal landed in an obstacle cell (e.g. grid edge
-        # dilation or boundary), walk back along the line toward start
-        # until we find the furthest free cell.
+        # Goal snap: if goal landed in an obstacle cell (e.g. an obstacle
+        # sitting on the route, or grid edge dilation), search outward in
+        # every direction for the nearest free cell — not just backward
+        # along the start->goal line. Walking straight back toward the
+        # vehicle only ever retreats the goal to before the obstacle, which
+        # gives the planner no reason to detour around it (it just stops
+        # short). Searching in 2D instead finds clearance to the *side* of
+        # the obstacle when the corridor has room, so the goal stays roughly
+        # as far forward as intended and the A* search (which already
+        # supports detours via its bounding-box margin) actually has to
+        # route around the blockage to reach it.
         # ----------------------------
         if padded_costmap[goal_i, goal_j] >= self.obstacle_threshold:
-            steps = max(abs(goal_i - start_i), abs(goal_j - start_j))
-            if steps > 0:
-                snapped = False
-                for s in range(steps, -1, -1):
-                    t = s / steps
-                    ci = int(round(start_i + t * (goal_i - start_i)))
-                    cj = int(round(start_j + t * (goal_j - start_j)))
-                    ci = max(0, min(ci, height - 1))
-                    cj = max(0, min(cj, width - 1))
-                    if padded_costmap[ci, cj] < self.obstacle_threshold:
-                        goal_i, goal_j = ci, cj
-                        snapped = True
-                        break
-                if snapped:
-                    self.get_logger().info(
-                        f'Goal snapped to nearest free cell: ({goal_i},{goal_j})',
-                        throttle_duration_sec=2.0)
-                else:
-                    self.get_logger().warning(
-                        'No free cell found along start→goal line; path will be empty.',
-                        throttle_duration_sec=2.0)
-                    return
+            orig_gi, orig_gj = goal_i, goal_j
+            max_radius = 30  # cells (~6m at 0.2m/cell) — within corridor detour room
+            snapped = False
+            for r in range(1, max_radius + 1):
+                best = None
+                best_dist = None
+                for di in range(-r, r + 1):
+                    for dj in range(-r, r + 1):
+                        if max(abs(di), abs(dj)) != r:
+                            continue  # only this ring's boundary
+                        ni, nj = orig_gi + di, orig_gj + dj
+                        if not (0 <= ni < height and 0 <= nj < width):
+                            continue
+                        if padded_costmap[ni, nj] >= self.obstacle_threshold:
+                            continue
+                        dist = di * di + dj * dj
+                        if best is None or dist < best_dist:
+                            best, best_dist = (ni, nj), dist
+                if best is not None:
+                    goal_i, goal_j = best
+                    snapped = True
+                    break
+            if snapped:
+                self.get_logger().info(
+                    f'Goal snapped to nearest free cell: ({goal_i},{goal_j})',
+                    throttle_duration_sec=2.0)
+            else:
+                self.get_logger().warning(
+                    'No free cell found near goal; path will be empty.',
+                    throttle_duration_sec=2.0)
+                return
 
         # ----------------------------
         # Run Planner

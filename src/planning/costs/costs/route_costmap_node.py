@@ -340,10 +340,17 @@ class RouteCostmapNode(Node):
             #   3. First route point just ahead of vehicle — last resort
             # ------------------------------------------------------------------
             # Forward walk: advance through consecutive confirmed cells from the
-            # vehicle end, stop at the FIRST gap (drivable != 0).  Gives the
-            # end of the CONTIGUOUS confirmed zone so Dijkstra can always reach
-            # it without crossing any sc==100 obstacle wall.
+            # vehicle end. Tolerates bridging over a SHORT gap (e.g. a tree
+            # overhanging the road, a momentary segmentation miss) if
+            # confirmed road resumes within MAX_GAP_M — otherwise the goal
+            # got pinned right before any such obstruction and never asked
+            # the planner to reach anywhere past it, so it had no reason to
+            # detour around it; it just stopped short. A gap that doesn't
+            # resolve within that distance is treated as the genuine edge of
+            # known road, same as before.
+            MAX_GAP_M = 2.0
             goal = None
+            gap_start = None
             for r in range(len(gridxs)):
                 if gridxs[r] < 0.0:
                     continue  # skip behind-vehicle route points
@@ -351,8 +358,13 @@ class RouteCostmapNode(Node):
                     break  # stop reaching once past the short, reliable range
                 if self._is_camera_confirmed_drivable(gridxs[r], gridys[r]):
                     goal = (gridxs[r], gridys[r])  # keep extending horizon
+                    gap_start = None
                 else:
-                    break  # first unconfirmed gap: stop here
+                    if gap_start is None:
+                        gap_start = (gridxs[r], gridys[r])
+                    gap_dist = np.hypot(gridxs[r] - gap_start[0], gridys[r] - gap_start[1])
+                    if gap_dist > MAX_GAP_M:
+                        break  # gap too long: genuine edge of known road
 
             # Fallback: any drivable cell (startup / perception warming up).
             # Same short-range cap applies here too.

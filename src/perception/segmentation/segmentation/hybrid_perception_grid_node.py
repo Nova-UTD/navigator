@@ -142,8 +142,8 @@ class HybridPerceptionGridNode(Node):
 
         # 1-Hz LUT rebuild timer -- retries until all cameras have good LUTs
         self.create_timer(1.0, self._lut_timer)
-        # 10-Hz publish timer
-        self.create_timer(0.1, self._publish_loop)
+        # 20-Hz publish timer (matches route_costmap_node/ACC control rate)
+        self.create_timer(0.05, self._publish_loop)
 
         self.get_logger().info('HybridPerceptionGridNode ready (4-camera + segmented LiDAR).')
 
