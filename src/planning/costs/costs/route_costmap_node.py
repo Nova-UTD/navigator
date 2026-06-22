@@ -96,6 +96,15 @@ class RouteCostmapNode(Node):
         self._cached_routemap = None
         self._cached_goal = None
 
+        # Cap how far ahead the camera-confirmed goal search is allowed to
+        # reach. The camera can nominally confirm road tens of metres out in
+        # a single frame, but that far boundary is the noisiest part of the
+        # signal (segmentation error, stale round-robin camera updates), so
+        # reaching for it let the goal snap several metres between ticks.
+        # Matches the old LiDAR-only behaviour: a short, continuously
+        # updated target only as far as can be reliably confirmed right now.
+        self._max_goal_ahead_m = 8.0
+
     def clockCb(self, msg: Clock):
         self.clock = msg
 
@@ -338,14 +347,19 @@ class RouteCostmapNode(Node):
             for r in range(len(gridxs)):
                 if gridxs[r] < 0.0:
                     continue  # skip behind-vehicle route points
+                if np.hypot(gridxs[r], gridys[r]) > self._max_goal_ahead_m:
+                    break  # stop reaching once past the short, reliable range
                 if self._is_camera_confirmed_drivable(gridxs[r], gridys[r]):
                     goal = (gridxs[r], gridys[r])  # keep extending horizon
                 else:
                     break  # first unconfirmed gap: stop here
 
-            # Fallback: any drivable cell (startup / perception warming up)
+            # Fallback: any drivable cell (startup / perception warming up).
+            # Same short-range cap applies here too.
             if goal is None:
                 for r in range(len(gridxs) - 1, -1, -1):
+                    if np.hypot(gridxs[r], gridys[r]) > self._max_goal_ahead_m:
+                        continue
                     if self._is_drivable(gridxs[r], gridys[r]):
                         goal = (gridxs[r], gridys[r])
                         break
