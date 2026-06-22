@@ -26,6 +26,14 @@ from typing import Optional, Tuple
 from autonomous_cruise.lateral_controller import PurePursuitController
 from autonomous_cruise.longitudinal_controller import AdaptiveLongitudinalController
 
+# The LiDAR is roof-mounted with a steep downward FOV, so returns closer than
+# this are the vehicle's own hood/bumper, not real obstacles, and must be
+# filtered out. STOP_DIST (below) must stay >= this value with margin — if it
+# doesn't, a closing obstacle's points get filtered out (lidar_obstacle_distance
+# resets to inf) before the vehicle ever reaches STOP_DIST, so it accelerates
+# back to cruise speed right as it's about to hit something.
+LIDAR_MIN_RANGE_M = 2.5
+
 
 class AutonomousCruiseController(Node):
     """
@@ -83,6 +91,13 @@ class AutonomousCruiseController(Node):
         self.intersection_action: str = 'Proceed'  # 'Wait' = stop, 'Proceed' = go
         self.traffic_light_red: bool = False
         self.lidar_obstacle_distance: float = float('inf')  # m to nearest forward obstacle
+        # Hysteresis latch: once fully stopped for an obstacle, stay stopped
+        # until it's clearly gone (past SLOW_DIST), not just a hair past
+        # STOP_DIST. Without this, sensor noise / minor position drift right
+        # at the STOP_DIST boundary let the vehicle creep forward again
+        # immediately after stopping, inching into the obstacle over repeated
+        # stop/creep cycles.
+        self._stopped_for_obstacle = False
         self.last_control_time = self.get_clock().now()
         self.enabled = True
 
@@ -317,7 +332,7 @@ class AutonomousCruiseController(Node):
         zs = raw[2::step]
 
         # Pre-filter: ahead of bumper, not too far, above ground
-        pre = (xs > 2.5) & (xs < 20.0) & (zs > 0.3)
+        pre = (xs > LIDAR_MIN_RANGE_M) & (xs < 20.0) & (zs > 0.3)
         if not pre.any():
             self.lidar_obstacle_distance = float('inf')
             return
@@ -378,18 +393,31 @@ class AutonomousCruiseController(Node):
             current_speed
         )
 
-        # LiDAR-based speed limit — scale down as obstacle approaches
-        SLOW_DIST = 7.0   # m — begin decelerating
-        STOP_DIST = 2.0   # m — full stop
+        # LiDAR-based speed limit — scale down as obstacle approaches.
+        # STOP_DIST must stay above LIDAR_MIN_RANGE_M (with margin) — see
+        # comment there. Otherwise the obstacle becomes invisible to this
+        # check before the vehicle has actually stopped.
+        # Doubled from the original 7.0/STOP_DIST+0.5m margin: the logic
+        # threshold being correct doesn't help if there isn't enough
+        # physical distance left to actually decelerate to zero in time.
+        SLOW_DIST = 14.0   # m — begin decelerating
+        STOP_DIST = LIDAR_MIN_RANGE_M + 3.5   # m — full stop
         CREEP = 1.0       # m/s — minimum speed while obstacle present (lets planner replan)
         d = self.lidar_obstacle_distance
         if d < STOP_DIST:
             self.longitudinal_controller.target_speed = 0.0
+            self._stopped_for_obstacle = True
         elif d < SLOW_DIST:
-            ratio = (d - STOP_DIST) / (SLOW_DIST - STOP_DIST)
-            self.longitudinal_controller.target_speed = max(CREEP, self.target_speed * ratio)
+            if self._stopped_for_obstacle:
+                # Latched: stay stopped until the obstacle is clearly gone,
+                # not just a hair past STOP_DIST. See hysteresis comment above.
+                self.longitudinal_controller.target_speed = 0.0
+            else:
+                ratio = (d - STOP_DIST) / (SLOW_DIST - STOP_DIST)
+                self.longitudinal_controller.target_speed = max(CREEP, self.target_speed * ratio)
         else:
             self.longitudinal_controller.target_speed = self.target_speed
+            self._stopped_for_obstacle = False
 
         # Longitudinal control (throttle/brake)
         throttle, brake, target_speed = (
