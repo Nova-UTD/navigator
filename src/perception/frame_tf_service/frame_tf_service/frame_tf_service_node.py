@@ -159,8 +159,9 @@ class FrameTFService(Node):
         
         # Get LIDAR points into np array
         self.lid_arr = np.frombuffer(lidar_msg.data, dtype=np.float32)
-        self.lid_arr = np.reshape(lid_arr, (-1, 4))
-        self.lid_arr = lid_arr[:,0:3]
+        self.lid_arr = np.reshape(self.lid_arr, (-1, 4))
+        self.lid_arr = self.lid_arr[:,0:3]
+
 
     def attach_depth(self, camera):
         """ Applies camera intrinsics/extrinsics to LIDAR point cloud and stores it
@@ -214,7 +215,7 @@ class FrameTFService(Node):
                 t_wc = np.array([t_wc.x,t_wc.y,t_wc.z])
                 
                 # get tranformed LIDAR coords                
-                attach_depth(camera)
+                self.attach_depth(camera)
                 
                 #  Apply camera rotation and translation to transformed LIDAR points
                 x_w = R_wc.T@self.cam_arr.T + t_wc.reshape(3,1)
