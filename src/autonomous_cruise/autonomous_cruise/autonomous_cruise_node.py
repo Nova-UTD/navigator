@@ -317,7 +317,11 @@ class AutonomousCruiseController(Node):
         zs = raw[2::step]
 
         # Pre-filter: ahead of bumper, not too far, above ground
-        pre = (xs > 2.5) & (xs < 20.0) & (zs > 0.3)
+        # Near-field floor kept below STOP_DIST=2.0m: the old 2.5m cutoff
+        # made obstacles between 2.0-2.5m invisible, so the controller saw
+        # 'no obstacle' and re-accelerated into whatever it had just stopped
+        # for. 0.5m still excludes ego-vehicle/hood returns.
+        pre = (xs > 0.5) & (xs < 20.0) & (zs > 0.3)
         if not pre.any():
             self.lidar_obstacle_distance = float('inf')
             return

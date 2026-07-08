@@ -28,8 +28,18 @@ class DijkstraPathPlanner:
         SQRT2 = 1.4142135623730951
         er, ec = end
 
+        # Weighted A*: the true per-step cost is (cell_val + 1), which for
+        # off-corridor cells (~50) is far larger than the unit-cost Euclidean
+        # heuristic assumes, so the heuristic is very loose and the search
+        # expands close to the full MARGIN bounding box every call. Scaling
+        # the heuristic keeps it goal-directed so it actually finishes inside
+        # the 20Hz planning budget; bounded suboptimality is an acceptable
+        # trade here since the costmap gradient still pulls the path to the
+        # lane center.
+        WEIGHT = 3.0
+
         def h(r, c):
-            return ((r - er) ** 2 + (c - ec) ** 2) ** 0.5
+            return WEIGHT * ((r - er) ** 2 + (c - ec) ** 2) ** 0.5
 
         heap = [(h(*start), 0.0, start)]
 

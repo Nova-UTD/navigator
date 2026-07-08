@@ -76,7 +76,7 @@ class HybridDrivableGridNode(Node):
 
         self.pub = self.create_publisher(OccupancyGrid, '/grid/drivable', 10)
 
-        self.create_timer(0.1, self._publish_loop)
+        self.create_timer(0.05, self._publish_loop)
 
         self._last_hdmap_stamp = None
 

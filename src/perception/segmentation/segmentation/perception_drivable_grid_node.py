@@ -59,8 +59,11 @@ CC_UNCERTAIN_LO    = 0.35   # flood fill only boosts cells in this uncertain ban
 CC_UNCERTAIN_HI    = 0.65
 CC_FILL_VALUE      = 0.70   # evidence assigned to flood-fill-reached uncertain cells
 
-ALPHA_BLEND   = 0.65
-DECAY_RATE    = 0.992
+ALPHA_BLEND   = 0.8062   # sqrt(0.65): publish loop moved 10Hz->20Hz;
+                             # rescaled so the EMA keeps the same real-time
+                             # smoothing constant instead of reacting 2x faster
+                             # to per-frame camera noise
+DECAY_RATE    = 0.9960   # sqrt(0.992), same reasoning
 INIT_EVIDENCE = 0.50
 
 PATH_HISTORY_MAXLEN = 50   # ~12 s at 4 Hz odom = 800 bytes
@@ -180,7 +183,7 @@ class PerceptionDrivableGridNode(Node):
         self.create_subscription(Odometry, '/gnss/odometry',    self._cb_odom,  qos_be)
 
         self.pub = self.create_publisher(OccupancyGrid, '/grid/drivable/segmented', 10)
-        self.create_timer(0.1, self._publish_loop)
+        self.create_timer(0.05, self._publish_loop)
         self.get_logger().info('PerceptionDrivableGridNode ready — /grid/drivable/segmented')
 
     # ── callbacks ─────────────────────────────────────────────────────────────
