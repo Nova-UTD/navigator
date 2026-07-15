@@ -69,15 +69,17 @@ class FrameTFService(Node):
         self.t = None
 
         # Subscribes to camera info
-        rgb_center_camera_info_sub = self.create_subscription(
+        # NOTE: this CARLA setup publishes rgb_front, not rgb_center (center has 0 publishers).
+        self.create_subscription(
+            CameraInfo, '/carla/hero/rgb_front/camera_info', self.rgb_front_camera_info_cb, 10)
+        self.create_subscription(
             CameraInfo, '/carla/hero/rgb_center/camera_info', self.rgb_center_camera_info_cb, 10)
-        rgb_left_camera_info_sub = self.create_subscription(
-            CameraInfo, '/carla/hero/rgb_left/camera_info',self.rgb_left_camera_info_cb, 10)
-        rgb_right_camera_info_sub = self.create_subscription(
-            CameraInfo, '/carla/hero/rgb_right/camera_info',self.rgb_right_camera_info_cb,10)
-        rgb_back_camera_info_sub = self.create_subscription(
-            CameraInfo, '/carla/hero/rgb_back/camera_info', self.rgb_back_camera_info_cb,10)
-        # Subscribes to semantic segmented image topic
+        self.create_subscription(
+            CameraInfo, '/carla/hero/rgb_left/camera_info', self.rgb_left_camera_info_cb, 10)
+        self.create_subscription(
+            CameraInfo, '/carla/hero/rgb_right/camera_info', self.rgb_right_camera_info_cb, 10)
+        self.create_subscription(
+            CameraInfo, '/carla/hero/rgb_back/camera_info', self.rgb_back_camera_info_cb, 10)
 
         
         # Subscribes to clock
@@ -89,6 +91,7 @@ class FrameTFService(Node):
         self.lid_arr: Optional[np.ndarray] = None
         
         # stores CameraInfo per camera (raw msg — has .k, .width, .height, .header.frame_id)
+        self.rgb_front_cam_model: Optional[CameraInfo] = None
         self.rgb_center_cam_model: Optional[CameraInfo] = None
         self.rgb_left_cam_model: Optional[CameraInfo] = None
         self.rgb_right_cam_model: Optional[CameraInfo] = None
@@ -100,56 +103,28 @@ class FrameTFService(Node):
     def get_camera_info(self, camera_name: str) -> Optional[CameraInfo]:
         """Look up cached CameraInfo by camera label."""
         cameras = {
+            "rgb_front": self.rgb_front_cam_model,
             "rgb_center": self.rgb_center_cam_model,
             "rgb_left": self.rgb_left_cam_model,
             "rgb_right": self.rgb_right_cam_model,
             "rgb_back": self.rgb_back_cam_model,
         }
         return cameras.get(camera_name)
+
+    def rgb_front_camera_info_cb(self, msg: CameraInfo):
+        self.rgb_front_cam_model = msg
         
     def rgb_center_camera_info_cb(self, msg: CameraInfo):
-        """Sets camera info for center camera
-
-        Args:
-            msg (CameraInfo)
-
-        Returns:
-            None
-        """
         self.rgb_center_cam_model = msg
         
     
     def rgb_right_camera_info_cb(self, msg: CameraInfo):
-        """Sets camera info for right camera
-
-        Args:
-            msg (CameraInfo)
-
-        Returns:
-            None
-        """
         self.rgb_right_cam_model = msg
 
     def rgb_left_camera_info_cb(self, msg: CameraInfo):
-        """Sets camera info for left camera
-
-        Args:
-            msg (CameraInfo)
-
-        Returns:
-            None
-        """
         self.rgb_left_cam_model = msg
     
     def rgb_back_camera_info_cb(self, msg: CameraInfo):
-        """Sets camera info for back camera
-
-        Args:
-            msg (CameraInfo)
-
-        Returns:
-            None
-        """
         self.rgb_back_cam_model = msg    
     
     def clock_cb(self, msg):
@@ -267,7 +242,9 @@ class FrameTFService(Node):
                 
                 # choose correct set of camera intrinsics
                 selected_camera = None
-                if camera == "rgb_center":
+                if camera == "rgb_front":
+                    selected_camera = self.rgb_front_cam_model
+                elif camera == "rgb_center":
                     selected_camera = self.rgb_center_cam_model
                 elif camera == "rgb_left":
                     selected_camera = self.rgb_left_cam_model

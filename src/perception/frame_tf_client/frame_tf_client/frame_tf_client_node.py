@@ -76,7 +76,7 @@ def main(args=None):
         )
         print(
             "pixel_to_world example: "
-            "0 0 0 1 rgb_center 512.0 256.0 0.0"
+            "0 0 0 1 rgb_front 512.0 256.0 0.0"
         )
         rclpy.shutdown()
         return
