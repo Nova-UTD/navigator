@@ -15,6 +15,8 @@ from cv_bridge import CvBridge, CvBridgeError
 
 # Imports
 import numpy as np
+from math import hypot
+from typing import Optional, Tuple
 
 import rclpy
 from rclpy.node import Node
@@ -28,14 +30,14 @@ from rclpy.serialization import serialize_message, deserialize_message
 
 # Message Imports
 from rosgraph_msgs.msg import Clock
-from geometry_msgs.msg import TransformStamped
-from geometry_msgs.msg import Vector3
-
+from geometry_msgs.msg import TransformStamped, Vector3, Point
 from builtin_interfaces.msg import Time
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2
 import sensor_msgs_py.point_cloud2 as pc2
 from std_msgs.msg import Header
 from frame_tf_serv.srv import FrameTF
+
+MAX_PIXEL_RADIUS = 5.0
 
 
 class FrameTFService(Node):
@@ -283,6 +285,88 @@ class FrameTFService(Node):
                 self.get_logger().info(
                     f'Could not convert world to pixel: {ex}')
                 continue
+    
+
+    def get_intrinsics(self, camera_info: CameraInfo) -> Tuple[float, float, float, float]:
+        """
+        Get focal length and principal point from the camera info matrix.
+        Returns (fx, fy, cx, cy).
+        """
+        k = camera_info.k
+        fx, fy = k[0], k[4]
+        cx, cy = k[2], k[5]
+        return fx, fy, cx, cy
+    
+    def cloud_to_xyz(self, cloud: PointCloud2) -> np.ndarray:
+        # extracts the X, Y, and Z 3D spatial coordinates from a ROS 2 PointCloud2 message and loads them into a numpy array
+        return pc2.read_points_numpy(cloud, field_names=('x','y','z'))
+    
+    def transform_cloud(
+        self,
+        pts: np.ndarray,
+        target_frame: str,
+        source_frame: str,
+        stamp: Time,
+    ) -> np.ndarray:
+        """
+        pts: (N,3) in source_frame  ->  (N,3) in target_frame.
+        returns the transform that takes a point from source into target; applied as R · p + t
+        """
+        # get the transform that converts a point from source into target at time stamp
+        tf = self.tf_buffer.lookup_transform(
+            target_frame, source_frame, stamp,
+            timeout=rclpy.duration.Duration(seconds=0.2))   # NOT while True
+        q = tf.transform.rotation # quaternion (orientation of source relative to target)
+        t = tf.transform.translation # 3-vector (where the source origin sits in the target frame)
+        Rm = R.from_quat([q.x, q.y, q.z, q.w]) # convert quaternion into managed scipy Rotation object
+        return Rm.apply(pts) + np.array([t.x, t.y, t.z]) # apply the rotation to every point in pts, then add the translation
+
+    def pixel_to_world(
+        self,
+        camera_info: CameraInfo,
+        image_stamp: Time,
+        cloud: PointCloud2,
+        u: float,
+        v: float,
+    ) -> Optional[np.ndarray]:
+        """
+        Converts pixel coordinate to world coordinate ("what 3d map point is this pixel looking at?")
+        """
+        fx, fy, cx, cy = self.get_intrinsics(camera_info)
+        camera_frame = camera_info.header.frame_id # where the camera lives in TF
+        src = cloud.header.frame_id # where the LiDAR points currently live
+
+        points = self.cloud_to_xyz(cloud)                       # (N,3) in the cloud's own frame
+
+        # cloud_cam[i] and cloud_map[i] are the same laser hit, just in different coordinates
+        # when we pick a winner in image space, we can easily get the map XYZ
+        cloud_cam = self.transform_cloud(points, camera_frame, src, cloud.header.stamp)
+        cloud_map = self.transform_cloud(points, "map", src, cloud.header.stamp)
+
+        best = None  # (d_pixels, z_c, p_map)
+        for p_cam, p_map in zip(cloud_cam, cloud_map):     # each is [x, y, z]
+            x_c, y_c, z_c = p_cam
+            if not np.all(np.isfinite(p_cam)) or z_c <= 0: # skip bad / behind-camera points
+                continue
+            
+            # project with pinhole formula
+            ui = fx * (x_c / z_c) + cx
+            vi = fy * (y_c / z_c) + cy
+            if not (0 <= ui < camera_info.width and 0 <= vi < camera_info.height):
+                continue
+            
+            # distance (how many pixels away the projected LiDAR hit (ui, vi) is from the query pixel (u, v))
+            d = hypot(ui - u, vi - v)
+            
+            if d <= MAX_PIXEL_RADIUS:
+                # nearest pixel first; break near-ties by frontmost depth
+                if best is None or (round(d, 1), z_c) < (round(best[0], 1), best[1]):
+                    best = (d, z_c, p_map)
+
+        if best is None:
+            return None          # no LiDAR near this pixel
+        return best[2]              # map point measured at cloud time
+        
                 
     
     def callback(self,request, response):
