@@ -2,6 +2,7 @@
 int32 cam_to_world
 int32 cam_to_pixel
 int32 world_to_pixel
+int32 pixel_to_world
 
 float32 x
 float32 y
