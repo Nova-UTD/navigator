@@ -85,15 +85,27 @@ class FrameTFService(Node):
             Clock, '/clock', self.clock_cb, 10)
         
         self.cam_arr = None
+        self.latest_cloud: Optional[PointCloud2] = None
+        self.lid_arr: Optional[np.ndarray] = None
         
-        # stores camera info
-        self.rgb_center_cam_model = None
-        self.rgb_left_cam_model = None
-        self.rgb_right_cam_model = None
-        self.rgb_back_cam_model = None
+        # stores CameraInfo per camera (raw msg — has .k, .width, .height, .header.frame_id)
+        self.rgb_center_cam_model: Optional[CameraInfo] = None
+        self.rgb_left_cam_model: Optional[CameraInfo] = None
+        self.rgb_right_cam_model: Optional[CameraInfo] = None
+        self.rgb_back_cam_model: Optional[CameraInfo] = None
 
     def timer_cb(self):
             pass
+
+    def get_camera_info(self, camera_name: str) -> Optional[CameraInfo]:
+        """Look up cached CameraInfo by camera label."""
+        cameras = {
+            "rgb_center": self.rgb_center_cam_model,
+            "rgb_left": self.rgb_left_cam_model,
+            "rgb_right": self.rgb_right_cam_model,
+            "rgb_back": self.rgb_back_cam_model,
+        }
+        return cameras.get(camera_name)
         
     def rgb_center_camera_info_cb(self, msg: CameraInfo):
         """Sets camera info for center camera
@@ -116,7 +128,7 @@ class FrameTFService(Node):
         Returns:
             None
         """
-        self.rgb_right_cam_model = image_geometry.PinholeCameraModel().fromCameraInfo(msg) 
+        self.rgb_right_cam_model = msg
 
     def rgb_left_camera_info_cb(self, msg: CameraInfo):
         """Sets camera info for left camera
@@ -127,7 +139,7 @@ class FrameTFService(Node):
         Returns:
             None
         """
-        self.rgb_left_cam_model = image_geometry.PinholeCameraModel().fromCameraInfo(msg)    
+        self.rgb_left_cam_model = msg
     
     def rgb_back_camera_info_cb(self, msg: CameraInfo):
         """Sets camera info for back camera
@@ -138,7 +150,7 @@ class FrameTFService(Node):
         Returns:
             None
         """
-        self.rgb_back_cam_model = image_geometry.PinholeCameraModel().fromCameraInfo(msg)    
+        self.rgb_back_cam_model = msg    
     
     def clock_cb(self, msg):
         """!
@@ -163,6 +175,9 @@ class FrameTFService(Node):
         self.lid_arr = np.frombuffer(lidar_msg.data, dtype=np.float32)
         self.lid_arr = np.reshape(self.lid_arr, (-1, 4))
         self.lid_arr = self.lid_arr[:,0:3]
+
+        # store point cloud for pixel_to_world
+        self.latest_cloud = lidar_msg
 
 
     def attach_depth(self, camera):
@@ -337,11 +352,16 @@ class FrameTFService(Node):
         src = cloud.header.frame_id # where the LiDAR points currently live
 
         points = self.cloud_to_xyz(cloud)                       # (N,3) in the cloud's own frame
+        if points.size == 0:
+            return None
+
+        # prefer image stamp for TF when provided; fall back to cloud stamp
+        stamp = image_stamp if (image_stamp.sec != 0 or image_stamp.nanosec != 0) else cloud.header.stamp
 
         # cloud_cam[i] and cloud_map[i] are the same laser hit, just in different coordinates
         # when we pick a winner in image space, we can easily get the map XYZ
-        cloud_cam = self.transform_cloud(points, camera_frame, src, cloud.header.stamp)
-        cloud_map = self.transform_cloud(points, "map", src, cloud.header.stamp)
+        cloud_cam = self.transform_cloud(points, camera_frame, src, stamp)
+        cloud_map = self.transform_cloud(points, "map", src, stamp)
 
         best = None  # (d_pixels, z_c, p_map)
         for p_cam, p_map in zip(cloud_cam, cloud_map):     # each is [x, y, z]
@@ -357,7 +377,7 @@ class FrameTFService(Node):
             
             # distance (how many pixels away the projected LiDAR hit (ui, vi) is from the query pixel (u, v))
             d = hypot(ui - u, vi - v)
-            
+
             if d <= MAX_PIXEL_RADIUS:
                 # nearest pixel first; break near-ties by frontmost depth
                 if best is None or (round(d, 1), z_c) < (round(best[0], 1), best[1]):
@@ -379,21 +399,50 @@ class FrameTFService(Node):
         Returns:
             None
         """
-        # execute frame_tf operation based on selection
-        if len(request.camera_name) > 1:
-            if request.cam_to_world == 1:
-                self.camImage_to_world(request.camera_name,request.stamp)
-                response.coords = self.serialized_message
-                response.tf_success = True
-            elif request.world_to_pixel == 1:
-                self.world_to_pixel (request.camera_name, request.stamp, (request.x, request.y, request.z))
-                response.coords = self.serialized_message
-                response.tf_success = True
-            else:
-                response.tf_success = False
-                print("transform failed")
+        response.tf_success = False
+        response.coords = bytes()
+
+        if len(request.camera_name) <= 1:
+            self.get_logger().info("Camera name not provided")
+            return response
+
+        if request.cam_to_world == 1:
+            self.camImage_to_world(request.camera_name, request.stamp)
+            response.coords = self.serialized_message
+            response.tf_success = True
+        elif request.world_to_pixel == 1:
+            self.world_to_pixel(request.camera_name, request.stamp, (request.x, request.y, request.z))
+            response.coords = self.serialized_message
+            response.tf_success = True
+        elif request.pixel_to_world == 1:
+            camera_info = self.get_camera_info(request.camera_name)
+            if camera_info is None:
+                self.get_logger().info(
+                    f"No CameraInfo yet for '{request.camera_name}'")
+                return response
+            if self.latest_cloud is None:
+                self.get_logger().info("No LiDAR cloud received yet")
+                return response
+            try:
+                point = self.pixel_to_world(
+                    camera_info,
+                    request.stamp,
+                    self.latest_cloud,
+                    float(request.x),
+                    float(request.y),
+                )
+            except TransformException as ex:
+                self.get_logger().info(f"pixel_to_world TF failed: {ex}")
+                return response
+            if point is None:
+                self.get_logger().info(
+                    f"No LiDAR near pixel ({request.x}, {request.y})")
+                return response
+            response.coords = np.asarray(point, dtype=np.float64).tobytes()
+            response.tf_success = True
         else:
-            print("Camera name not provided: ", request.cam_to_world)
+            self.get_logger().info("No transform mode selected")
+
         return response            
 
 def main(args=None):
