@@ -2,20 +2,35 @@
 """
 lane_grid_node.py — lane-indexed BEV grid, built without map_management.
 
-Pipeline (10 Hz, same rate/geometry as perception_drivable_grid_node so the
-two grids overlay exactly):
-  1. Parse /lidar/filtered ground-level points, score lane-marking-ness by
-     LiDAR intensity (lane paint reads brighter than bare asphalt —
-     independent of the camera lighting/shadow failures that make
-     /grid/drivable/segmented imperfect).
-  2. Temporally blend that per-frame marking evidence (same EMA +
-     pose-compensation pattern as perception_drivable_grid_node's
-     evidence grid) so sparse per-frame LiDAR hits accumulate into stable
-     marking lines instead of flickering.
+Pipeline (same rate/geometry as perception_drivable_grid_node so the two
+grids overlay exactly):
+  1. Per camera, on each raw-frame arrival: detect lane-marking-candidate
+     pixels in the RGB image (camera_lane_evidence.marking_candidate_mask —
+     a morphological top-hat filter, restricted to the PSPNet-classified
+     road region) and project them into the BEV grid via the same
+     bev_geometry.CamLUT perception_drivable_grid_node.py uses, so this
+     stays pixel-aligned with the drivable grid for free.
+
+     (Originally this used LiDAR intensity instead — CARLA's standard
+     LiDAR intensity is a pure distance/incidence-angle attenuation model
+     with no dependence on what the ray hit, so it never actually
+     distinguished painted lane markings from bare asphalt in simulation.
+     See camera_lane_evidence.py's docstring.)
+  2. Temporally blend that per-frame marking evidence into a persistent
+     grid (EMA + pose-compensation, same pattern as
+     perception_drivable_grid_node's evidence grid) so sparse per-frame
+     hits accumulate into stable marking lines instead of flickering, and
+     so a marking already seen stays remembered through momentary
+     occlusion (e.g. another car blocking the camera). Each camera only
+     covers part of the grid, so blending only touches cells that camera
+     actually observed this frame — see _update_marking_evidence.
   3. Cut the latest /grid/drivable/segmented mask along those marking
      lines and label the connected components as lanes
      (lane_segmentation.segment_lanes), ordered by lateral (row) position
-     at the ego's column.
+     at the ego's column. This is purely topological — a curving marking
+     line produces a curving cut, and a lane merge/split falls out of the
+     connected-component structure automatically, with no lane-specific
+     curve/merge logic needed.
   4. Publish /grid/lane (navigator_msgs/LaneGrid) with per-cell lane id +
      confidence plus total_lane_count / ego_lane_index / ego_lane_width_m.
 
@@ -30,21 +45,39 @@ import threading
 import cv2
 import numpy as np
 import rclpy
+from cv_bridge import CvBridge
 from nav_msgs.msg import OccupancyGrid, Odometry
 from navigator_msgs.msg import AllLaneDetections, LaneGrid
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation
-from sensor_msgs.msg import PointCloud2, PointField
+from sensor_msgs.msg import Image, PointCloud2, PointField
 
-from segmentation.bev_geometry import GRID_SIZE, RESOLUTION, ORIGIN_X, ORIGIN_Y
-from segmentation.lane_segmentation import (
-    intensity_lane_evidence, segment_lanes, count_and_locate_ego,
+from segmentation.bev_geometry import (
+    GRID_SIZE, RESOLUTION, ORIGIN_X, ORIGIN_Y, CAMERAS, CamLUT,
 )
+from segmentation.camera_lane_evidence import (
+    road_mask_from_semantic, marking_candidate_mask, camera_marking_evidence,
+)
+from segmentation.lane_segmentation import segment_lanes, count_and_locate_ego
 
 DRIVABLE_OCC_MAX = 50   # /grid/drivable/segmented cell counts as drivable if occ < this
 
 ALPHA_BLEND = 0.65      # same constant family as perception_drivable_grid_node
 VALIDATION_LOG_PERIOD = 10  # log lane-count agreement every N publish ticks (~1 Hz at 10 Hz)
+
+# image_segmentation_node's CAMERAS pairing (raw topic -> semantic topic),
+# keyed here by bev_geometry.CAMERAS' camera name so one entry point (this
+# node) can subscribe to both the raw frame (for brightness) and the
+# semantic frame (for the road mask) per camera. 'back' has no real CARLA
+# source (no rgb_back camera configured) -- the subscription is created
+# anyway and simply never receives data, same graceful-degradation pattern
+# already used by perception_drivable_grid_node.py.
+_RAW_TOPIC_BY_NAME = {
+    'front': '/cameras/camera0',
+    'right': '/cameras/camera1',
+    'back':  '/cameras/camera2',
+    'left':  '/cameras/camera3',
+}
 
 # LaneGrid.msg has no native RViz display (it's a custom message type), so we
 # also publish a colorized PointCloud2 debug view on /grid/lane/viz — one
@@ -96,36 +129,12 @@ def _build_lane_viz_cloud(lane_id_grid, stamp):
     return msg
 
 
-def _parse_xyzi(msg):
-    """Extract an Nx4 (x, y, z, intensity) array from a PointCloud2, reading
-    field offsets dynamically (mirrors perception_drivable_grid_node's
-    _lidar_evidence_grid) rather than assuming a fixed struct layout.
-    Returns None if the cloud has no intensity field."""
-    n = msg.width * msg.height
-    if n == 0:
-        return None
-    offsets = {}
-    for f in msg.fields:
-        if f.name in ('x', 'y', 'z', 'intensity'):
-            offsets[f.name] = f.offset
-    if not {'x', 'y', 'z', 'intensity'} <= offsets.keys():
-        return None
-    ps = msg.point_step
-    raw = np.frombuffer(bytes(msg.data), dtype=np.uint8).reshape(n, ps)
-    cols = []
-    for name in ('x', 'y', 'z', 'intensity'):
-        off = offsets[name]
-        cols.append(np.frombuffer(raw[:, off:off + 4].tobytes(), dtype=np.float32))
-    points = np.stack(cols, axis=1)
-    ok = np.isfinite(points).all(axis=1)
-    return points[ok]
-
-
 class LaneGridNode(Node):
 
     def __init__(self):
         super().__init__('lane_grid_node')
         self._lock = threading.Lock()
+        self.bridge = CvBridge()
 
         self._marking_evidence = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
         self._drivable_mask = np.zeros((GRID_SIZE, GRID_SIZE), dtype=bool)
@@ -134,11 +143,26 @@ class LaneGridNode(Node):
         self._latest_detector_count = None
         self._tick = 0
 
+        # Per-camera state: precomputed projection LUT + latest cached
+        # semantic frame (paired with each raw frame on arrival below).
+        self._cam_luts = {}
+        self._latest_semantic = {}
+
         qos_be = rclpy.qos.QoSProfile(
             reliability=rclpy.qos.QoSReliabilityPolicy.BEST_EFFORT,
             history=rclpy.qos.QoSHistoryPolicy.KEEP_LAST, depth=1)
 
-        self.create_subscription(PointCloud2, '/lidar/filtered', self._cb_lidar, qos_be)
+        for name, semantic_topic, t_base, r_cb_mat in CAMERAS:
+            self._cam_luts[name] = CamLUT(t_base, r_cb_mat)
+            self.create_subscription(
+                Image, semantic_topic,
+                lambda msg, n=name: self._cb_semantic(msg, n), qos_be)
+            raw_topic = _RAW_TOPIC_BY_NAME.get(name)
+            if raw_topic is not None:
+                self.create_subscription(
+                    Image, raw_topic,
+                    lambda msg, n=name: self._cb_raw(msg, n), qos_be)
+
         self.create_subscription(OccupancyGrid, '/grid/drivable/segmented', self._cb_drivable, qos_be)
         self.create_subscription(Odometry, '/gnss/odometry', self._cb_odom, qos_be)
         self.create_subscription(AllLaneDetections, '/lane_types/detections',
@@ -151,17 +175,36 @@ class LaneGridNode(Node):
 
     # ── callbacks ─────────────────────────────────────────────────────────────
 
-    def _cb_lidar(self, msg):
-        points = _parse_xyzi(msg)
-        if points is None:
-            return
-        frame_marking = intensity_lane_evidence(points)
+    def _cb_semantic(self, msg, name):
+        img = self.bridge.imgmsg_to_cv2(msg, 'rgb8')[:, :, :3]
         with self._lock:
-            # Lane markings default to "absent" whether observed or not, so a
-            # single EMA (no separate unobserved-decay branch) is enough —
-            # unlike drivable-area evidence, there's no neutral prior to hold.
-            self._marking_evidence = (ALPHA_BLEND * self._marking_evidence
-                                       + (1 - ALPHA_BLEND) * frame_marking)
+            self._latest_semantic[name] = img
+
+    def _cb_raw(self, msg, name):
+        with self._lock:
+            semantic_img = self._latest_semantic.get(name)
+        if semantic_img is None:
+            return  # no road mask to work with yet
+        raw_img = self.bridge.imgmsg_to_cv2(msg, 'rgb8')[:, :, :3]
+        if semantic_img.shape[:2] != raw_img.shape[:2]:
+            return  # stale pairing from a resolution change; skip this frame
+        self._update_marking_evidence(name, raw_img, semantic_img)
+
+    def _update_marking_evidence(self, name, raw_img, semantic_img):
+        road_mask = road_mask_from_semantic(semantic_img)
+        candidate_mask = marking_candidate_mask(raw_img, road_mask)
+        frame_evidence, observed = camera_marking_evidence(
+            candidate_mask, self._cam_luts[name], GRID_SIZE)
+        if not observed.any():
+            return
+        with self._lock:
+            # Only touch cells this camera actually projected pixels into
+            # this frame -- otherwise a single camera's frame would decay
+            # evidence in the rest of the grid (covered by other cameras,
+            # or built up moments earlier) toward zero every time it fires.
+            e = self._marking_evidence[observed]
+            self._marking_evidence[observed] = (
+                ALPHA_BLEND * e + (1 - ALPHA_BLEND) * frame_evidence[observed])
 
     def _cb_drivable(self, msg):
         grid = np.array(msg.data, dtype=np.int16).reshape(GRID_SIZE, GRID_SIZE)

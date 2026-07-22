@@ -27,7 +27,7 @@ Pipeline for one frame:
 """
 
 import numpy as np
-from scipy.ndimage import label as sp_label
+from scipy.ndimage import binary_closing, label as sp_label
 
 from segmentation.bev_geometry import (
     GRID_SIZE, RESOLUTION, ORIGIN_X, ORIGIN_Y, VEHICLE_COL, VEHICLE_ROW,
@@ -109,7 +109,12 @@ def segment_lanes(drivable_mask, marking_evidence,
     lane_id_grid = np.full((h, w), -1, dtype=np.int16)
     confidence_grid = np.zeros((h, w), dtype=np.uint8)
 
-    barrier = marking_evidence >= marking_threshold
+    # Close small gaps (e.g. a single dropped detection on a thin or
+    # distant line) so a barrier that's real but not perfectly continuous
+    # doesn't let two lanes' connected components leak into one -- the
+    # same failure mode as under-segmentation from a missing signal
+    # entirely, just from noise instead.
+    barrier = binary_closing(marking_evidence >= marking_threshold, structure=np.ones((3, 3)))
     traversable = drivable_mask & ~barrier
     labeled, _ = sp_label(traversable)
 

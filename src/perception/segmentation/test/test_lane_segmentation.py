@@ -127,6 +127,27 @@ def test_segment_lanes_robust_to_false_positive_blob_outside_road():
     assert confidence_grid[255, 255] == ls.CONF_UNASSIGNED
 
 
+def test_segment_lanes_robust_to_single_cell_gap_in_barrier():
+    """A single dropped detection along an otherwise-continuous marking line
+    (e.g. one frame's miss on a thin or distant line) must not merge two
+    real lanes into one connected component -- a barrier row spans every
+    column, so without closing the gap, connectivity is grid-wide and even
+    one missed cell anywhere along the line would merge both full lanes,
+    not just the area right around the gap."""
+    mask, lane_row_ranges = make_three_lane_drivable_mask()
+    marking = marking_lines_at_gaps(lane_row_ranges)
+
+    # Punch a single-cell gap in the first boundary line, far from the ego column.
+    boundary_row = lane_row_ranges[0][1]
+    marking[boundary_row, 200] = 0.0
+
+    lane_id_grid, confidence_grid = ls.segment_lanes(mask, marking)
+    total, ego_idx, width_m = ls.count_and_locate_ego(lane_id_grid)
+
+    assert total == 3
+    assert ego_idx == 1
+
+
 def test_segment_lanes_no_drivable_area():
     mask = np.zeros((GRID_SIZE, GRID_SIZE), dtype=bool)
     marking = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
