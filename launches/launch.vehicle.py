@@ -79,7 +79,7 @@ def generate_launch_description():
                         path_planner,
                         # *nav2_launch_entities,
                         # path_planner_nav2,
-                        autonomous_cruise_controller,
+                        # autonomous_cruise_controller,  # disabled for testing - Claude
                         # SAFETY
                         ##airbags,
                         ##guardian,

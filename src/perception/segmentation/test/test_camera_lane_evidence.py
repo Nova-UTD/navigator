@@ -37,6 +37,46 @@ def test_road_mask_from_semantic_matches_road_color_only():
     assert not mask[:, 2:].any()
 
 
+def test_marking_search_mask_includes_pole_and_sign_alongside_road_and_sidewalk():
+    """Confirmed live: PSPNet sometimes labels the lane paint itself as
+    "pole" (a thin, locally-brighter feature reads like a pole to a
+    Cityscapes-trained model) or as "traffic sign" (yellow paint reads as
+    traffic-sign yellow) rather than "road". The search mask must include
+    both so real markings under either mislabel still get considered -- a
+    strict road-only mask silently drops exactly the pixels this module
+    exists to find."""
+    img = np.zeros((4, 7, 3), dtype=np.uint8)
+    img[:, 0:2] = cle.ROAD_COLOR
+    img[:, 2:4] = cle.SIDEWALK_COLOR
+    img[:, 4:5] = cle.POLE_COLOR
+    img[:, 5:6] = cle.TRAFFIC_SIGN_COLOR
+    img[:, 6:7] = (0, 0, 142)  # car -- must NOT be included
+
+    mask = cle.marking_search_mask_from_semantic(img)
+
+    assert mask[:, 0:2].all()
+    assert mask[:, 2:4].all()
+    assert mask[:, 4:5].all()
+    assert mask[:, 5:6].all()
+    assert not mask[:, 6:7].any()
+
+
+def test_marking_search_mask_excludes_buildings_and_vehicles():
+    """The exact live scene that caught this: a frame dominated by
+    building and a large vehicle (a fire truck classified as "car")
+    crowding out most of the image -- neither should ever be searched."""
+    img = np.zeros((2, 3, 3), dtype=np.uint8)
+    img[:, 0] = (70, 70, 70)      # building
+    img[:, 1] = (0, 0, 142)       # car
+    img[:, 2] = cle.ROAD_COLOR
+
+    mask = cle.marking_search_mask_from_semantic(img)
+
+    assert not mask[:, 0].any()
+    assert not mask[:, 1].any()
+    assert mask[:, 2].all()
+
+
 def test_marking_candidate_mask_finds_bright_line_on_dark_road():
     h, w = 120, 200
     gray_road = 40

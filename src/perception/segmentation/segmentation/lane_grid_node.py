@@ -53,12 +53,14 @@ from scipy.spatial.transform import Rotation
 from sensor_msgs.msg import Image, PointCloud2, PointField
 
 from segmentation.bev_geometry import (
-    GRID_SIZE, RESOLUTION, ORIGIN_X, ORIGIN_Y, CAMERAS, CamLUT,
+    GRID_SIZE, RESOLUTION, ORIGIN_X, ORIGIN_Y, VEHICLE_ROW, VEHICLE_COL, CAMERAS, CamLUT,
 )
 from segmentation.camera_lane_evidence import (
-    road_mask_from_semantic, marking_candidate_mask, camera_marking_evidence,
+    marking_search_mask_from_semantic, marking_candidate_mask, camera_marking_evidence,
 )
 from segmentation.lane_segmentation import segment_lanes, count_and_locate_ego
+from segmentation.road_corridor import extract_ego_road_corridor
+from segmentation.lidar_ground_height import parse_xyzi, ground_height_grid
 
 DRIVABLE_OCC_MAX = 50   # /grid/drivable/segmented cell counts as drivable if occ < this
 
@@ -138,6 +140,10 @@ class LaneGridNode(Node):
 
         self._marking_evidence = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
         self._drivable_mask = np.zeros((GRID_SIZE, GRID_SIZE), dtype=bool)
+        # LiDAR ground height, for curb detection in extract_ego_road_corridor --
+        # a sidewalk can read as "road" to the camera classifier but has a
+        # real curb step LiDAR can see. NaN = unobserved (never blocks).
+        self._height_grid = np.full((GRID_SIZE, GRID_SIZE), np.nan, dtype=np.float32)
 
         self._last_x = self._last_y = self._last_yaw = None
         self._latest_detector_count = None
@@ -164,6 +170,7 @@ class LaneGridNode(Node):
                     lambda msg, n=name: self._cb_raw(msg, n), qos_be)
 
         self.create_subscription(OccupancyGrid, '/grid/drivable/segmented', self._cb_drivable, qos_be)
+        self.create_subscription(PointCloud2, '/lidar/filtered', self._cb_lidar, qos_be)
         self.create_subscription(Odometry, '/gnss/odometry', self._cb_odom, qos_be)
         self.create_subscription(AllLaneDetections, '/lane_types/detections',
                                   self._cb_lane_detections, qos_be)
@@ -191,8 +198,8 @@ class LaneGridNode(Node):
         self._update_marking_evidence(name, raw_img, semantic_img)
 
     def _update_marking_evidence(self, name, raw_img, semantic_img):
-        road_mask = road_mask_from_semantic(semantic_img)
-        candidate_mask = marking_candidate_mask(raw_img, road_mask)
+        search_mask = marking_search_mask_from_semantic(semantic_img)
+        candidate_mask = marking_candidate_mask(raw_img, search_mask)
         frame_evidence, observed = camera_marking_evidence(
             candidate_mask, self._cam_luts[name], GRID_SIZE)
         if not observed.any():
@@ -210,6 +217,14 @@ class LaneGridNode(Node):
         grid = np.array(msg.data, dtype=np.int16).reshape(GRID_SIZE, GRID_SIZE)
         with self._lock:
             self._drivable_mask = grid < DRIVABLE_OCC_MAX
+
+    def _cb_lidar(self, msg):
+        points = parse_xyzi(msg)
+        if points is None:
+            return
+        height = ground_height_grid(points, GRID_SIZE)
+        with self._lock:
+            self._height_grid = height
 
     def _cb_lane_detections(self, msg):
         if not msg.lane_detections:
@@ -254,9 +269,16 @@ class LaneGridNode(Node):
         with self._lock:
             drivable_mask = self._drivable_mask.copy()
             marking_evidence = self._marking_evidence.copy()
+            height_grid = self._height_grid.copy()
             detector_count = self._latest_detector_count
 
-        lane_id_grid, confidence_grid = segment_lanes(drivable_mask, marking_evidence)
+        # /grid/drivable/segmented is a noisy per-cell classification (can
+        # include misclassified sidewalks/adjacent surfaces) -- clean it to
+        # the single road corridor actually reachable from the ego position
+        # before cutting it into lanes, so an unrelated noisy blob crossing
+        # the ego's column can't get counted as its own lane.
+        clean_mask = extract_ego_road_corridor(drivable_mask, VEHICLE_ROW, VEHICLE_COL, height_grid=height_grid)
+        lane_id_grid, confidence_grid = segment_lanes(clean_mask, marking_evidence)
         total_lane_count, ego_lane_index, ego_lane_width_m = count_and_locate_ego(lane_id_grid)
 
         self._tick += 1
