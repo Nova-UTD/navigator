@@ -280,6 +280,13 @@ perception_drivable_grid = Node(
     output="screen",
 )
 
+lane_grid = Node(
+    package="segmentation",
+    executable="lane_grid_node",
+    name="lane_grid_node",
+    output="screen",
+)
+
 hybrid_drivable_grid = Node(
     package="segmentation",
     executable="hybrid_drivable_grid_node",
