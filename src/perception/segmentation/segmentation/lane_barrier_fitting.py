@@ -1,32 +1,34 @@
 #!/usr/bin/env python3
 """
-lane_barrier_fitting.py — once a real lane divider is confidently detected
-anywhere, trust it for the length of the road corridor instead of only
-cutting where evidence was directly observed above threshold.
+lane_barrier_fitting.py — detect candidate lane-divider lines and project
+each through the entire road corridor via its tracked direction, instead of
+only cutting where evidence was directly observed above threshold.
 
 Confirmed live: a bumper-mounted camera has a geometric blind spot for the
 ground immediately next to the vehicle, and a thin painted line only fills
 a fraction of a 0.2m grid cell (more so at range), so a real line's
 detected strength is often weak exactly where lane_segmentation.segment_lanes
-needs it most -- at the ego's own column. segment_lanes only cuts where
-marking_evidence directly crosses MARKING_THRESHOLD, so a real line with a
-weak/blind patch right at the ego's column never actually splits the road
-there, even when it's confidently detected a few meters away in the same
-grid.
+needs it most -- at the ego's own column. A real physical lane divider is
+one continuous painted stripe for the length of a lane -- it doesn't
+intermittently vanish and reappear within a single field of view -- so
+once a candidate clears a minimum-confirmed-columns noise filter, its
+tracked direction is projected through the *entire* remaining corridor
+(to the grid/corridor boundary), not capped at a gap budget. Real evidence,
+when it reappears, still gets snapped to for accuracy.
 
-An earlier version of this module only bridged gaps up to a fixed budget
-and discarded any extrapolation that didn't reconnect to fresh confident
-evidence again. That was too conservative and produced exactly the
-flickering, inconsistent splits reported live: a real physical lane
-divider is one continuous painted stripe for the length of a lane -- it
-doesn't intermittently vanish and reappear within a single field of view,
-so treating "no confident evidence this column" as reason to distrust an
-already-established line was the wrong default. This version instead: once
-a line clears a minimum-confirmed-columns noise filter, its tracked
-direction is projected through the *entire* remaining corridor (to the
-grid/corridor boundary), not capped at a modest gap budget -- real
-evidence, when it reappears, still gets snapped to for accuracy, but its
-absence is no longer treated as a reason to stop trusting the line.
+This module only detects and geometrically extrapolates candidates for a
+SINGLE tick -- it has no memory across publish cycles. Live testing found
+that trusting a candidate purely from one tick's evidence is too easy for
+noise to clear (a spurious run occasionally produces enough confirmed
+columns to look real for one frame), so this module now returns structured
+`CandidateLine` objects rather than a flattened boolean mask, and cross-tick
+confirmation (does this candidate keep showing up, tick after tick?) plus
+duplicate-line suppression (are two "different" candidates actually the
+same physical line, too close together to both be real?) live in
+`lane_line_tracker.py`, which decides which candidates actually get to cut
+the road. Use `candidates_to_mask` to rasterize whatever candidates the
+tracker has decided to trust into the boolean mask
+`lane_segmentation.segment_lanes`'s `barrier_mask` parameter expects.
 
 This module extends road_corridor.py's scan-line-walk philosophy (a
 smoothly-tracked float center, jump-clamped to follow curves without being
@@ -37,9 +39,9 @@ walk:
   1. A marking barrier has no natural seed at the ego's own column -- that's
      exactly the blind/weak region -- so the seed has to come from wherever
      confident evidence actually exists, and the walk projects outward
-     through the whole corridor from there (see above), rather than
-     stopping the moment evidence disappears the way road_corridor.py's
-     walk does (which would just reproduce this bug if reused as-is).
+     through the whole corridor from there, rather than stopping the moment
+     evidence disappears the way road_corridor.py's walk does (which would
+     just reproduce this bug if reused as-is).
 
   2. A single column can have more than one real line at different rows at
      once (e.g. a left and a right lane divider both visible at the same
@@ -52,6 +54,8 @@ Pure numpy, no rclpy/cv2 -- unit-testable standalone, same style as
 road_corridor.py and lane_segmentation.py.
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 
 # Matches lane_segmentation.MARKING_THRESHOLD. Live-tuned down from an
@@ -63,19 +67,18 @@ import numpy as np
 # than a bare cut, so there's no reason to demand more of them.
 CONFIDENT_THRESHOLD = 0.2
 
-# Live-tuned way up from an initial 4 (0.8m). At 4, granting a candidate
-# "project through the whole corridor" authority was far too easy to
-# trigger from noise while driving -- confirmed live: with a moving
-# vehicle generating more per-frame variability, several spurious short
-# runs would each clear 4 confirmed columns and each cut the *entire*
-# corridor width, producing 7-14 phantom "lanes" a fraction of a meter
-# wide. Projecting a line through the whole corridor is a much bigger
-# claim than just cutting a few observed cells, so it needs a much bigger
-# bar: 20 columns (4m) is comfortably below the run lengths a real,
-# repeatedly-observed divider produces (confirmed live: 35-41 consecutive
-# confirmed columns for the real line in this scene) while being hard for
-# a transient noise blob to sustain.
-MIN_CONFIRMED_COLUMNS = 20
+# Live-tuned down from 20. Back when clearing this bar granted immediate
+# full-corridor cutting trust, it needed to be a high bar (20 columns / 4m)
+# to keep transient noise from single-handedly cutting the whole road --
+# even so, live testing found some noise runs still occasionally cleared
+# it. Now that lane_line_tracker.py requires a candidate to be independently
+# re-detected over multiple ticks (and deduplicates near-identical
+# candidates) before it can actually cut anything, this filter's job
+# shrinks to a cheap admission check -- is this walk even worth handing to
+# the tracker -- not "is this walk trustworthy enough to act on right now."
+# 8 columns (1.6m) comfortably rejects single-cell noise while not
+# delaying a real, partially-occluded line from ever entering the tracker.
+MIN_CONFIRMED_COLUMNS = 8
 
 # Reused from road_corridor.py's defaults for the same role: how far a
 # single step's found row may move from the tracked center (max_row_jump),
@@ -91,6 +94,29 @@ DEFAULT_SEARCH_RADIUS = 5
 # genuinely close-together dividers (e.g. a turn-lane pair) register
 # separately.
 DEFAULT_MIN_PEAK_SEPARATION = 5
+
+
+@dataclass
+class CandidateLine:
+    """One candidate marking line detected in a single tick, spanning the
+    full column range edge-to-edge (since a walk always reaches the grid
+    boundary in both directions -- see module docstring).
+
+    seed_row/seed_col: where this candidate was first found.
+    row_by_col: (grid_size,) float32, this line's row estimate at every
+      column -- always fully defined, no gaps.
+    confirmed_by_col: (grid_size,) bool, True where that estimate came from
+      real snapped evidence rather than pure extrapolation.
+    confirmed_columns: cached confirmed_by_col.sum() -- the per-tick
+      admission strength checked against min_confirmed_columns. Deliberately
+      NOT used to grant cutting trust directly anymore; that's
+      lane_line_tracker.py's job, based on cross-tick persistence.
+    """
+    seed_row: int
+    seed_col: int
+    row_by_col: np.ndarray
+    confirmed_by_col: np.ndarray
+    confirmed_columns: int
 
 
 def _find_confident_peaks(col_evidence, drivable_col, confident_threshold, min_peak_separation):
@@ -157,13 +183,13 @@ def _walk_evidence(peaks, claimed, seed_col, seed_row, direction,
     present, still wins over pure extrapolation. Otherwise the column is
     filled from the extrapolated center alone.
 
-    Returns an ordered list of (col, row, confirmed_bool), outward from
-    (but not including) the seed column -- confirmed_bool records whether
-    that column snapped to real evidence, for the caller's noise-filter
-    count, but every column (confirmed or not) is returned and meant to be
-    rasterized once the line as a whole passes that filter.
+    Returns (cols, rows, confirmed) -- three same-length lists, outward
+    from (but not including) the seed column. confirmed[i] records whether
+    that column snapped to real evidence, for the caller's admission-count
+    check; every column (confirmed or not) is returned and meant to be
+    included in the candidate's geometry once accepted.
     """
-    entries = []
+    cols, rows, confirmed = [], [], []
     center = float(seed_row)
     slope = 0.0
     c = seed_col
@@ -184,12 +210,12 @@ def _walk_evidence(peaks, claimed, seed_col, seed_row, direction,
             new_center = float(found_row)
             slope = new_center - center
             center = new_center
-            entries.append((c, int(round(center)), True))
+            cols.append(c); rows.append(center); confirmed.append(True)
         else:
             center = min(max(center + slope, 0.0), grid_size - 1.0)
-            entries.append((c, int(round(center)), False))
+            cols.append(c); rows.append(center); confirmed.append(False)
 
-    return entries
+    return cols, rows, confirmed
 
 
 def extract_barrier_lines(marking_evidence, drivable_mask,
@@ -201,23 +227,23 @@ def extract_barrier_lines(marking_evidence, drivable_mask,
     """marking_evidence: (H, W) float32 in [0, 1]. drivable_mask: (H, W) bool
     (pass the already-corridor-cleaned mask, not the raw noisy one).
 
-    Finds one or more independent marking lines by seeding a bidirectional
-    walk from every sufficiently-confident, not-yet-claimed evidence peak,
-    then projecting each through the entire corridor (see _walk_evidence),
-    keeping only lines with enough directly-confirmed columns to be trusted
-    as real rather than noise. Naturally supports multiple simultaneous
-    lines (different rows, possibly the same columns -- e.g. a left and
-    right divider both visible at once), since peaks are found per-column
-    as a list, not a single best row, and claims are tracked per
-    (row, col) point rather than per column.
+    Finds candidate marking lines by seeding a bidirectional walk from every
+    sufficiently-confident, not-yet-claimed evidence peak, then projecting
+    each through the entire corridor (see _walk_evidence). Naturally
+    supports multiple simultaneous lines (different rows, possibly the same
+    columns -- e.g. a left and right divider both visible at once), since
+    peaks are found per-column as a list, not a single best row, and claims
+    are tracked per (row, col) point rather than per column.
 
-    Returns an (H, W) bool barrier_mask suitable for lane_segmentation.
-    segment_lanes's barrier_mask parameter.
+    Returns a list of CandidateLine, one per walk whose confirmed_columns
+    clears min_confirmed_columns -- a cheap per-tick admission filter only
+    (see MIN_CONFIRMED_COLUMNS). This does NOT decide which candidates are
+    trustworthy enough to actually cut the road; see lane_line_tracker.py.
     """
     h, w = marking_evidence.shape
     peaks = _confident_peaks(marking_evidence, drivable_mask, confident_threshold, min_peak_separation)
     claimed = set()
-    barrier_mask = np.zeros((h, w), dtype=bool)
+    candidates = []
 
     for c in range(w):
         for seed_row in peaks[c]:
@@ -225,16 +251,40 @@ def extract_barrier_lines(marking_evidence, drivable_mask,
                 continue
             claimed.add((c, seed_row))
 
-            left = _walk_evidence(peaks, claimed, c, seed_row, -1, max_row_jump, search_radius, w)
-            right = _walk_evidence(peaks, claimed, c, seed_row, +1, max_row_jump, search_radius, w)
+            left_cols, left_rows, left_conf = _walk_evidence(
+                peaks, claimed, c, seed_row, -1, max_row_jump, search_radius, w)
+            right_cols, right_rows, right_conf = _walk_evidence(
+                peaks, claimed, c, seed_row, +1, max_row_jump, search_radius, w)
 
-            confirmed_count = 1 + sum(1 for _, _, confirmed in left if confirmed) \
-                                 + sum(1 for _, _, confirmed in right if confirmed)
-            if confirmed_count >= min_confirmed_columns:
-                barrier_mask[seed_row, c] = True
-                for col, row, _ in left:
-                    barrier_mask[row, col] = True
-                for col, row, _ in right:
-                    barrier_mask[row, col] = True
+            row_by_col = np.empty(w, dtype=np.float32)
+            confirmed_by_col = np.zeros(w, dtype=bool)
+            row_by_col[c] = seed_row
+            confirmed_by_col[c] = True
+            for col, row, conf in zip(left_cols, left_rows, left_conf):
+                row_by_col[col] = row
+                confirmed_by_col[col] = conf
+            for col, row, conf in zip(right_cols, right_rows, right_conf):
+                row_by_col[col] = row
+                confirmed_by_col[col] = conf
 
-    return barrier_mask
+            confirmed_columns = int(confirmed_by_col.sum())
+            if confirmed_columns >= min_confirmed_columns:
+                candidates.append(CandidateLine(
+                    seed_row=seed_row, seed_col=c,
+                    row_by_col=row_by_col, confirmed_by_col=confirmed_by_col,
+                    confirmed_columns=confirmed_columns))
+
+    return candidates
+
+
+def candidates_to_mask(candidates, grid_shape):
+    """Rasterizes a list of CandidateLine (e.g. lane_line_tracker.LineTracker.
+    get_trusted_lines()) into a boolean barrier mask, one True cell per
+    column per line (row_by_col rounded to the nearest cell) -- the shape
+    lane_segmentation.segment_lanes's barrier_mask parameter expects."""
+    h, w = grid_shape
+    mask = np.zeros((h, w), dtype=bool)
+    for cand in candidates:
+        rows = np.clip(np.round(cand.row_by_col).astype(np.int64), 0, h - 1)
+        mask[rows, np.arange(w)] = True
+    return mask

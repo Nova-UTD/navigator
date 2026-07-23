@@ -60,7 +60,8 @@ from segmentation.camera_lane_evidence import (
 )
 from segmentation.lane_segmentation import segment_lanes, count_and_locate_ego
 from segmentation.road_corridor import extract_ego_road_corridor
-from segmentation.lane_barrier_fitting import extract_barrier_lines
+from segmentation.lane_barrier_fitting import extract_barrier_lines, candidates_to_mask
+from segmentation.lane_line_tracker import LineTracker
 from segmentation.lidar_ground_height import parse_xyzi, ground_height_grid
 
 DRIVABLE_OCC_MAX = 50   # /grid/drivable/segmented cell counts as drivable if occ < this
@@ -149,6 +150,12 @@ class LaneGridNode(Node):
         self._last_x = self._last_y = self._last_yaw = None
         self._latest_detector_count = None
         self._tick = 0
+        # Cross-tick candidate-line confirmation + duplicate suppression
+        # (see lane_line_tracker.py) -- only ever touched inside
+        # _publish_loop, which runs solely on this node's single timer
+        # thread, so unlike the grid fields above (written by subscription
+        # callbacks on other threads) this needs no lock.
+        self._lane_tracker = LineTracker()
 
         # Per-camera state: precomputed projection LUT + latest cached
         # semantic frame (paired with each raw frame on arrival below).
@@ -281,10 +288,19 @@ class LaneGridNode(Node):
         clean_mask = extract_ego_road_corridor(drivable_mask, VEHICLE_ROW, VEHICLE_COL, height_grid=height_grid)
         # A real line's evidence is often weak/absent right at the ego's own
         # column (bumper-camera blind spot for the ground next to the
-        # vehicle, confirmed live) -- extract_barrier_lines bridges that gap
-        # by trusting nearby confirmed evidence instead of only cutting
-        # where evidence was directly observed above threshold.
-        barrier_mask = extract_barrier_lines(marking_evidence, clean_mask)
+        # vehicle, confirmed live) -- extract_barrier_lines detects
+        # candidate lines and projects each through the whole corridor
+        # instead of only cutting where evidence was directly observed
+        # above threshold. A single tick's evidence isn't trustworthy
+        # enough on its own to grant that much authority (confirmed live:
+        # transient noise occasionally clears the per-tick admission
+        # filter too) -- self._lane_tracker only lets a candidate actually
+        # cut the road once it's been independently re-detected over
+        # multiple consecutive ticks, and suppresses near-duplicate lines
+        # that would otherwise slice a real lane into slivers.
+        candidates = extract_barrier_lines(marking_evidence, clean_mask)
+        self._lane_tracker.update(candidates)
+        barrier_mask = candidates_to_mask(self._lane_tracker.get_trusted_lines(), clean_mask.shape)
         lane_id_grid, confidence_grid = segment_lanes(clean_mask, marking_evidence, barrier_mask=barrier_mask)
         total_lane_count, ego_lane_index, ego_lane_width_m = count_and_locate_ego(lane_id_grid)
 
