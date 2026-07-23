@@ -16,37 +16,52 @@ from segmentation.lane_segmentation import segment_lanes, count_and_locate_ego
 from segmentation.bev_geometry import GRID_SIZE, VEHICLE_ROW, VEHICLE_COL
 
 
-def test_single_confident_run_projects_through_the_whole_corridor():
-    """Core behavior: a real physical lane divider is one continuous
-    stripe for the length of a lane -- once confidently detected anywhere,
-    it must be trusted for the entire corridor, not just the columns it
-    was directly observed at."""
+def test_single_confident_run_seeds_and_produces_barrier():
     drivable = np.zeros((GRID_SIZE, GRID_SIZE), dtype=bool)
     drivable[140:160, :] = True
     evidence = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
-    evidence[150, 50:101] = 0.8  # only directly observed across 51 columns
+    evidence[150, 50:101] = 0.8  # clean, strong, 51-column line
 
     barrier = lbf.extract_barrier_lines(evidence, drivable)
 
-    # Projected through the entire drivable width, not just where observed.
-    assert barrier[150, :].all()
+    assert barrier[150, 50:101].all()
+    assert not barrier[150, :50].any()
+    assert not barrier[150, 101:].any()
 
 
-def test_a_large_gap_is_still_bridged():
+def test_gap_within_max_is_bridged():
     drivable = np.zeros((GRID_SIZE, GRID_SIZE), dtype=bool)
     drivable[140:160, :] = True
     evidence = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
-    # Two confirmed segments with a 150-column gap between them -- far
-    # larger than the old conservative bridging budget ever allowed.
+    # Two confirmed segments with a 39-column gap between them (< MAX_GAP_COLUMNS=40).
+    evidence[150, 40:81] = 0.8
+    evidence[150, 120:161] = 0.8
+
+    barrier = lbf.extract_barrier_lines(evidence, drivable)
+
+    assert barrier[150, 40:81].all()
+    assert barrier[150, 120:161].all()
+    # The gap itself should be bridged (coasted) -- something near row 150
+    # at each column in the middle of the gap.
+    assert barrier[145:156, 95:105].any(axis=0).all()
+
+
+def test_gap_beyond_max_is_not_bridged():
+    drivable = np.zeros((GRID_SIZE, GRID_SIZE), dtype=bool)
+    drivable[140:160, :] = True
+    evidence = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
+    # Two unrelated lines separated by a gap much larger than 2 * MAX_GAP_COLUMNS (40),
+    # so neither walk's coast can reach the other -- they must stay separate.
     evidence[150, 20:41] = 0.8
-    evidence[150, 191:211] = 0.8
+    evidence[150, 150:171] = 0.8
 
     barrier = lbf.extract_barrier_lines(evidence, drivable)
 
     assert barrier[150, 20:41].all()
-    assert barrier[150, 191:211].all()
-    assert barrier[150, 100]  # bridged through the gap's middle
-    assert barrier[150, :].all()  # and projected through the whole corridor beyond both ends too
+    assert barrier[150, 150:171].all()
+    # Deep in the untouched middle of the gap, neither walk's coast reaches --
+    # no barrier cell at all.
+    assert not barrier[:, 95].any()
 
 
 def test_isolated_short_blob_is_filtered_out():
@@ -67,12 +82,12 @@ def test_finds_two_separate_lines_independently():
     drivable[100:220, :] = True
     evidence = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
     evidence[130, 20:41] = 0.8  # first line
-    evidence[200, 20:41] = 0.8  # second, independent line elsewhere on the road
+    evidence[200, 20:41] = 0.8  # second, unrelated line elsewhere on the road
 
     barrier = lbf.extract_barrier_lines(evidence, drivable)
 
-    assert barrier[130, :].all()
-    assert barrier[200, :].all()
+    assert barrier[130, 20:41].all()
+    assert barrier[200, 20:41].all()
 
 
 def test_follows_a_gradually_curving_line():
