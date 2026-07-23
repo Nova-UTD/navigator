@@ -21,18 +21,21 @@ per-frame-percentile threshold (the flaw that made the LiDAR version fail:
 signal, since it's relative to the frame's own noise floor rather than any
 structural property).
 
-Restricted to a *marking search mask*, not a strict road-only match:
-confirmed live that PSPNet sometimes classifies the marking paint itself as
-"pole" (thin, locally-brighter features get confused with poles) or as
-"traffic sign" (yellow paint reads as traffic-sign yellow) rather than
-"road". Requiring an exact road-color match silently excludes the very
-pixels this module is trying to find. The search mask is
-road | sidewalk | pole | traffic sign: broad enough to survive those
-misclassifications, but still excludes anything that's clearly not
-ground-level (buildings, vehicles, sky, vegetation...). Anything found
-outside the actual road corridor is irrelevant anyway -- lane_grid_node
-only cuts lanes within the LiDAR-curb-cleaned corridor (road_corridor.py),
-so a spurious candidate far from the road never affects the result.
+Deliberately classification-agnostic: earlier versions gated the top-hat
+detector behind a semantic search mask (road | sidewalk | pole | traffic
+sign), extended piecemeal every time live testing found PSPNet mislabeling
+real lane paint as yet another Cityscapes class (confirmed live for "pole",
+"traffic sign", then "train" -- a fourth, unrelated class). That's a
+whack-a-mole pattern with no natural end: PSPNet was never trained to
+recognize lane markings, so there's no reason to trust its class boundaries
+here. A thin, locally bright line in the middle of the drivable area is a
+lane marking regardless of what the classifier calls the pixels around it.
+The search mask now only excludes sky (the one class that can never contain
+a real lane line, and cheap to rule out) -- classification no longer gates
+whether the top-hat detector even looks somewhere. Anything found outside
+the actual road corridor is irrelevant anyway -- lane_grid_node only cuts
+lanes within the LiDAR-curb-cleaned corridor (road_corridor.py), so a
+spurious candidate on a building or vehicle never affects the result.
 
 Pure numpy/opencv, no rclpy — unit-testable standalone, same style as
 lane_segmentation.py.
@@ -43,9 +46,7 @@ import numpy as np
 
 # Match image_segmentation_node._PALETTE (Cityscapes classes)
 ROAD_COLOR = (128, 64, 128)
-SIDEWALK_COLOR = (244, 35, 232)
-POLE_COLOR = (153, 153, 153)
-TRAFFIC_SIGN_COLOR = (220, 220, 0)
+SKY_COLOR = (70, 130, 180)
 
 # Structuring element for the top-hat filter: bigger than an expected lane
 # line's pixel width at typical viewing range, smaller than lane width, so
@@ -73,26 +74,21 @@ def road_mask_from_semantic(semantic_rgb, road_color=ROAD_COLOR):
 def marking_search_mask_from_semantic(semantic_rgb):
     """semantic_rgb: HxWx3 uint8, PSPNet's class-colored output (rgb8).
 
-    Returns an HxW bool mask of classes plausibly ground-level or thin
-    ground markings (road, sidewalk, pole, traffic sign) -- see module
-    docstring for why pole/traffic-sign are included: PSPNet sometimes
-    labels lane paint itself as one of those instead of road. Broader than
-    road_mask_from_semantic on purpose, for use gating
-    marking_candidate_mask specifically.
+    Returns an HxW bool mask excluding only sky -- see module docstring for
+    why classification no longer gates marking detection beyond that. Used
+    for marking_candidate_mask specifically, not road_mask_from_semantic
+    (which stays a strict road-only match for callers that actually want
+    that).
     """
-    sem = semantic_rgb
-    road = np.all(sem == np.array(ROAD_COLOR, dtype=np.uint8), axis=-1)
-    sidewalk = np.all(sem == np.array(SIDEWALK_COLOR, dtype=np.uint8), axis=-1)
-    pole = np.all(sem == np.array(POLE_COLOR, dtype=np.uint8), axis=-1)
-    traffic_sign = np.all(sem == np.array(TRAFFIC_SIGN_COLOR, dtype=np.uint8), axis=-1)
-    return road | sidewalk | pole | traffic_sign
+    sky = np.all(semantic_rgb == np.array(SKY_COLOR, dtype=np.uint8), axis=-1)
+    return ~sky
 
 
 def marking_candidate_mask(rgb_image, search_mask,
                             kernel=TOPHAT_KERNEL, tophat_thresh=TOPHAT_THRESHOLD):
     """rgb_image: HxWx3 uint8 raw camera frame. search_mask: HxW bool, e.g.
-    from marking_search_mask_from_semantic (road | sidewalk | pole -- not a
-    strict road-only match, see module docstring).
+    from marking_search_mask_from_semantic (everything except sky, see
+    module docstring).
 
     Returns an HxW bool mask of candidate lane-marking pixels: locally
     brighter than their surroundings (top-hat response above threshold)
