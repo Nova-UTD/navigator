@@ -63,19 +63,12 @@ import numpy as np
 # than a bare cut, so there's no reason to demand more of them.
 CONFIDENT_THRESHOLD = 0.2
 
-# Live-tuned way up from an initial 4 (0.8m). At 4, granting a candidate
-# "project through the whole corridor" authority was far too easy to
-# trigger from noise while driving -- confirmed live: with a moving
-# vehicle generating more per-frame variability, several spurious short
-# runs would each clear 4 confirmed columns and each cut the *entire*
-# corridor width, producing 7-14 phantom "lanes" a fraction of a meter
-# wide. Projecting a line through the whole corridor is a much bigger
-# claim than just cutting a few observed cells, so it needs a much bigger
-# bar: 20 columns (4m) is comfortably below the run lengths a real,
-# repeatedly-observed divider produces (confirmed live: 35-41 consecutive
-# confirmed columns for the real line in this scene) while being hard for
-# a transient noise blob to sustain.
-MIN_CONFIRMED_COLUMNS = 20
+# A tracked line needs at least this many *directly confirmed* columns
+# before it's trusted enough to be projected through the corridor -- filters
+# an isolated stray bright cell (noise) from being treated as a real line.
+# 4 columns = 0.8m, short enough not to reject a real line seen only
+# briefly, long enough that one-off noise can't seed a phantom cut.
+MIN_CONFIRMED_COLUMNS = 4
 
 # Reused from road_corridor.py's defaults for the same role: how far a
 # single step's found row may move from the tracked center (max_row_jump),
