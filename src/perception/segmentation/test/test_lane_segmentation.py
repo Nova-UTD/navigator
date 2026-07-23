@@ -148,23 +148,6 @@ def test_segment_lanes_robust_to_single_cell_gap_in_barrier():
     assert ego_idx == 1
 
 
-def test_segment_lanes_uses_barrier_mask_directly_when_given():
-    """barrier_mask, when supplied, is used as-is for the cut -- the cut
-    decision no longer comes from marking_evidence/marking_threshold at
-    all. Confirmed here by giving marking_evidence that would produce zero
-    cuts under the default threshold path, while barrier_mask carries the
-    real cuts."""
-    mask, lane_row_ranges = make_three_lane_drivable_mask()
-    marking = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)  # no threshold-crossing evidence at all
-    barrier_mask = marking_lines_at_gaps(lane_row_ranges) >= 0.5
-
-    lane_id_grid, confidence_grid = ls.segment_lanes(mask, marking, barrier_mask=barrier_mask)
-    total_lane_count, ego_lane_index, _ = ls.count_and_locate_ego(lane_id_grid)
-
-    assert total_lane_count == 3
-    assert ego_lane_index == 1
-
-
 def test_segment_lanes_no_drivable_area():
     mask = np.zeros((GRID_SIZE, GRID_SIZE), dtype=bool)
     marking = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)

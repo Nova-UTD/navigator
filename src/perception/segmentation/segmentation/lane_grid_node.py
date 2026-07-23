@@ -60,7 +60,6 @@ from segmentation.camera_lane_evidence import (
 )
 from segmentation.lane_segmentation import segment_lanes, count_and_locate_ego
 from segmentation.road_corridor import extract_ego_road_corridor
-from segmentation.lane_barrier_fitting import extract_barrier_lines
 from segmentation.lidar_ground_height import parse_xyzi, ground_height_grid
 
 DRIVABLE_OCC_MAX = 50   # /grid/drivable/segmented cell counts as drivable if occ < this
@@ -279,13 +278,7 @@ class LaneGridNode(Node):
         # before cutting it into lanes, so an unrelated noisy blob crossing
         # the ego's column can't get counted as its own lane.
         clean_mask = extract_ego_road_corridor(drivable_mask, VEHICLE_ROW, VEHICLE_COL, height_grid=height_grid)
-        # A real line's evidence is often weak/absent right at the ego's own
-        # column (bumper-camera blind spot for the ground next to the
-        # vehicle, confirmed live) -- extract_barrier_lines bridges that gap
-        # by trusting nearby confirmed evidence instead of only cutting
-        # where evidence was directly observed above threshold.
-        barrier_mask = extract_barrier_lines(marking_evidence, clean_mask)
-        lane_id_grid, confidence_grid = segment_lanes(clean_mask, marking_evidence, barrier_mask=barrier_mask)
+        lane_id_grid, confidence_grid = segment_lanes(clean_mask, marking_evidence)
         total_lane_count, ego_lane_index, ego_lane_width_m = count_and_locate_ego(lane_id_grid)
 
         self._tick += 1

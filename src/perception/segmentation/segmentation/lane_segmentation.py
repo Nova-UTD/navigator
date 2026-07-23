@@ -41,17 +41,7 @@ GROUND_Z_MAX = 0.35
 MARKING_MIN_HITS  = 2      # need >= 2 ground returns in a cell to trust its intensity ratio
 MARKING_PERCENTILE = 85.0  # "bright" = top 15% of intensities in this frame's ground points
 
-# Live-tuned down from an initial 0.5 starting point: a painted line only
-# partially fills a 0.2m grid cell (more so at range, where perspective
-# grows the ground area a pixel covers), so camera_marking_evidence's
-# candidate-pixel ratio for a real, persistently-observed line commonly
-# settles in the 0.15-0.4 range, not above 0.5 -- confirmed live by
-# accumulating the actual EMA-blended evidence grid against a real visible
-# lane line and inspecting its steady-state per-cell values. EMA blending
-# converges toward a cell's steady-state per-frame ratio, so a cell stuck
-# below the old 0.5 threshold would never cross it no matter how long it
-# was observed -- this wasn't a warm-up/timing issue.
-MARKING_THRESHOLD = 0.2    # marking_evidence >= this cuts the drivable mask
+MARKING_THRESHOLD = 0.5    # marking_evidence >= this cuts the drivable mask
 
 CONF_ASSIGNED   = 90  # cell belongs to a lane component connected to the ego column
 CONF_UNASSIGNED = 30  # cell is drivable but not connected to any ego-column lane
@@ -102,21 +92,16 @@ def intensity_lane_evidence(points_xyzi, grid_size=GRID_SIZE):
 
 def segment_lanes(drivable_mask, marking_evidence,
                    ego_row=VEHICLE_ROW, ego_col=VEHICLE_COL,
-                   marking_threshold=MARKING_THRESHOLD, barrier_mask=None):
+                   marking_threshold=MARKING_THRESHOLD):
     """drivable_mask: (H, W) bool, True where the drivable grid says drivable.
     marking_evidence: (H, W) float in [0, 1] from intensity_lane_evidence.
-    barrier_mask: optional (H, W) bool -- when given (e.g. from
-    lane_barrier_fitting.extract_barrier_lines, which bridges gaps a raw
-    per-cell threshold can't), used directly as the pre-cut barrier instead
-    of thresholding marking_evidence. When None (default), falls back to
-    exactly the marking_evidence >= marking_threshold behavior below, so
-    existing callers are unaffected.
 
-    Cuts drivable_mask along the barrier, labels the remaining connected
-    components (4-connectivity), and assigns lane ids by increasing row
-    (lateral position) to whichever components touch the ego's column —
-    components that don't touch the ego column (e.g. a visible cross-street)
-    are left unassigned (-1) rather than guessed at.
+    Cuts drivable_mask along cells where marking_evidence >= marking_threshold,
+    labels the remaining connected components (4-connectivity), and assigns
+    lane ids by increasing row (lateral position) to whichever components
+    touch the ego's column — components that don't touch the ego column
+    (e.g. a visible cross-street) are left unassigned (-1) rather than
+    guessed at.
 
     Returns (lane_id_grid int16, confidence_grid uint8), both (H, W).
     """
@@ -128,18 +113,8 @@ def segment_lanes(drivable_mask, marking_evidence,
     # distant line) so a barrier that's real but not perfectly continuous
     # doesn't let two lanes' connected components leak into one -- the
     # same failure mode as under-segmentation from a missing signal
-    # entirely, just from noise instead. Still applied even when barrier_mask
-    # is supplied -- cheap, and still useful for pixel-level smoothing on
-    # top of whatever gap-bridging barrier_mask already did.
-    raw_barrier = marking_evidence >= marking_threshold if barrier_mask is None else barrier_mask
-    # border_value=1 -- binary_closing's erosion step otherwise treats the
-    # area just outside the grid as False, which erodes away a barrier that
-    # runs all the way to column 0 or the last column (a phantom 1-cell gap
-    # exactly at the grid edge, discovered live: it let two regions that
-    # should stay cut apart connect back together by routing around the
-    # edge). Cells beyond the grid aren't a real gap, so they shouldn't be
-    # treated as one.
-    barrier = binary_closing(raw_barrier, structure=np.ones((3, 3)), border_value=1)
+    # entirely, just from noise instead.
+    barrier = binary_closing(marking_evidence >= marking_threshold, structure=np.ones((3, 3)))
     traversable = drivable_mask & ~barrier
     labeled, _ = sp_label(traversable)
 
