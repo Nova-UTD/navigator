@@ -2,6 +2,11 @@
 image_segmentation_node.py
 Runs PSPNet (mmseg v1.x) on 4 CARLA cameras in a round-robin background thread.
 Callbacks only store the latest frame — no blocking inference in the spin thread.
+
+Modified by Siddarth Nandyala <siddarth.nandyala@utdallas.edu>: moved inference
+onto cuda:1 (kept off GPU0 to avoid contending with CARLA's own rendering),
+and added the stamp-gated re-processing guard so a cached frame isn't
+reprocessed/re-published faster than new camera frames actually arrive.
 """
 
 import threading

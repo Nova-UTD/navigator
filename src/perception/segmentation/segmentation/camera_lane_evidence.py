@@ -2,6 +2,9 @@
 """
 camera_lane_evidence.py — camera-based lane-marking evidence.
 
+Author: Siddarth Nandyala
+Email: siddarth.nandyala@utdallas.edu
+
 Replaces the original LiDAR-intensity approach (intensity_lane_evidence in
 lane_segmentation.py, still present but unused by lane_grid_node as of this
 change): CARLA's standard sensor.lidar.ray_cast computes intensity from a

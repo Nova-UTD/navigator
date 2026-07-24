@@ -287,6 +287,13 @@ lane_grid = Node(
     output="screen",
 )
 
+yolopv2_lane = Node(
+    package="segmentation",
+    executable="yolopv2_lane_node",
+    name="yolopv2_lane_node",
+    output="screen",
+)
+
 hybrid_drivable_grid = Node(
     package="segmentation",
     executable="hybrid_drivable_grid_node",

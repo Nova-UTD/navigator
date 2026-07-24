@@ -2,6 +2,9 @@
 """
 lidar_ground_height.py — per-cell LiDAR ground height, for curb detection.
 
+Author: Siddarth Nandyala
+Email: siddarth.nandyala@utdallas.edu
+
 A camera-based road classifier can't reliably tell a sidewalk from a road
 surface -- both are flat and grayish. The physical curb between them is a
 real height step LiDAR can see regardless. This module turns raw LiDAR

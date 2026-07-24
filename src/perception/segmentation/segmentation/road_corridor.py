@@ -3,6 +3,9 @@
 road_corridor.py — clean, geometry-aware road extent from a noisy drivable
 mask.
 
+Author: Siddarth Nandyala
+Email: siddarth.nandyala@utdallas.edu
+
 /grid/drivable/segmented (perception_drivable_grid_node.py's output) is a
 per-cell classification and can be choppy — a misclassified sidewalk patch,
 a driveway, or a noisy bridge between the road and an adjacent surface can

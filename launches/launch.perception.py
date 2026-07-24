@@ -47,5 +47,6 @@ def generate_launch_description():
         hybrid_grid,
         perception_drivable_grid,
         hybrid_drivable_grid,
+        yolopv2_lane,
         lane_grid,
     ])

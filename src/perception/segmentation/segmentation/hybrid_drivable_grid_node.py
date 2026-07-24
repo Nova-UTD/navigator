@@ -5,6 +5,9 @@ hybrid_drivable_grid_node.py
 Fuses the perception-based drivable grid, the HD-map, and the hybrid occupancy
 grid to produce a real-time /grid/drivable OccupancyGrid.
 
+Modified by Siddarth Nandyala <siddarth.nandyala@utdallas.edu>: publish rate
+bumped 10Hz -> 20Hz to match the rest of the perception grid stack.
+
 Perception is the PRIMARY source.  HD map is a FALLBACK for cells where
 perception is uncertain.  Occupancy grid provides real-time obstacle veto.
 

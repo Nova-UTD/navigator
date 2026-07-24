@@ -2,6 +2,9 @@
 """
 lane_segmentation.py — pure numpy/scipy lane-indexing algorithm.
 
+Author: Siddarth Nandyala
+Email: siddarth.nandyala@utdallas.edu
+
 No ROS/rclpy/cv2 dependency so this can be unit-tested standalone. The ROS
 node wrapper (lane_grid_node.py) supplies real sensor data and handles
 temporal smoothing; this module only reasons about a single frame.

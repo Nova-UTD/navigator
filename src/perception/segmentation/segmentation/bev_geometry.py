@@ -2,6 +2,9 @@
 """
 bev_geometry.py — shared camera-to-BEV projection geometry.
 
+Author: Siddarth Nandyala
+Email: siddarth.nandyala@utdallas.edu
+
 Extracted from perception_drivable_grid_node.py so every grid-publishing node
 (drivable grid, lane grid, ...) stays pixel-aligned on the same 300x300
 @0.2m/cell base_link grid and the same hardcoded camera extrinsics, instead of

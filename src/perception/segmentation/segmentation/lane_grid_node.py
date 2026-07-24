@@ -2,20 +2,35 @@
 """
 lane_grid_node.py — lane-indexed BEV grid, built without map_management.
 
+Author: Siddarth Nandyala
+Email: siddarth.nandyala@utdallas.edu
+
 Pipeline (same rate/geometry as perception_drivable_grid_node so the two
 grids overlay exactly):
-  1. Per camera, on each raw-frame arrival: detect lane-marking-candidate
-     pixels in the RGB image (camera_lane_evidence.marking_candidate_mask —
-     a morphological top-hat filter, restricted to the PSPNet-classified
-     road region) and project them into the BEV grid via the same
-     bev_geometry.CamLUT perception_drivable_grid_node.py uses, so this
-     stays pixel-aligned with the drivable grid for free.
+  1. Front camera: lane-line pixels come from yolopv2_lane_node's
+     pretrained-model mask (/lane_mask/front) — see _cb_yolopv2_mask.
+     Right/left cameras: detect lane-marking-candidate pixels in the RGB
+     image (camera_lane_evidence.marking_candidate_mask — a morphological
+     top-hat filter, restricted to the PSPNet-classified road region) —
+     see _update_marking_evidence. Both paths project into the BEV grid
+     via the same bev_geometry.CamLUT perception_drivable_grid_node.py
+     uses, so this stays pixel-aligned with the drivable grid for free,
+     and both feed the same _blend_marking_evidence EMA step.
 
-     (Originally this used LiDAR intensity instead — CARLA's standard
-     LiDAR intensity is a pure distance/incidence-angle attenuation model
-     with no dependence on what the ray hit, so it never actually
-     distinguished painted lane markings from bare asphalt in simulation.
-     See camera_lane_evidence.py's docstring.)
+     (The top-hat approach, still used for right/left, was itself a
+     replacement for an original LiDAR-intensity approach — CARLA's
+     standard LiDAR intensity is a pure distance/incidence-angle
+     attenuation model with no dependence on what the ray hit, so it
+     never actually distinguished painted lane markings from bare asphalt
+     in simulation. See camera_lane_evidence.py's docstring. The front
+     camera moved to YOLOPv2 after live testing found the hand-built
+     top-hat/geometric approach never reached a stable result there —
+     YOLOPv2, pretrained on real-world driving data, produced a
+     dramatically cleaner lane-line mask on a real captured CARLA frame.
+     Right/left stay on the top-hat path for now: YOLOPv2 is pretrained on
+     forward-facing dashcam data, and our side cameras sit at a ~70 degree
+     yaw, a real domain shift that needs its own live validation before
+     trusting it there too.)
   2. Temporally blend that per-frame marking evidence into a persistent
      grid (EMA + pose-compensation, same pattern as
      perception_drivable_grid_node's evidence grid) so sparse per-frame
@@ -160,6 +175,12 @@ class LaneGridNode(Node):
 
         for name, semantic_topic, t_base, r_cb_mat in CAMERAS:
             self._cam_luts[name] = CamLUT(t_base, r_cb_mat)
+            if name == 'front':
+                # Front uses yolopv2_lane_node's pretrained-model mask
+                # instead (see _cb_yolopv2_mask, subscribed below) --
+                # skip the semantic+top-hat subscriptions entirely for
+                # this camera rather than leaving them wired up unused.
+                continue
             self.create_subscription(
                 Image, semantic_topic,
                 lambda msg, n=name: self._cb_semantic(msg, n), qos_be)
@@ -169,6 +190,7 @@ class LaneGridNode(Node):
                     Image, raw_topic,
                     lambda msg, n=name: self._cb_raw(msg, n), qos_be)
 
+        self.create_subscription(Image, '/lane_mask/front', self._cb_yolopv2_mask, qos_be)
         self.create_subscription(OccupancyGrid, '/grid/drivable/segmented', self._cb_drivable, qos_be)
         self.create_subscription(PointCloud2, '/lidar/filtered', self._cb_lidar, qos_be)
         self.create_subscription(Odometry, '/gnss/odometry', self._cb_odom, qos_be)
@@ -202,6 +224,19 @@ class LaneGridNode(Node):
         candidate_mask = marking_candidate_mask(raw_img, search_mask)
         frame_evidence, observed = camera_marking_evidence(
             candidate_mask, self._cam_luts[name], GRID_SIZE)
+        self._blend_marking_evidence(frame_evidence, observed)
+
+    def _cb_yolopv2_mask(self, msg):
+        # yolopv2_lane_node already published this at the raw camera's
+        # native resolution (its own unletterbox_mask step) -- pixel-
+        # aligned with the front CamLUT for free, same as /semantic/* is
+        # for the other cameras' top-hat path.
+        candidate_mask = self.bridge.imgmsg_to_cv2(msg, 'mono8') > 127
+        frame_evidence, observed = camera_marking_evidence(
+            candidate_mask, self._cam_luts['front'], GRID_SIZE)
+        self._blend_marking_evidence(frame_evidence, observed)
+
+    def _blend_marking_evidence(self, frame_evidence, observed):
         if not observed.any():
             return
         with self._lock:
