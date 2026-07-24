@@ -2,6 +2,11 @@
 image_segmentation_node.py
 Runs PSPNet (mmseg v1.x) on 4 CARLA cameras in a round-robin background thread.
 Callbacks only store the latest frame — no blocking inference in the spin thread.
+
+Modified by Siddarth Nandyala <siddarth.nandyala@utdallas.edu>: moved inference
+onto cuda:1 (kept off GPU0 to avoid contending with CARLA's own rendering),
+and added the stamp-gated re-processing guard so a cached frame isn't
+reprocessed/re-published faster than new camera frames actually arrive.
 """
 
 import threading
@@ -60,8 +65,8 @@ class ImageSegmentationNode(Node):
 
     def __init__(self):
         super().__init__('image_segmentation_node')
-        self.get_logger().info('Loading PSPNet on CPU…')
-        self.model  = init_model(_CONFIG, _CKPT, device='cpu')
+        self.get_logger().info("Loading PSPNet on GPU (cuda:1, kept off GPU0 to avoid contending with CARLA rendering)…")
+        self.model  = init_model(_CONFIG, _CKPT, device="cuda:1")
         self.bridge = CvBridge()
         self.get_logger().info('PSPNet ready.')
 
@@ -98,12 +103,21 @@ class ImageSegmentationNode(Node):
         import time
         n = len(self._order)
         self.get_logger().info('Inference thread running (round-robin 4 cameras).')
+        # Track the last frame stamp we actually ran inference on per camera.
+        # On GPU, inference is fast enough that without this check the loop
+        # re-processes and re-publishes the same cached frame hundreds of
+        # times a second while waiting for the camera's next real frame,
+        # flooding downstream perception nodes and the DDS graph. Only run
+        # inference when a genuinely new frame has arrived.
+        last_stamp = {cam: None for cam in self._order}
         while True:
             cam = self._order[self._idx]
             with self._lock:
                 msg, pub = self._latest[cam]
 
-            if msg is not None:
+            stamp = msg.header.stamp if msg is not None else None
+            if msg is not None and stamp != last_stamp[cam]:
+                last_stamp[cam] = stamp
                 try:
                     img       = self.bridge.imgmsg_to_cv2(msg, 'rgb8')[:, :, :3]
                     result    = inference_model(self.model, img)
@@ -115,7 +129,7 @@ class ImageSegmentationNode(Node):
                 except Exception as e:
                     self.get_logger().error(f'Inference error on {cam}: {e}')
             else:
-                time.sleep(0.05)
+                time.sleep(0.01)
 
             self._idx = (self._idx + 1) % n
 
