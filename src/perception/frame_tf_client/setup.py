@@ -24,7 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'client = frame_tf_client.frame_tf_client_node:main'
+            'client = frame_tf_client.frame_tf_client_node:main',
+            'overlay = frame_tf_client.pixel_overlay:main',
         ],
     },
 )
