@@ -249,3 +249,8 @@ road_user_detector = Node(
     package='road_user_detection',
     executable='road_user_detection'
 )
+
+keyboard_controller = Node(
+    package='keyboard_control',
+    executable='keyboard_control_node'
+)
