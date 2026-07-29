@@ -1,8 +1,8 @@
 """
 Package:   frame_tf_service
 Filename:  frame_tf_service.py
-Authors:   David Homiller, Saishravan Muthukrishnan, (AI was used for help with some debugging, math, learning information about ROS2, and packages.xml and CmakeLists.txt additions)
-Email:     david.homiller@utdallas.edu, saishravan.muthukrishnan@utdallas.edu
+Authors:   David Homiller, Saishravan Muthukrishnan, Yusuf Shaikh (AI was used for help with some debugging, math, learning information about ROS2, and packages.xml and CmakeLists.txt additions)
+Email:     david.homiller@utdallas.edu, saishravan.muthukrishnan@utdallas.edu, yusuf.shaikh@utdallas.edu
 Copyright: 2021, Nova UTD
 License:   MIT License
 
@@ -220,64 +220,72 @@ class FrameTFService(Node):
                     f'Could not transform to camera frameawefew: {ex}')
                 continue
 
-    def world_to_pixel(self, camera, stamp, world_coord):
-        """ Converts given world coordinates into pixel coordinates and stores in a blob
-        
-        Args:
-            camera (string)
-            stamp (Time)
-            world_coord (3 Tuple)
-        Returns:
-            None
+    def world_to_pixel(self, camera: str, stamp: Time, world_coord) -> bool:
         """
-        while True:
-            try:
-                # get rotation matrix
-                r_lc = self.tf_buffer.lookup_transform('hero/'+camera, 'map', stamp, timeout=rclpy.duration.Duration(seconds=2.0)).transform.rotation
-                R_lc = R.from_quat([r_lc.x, r_lc.y, r_lc.z, r_lc.w]).as_matrix()
-                
-                # get translation matrix 
-                t_wc = self.tf_buffer.lookup_transform('hero/'+camera, 'map', stamp, timeout=rclpy.duration.Duration(seconds=2.0)).transform.translation
-                t_wc = np.array([t_wc.x,t_wc.y,t_wc.z])
-                
-                # choose correct set of camera intrinsics
-                selected_camera = None
-                if camera == "rgb_front":
-                    selected_camera = self.rgb_front_cam_model
-                elif camera == "rgb_center":
-                    selected_camera = self.rgb_center_cam_model
-                elif camera == "rgb_left":
-                    selected_camera = self.rgb_left_cam_model
-                elif camera == "rgb_right":
-                    selected_camera = self.rgb_right_cam_model
-                elif camera == "rgb_back":
-                    selected_camera = self.rgb_back_cam_model
-                
-                fx = selected_camera.k[0]
-                cx = selected_camera.k[2]
-                fy = selected_camera.k[4]
-                cy = selected_camera.k[5]
-                
-                # transform coordinates
-                p_cam = R_lc*world_coord + t_wc
-                
-                # divide transformed world coordinates into pixel coordinates and apply intrinsics
-                x = world_coord[0] / world_coord[2]
-                y = world_coord[1] / world_coord[2];
-                x_pixel = fx * x + cx
-                y_pixel = fy * y + cy
-                coords = (x_pixel, y_pixel)
-                #print(coords)
-                
-                # store as blob
-                self.serialized_message = bytes(coords);
-                break;
-            
-            except TransformException as ex:
-                self.get_logger().info(
-                    f'Could not convert world to pixel: {ex}')
-                continue
-    
+        Project a map-frame 3D point onto the camera image.
+
+        Process:
+          1. Load CameraInfo for `camera` (intrinsics + optical frame id).
+          2. Look up TF that expresses map points in the camera frame
+             (stamp 0/0 → latest TF; otherwise use the request stamp).
+          3. Apply the rigid transform: p_cam = R · P_map + t.
+          4. Reject non-finite points or points behind the lens (z_c <= 0).
+          5. Pinhole-project with K: u = fx·x_c/z_c + cx, v = fy·y_c/z_c + cy.
+          6. Store (u, v) as float64 bytes in self.serialized_message.
+
+        Returns:
+            True on success (message filled), False if CameraInfo/TF/geometry fails.
+        """
+        # Get intrinsics (fx, fy, cx, cy) and the camera's TF frame name
+        camera_info = self.get_camera_info(camera)
+        if camera_info is None:
+            self.get_logger().info(f"No CameraInfo yet for '{camera}'")
+            return False
+
+        # p_map = the 3D point in the world/map frame (what the caller asked about)
+        p_map = np.asarray(world_coord, dtype=np.float64)
+        camera_frame = camera_info.header.frame_id
+
+        # if client sends time 0/0, use the latest pose
+        tf_time = (
+            rclpy.time.Time()
+            if (stamp.sec == 0 and stamp.nanosec == 0)
+            else stamp
+        )
+
+        # express map points in this camera's frame
+        try:
+            tf = self.tf_buffer.lookup_transform(
+                camera_frame, "map", tf_time,
+                timeout=rclpy.duration.Duration(seconds=0.2),
+            )
+        except TransformException as ex:
+            self.get_logger().info(f"world_to_pixel TF failed: {ex}")
+            return False
+
+        # Rigid transform: rotate the point, then slide it (R · p_map + t)
+        # Result p_cam is the same physical point, but measured from the camera
+        q = tf.transform.rotation
+        t = tf.transform.translation
+        Rm = R.from_quat([q.x, q.y, q.z, q.w])
+        p_cam = Rm.apply(p_map) + np.array([t.x, t.y, t.z])
+
+        # In camera coords, +Z points out through the lens. reject points behind camera
+        x_c, y_c, z_c = p_cam
+        if not np.all(np.isfinite(p_cam)) or z_c <= 0:
+            self.get_logger().info(
+                f"world_to_pixel: point not in front of camera (z_c={z_c})")
+            return False
+
+        # Pinhole projection: divide by depth, then scale/shift into pixel coords
+        fx, fy, cx, cy = self.get_intrinsics(camera_info)
+        u = fx * (x_c / z_c) + cx
+        v = fy * (y_c / z_c) + cy
+
+        # Save (u, v) as float64 bytes so the client can unpack them
+        self.serialized_message = np.asarray([u, v], dtype=np.float64).tobytes()
+        self.get_logger().info(f"world_to_pixel → (u={u:.2f}, v={v:.2f})")
+        return True
 
     def get_intrinsics(self, camera_info: CameraInfo) -> Tuple[float, float, float, float]:
         """
@@ -322,47 +330,64 @@ class FrameTFService(Node):
         v: float,
     ) -> Optional[np.ndarray]:
         """
-        Converts pixel coordinate to world coordinate ("what 3d map point is this pixel looking at?")
+        Associate an image pixel with a nearby LiDAR return and return its map XYZ.
+
+        A pixel alone is underdetermined (a ray). This does nearby-ray association:
+        project the latest cloud into the image and pick the nearest return within
+        MAX_PIXEL_RADIUS (not an exact ray–surface intersection).
+
+        Process:
+          1. Read intrinsics (fx, fy, cx, cy) and camera / cloud frame ids.
+          2. Parse the PointCloud2 into an (N,3) XYZ array.
+          3. TF the cloud into the camera frame (for projection) and into map
+             (for the answer). Prefer image_stamp for TF; else cloud stamp.
+          4. For each return: drop non-finite / behind-camera (z_c <= 0) /
+             off-image projections; project with the pinhole model.
+          5. Among returns within MAX_PIXEL_RADIUS of (u, v), keep the nearest
+             in image space; break near-ties with smaller z_c (frontmost).
+          6. Return that return's map XYZ, or None if nothing is close enough.
+
+        Returns:
+            np.ndarray shape (3,) in map, or None on failure / no association.
         """
         fx, fy, cx, cy = self.get_intrinsics(camera_info)
-        camera_frame = camera_info.header.frame_id # where the camera lives in TF
-        src = cloud.header.frame_id # where the LiDAR points currently live
+        camera_frame = camera_info.header.frame_id  # where the camera lives in TF
+        src = cloud.header.frame_id  # where the LiDAR points currently live
 
-        points = self.cloud_to_xyz(cloud)                       # (N,3) in the cloud's own frame
+        points = self.cloud_to_xyz(cloud)  # (N,3) in the cloud's own frame
         if points.size == 0:
             return None
 
-        # prefer image stamp for TF when provided; fall back to cloud stamp
+        # Prefer image stamp for TF when provided; fall back to cloud stamp
         stamp = image_stamp if (image_stamp.sec != 0 or image_stamp.nanosec != 0) else cloud.header.stamp
 
-        # cloud_cam[i] and cloud_map[i] are the same laser hit, just in different coordinates
-        # when we pick a winner in image space, we can easily get the map XYZ
+        # Same laser hit in two frames: project in camera, answer in map
         cloud_cam = self.transform_cloud(points, camera_frame, src, stamp)
         cloud_map = self.transform_cloud(points, "map", src, stamp)
 
         best = None  # (d_pixels, z_c, p_map)
-        for p_cam, p_map in zip(cloud_cam, cloud_map):     # each is [x, y, z]
+        for p_cam, p_map in zip(cloud_cam, cloud_map):  # each is [x, y, z]
             x_c, y_c, z_c = p_cam
-            if not np.all(np.isfinite(p_cam)) or z_c <= 0: # skip bad / behind-camera points
+            if not np.all(np.isfinite(p_cam)) or z_c <= 0:  # skip bad / behind-camera
                 continue
-            
-            # project with pinhole formula
+
+            # Project with pinhole formula
             ui = fx * (x_c / z_c) + cx
             vi = fy * (y_c / z_c) + cy
             if not (0 <= ui < camera_info.width and 0 <= vi < camera_info.height):
                 continue
-            
-            # distance (how many pixels away the projected LiDAR hit (ui, vi) is from the query pixel (u, v))
+
+            # Image distance from this projected hit to the query pixel
             d = hypot(ui - u, vi - v)
 
             if d <= MAX_PIXEL_RADIUS:
-                # nearest pixel first; break near-ties by frontmost depth
+                # Nearest pixel first; break near-ties by frontmost depth
                 if best is None or (round(d, 1), z_c) < (round(best[0], 1), best[1]):
                     best = (d, z_c, p_map)
 
         if best is None:
-            return None          # no LiDAR near this pixel
-        return best[2]              # map point measured at cloud time
+            return None  # no LiDAR near this pixel
+        return best[2]  # map point measured at cloud time
         
                 
     
@@ -388,9 +413,15 @@ class FrameTFService(Node):
             response.coords = self.serialized_message
             response.tf_success = True
         elif request.world_to_pixel == 1:
-            self.world_to_pixel(request.camera_name, request.stamp, (request.x, request.y, request.z))
-            response.coords = self.serialized_message
-            response.tf_success = True
+            ok = self.world_to_pixel(
+                request.camera_name, request.stamp,
+                (request.x, request.y, request.z))
+            if ok and self.serialized_message is not None:
+                response.coords = self.serialized_message
+                response.tf_success = True
+            else:
+                response.tf_success = False
+                response.coords = bytes()
         elif request.pixel_to_world == 1:
             camera_info = self.get_camera_info(request.camera_name)
             if camera_info is None:
