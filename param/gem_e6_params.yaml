@@ -1,0 +1,93 @@
+autonomous_cruise_controller:
+  ros__parameters:
+    # Topic names
+    path_topic: "/planning/path"
+    odom_topic: "/gnss/odometry"
+    objects_topic: "/tracked/objects3d"
+    control_topic: "/vehicle/control"
+    
+    # Control parameters
+    control_rate: 20.0  # Hz
+    enabled: true
+    
+    # ========================================
+    # GEM e6 SPECIFIC VEHICLE PARAMETERS
+    # ========================================
+    # GEM e6 Specifications:
+    # - Wheelbase: 134 in (3.404 m)
+    # - Top Speed: 25 mph (11.2 m/s, 40 km/h)
+    # - Weight: 1,696 lbs (769 kg)
+    # - Motor: 48V 8.7 HP AC induction
+    # - Turning Radius: 220 in (5.59 m)
+    # ========================================
+    
+    wheelbase: 3.404  # meters (134 inches - GEM e6 actual wheelbase)
+    
+    # ========================================
+    # LATERAL CONTROL - Optimized for GEM e6
+    # ========================================
+    # GEM e6 is a low-speed vehicle (LSV) with:
+    # - Tight turning radius (good maneuverability)
+    # - Lower speeds (max 25 mph)
+    # - Campus/urban environment operation
+    
+    min_lookahead: 2.5  # meters (shorter for low-speed, tight turns)
+    max_lookahead: 10.0  # meters (reduced from 15m - not needed at low speeds)
+    lookahead_gain: 0.4  # dimensionless (slightly reduced for tighter response)
+    max_steer: 0.8  # radians (~46 degrees - conservative for safety)
+    
+    # ========================================
+    # LONGITUDINAL CONTROL - Optimized for GEM e6
+    # ========================================
+    # GEM e6 characteristics:
+    # - Electric motor: instant torque but limited power
+    # - Top speed: 25 mph (11.2 m/s)
+    # - Campus operation: frequent stops, pedestrians
+    # - Smooth ride important for passenger comfort
+    
+    target_speed: 5.0  # m/s (~11 mph, ~18 km/h) - safe campus speed
+    
+    # PID gains tuned for electric motor response
+    kp: 1.0  # Proportional (slightly reduced - electric motors respond quickly)
+    ki: 0.12  # Integral (reduced - less steady-state error with electric)
+    kd: 0.08  # Derivative (increased - more damping for smooth ride)
+    
+    # Acceleration limits for GEM e6
+    # Electric motors can accelerate quickly but we limit for comfort
+    max_accel: 1.5  # m/s² (gentler than typical car - passenger comfort)
+    max_decel: -2.5  # m/s² (comfortable braking, not emergency)
+    max_jerk: 2.0  # m/s³ (very smooth - important for shuttle passengers)
+    
+    # Actuator limits
+    max_throttle: 0.70  # Maximum throttle (0-1) - conservative for safety
+    max_brake: 1.0  # Maximum brake (0-1)
+    integral_limit: 3.0  # Anti-windup limit (reduced for lower speeds)
+    
+    # ========================================
+    # ADAPTIVE CRUISE - Campus/Urban Optimized
+    # ========================================
+    # GEM e6 operates in:
+    # - Campus environments with pedestrians
+    # - Parking lots and service roads
+    # - Mixed traffic (golf carts, bikes, pedestrians)
+    
+    time_gap: 2.0  # seconds (increased for safety - more conservative)
+    min_following_distance: 4.0  # meters (reduced - lower speeds, shorter stopping)
+    max_detection_distance: 30.0  # meters (reduced - campus scale, not highway)
+    detection_angle: 0.4  # radians (~23 degrees - wider for campus environment)
+    
+    # ========================================
+    # NOTES FOR GEM e6 OPERATION
+    # ========================================
+    # 1. Lower speeds: Target 5 m/s (~11 mph) for campus safety
+    # 2. Tighter turns: Shorter lookahead for better maneuverability
+    # 3. Smoother ride: Lower jerk limit for passenger comfort
+    # 4. Conservative following: Longer time gap for mixed traffic
+    # 5. Wider detection: More pedestrians and obstacles to detect
+    # 
+    # Adjust target_speed based on your specific use case:
+    # - Pedestrian-heavy areas: 3.0 m/s (~7 mph)
+    # - Open campus roads: 5.0 m/s (~11 mph)
+    # - Service roads: 7.0 m/s (~16 mph)
+    # - Maximum (road-legal): 11.2 m/s (25 mph) - use with caution
+    # ========================================

@@ -21,6 +21,7 @@ Publishes:
 """
 
 import math
+import threading
 import numpy as np
 import time
 from typing import List, Tuple, Optional
@@ -131,7 +132,18 @@ class PathPlannerNode(Node):
         self.origin_x = 20.0  # Origin offset in X
         self.origin_y = 30.0  # Origin offset in Y
         self.obstacle_threshold = 90  # Values above this are considered obstacles
-        self.obstacle_padding = 3  # Cells to pad around obstacles
+        self.obstacle_padding = 5  # Cells to pad around obstacles (5 = 1.0m, ~vehicle half-width)
+
+        # Path re-use: cache the last valid Dijkstra result.
+        # Replan only when an obstacle blocks the cached path or the goal moves.
+        self._cached_path_cells = None
+        self._cached_goal = None
+
+        # Thread safety: costmap callback and generate_path run on different threads
+        self._costmap_lock = threading.Lock()
+
+        # Ghost-rejection: track the best (most recent) path_goal stamp seen
+        self._best_goal_stamp = 0.0
         
         # Path smoothing parameters
         self.smoothing_look_ahead = 2
@@ -194,59 +206,147 @@ class PathPlannerNode(Node):
         if msg.info.height == 0 or msg.info.width == 0:
             self.get_logger().warning("Incoming cost map dimensions were zero.")
             return
-        self.costmap = msg
-        self.get_logger().debug(f"Received costmap: {msg.info.width}x{msg.info.height}")
+        # Guard against race where generate_path reads costmap mid-update
+        with self._costmap_lock:
+            self.costmap = msg
 
     def path_goal_callback(self, msg: PoseStamped):
+        # Ghost rejection — two layers:
+        # 1. Monotonic: never accept a goal older than the best seen so far.
+        #    Once we have a fresh goal from the live publisher, all ghost
+        #    retransmissions (which carry an older stamp) are silently dropped.
+        # 2. Clock-relative: drop anything more than 3 s behind sim time.
+        msg_sec = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        # Monotonic check
+        if msg_sec < self._best_goal_stamp:
+            return
+        # Clock-relative check (only once sim clock is valid)
+        clk_sec = self.clock.clock.sec + self.clock.clock.nanosec * 1e-9
+        if clk_sec > 0 and (clk_sec - msg_sec) > 3.0:
+            return
+        self._best_goal_stamp = msg_sec
         self.path_goal = msg
-        self.get_logger().debug(
-            f"Received goal: ({msg.pose.position.x}, {msg.pose.position.y})"
-        )
+
+    def scale_grid_numpy(self, data, old_h, old_w, new_h, new_w):
+        old = np.array(data).reshape(old_h, old_w)
+
+        zoom_y = new_h / old_h
+        zoom_x = new_w / old_w
+
+        # Nearest neighbor so obstacles remain discrete
+        new = scipy.ndimage.zoom(old, (zoom_y, zoom_x), order=0)
+
+        return new.astype(np.int32)
+
 
     def generate_path(self):
-        """Main function to generate the path using the selected planner."""
-        if self.costmap is None:
+        # Snapshot costmap under lock to prevent race with callback thread
+        with self._costmap_lock:
+            costmap_snap = self.costmap
+
+        if costmap_snap is None:
             self.get_logger().warning("Have not received costmap yet...")
             return
         if self.path_goal is None:
             self.get_logger().warning("Have not received goal for path yet...")
             return
 
-        # Check if we're already at the goal
-        if (
-            np.sqrt(
-                self.path_goal.pose.position.x**2 + self.path_goal.pose.position.y**2
-            )
-            < 0.5
-        ):
-            self.get_logger().info(
-                f"Vehicle has reached the goal ({self.path_goal.pose.position.x:.2f},{self.path_goal.pose.position.y:.2f})!"
-            )
+        # Use-time ghost check: if cached goal is now stale vs sim clock, clear it
+        clk_sec  = self.clock.clock.sec  + self.clock.clock.nanosec  * 1e-9
+        goal_sec = self.path_goal.header.stamp.sec + self.path_goal.header.stamp.nanosec * 1e-9
+        if clk_sec > 0 and (clk_sec - goal_sec) > 3.0:
+            self.get_logger().warning(
+                "Stale path_goal cleared (ghost?)", throttle_duration_sec=5.0)
+            self.path_goal = None
             return
 
-        # Convert from ROS coordinates to grid indices
-        start_i = int(round(self.origin_y / self.grid_res))
-        start_j = int(round(self.origin_x / self.grid_res))
+        resolution = costmap_snap.info.resolution
+        raw_height = costmap_snap.info.height
+        raw_width  = costmap_snap.info.width
 
-        goal_i = int(
-            round((self.path_goal.pose.position.y + self.origin_y) / self.grid_res)
+        if len(costmap_snap.data) != raw_height * raw_width:
+            self.get_logger().error("Costmap size mismatch.")
+            return
+
+        # ----------------------------
+        # SCALE MAP TO 60m x 60m
+        # ----------------------------
+        target_cells = int(60.0 / resolution)
+
+        costmap_np = np.asarray(costmap_snap.data, dtype=np.int32).reshape(raw_height, raw_width)
+
+        if raw_height != target_cells or raw_width != target_cells:
+            costmap_np = self.scale_grid_numpy(
+                costmap_snap.data,
+                raw_height,
+                raw_width,
+                target_cells,
+                target_cells
+            )
+
+
+        height, width = costmap_np.shape
+
+        # ----------------------------
+        # Compute start and goal AFTER scaling
+        # ----------------------------
+
+        start_i = int(round(self.origin_y / resolution))
+        start_j = int(round(self.origin_x / resolution))
+
+        goal_i = int(round((self.path_goal.pose.position.y + self.origin_y) / resolution))
+        goal_j = int(round((self.path_goal.pose.position.x + self.origin_x) / resolution))
+
+        # Clamp using SCALED dimensions
+        start_i = max(0, min(start_i, height - 1))
+        start_j = max(0, min(start_j, width - 1))
+        goal_i = max(0, min(goal_i, height - 1))
+        goal_j = max(0, min(goal_j, width - 1))
+
+        # ----------------------------
+        # Pad obstacles
+        # ----------------------------
+        padded_costmap = pad_obstacles(
+            costmap_np,
+            self.obstacle_threshold,
+            self.obstacle_padding
         )
-        goal_j = int(
-            round((self.path_goal.pose.position.x + self.origin_x) / self.grid_res)
-        )
 
-        # Prepare costmap data
-        costmap_np = np.asarray(self.costmap.data, dtype=np.int32).reshape(
-            self.costmap.info.height, self.costmap.info.width
-        )
 
-        # Pad obstacles for safety
-        padded_costmap = pad_obstacles(costmap_np, self.obstacle_threshold, self.obstacle_padding)
+        # ----------------------------
+        # Goal snap: if goal landed in an obstacle cell (e.g. grid edge
+        # dilation or boundary), walk back along the line toward start
+        # until we find the furthest free cell.
+        # ----------------------------
+        if padded_costmap[goal_i, goal_j] >= self.obstacle_threshold:
+            steps = max(abs(goal_i - start_i), abs(goal_j - start_j))
+            if steps > 0:
+                snapped = False
+                for s in range(steps, -1, -1):
+                    t = s / steps
+                    ci = int(round(start_i + t * (goal_i - start_i)))
+                    cj = int(round(start_j + t * (goal_j - start_j)))
+                    ci = max(0, min(ci, height - 1))
+                    cj = max(0, min(cj, width - 1))
+                    if padded_costmap[ci, cj] < self.obstacle_threshold:
+                        goal_i, goal_j = ci, cj
+                        snapped = True
+                        break
+                if snapped:
+                    self.get_logger().info(
+                        f'Goal snapped to nearest free cell: ({goal_i},{goal_j})',
+                        throttle_duration_sec=2.0)
+                else:
+                    self.get_logger().warning(
+                        'No free cell found along start→goal line; path will be empty.',
+                        throttle_duration_sec=2.0)
+                    return
 
-        # Plan path using the selected planner
+        # ----------------------------
+        # Run Planner
+        # ----------------------------
         path = None
-        
-        # Different planners have slightly different interfaces, handle each case
+
         if isinstance(self.planner, ARAStarPlanner):
             self.planner.s_start = (start_i, start_j)
             self.planner.s_goal = (goal_i, goal_j)
@@ -254,65 +354,72 @@ class PathPlannerNode(Node):
             self.planner.obstacle_threshold = self.obstacle_threshold
             self.planner.create_graph_from_costmap()
             path = self.planner.arastar()
-            
+
         elif isinstance(self.planner, DijkstraPathPlanner):
-            path = self.planner.shortest_path(padded_costmap, (start_i, start_j), (goal_i, goal_j), self.obstacle_threshold)
-            
+            path = self.planner.shortest_path(
+                padded_costmap,
+                (start_i, start_j),
+                (goal_i, goal_j),
+                self.obstacle_threshold
+            )
+
         elif isinstance(self.planner, DPPathPlanner):
-            # For DP planner, we need to set parameters and run value iteration
             self.planner.costmap_data = padded_costmap
             self.planner.obstacle_threshold = self.obstacle_threshold
             success = self.planner.run_value_iteration(start_i, start_j, goal_i, goal_j)
             if success:
-                path = self.planner.extract_path((start_i, start_j), (goal_i, goal_j))
-                
+                path = self.planner.extract_path(
+                    (start_i, start_j),
+                    (goal_i, goal_j)
+                )
+
         elif isinstance(self.planner, NeuralPathPlanner):
-            # Neural network planner has a different interface
-            path = self.planner.predict_path(padded_costmap, (start_i, start_j), (goal_i, goal_j))
-            
+            path = self.planner.predict_path(
+                padded_costmap,
+                (start_i, start_j),
+                (goal_i, goal_j)
+            )
+
         elif isinstance(self.planner, TRRTStarPathPlanner):
-            # TRRT* planner has a specific method
-            path = self.planner.trrtstar_path(padded_costmap, (start_i, start_j), (goal_i, goal_j), self.obstacle_threshold)
+            path = self.planner.trrtstar_path(
+                padded_costmap,
+                (start_i, start_j),
+                (goal_i, goal_j),
+                self.obstacle_threshold
+            )
 
         if path is None or len(path) == 0:
-            self.get_logger().warning("!!! Pathfinding returned a path as None !!!")
-            self.get_logger().debug(f"No path for ({start_i},{start_j})-->({goal_i},{goal_j})")
+            self.get_logger().warning("!!! Pathfinding returned a path as None !!!",
+                                      throttle_duration_sec=2.0)
             return
 
-        # Apply path smoothing
-        path = rolling_smoothing(path, look_ahead=self.smoothing_look_ahead, depth=self.smoothing_depth)
-        
-        self.get_logger().debug(
-            f"Path ({start_i},{start_j})-->({goal_i},{goal_j}) returned with {len(path)} elements"
+        # ----------------------------
+        # Smooth Path
+        # ----------------------------
+        path = rolling_smoothing(
+            path,
+            look_ahead=self.smoothing_look_ahead,
+            depth=self.smoothing_depth
         )
 
-        # Convert path to ROS message
+        # ----------------------------
+        # Convert to ROS Path
+        # ----------------------------
         path_msg = Path()
         path_msg.header.stamp = self.clock.clock
         path_msg.header.frame_id = "base_link"
-        path_msg.poses = []
 
-        for i in range(len(path)):
+        for node in path:
             p = PoseStamped()
             p.header.stamp = self.clock.clock
             p.header.frame_id = "base_link"
 
-            # Convert grid coordinates back to base_link frame
-            # Note: Different planners may return paths in different formats (i,j) vs (j,i)
-            # Handle both cases by checking the path format
-            if isinstance(path[i], tuple) and len(path[i]) == 2:
-                # Most planners return (i, j) format
-                p.pose.position.x = path[i][1] * self.grid_res - self.origin_x
-                p.pose.position.y = path[i][0] * self.grid_res - self.origin_y
-            else:
-                # Some planners might return a different format
-                p.pose.position.x = path[i][1] * self.grid_res - self.origin_x
-                p.pose.position.y = path[i][0] * self.grid_res - self.origin_y
-                
+            p.pose.position.x = node[1] * resolution - self.origin_x
+            p.pose.position.y = node[0] * resolution - self.origin_y
             p.pose.position.z = 0.0
+
             path_msg.poses.append(p)
 
-        # Publish the path
         self.path_pub.publish(path_msg)
 
 

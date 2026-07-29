@@ -75,6 +75,11 @@ gnss_averager = Node(
     executable='gnss_averaging_node'
 )
 
+
+hybrid_grid = Node(
+    package='segmentation',
+    executable='hybrid_perception_grid_node',
+)
 image_segmentation = Node(
     package='segmentation',
     executable='image_segmentation_node'
@@ -192,7 +197,8 @@ sounds = Node(
 
 static_grid = Node(
     package='occupancy_cpp',
-    executable='static_grid_exe'
+    executable='static_grid_exe',
+    remappings=[('/grid/occupancy/current', '/grid/occupancy/lidar')]
 )
 
 web_bridge = Node(
@@ -212,7 +218,7 @@ road_signs_classifier = Node(
    	parameters=[],
 )
 
-image_segmentation = Node(
+image_seg_yolo = Node(
     package='image_segmentation',
     executable='image_seg_node'
 )
@@ -253,4 +259,44 @@ road_user_detector = Node(
 keyboard_controller = Node(
     package='keyboard_control',
     executable='keyboard_control_node'
+)
+
+lane_change_controller = Node(
+    package='navigator_lane_change',
+    executable='lane_change_node',
+    name='lane_change_node',
+    output='screen',
+    parameters=[NAVIGATOR_DIR + 'param/lane_change_params.yaml']
+)
+autonomous_cruise_controller = Node(
+    package='autonomous_cruise',
+    executable='autonomous_cruise_node',
+    name='autonomous_cruise_controller',
+    output='screen',
+    parameters=['/navigator/param/autonomous_cruise_params.yaml'],
+    emulate_tty=True
+)
+
+
+perception_drivable_grid = Node(
+    package="segmentation",
+    executable="perception_drivable_grid_node",
+    name="perception_drivable_grid_node",
+    output="screen",
+)
+
+hybrid_drivable_grid = Node(
+    package="segmentation",
+    executable="hybrid_drivable_grid_node",
+    name="hybrid_drivable_grid_node",
+    output="screen",
+)
+
+autonomous_cruise_intersection_controller = Node(
+    package='autonomous_cruise',
+    executable='autonomous_cruise_intersection_node',
+    name='autonomous_cruise_controller',
+    output='screen',
+    parameters=['/navigator/param/gem_e6_intersection_params.yaml'],
+    emulate_tty=True
 )

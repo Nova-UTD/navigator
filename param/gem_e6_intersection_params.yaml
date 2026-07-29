@@ -1,0 +1,84 @@
+autonomous_cruise_controller:
+  ros__parameters:
+    # Topic names
+    path_topic: "/planning/path"
+    odom_topic: "/gnss/odometry"
+    objects_topic: "/tracked/objects3d"
+    control_topic: "/vehicle/control"
+    intersection_topic: "/intersection"  # From Navigator's intersection_manager
+    
+    # Control parameters
+    control_rate: 20.0  # Hz
+    enabled: true
+    
+    # ========================================
+    # GEM e6 VEHICLE PARAMETERS
+    # ========================================
+    wheelbase: 3.404  # meters (134 inches)
+    
+    # ========================================
+    # LATERAL CONTROL - GEM e6 Optimized
+    # ========================================
+    min_lookahead: 2.5  # meters
+    max_lookahead: 10.0  # meters
+    lookahead_gain: 0.4  # dimensionless
+    max_steer: 0.8  # radians
+    
+    # ========================================
+    # LONGITUDINAL CONTROL - GEM e6 Optimized
+    # ========================================
+    target_speed: 5.0  # m/s (~11 mph)
+    
+    kp: 1.0
+    ki: 0.12
+    kd: 0.08
+    
+    max_accel: 1.5  # m/s²
+    max_decel: -2.5  # m/s²
+    max_jerk: 2.0  # m/s³
+    
+    max_throttle: 0.70
+    max_brake: 1.0
+    integral_limit: 3.0
+    
+    # ========================================
+    # ADAPTIVE CRUISE - Campus Optimized
+    # ========================================
+    time_gap: 2.0  # seconds
+    min_following_distance: 4.0  # meters
+    max_detection_distance: 30.0  # meters
+    detection_angle: 0.4  # radians (~23 degrees)
+    
+    # ========================================
+    # INTERSECTION HANDLING - NEW!
+    # ========================================
+    # Speed limits at different intersection phases
+    intersection_approach_speed: 3.0  # m/s (~7 mph) - slow approach
+    intersection_crossing_speed: 4.0  # m/s (~9 mph) - cautious crossing
+    intersection_exit_speed: 5.0  # m/s (~11 mph) - resume cruise
+    
+    # Deceleration for stopping at intersections
+    intersection_comfortable_decel: -1.5  # m/s² (smooth stop)
+    intersection_emergency_decel: -2.5  # m/s² (if needed)
+    intersection_stop_line_buffer: 1.0  # meters (stop before line)
+    
+    # Timing parameters
+    intersection_min_stop_duration: 1.0  # seconds (minimum full stop time)
+    intersection_proceed_delay: 0.5  # seconds (delay after "Proceed" signal)
+    intersection_clearance_distance: 15.0  # meters (distance to clear intersection)
+    
+    # ========================================
+    # INTERSECTION BEHAVIOR INTEGRATION
+    # ========================================
+    # This controller subscribes to /intersection topic
+    # from Navigator's intersection_manager node
+    #
+    # Intersection manager provides:
+    # - "Wait" → Controller stops smoothly at intersection
+    # - "Proceed" → Controller crosses at reduced speed
+    #
+    # Supported intersection types:
+    # - Traffic lights (Red/Yellow/Green)
+    # - Stop signs (4-way stop logic)
+    # - Roundabouts (yield and merge)
+    # ========================================

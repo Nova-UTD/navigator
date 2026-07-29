@@ -1,288 +1,128 @@
-'''
-Package: segmentation
-   File: image_segmentation_node.py
- Author: Will Heitman (w at heit dot mn)
+"""
+image_segmentation_node.py
+Runs PSPNet (mmseg v1.x) on 4 CARLA cameras in a round-robin background thread.
+Callbacks only store the latest frame — no blocking inference in the spin thread.
+"""
 
-Node to semantically segment a 2D image using a model.
-'''
-
-
+import threading
 import rclpy
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, Duration, QoSDurabilityPolicy
-# import ros2_numpy as rnp
-import numpy as np
 from rclpy.node import Node
-# from scipy.spatial.transform import Rotation as R
-import sys
-import time
-from tf2_ros import TransformException
-from tf2_ros.buffer import Buffer
-from tf2_ros.transform_listener import TransformListener
-
-# Message definitions
-from nav_msgs.msg import OccupancyGrid
-from rosgraph_msgs.msg import Clock
-from sensor_msgs.msg import Image, PointCloud2
-from std_msgs.msg import Float32
-
-import matplotlib.pyplot as plt
-
-import cv2
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
+import numpy as np
 from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
+from mmseg.apis import inference_model, init_model
 
-# OpenMMSegmentation
-from mmseg.apis import inference_segmentor, init_segmentor
-import mmcv
+# input_topic → output_topic (bridge remaps /carla/hero/rgb_*/image → /cameras/camera*)
+CAMERAS = [
+    ('/cameras/camera0', '/semantic/front'),
+    ('/cameras/camera1', '/semantic/right'),
+    ('/cameras/camera2', '/semantic/back'),
+    ('/cameras/camera3', '/semantic/left'),
+]
 
-name_to_dtypes = {
-    "rgb8":    (np.uint8,  3),
-    "rgba8":   (np.uint8,  4),
-    "rgb16":   (np.uint16, 3),
-    "rgba16":  (np.uint16, 4),
-    "bgr8":    (np.uint8,  3),
-    "bgra8":   (np.uint8,  4),
-    "bgr16":   (np.uint16, 3),
-    "bgra16":  (np.uint16, 4),
-    "mono8":   (np.uint8,  1),
-    "mono16":  (np.uint16, 1),
+_CONFIG = '/usr/local/lib/python3.10/dist-packages/mmseg/.mim/configs/pspnet/pspnet_r18-d8_4xb2-80k_cityscapes-512x1024.py'
+_CKPT   = '/navigator_binaries/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth'
 
-    # for bayer image (based on cv_bridge.cpp)
-    "bayer_rggb8":  (np.uint8,  1),
-    "bayer_bggr8":  (np.uint8,  1),
-    "bayer_gbrg8":  (np.uint8,  1),
-    "bayer_grbg8":  (np.uint8,  1),
-    "bayer_rggb16":     (np.uint16, 1),
-    "bayer_bggr16":     (np.uint16, 1),
-    "bayer_gbrg16":     (np.uint16, 1),
-    "bayer_grbg16":     (np.uint16, 1),
-
-    # OpenCV CvMat types
-    "8UC1":    (np.uint8,   1),
-    "8UC2":    (np.uint8,   2),
-    "8UC3":    (np.uint8,   3),
-    "8UC4":    (np.uint8,   4),
-    "8SC1":    (np.int8,    1),
-    "8SC2":    (np.int8,    2),
-    "8SC3":    (np.int8,    3),
-    "8SC4":    (np.int8,    4),
-    "16UC1":   (np.uint16,   1),
-    "16UC2":   (np.uint16,   2),
-    "16UC3":   (np.uint16,   3),
-    "16UC4":   (np.uint16,   4),
-    "16SC1":   (np.int16,  1),
-    "16SC2":   (np.int16,  2),
-    "16SC3":   (np.int16,  3),
-    "16SC4":   (np.int16,  4),
-    "32SC1":   (np.int32,   1),
-    "32SC2":   (np.int32,   2),
-    "32SC3":   (np.int32,   3),
-    "32SC4":   (np.int32,   4),
-    "32FC1":   (np.float32, 1),
-    "32FC2":   (np.float32, 2),
-    "32FC3":   (np.float32, 3),
-    "32FC4":   (np.float32, 4),
-    "64FC1":   (np.float64, 1),
-    "64FC2":   (np.float64, 2),
-    "64FC3":   (np.float64, 3),
-    "64FC4":   (np.float64, 4)
+# Cityscapes 19-class → RGB (for downstream classification)
+_PALETTE = {
+    0:  (128,  64, 128),  # road
+    1:  (244,  35, 232),  # sidewalk
+    2:  ( 70,  70,  70),  # building
+    3:  (102, 102, 156),  # wall
+    4:  (190, 153, 153),  # fence
+    5:  (153, 153, 153),  # pole
+    6:  (250, 170,  30),  # traffic light
+    7:  (220, 220,   0),  # traffic sign
+    8:  (107, 142,  35),  # vegetation
+    9:  (145, 170, 100),  # terrain
+    10: ( 70, 130, 180),  # sky
+    11: (220,  20,  60),  # person
+    12: (255,   0,   0),  # rider
+    13: (  0,   0, 142),  # car
+    14: (  0,   0,  70),  # truck
+    15: (  0,  60, 100),  # bus
+    16: (  0,  80, 100),  # train
+    17: (  0,   0, 230),  # motorcycle
+    18: (119,  11,  32),  # bicycle
 }
+
+def _class_ids_to_rgb(class_ids: np.ndarray) -> np.ndarray:
+    H, W = class_ids.shape
+    rgb = np.zeros((H, W, 3), dtype=np.uint8)
+    for cid, color in _PALETTE.items():
+        mask = class_ids == cid
+        rgb[mask] = color
+    return rgb
 
 
 class ImageSegmentationNode(Node):
 
     def __init__(self):
         super().__init__('image_segmentation_node')
-        config_file = '/mmsegmentation/configs/pspnet/pspnet_r18-d8_512x1024_80k_cityscapes.py'
-        checkpoint_file = '/navigator_binaries/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth'
+        self.get_logger().info('Loading PSPNet on CPU…')
+        self.model  = init_model(_CONFIG, _CKPT, device='cpu')
+        self.bridge = CvBridge()
+        self.get_logger().info('PSPNet ready.')
 
-        self.model = init_segmentor(
-            config_file, checkpoint_file, device='cuda:0')  # Change this to '1,' 2,' etc to change GPU used
-
-        image_qos_policy = QoSProfile(
+        image_qos = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
             depth=1,
             durability=QoSDurabilityPolicy.VOLATILE,
-            lifespan=Duration(seconds=0, nanoseconds=2e8)
         )
 
-        self.left_rgb_sub = self.create_subscription(
-            Image, "/carla/hero/rgb_left/image", self.rgbLeftCb, image_qos_policy)
+        # Per-camera: latest raw frame + publisher
+        self._latest = {}   # topic → (msg | None, publisher)
+        self._lock   = threading.Lock()
+        self._order  = [t for t, _ in CAMERAS]
 
-        self.left_result_pub = self.create_publisher(
-            Image, '/semantic/left', 1)
+        for in_topic, out_topic in CAMERAS:
+            pub = self.create_publisher(Image, out_topic, 1)
+            self._latest[in_topic] = (None, pub)
+            self.create_subscription(Image, in_topic,
+                lambda msg, t=in_topic: self._store(msg, t), image_qos)
+            self.get_logger().info(f'  {in_topic} → {out_topic}')
 
-        self.right_rgb_sub = self.create_subscription(
-            Image, "/carla/hero/rgb_right/image", self.rgbRightCb, image_qos_policy)
-        self.right_result_pub = self.create_publisher(
-            Image, '/semantic/right', 1)
+        self._idx = 0
+        threading.Thread(target=self._loop, daemon=True).start()
 
-        self.idx = 0
+    # ── callbacks: just store, never block ──────────────────────────────
+    def _store(self, msg: Image, topic: str):
+        with self._lock:
+            _, pub = self._latest[topic]
+            self._latest[topic] = (msg, pub)
 
-        self.clock_sub = self.create_subscription(
-            Clock, '/clock', self.clock_cb, 1)
-        self.clock = Clock()
-        # model.show_result(img, result, out_file='result.jpg', opacity=1.0)
-        self.bridge = CvBridge()
+    # ── inference loop: round-robin all 4 cameras ───────────────────────
+    def _loop(self):
+        import time
+        n = len(self._order)
+        self.get_logger().info('Inference thread running (round-robin 4 cameras).')
+        while True:
+            cam = self._order[self._idx]
+            with self._lock:
+                msg, pub = self._latest[cam]
 
-    def clock_cb(self, msg: Clock):
-        self.clock = msg
+            if msg is not None:
+                try:
+                    img       = self.bridge.imgmsg_to_cv2(msg, 'rgb8')[:, :, :3]
+                    result    = inference_model(self.model, img)
+                    class_ids = result.pred_sem_seg.data[0].cpu().numpy()
+                    rgb_out   = _class_ids_to_rgb(class_ids)
+                    out_msg   = self.bridge.cv2_to_imgmsg(rgb_out, encoding='rgb8')
+                    out_msg.header = msg.header
+                    pub.publish(out_msg)
+                except Exception as e:
+                    self.get_logger().error(f'Inference error on {cam}: {e}')
+            else:
+                time.sleep(0.05)
 
-    def imageToNumpy(self, msg) -> np.ndarray:
-        """Converts Image message to numpy array
-
-        Args:
-            msg (Image): ROS Image message
-
-        Raises:
-            TypeError: If image encoding is not recognized
-
-        Returns:
-            np.ndarray: Image as np array
-        """
-        if not msg.encoding in name_to_dtypes:
-            raise TypeError('Unrecognized encoding {}'.format(msg.encoding))
-
-        dtype_class, channels = name_to_dtypes[msg.encoding]
-        dtype = np.dtype(dtype_class)
-        dtype = dtype.newbyteorder('>' if msg.is_bigendian else '<')
-        shape = (msg.height, msg.width, channels)
-
-        data = np.frombuffer(msg.data, dtype=dtype).reshape(shape)
-        data.strides = (
-            msg.step,
-            dtype.itemsize * channels,
-            dtype.itemsize
-        )
-
-        if channels == 1:
-            data = data[..., 0]
-        return data
-
-    def numpyToImage(self, arr: np.ndarray, encoding: str) -> Image:
-        """Converts np array to Image message
-
-        Args:
-            arr (np.ndarray): _description_
-            encoding (str): _description_
-
-        Raises:
-            TypeError: Unrecognized image encoding requested
-            TypeError: Input array shape is invalid
-            TypeError: Image channels did not match requested encoding
-            TypeError: Array dtype was invalid
-
-        Returns:
-            Image: ROS Image message
-        """
-        if not encoding in name_to_dtypes:
-            raise TypeError('Unrecognized encoding {}'.format(encoding))
-
-        im = Image(encoding=encoding)
-
-        # extract width, height, and channels
-        dtype_class, exp_channels = name_to_dtypes[encoding]
-        dtype = np.dtype(dtype_class)
-        if len(arr.shape) == 2:
-            im.height, im.width, channels = arr.shape + (1,)
-        elif len(arr.shape) == 3:
-            im.height, im.width, channels = arr.shape
-        else:
-            raise TypeError("Array must be two or three dimensional")
-
-        # check type and channels
-        if exp_channels != channels:
-            raise TypeError("Array has {} channels, {} requires {}".format(
-                channels, encoding, exp_channels
-            ))
-        if dtype_class != arr.dtype.type:
-            raise TypeError("Array is {}, {} requires {}".format(
-                arr.dtype.type, encoding, dtype_class
-            ))
-
-        # make the array contiguous in memory, as mostly required by the format
-        # contig = np.ascontiguousarray(arr)
-        im.data = arr.tostring()
-        im.step = arr.strides[0]
-        im.is_bigendian = (
-            arr.dtype.byteorder == '>' or
-            arr.dtype.byteorder == '=' and sys.byteorder == 'big'
-        )
-
-        return im
-
-    def convertToColor(self, mono_result: np.ndarray) -> np.array:
-        """Converts a one-channel segmentation result to a colored image using the CityScapes coloring scheme.
-
-        Args:
-            mono_result (np.array): Segmentation result (2d)
-
-        Returns:
-            np.array: Colored result (3D array, accounting for RGB channel)
-        """
-        result_rgb = np.zeros(
-            (mono_result.shape[0], mono_result.shape[1], 3), dtype=np.uint8)
-        result_rgb[:, :][mono_result == 0] = [128, 64, 128]  # Road
-        result_rgb[:, :][mono_result == 1] = [244, 35, 232]  # Sidewalk
-        result_rgb[:, :][np.logical_or(np.logical_or(
-            mono_result == 2, mono_result == 3), mono_result == 4)] = [70, 70, 70]  # Building, wall, fence
-        result_rgb[:, :][mono_result == 3] = [100, 40, 40]  # Fence
-        result_rgb[:, :][mono_result == 5] = [153, 153, 153]  # Pole
-        result_rgb[:, :][mono_result == 6] = [250, 170, 30]  # Traffic light
-        result_rgb[:, :][mono_result == 7] = [220, 220, 0]  # Traffic light
-        result_rgb[:, :][mono_result == 8] = [107, 142, 35]  # Vegetation
-        result_rgb[:, :][mono_result == 9] = [145, 170, 100]  # Terrain
-        result_rgb[:, :][mono_result == 10] = [70, 130, 180]  # Sky
-        result_rgb[:, :][mono_result == 11] = [220, 20, 60]  # Person
-        result_rgb[:, :][np.logical_or(np.logical_or(
-            np.logical_or(mono_result == 12, mono_result == 13),
-            np.logical_or(mono_result == 14, mono_result == 15)),
-            mono_result == 16)] = [0, 0, 142]  # Car, rider, truck, bus, train, motorcycle
-        result_rgb[:, :][np.logical_or(mono_result == 17, mono_result == 18)] = [
-            119, 11, 32]  # Building, wall, fence
-        return result_rgb
-
-    def rgbLeftCb(self, msg: Image):
-        img_array = self.bridge.imgmsg_to_cv2(
-            msg, 'rgb8')[:, :, :3]  # Cut out alpha
-
-        # Actually performs the inference
-        result = inference_segmentor(self.model, img_array)[0]
-
-        result_rgb = self.convertToColor(result)
-
-        result_msg_rgb = self.bridge.cv2_to_imgmsg(result_rgb, encoding='rgb8')
-        result_msg_rgb.header = msg.header
-
-        self.left_result_pub.publish(result_msg_rgb)
-
-    def rgbRightCb(self, msg: Image):
-        img_array = self.bridge.imgmsg_to_cv2(
-            msg, 'rgb8')[:, :, :3]  # Cut out alpha
-
-        # Actually performs the inference
-        result = inference_segmentor(self.model, img_array)[0]
-
-        result_rgb = self.convertToColor(result)
-
-        result_msg_rgb = self.bridge.cv2_to_imgmsg(result_rgb, encoding='rgb8')
-        result_msg_rgb.header = msg.header
-
-        self.right_result_pub.publish(result_msg_rgb)
+            self._idx = (self._idx + 1) % n
 
 
 def main(args=None):
     rclpy.init(args=args)
-
-    lidar_processor = ImageSegmentationNode()
-
-    rclpy.spin(lidar_processor)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    lidar_processor.destroy_node()
-    rclpy.shutdown()
+    rclpy.spin(ImageSegmentationNode())
 
 
 if __name__ == '__main__':
