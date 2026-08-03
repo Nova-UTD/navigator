@@ -294,6 +294,20 @@ yolopv2_lane = Node(
     output="screen",
 )
 
+yolopv2_drivable_grid = Node(
+    package="segmentation",
+    executable="yolopv2_drivable_grid_node",
+    name="yolopv2_drivable_grid_node",
+    output="screen",
+)
+
+route_costmap_v2 = Node(
+    package="segmentation",
+    executable="route_costmap_v2_node",
+    name="route_costmap_v2_node",
+    output="screen",
+)
+
 hybrid_drivable_grid = Node(
     package="segmentation",
     executable="hybrid_drivable_grid_node",

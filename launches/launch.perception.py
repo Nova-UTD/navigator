@@ -48,5 +48,7 @@ def generate_launch_description():
         perception_drivable_grid,
         hybrid_drivable_grid,
         yolopv2_lane,
+        yolopv2_drivable_grid,
+        route_costmap_v2,
         lane_grid,
     ])

@@ -30,6 +30,8 @@ setup(
             "hybrid_drivable_grid_node = segmentation.hybrid_drivable_grid_node:main",
             "lane_grid_node = segmentation.lane_grid_node:main",
             "yolopv2_lane_node = segmentation.yolopv2_lane_node:main",
+            "yolopv2_drivable_grid_node = segmentation.yolopv2_drivable_grid_node:main",
+            "route_costmap_v2_node = segmentation.route_costmap_v2_node:main",
         ],
     },
 )

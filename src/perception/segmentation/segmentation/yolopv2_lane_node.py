@@ -57,12 +57,15 @@ rendering), subscription callback only stores the latest frame, a single
 daemon background thread does stamp-gated inference so a cached frame is
 never reprocessed/re-published in a tight loop.
 
-Publishes two topics: /lane_mask/front (mono8 binary mask, what
-lane_grid_node actually consumes) and /lane_mask/front/viz (bgr8, a
+Publishes three topics: /lane_mask/front (mono8 binary mask, what
+lane_grid_node actually consumes), /lane_mask_viz/front (bgr8, a
 human-viewable overlay -- green drivable area + red lane lines drawn over
 the raw camera frame -- for direct visual verification in RViz, matching
 the same green/red visualization style used in this model's own offline
-demo tooling).
+demo tooling), and /drivable_mask/front (mono8 binary free-space mask from
+the same drivable-area head used for the viz overlay above, published on
+its own so other nodes -- see yolopv2_drivable_grid_node.py -- can consume
+it directly instead of re-running the model).
 """
 
 import threading
@@ -83,6 +86,7 @@ _WEIGHTS = '/navigator_binaries/yolopv2.pt'
 _RAW_TOPIC = '/cameras/camera0'
 _MASK_TOPIC = '/lane_mask/front'
 _VIZ_TOPIC = '/lane_mask_viz/front'
+_DRIVABLE_TOPIC = '/drivable_mask/front'
 _LANE_LINE_THRESHOLD = 0.5  # model's ll head output is already probability-like (0-1); round() at 0.5
 
 _DRIVABLE_COLOR_BGR = (0, 200, 0)    # green
@@ -132,9 +136,10 @@ class Yolopv2LaneNode(Node):
 
         self.lane_pub = self.create_publisher(Image, _MASK_TOPIC, 1)
         self.viz_pub = self.create_publisher(Image, _VIZ_TOPIC, 1)
+        self.drivable_pub = self.create_publisher(Image, _DRIVABLE_TOPIC, 1)
 
         threading.Thread(target=self._loop, daemon=True).start()
-        self.get_logger().info(f'  {_RAW_TOPIC} → {_MASK_TOPIC}, {_VIZ_TOPIC}')
+        self.get_logger().info(f'  {_RAW_TOPIC} → {_MASK_TOPIC}, {_VIZ_TOPIC}, {_DRIVABLE_TOPIC}')
 
     # ── callback: just store, never block ───────────────────────────────
     def _store(self, msg: Image):
@@ -190,6 +195,11 @@ class Yolopv2LaneNode(Node):
         viz_msg = self.bridge.cv2_to_imgmsg(overlay, encoding='bgr8')
         viz_msg.header = msg.header
         self.viz_pub.publish(viz_msg)
+
+        drivable_out = self.bridge.cv2_to_imgmsg(
+            (drivable_mask * 255).astype(np.uint8), encoding='mono8')
+        drivable_out.header = msg.header
+        self.drivable_pub.publish(drivable_out)
 
 
 def main(args=None):
