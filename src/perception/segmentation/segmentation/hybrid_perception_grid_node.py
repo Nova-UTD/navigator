@@ -5,6 +5,9 @@ hybrid_perception_grid_node.py
 Fuses 4-camera semantic segmentation + segmented LiDAR into a 300x300 BEV
 occupancy grid at /grid/occupancy/current.
 
+Modified by Siddarth Nandyala <siddarth.nandyala@utdallas.edu>: publish rate
+bumped 10Hz -> 20Hz to match the rest of the perception grid stack.
+
 Camera path  : /semantic/{front,right,back,left} (PSPNet RGB output)
                -> ground-plane ray-cast LUT -> grid cells
 LiDAR path   : /lidar/filtered (PointCloud2 in base_link)
@@ -143,7 +146,7 @@ class HybridPerceptionGridNode(Node):
         # 1-Hz LUT rebuild timer -- retries until all cameras have good LUTs
         self.create_timer(1.0, self._lut_timer)
         # 10-Hz publish timer
-        self.create_timer(0.1, self._publish_loop)
+        self.create_timer(0.05, self._publish_loop)
 
         self.get_logger().info('HybridPerceptionGridNode ready (4-camera + segmented LiDAR).')
 
