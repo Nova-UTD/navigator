@@ -287,6 +287,20 @@ hybrid_drivable_grid = Node(
     output="screen",
 )
 
+yolopv2_drivable_grid = Node(
+    package="segmentation",
+    executable="yolopv2_drivable_grid_node",
+    name="yolopv2_drivable_grid_node",
+    output="screen",
+)
+
+route_costmap_v2 = Node(
+    package="segmentation",
+    executable="route_costmap_v2_node",
+    name="route_costmap_v2_node",
+    output="screen",
+)
+
 autonomous_cruise_intersection_controller = Node(
     package='autonomous_cruise',
     executable='autonomous_cruise_intersection_node',
