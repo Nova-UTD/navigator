@@ -79,11 +79,14 @@ def generate_launch_description():
                         path_planner,
                         # *nav2_launch_entities,
                         # path_planner_nav2,
-                        pure_pursuit_controller,
+                        # Path-following autonomy: fights keyboard teleop on /vehicle/control.
+                        # Re-enable when driving from the planner instead of WASD.
+                        # pure_pursuit_controller,
                         # SAFETY
                         ##airbags,
                         ##guardian,
                         rviz,
+                        keyboard_controller
                     ],
                 )
             ),

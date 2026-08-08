@@ -1,0 +1,16 @@
+# Select Frame TF Options (1 to select an option, 0 for other options)
+int32 cam_to_world
+int32 cam_to_pixel
+int32 world_to_pixel
+int32 pixel_to_world
+
+float32 x
+float32 y
+float32 z
+
+string camera_name
+builtin_interfaces/Time stamp
+---
+# Response
+bool tf_success
+uint8[] coords  # returns data as a blob, must be deserialized after recieving

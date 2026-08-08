@@ -256,6 +256,11 @@ road_user_detector = Node(
     executable='road_user_detection'
 )
 
+keyboard_controller = Node(
+    package='keyboard_control',
+    executable='keyboard_control_node'
+)
+
 lane_change_controller = Node(
     package='navigator_lane_change',
     executable='lane_change_node',
