@@ -50,6 +50,7 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
     local_maps_dir = os.path.join(save_dir, "local_maps")
     os.makedirs(local_maps_dir, exist_ok=True)
     poses_file = os.path.join(save_dir, "poses.txt")
+    optimized_poses_file = os.path.join(save_dir, "optimized_poses.txt")
 
     # odometry
     kiss_config = KISSConfig()
@@ -110,8 +111,8 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
             if closure.number_of_inliers > closure_config.inliers_threshold:
                 #print(f'Loop closure found between: {closure.source_id} (source) and {map_idx} (target) !!!')
                 # add loop closure edge
-                pose = g2o.Isometry3d(closure.pose)
-                pgo.add_edge([closure.target_id, closure.source_id], pose, robust_kernel=g2o.RobustKernelHuber())
+                pose = g2o.Isometry3d(np.linalg.inv(closure.pose))
+                pgo.add_edge([closure.source_id, closure.target_id], pose, robust_kernel=g2o.RobustKernelHuber())
 
             previous_local_map_pose = current_local_map_pose
 
@@ -131,15 +132,22 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
     if reader.isopen: reader.close()
     pbar.close()
 
+    poses = []
+    for i in range(map_idx):
+        local_map_pose = pgo.get_pose(i).matrix()
+        poses.append(local_map_pose.flatten())
+
+    np.savetxt(poses_file, poses)
+
     pgo.set_verbose(True)
-    pgo.optimize(max_iterations=50)
+    pgo.optimize(max_iterations=1000)
 
     optimized_poses = []
     for i in range(map_idx):
         local_map_pose_optimized = pgo.get_pose(i).matrix()
         optimized_poses.append(local_map_pose_optimized.flatten())
 
-    np.savetxt(poses_file, optimized_poses)
+    np.savetxt(optimized_poses_file, optimized_poses)
 
 
 if __name__ == '__main__':
