@@ -52,6 +52,11 @@ grid_route_costmap = Node(
     executable='route_costmap_node'
 )
 
+pedestrian_costmap = Node(
+    package='costs',
+    executable='pedestrian_costmap_node'
+)
+
 grid_summation = Node(
     package='costs',
     executable='grid_summation_node'

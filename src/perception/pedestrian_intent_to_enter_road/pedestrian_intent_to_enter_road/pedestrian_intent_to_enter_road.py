@@ -12,6 +12,7 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from sensor_msgs.msg import Image
 from navigator_msgs.msg import PedestrianInfoDetections
 from navigator_msgs.msg import PedestrianInfo
+from pedestrian_intent_to_enter_road.pedestrian_geometry import project_to_base_link
 from cv_bridge import CvBridge
 import cv2
 import time
@@ -33,6 +34,14 @@ class PedestrianIntentToEnterRoad(Node):
         self.detection_model = YOLO("/navigator_binaries/pedestrian_detection_model.pt")
         self.inferencer = MMPoseInferencer('human')
         self.binary_mask = None
+
+        # Static camera -> base_link offset (m). Defaults 0.0 = camera at the
+        # base_link origin pointing straight forward (v1 shadow-mode assumption).
+        # Set from the measured mount before the layer is wired live (Phase 3).
+        self.declare_parameter('cam_offset_x', 0.0)
+        self.declare_parameter('cam_offset_y', 0.0)
+        self.cam_offset_x = float(self.get_parameter('cam_offset_x').value)
+        self.cam_offset_y = float(self.get_parameter('cam_offset_y').value)
 
         self.FACING_RIGHT = "RIGHT"
         self.FACING_LEFT = "LEFT"
@@ -95,8 +104,8 @@ class PedestrianIntentToEnterRoad(Node):
                     else:
                         continue
 
-                    height, width, channels = self.image.shape
-                    midpoint_x = width / 2
+                    img_h, img_w = self.image.shape[:2]
+                    midpoint_x = img_w / 2
 
                     if (((direction_facing == self.FACING_RIGHT) and (center_x < midpoint_x)) or ((direction_facing == self.FACING_LEFT) and (center_x > midpoint_x))):
                         # for pedestrians facing the road, determine the distance between them and the road
@@ -110,6 +119,13 @@ class PedestrianIntentToEnterRoad(Node):
                         pedestrian_object.width = float(width)
                         pedestrian_object.height = float(height)
                         pedestrian_object.distance = float(horizontal_dist)
+
+                        bbox_pixel_height = BRy - TLy
+                        pos_x, pos_y = project_to_base_link(
+                            center_x, bbox_pixel_height, img_w,
+                            self.cam_offset_x, self.cam_offset_y)
+                        pedestrian_object.pos_x = float(pos_x)
+                        pedestrian_object.pos_y = float(pos_y)
 
                         pedestrian_detections.append(pedestrian_object)
                     else:
