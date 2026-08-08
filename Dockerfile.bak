@@ -1,0 +1,56 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y locales && locale-gen en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+
+# Base deps; colcon/vcstool/rosdep via pip
+RUN apt-get update && apt-get install -y \
+    build-essential cmake git wget curl gnupg2 lsb-release \
+    python3-pip python3-venv python3-empy python3-numpy python3-tk \
+    libasio-dev libtinyxml2-dev libeigen3-dev libyaml-cpp-dev \
+    qtbase5-dev libqt5widgets5 \
+    libx11-6 x11-apps \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --no-cache-dir -U pip \
+ && pip3 install --no-cache-dir colcon-common-extensions vcstool rosdep
+
+# rosdep init/update
+RUN rosdep init || true && rosdep update || true
+
+# === Build ROS 2 Humble from source ===
+WORKDIR /opt/ros_ws
+RUN mkdir -p src
+RUN wget https://raw.githubusercontent.com/ros2/ros2/humble/ros2.repos
+RUN vcs import src < ros2.repos
+
+# IMPORTANT: skip the ROS binary key "fastcdr" so the vendor pulls source
+RUN apt-get update && \
+    rosdep install --from-paths src --ignore-src -y --rosdistro humble --skip-keys "fastcdr" && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+# === Overlay workspace (your packages) ===
+WORKDIR /workspaces/overlay
+RUN mkdir -p src
+COPY overlay_src/ src/
+RUN . /opt/ros_ws/install/setup.sh && \
+    rosdep install --from-paths src --ignore-src -y --rosdistro humble || true && \
+    colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=Release || true
+
+# Entrypoint
+COPY ros_entrypoint.sh /ros_entrypoint.sh
+RUN chmod +x /ros_entrypoint.sh
+
+# Env
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+ENV ROS_DOMAIN_ID=23
+ENV ROS_LOCALHOST_ONLY=0
+ENV QT_X11_NO_MITSHM=1
+ENV LIBGL_ALWAYS_SOFTWARE=1
+
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["bash"]

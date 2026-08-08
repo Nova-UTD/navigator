@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>turtlesim_tasks</name>
+  <version>0.0.1</version>
+  <description>Custom nodes and launches for the turtlesim task.</description>
+  <maintainer email="you@example.com">You</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Build type: Python -->
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <!-- Runtime deps used by the nodes -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>turtlesim</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>my_interfaces</exec_depend>
+  <exec_depend>python3-tk</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
