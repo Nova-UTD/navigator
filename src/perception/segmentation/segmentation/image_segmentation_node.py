@@ -17,7 +17,7 @@ import numpy as np
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from mmseg.apis import inference_model, init_model
-from helpers.gpu import select_cuda_device
+from helpers.gpu import run_model_initializer, select_cuda_device
 
 # input_topic → output_topic (bridge remaps /carla/hero/rgb_*/image → /cameras/camera*)
 CAMERAS = [
@@ -29,6 +29,7 @@ CAMERAS = [
 
 _CONFIG = '/usr/local/lib/python3.10/dist-packages/mmseg/.mim/configs/pspnet/pspnet_r18-d8_4xb2-80k_cityscapes-512x1024.py'
 _CKPT   = '/navigator_binaries/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth'
+_MIN_FREE_GPU_MEMORY_MB = 1024  # Safety headroom; this is not a model-size estimate.
 
 # Cityscapes 19-class → RGB (for downstream classification)
 _PALETTE = {
@@ -66,9 +67,18 @@ class ImageSegmentationNode(Node):
 
     def __init__(self):
         super().__init__('image_segmentation_node')
-        device = select_cuda_device()
+        device = select_cuda_device(
+            caller='image_segmentation_node',
+            purpose='loading PSPNet for four-camera semantic segmentation',
+            min_free_memory_mb=_MIN_FREE_GPU_MEMORY_MB,
+        )
         self.get_logger().info(f"Loading PSPNet on {device}…")
-        self.model = init_model(_CONFIG, _CKPT, device=str(device))
+        self.model = run_model_initializer(
+            lambda: init_model(_CONFIG, _CKPT, device=str(device)),
+            device=device,
+            caller='image_segmentation_node',
+            purpose='loading PSPNet for four-camera semantic segmentation',
+        )
         self.bridge = CvBridge()
         self.get_logger().info('PSPNet ready.')
 
