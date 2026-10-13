@@ -203,8 +203,8 @@ RUN pip3 install --ignore-installed \
     #
     xmlschema==1.0.18 \
     # distro \
-    torch \
-    torchvision \
+    torch==2.14.1 \
+    torchvision==0.29.1 \
     # openmim \
     # mmcv-full==1.6.0 \
     # packaging \
@@ -223,18 +223,36 @@ RUN pip3 install --ignore-installed \
     ultralytics
 
 # Install SAM2 seperately to avoid storage space errors on GitHub Actions
-RUN pip3 install sam2
+RUN pip3 install sam2==1.1.0
 
 # Install Black for Python code formatting.
 RUN pip3 install black==24.10.0
 
-# install mmdetection3d for 3d object detection
-RUN pip3 install -U openmim
-RUN mim install mmengine
-RUN mim install 'mmcv>=2.0.0rc4'
-RUN mim install 'mmdet>=3.0.0'
-RUN mim install "mmdet3d>=1.1.0"
-RUN mim install "mmpose>=1.1.0"
+# Install a mutually compatible, pinned OpenMMLab stack. MMCV 2.1.0 does not
+# provide a wheel for the PyTorch version above, so build its CUDA ops against
+# the installed PyTorch. PyTorch 2.14 requires C++20; MMCV 2.1.0 hardcodes
+# C++14/17 in setup.py, so update those flags before compiling. The torch wheel
+# supplies CUDA runtime libraries, not nvcc, and docker builds have no GPU
+# attached, so install the matching compiler and force CUDA extension builds.
+RUN pip3 install openmim==0.3.9 mmengine==0.10.7
+RUN pip3 install \
+        nvidia-cuda-nvcc==13.0.88 \
+        nvidia-cuda-cccl==13.0.85 \
+        nvidia-cuda-crt==13.0.88 \
+        nvidia-nvvm==13.0.88 \
+    && ln -s /usr/local/lib/python3.10/dist-packages/nvidia/cu13 /usr/local/cuda \
+    && ln -s /usr/local/cuda/lib/libcudart.so.13 /usr/local/cuda/lib/libcudart.so \
+    && git clone --depth 1 --branch v2.1.0 https://github.com/open-mmlab/mmcv.git /tmp/mmcv \
+    && sed -i 's/-std=c++14/-std=c++20/g; s/-std=c++17/-std=c++20/g' /tmp/mmcv/setup.py \
+    && CUDA_HOME=/usr/local/cuda TORCH_CUDA_ARCH_LIST=8.6 FORCE_CUDA=1 MAX_JOBS=8 pip3 install --no-build-isolation /tmp/mmcv \
+    && rm -rf /tmp/mmcv
+RUN mim install mmdet==3.2.0
+RUN mim install mmdet3d==1.4.0
+RUN mim install mmpose==1.3.2
+RUN mim install mmsegmentation==1.2.2
+# Keep ROS 2's colcon/setuptools command integration compatible, and restore
+# the repository's pinned Shapely version after MIM resolves OpenMMLab deps.
+RUN pip3 install setuptools==79.0.1 shapely==2.0.2 ftfy==6.3.1 regex==2025.9.18
 
 
 # install loop closure package "MapClosures"
