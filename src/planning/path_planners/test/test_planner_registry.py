@@ -1,6 +1,8 @@
 """Tests for planner_registry: selection by name and the uniform plan() call."""
 
 import importlib.util
+from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -21,6 +23,17 @@ def test_default_is_dijkstra_and_listed():
     assert DEFAULT_PLANNER == 'dijkstra'
     assert DEFAULT_PLANNER in PLANNER_NAMES
     assert len(set(PLANNER_NAMES)) == len(PLANNER_NAMES) == 5
+
+
+def test_launch_default_matches_the_registry():
+    # launch_node_definitions.py keeps a literal default so it never imports this package
+    launch_file = (Path(__file__).resolve().parents[4] / 'launches'
+                   / 'launch_node_definitions.py')
+    if not launch_file.exists():
+        pytest.skip('package is not inside a navigator checkout')
+    defaults = re.findall(r"LaunchConfiguration\('planner', default='([^']+)'\)",
+                          launch_file.read_text())
+    assert defaults == [DEFAULT_PLANNER]
 
 
 def test_unknown_name_lists_every_valid_planner():
