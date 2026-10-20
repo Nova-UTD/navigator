@@ -228,6 +228,10 @@ for _seed in range(3):
 def load_recorded(path: str) -> Scenario:
     """Load one recorded frame written by extract_costmaps.py."""
     with np.load(path) as f:
+        missing = [k for k in ('costmap', 'resolution', 'goal_x', 'goal_y') if k not in f]
+        if missing:
+            raise ValueError(f'{path} is not a frame written by extract_costmaps '
+                             f'(missing {", ".join(missing)})')
         name = str(f['name']) if 'name' in f else os.path.splitext(os.path.basename(path))[0]
         return Scenario(name, f['costmap'].astype(np.int32), float(f['resolution']),
                         (float(f['goal_x']), float(f['goal_y'])),
@@ -243,6 +247,10 @@ def collect(synthetic: Optional[List[str]], recorded: List[str]) -> List[Scenari
         raise ValueError(f"Unknown scenarios {unknown}. Known: {', '.join(SYNTHETIC)}")
     scenarios = [SYNTHETIC[n]() for n in names]
     for item in recorded:
+        if not os.path.exists(item):
+            raise FileNotFoundError(f'No such file or directory: {item}')
         files = sorted(glob.glob(os.path.join(item, '*.npz'))) if os.path.isdir(item) else [item]
+        if not files:
+            raise ValueError(f'No .npz frames in {item}')
         scenarios.extend(load_recorded(f) for f in files)
     return scenarios

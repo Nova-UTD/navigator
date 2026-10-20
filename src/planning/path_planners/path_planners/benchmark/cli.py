@@ -89,7 +89,14 @@ def parse_args(argv):
     ap.add_argument('--nn-model', default=None,
                     help='UNet checkpoint for neural-network (default: none, as the node runs)')
     ap.add_argument('--out', default=None, help='output directory')
-    return ap.parse_args(argv)
+    args = ap.parse_args(argv)
+    if args.repeats < 1:
+        ap.error('--repeats must be at least 1')
+    if args.timeout <= 0:
+        ap.error('--timeout must be positive')
+    if args.jobs < 1:
+        ap.error('--jobs must be at least 1')
+    return args
 
 
 def main(argv=None):
@@ -101,12 +108,19 @@ def main(argv=None):
     planners = report.ordered(planners)
     synthetic = (None if args.scenarios == 'all'
                  else [] if args.scenarios == 'none' else args.scenarios.split(','))
-    out = args.out or os.path.join(os.getcwd(), time.strftime('planner_bench_%Y%m%d_%H%M%S'))
-    os.makedirs(out, exist_ok=True)
+    try:
+        loaded = scenarios.collect(synthetic, args.costmaps)
+    except (OSError, ValueError) as e:
+        sys.exit(f'Cannot load scenarios: {e}')
+    if not loaded:
+        sys.exit('Nothing to run: --scenarios none and no --costmaps given.')
 
     print('Preparing scenarios through the node pipeline...')
-    prepared: List[Prepared] = [p for p in map(prepare, scenarios.collect(
-        synthetic, args.costmaps)) if p is not None]
+    prepared: List[Prepared] = [p for p in map(prepare, loaded) if p is not None]
+    if not prepared:
+        sys.exit('Every scenario was skipped; nothing to benchmark.')
+    out = args.out or os.path.join(os.getcwd(), time.strftime('planner_bench_%Y%m%d_%H%M%S'))
+    os.makedirs(out, exist_ok=True)
     for p in prepared:
         print(f"  {p.name}: {'path exists' if p.reachable else 'no path exists'}"
               + (f', exact {p.ref_length_m:.1f} m' if p.reachable else ''))

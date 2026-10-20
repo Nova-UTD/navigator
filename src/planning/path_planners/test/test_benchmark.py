@@ -158,6 +158,37 @@ def test_cli_end_to_end(tmp_path):
     assert len((out / 'calls.csv').read_text().splitlines()) == 1 + 3  # header + 3 calls
 
 
+@pytest.mark.parametrize('args,message', [
+    (['--repeats', '0'], None),
+    (['--timeout', '-1'], None),
+    (['--jobs', '0'], None),
+    (['--planners', 'bogus'], 'Unknown planners'),
+    (['--scenarios', 'nosuch'], 'Unknown scenarios'),
+    (['--scenarios', 'none'], 'Nothing to run'),
+    (['--scenarios', 'none', '--costmaps', '/nonexistent'], 'No such file or directory'),
+])
+def test_cli_rejects_bad_input_before_writing(tmp_path, args, message):
+    out = tmp_path / 'bench'
+    with pytest.raises(SystemExit) as exc:
+        cli.main(args + ['--out', str(out)])
+    assert exc.value.code != 0
+    if message:
+        assert message in str(exc.value.code)
+    assert not out.exists()
+
+
+def test_cli_rejects_empty_and_foreign_frames(tmp_path):
+    empty = tmp_path / 'empty'
+    empty.mkdir()
+    foreign = tmp_path / 'foreign.npz'
+    np.savez(foreign, costmap=np.zeros((4, 4), dtype=np.int8))
+    for item, message in ((empty, 'No .npz frames'), (foreign, 'missing resolution')):
+        with pytest.raises(SystemExit) as exc:
+            cli.main(['--scenarios', 'none', '--costmaps', str(item),
+                      '--out', str(tmp_path / 'bench')])
+        assert message in str(exc.value.code)
+
+
 def test_timeouts_count_in_timing_and_consistency():
     sc = cli.prepare(scenarios.SYNTHETIC['parked_car']())
     rows = [{'planner': 'trrt-star', 'scenario': sc.name, 'reachable': True, 'status': s,
