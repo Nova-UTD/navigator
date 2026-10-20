@@ -18,6 +18,9 @@ Subscribes to:
 
 Publishes:
 ✅ /planning/path (Path) in base_link frame
+
+Choose the planner with the `planner` parameter (launch argument `planner:=<name>`).
+Valid names live in planner_registry.PLANNER_NAMES; an unknown name stops the node.
 """
 
 import math
@@ -25,7 +28,6 @@ import threading
 import numpy as np
 import time
 from typing import List, Tuple, Optional
-import scipy.ndimage
 
 import rclpy
 from rclpy.node import Node
@@ -42,58 +44,11 @@ from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
 from visualization_msgs.msg import Marker
 from std_msgs.msg import ColorRGBA
 
-# Import all path planner classes
-from path_planners.arastar_path_planner import ARAStarPlanner
-from path_planners.dijkstra_path_planner import DijkstraPathPlanner
-from path_planners.dp_path_planner import DPPathPlanner
-from path_planners.neural_network_path_planner import NeuralPathPlanner
-from path_planners.trrtstar_path_planner import TRRTStarPathPlanner
-
-def pad_obstacles(cmap, threshold, padding):
-    """Apply padding to obstacles in the costmap."""
-    obstacles = 0 * cmap
-    # Find the location of obstacles as binary values
-    obstacles[np.where(cmap >= threshold)] = 1
-    # Expand obstacles using binary dilation
-    #struct1 = scipy.ndimage.generate_binary_structure(2, 1)  # 3x3 grid true in + shape
-    struct2 = scipy.ndimage.generate_binary_structure(2, 2)  # 3x3 grid all true
-    obstacles = scipy.ndimage.binary_dilation(obstacles, structure=struct2, iterations=padding).astype(cmap.dtype)
-    
-    # Create padded costmap - set obstacle areas to 100 (white)
-    padded_costmap = cmap.copy()
-    padded_costmap[obstacles > 0] = 100
-    
-    return padded_costmap
-
-def rolling_smoothing(path, look_ahead=2, depth=3):
-    """
-    Smooths a path by moving each point toward a future point.
-    
-    Parameters:
-    - path: List of (row, col) tuples representing the path
-    - look_ahead: How many points ahead to look
-    - depth: Number of smoothing iterations
-    
-    Returns:
-    - Smoothed path as list of (row, col) tuples
-    """
-    if len(path) < look_ahead:
-        return path
-
-    t = 1.0/look_ahead
-    for d in range(depth):
-        new_path = [path[0]]
-        for i in range(1, len(path)-look_ahead):
-            x0 = path[i-1][0]
-            y0 = path[i-1][1]
-            
-            dx = path[i-1+look_ahead][0] - x0
-            dy = path[i-1+look_ahead][1] - y0
-            new_path.append((x0 + t*dx, y0 + t*dy))
-        new_path.extend(path[-look_ahead:])
-        path = new_path
-    
-    return path
+# Planner selection and the costmap pipeline are shared with the offline benchmark
+from path_planners.planner_registry import DEFAULT_PLANNER, UnknownPlannerError, make_planner
+from path_planners.planning_core import (
+    OBSTACLE_PADDING, OBSTACLE_THRESHOLD, ORIGIN_X, ORIGIN_Y,
+    build_problem, costmap_to_array, rolling_smoothing)
 
 def spline_smoothing(path, s=10):
     k = np.arange(len(path))
@@ -129,10 +84,10 @@ class PathPlannerNode(Node):
 
         # Parameters
         self.grid_res = 0.4  # Grid resolution in meters/cell
-        self.origin_x = 20.0  # Origin offset in X
-        self.origin_y = 30.0  # Origin offset in Y
-        self.obstacle_threshold = 90  # Values above this are considered obstacles
-        self.obstacle_padding = 5  # Cells to pad around obstacles (5 = 1.0m, ~vehicle half-width)
+        self.origin_x = ORIGIN_X  # Origin offset in X
+        self.origin_y = ORIGIN_Y  # Origin offset in Y
+        self.obstacle_threshold = OBSTACLE_THRESHOLD  # Values above this are considered obstacles
+        self.obstacle_padding = OBSTACLE_PADDING  # Cells to pad around obstacles (5 = 1.0m, ~vehicle half-width)
 
         # Path re-use: cache the last valid Dijkstra result.
         # Replan only when an obstacle blocks the cached path or the goal moves.
@@ -150,7 +105,7 @@ class PathPlannerNode(Node):
         self.smoothing_depth = 3
 
         # Parameters
-        self.declare_parameter('planner', "dijkstra")
+        self.declare_parameter('planner', DEFAULT_PLANNER)
         self.planner_type_obj = self.get_parameter('planner')
         self.planner_type = self.planner_type_obj.value
 
@@ -185,19 +140,16 @@ class PathPlannerNode(Node):
             0.1, self.generate_path, callback_group=MutuallyExclusiveCallbackGroup()
         )
 
-        # Initialize path planners
-        if self.planner_type == 'dijkstra':
-            self.planner = DijkstraPathPlanner()
-        elif self.planner_type == 'ara-star':
-            self.planner = ARAStarPlanner()
-        elif self.planner_type == 'dynamic-programming':
-            self.planner = DPPathPlanner()
-        elif self.planner_type == 'neural-network':
-            self.planner = NeuralPathPlanner()
-        elif self.planner_type == 'trrt-star':
-            self.planner = TRRTStarPathPlanner()
+        # Initialize the selected path planner; fail loudly on a typo
+        try:
+            self.planner = make_planner(self.planner_type)
+        except UnknownPlannerError as e:
+            self.get_logger().fatal(str(e))
+            raise
 
-        self.get_logger().info(f"Path Planner Node initialized using {self.planner.__class__.__name__}")
+        self.get_logger().info(
+            f"Path Planner Node initialized using {self.planner.impl.__class__.__name__} "
+            f"(planner:={self.planner.name})")
 
     def clock_callback(self, msg: Clock):
         self.clock = msg
@@ -226,18 +178,6 @@ class PathPlannerNode(Node):
             return
         self._best_goal_stamp = msg_sec
         self.path_goal = msg
-
-    def scale_grid_numpy(self, data, old_h, old_w, new_h, new_w):
-        old = np.array(data).reshape(old_h, old_w)
-
-        zoom_y = new_h / old_h
-        zoom_x = new_w / old_w
-
-        # Nearest neighbor so obstacles remain discrete
-        new = scipy.ndimage.zoom(old, (zoom_y, zoom_x), order=0)
-
-        return new.astype(np.int32)
-
 
     def generate_path(self):
         # Snapshot costmap under lock to prevent race with callback thread
@@ -269,124 +209,41 @@ class PathPlannerNode(Node):
             return
 
         # ----------------------------
-        # SCALE MAP TO 60m x 60m
+        # Scale to 60m x 60m, place start and goal, pad obstacles, and snap
+        # a goal that landed in an obstacle cell (e.g. grid edge dilation or
+        # boundary) back along the line toward start. Shared with the offline
+        # benchmark: see planning_core.build_problem.
         # ----------------------------
-        target_cells = int(60.0 / resolution)
-
-        costmap_np = np.asarray(costmap_snap.data, dtype=np.int32).reshape(raw_height, raw_width)
-
-        if raw_height != target_cells or raw_width != target_cells:
-            costmap_np = self.scale_grid_numpy(
-                costmap_snap.data,
-                raw_height,
-                raw_width,
-                target_cells,
-                target_cells
-            )
-
-
-        height, width = costmap_np.shape
-
-        # ----------------------------
-        # Compute start and goal AFTER scaling
-        # ----------------------------
-
-        start_i = int(round(self.origin_y / resolution))
-        start_j = int(round(self.origin_x / resolution))
-
-        goal_i = int(round((self.path_goal.pose.position.y + self.origin_y) / resolution))
-        goal_j = int(round((self.path_goal.pose.position.x + self.origin_x) / resolution))
-
-        # Clamp using SCALED dimensions
-        start_i = max(0, min(start_i, height - 1))
-        start_j = max(0, min(start_j, width - 1))
-        goal_i = max(0, min(goal_i, height - 1))
-        goal_j = max(0, min(goal_j, width - 1))
-
-        # ----------------------------
-        # Pad obstacles
-        # ----------------------------
-        padded_costmap = pad_obstacles(
+        costmap_np = costmap_to_array(costmap_snap.data, raw_height, raw_width, resolution)
+        problem = build_problem(
             costmap_np,
+            resolution,
+            self.path_goal.pose.position.x,
+            self.path_goal.pose.position.y,
+            self.origin_x,
+            self.origin_y,
             self.obstacle_threshold,
             self.obstacle_padding
         )
-
-
-        # ----------------------------
-        # Goal snap: if goal landed in an obstacle cell (e.g. grid edge
-        # dilation or boundary), walk back along the line toward start
-        # until we find the furthest free cell.
-        # ----------------------------
-        if padded_costmap[goal_i, goal_j] >= self.obstacle_threshold:
-            steps = max(abs(goal_i - start_i), abs(goal_j - start_j))
-            if steps > 0:
-                snapped = False
-                for s in range(steps, -1, -1):
-                    t = s / steps
-                    ci = int(round(start_i + t * (goal_i - start_i)))
-                    cj = int(round(start_j + t * (goal_j - start_j)))
-                    ci = max(0, min(ci, height - 1))
-                    cj = max(0, min(cj, width - 1))
-                    if padded_costmap[ci, cj] < self.obstacle_threshold:
-                        goal_i, goal_j = ci, cj
-                        snapped = True
-                        break
-                if snapped:
-                    self.get_logger().info(
-                        f'Goal snapped to nearest free cell: ({goal_i},{goal_j})',
-                        throttle_duration_sec=2.0)
-                else:
-                    self.get_logger().warning(
-                        'No free cell found along start→goal line; path will be empty.',
-                        throttle_duration_sec=2.0)
-                    return
+        if problem is None:
+            self.get_logger().warning(
+                'No free cell found along start→goal line; path will be empty.',
+                throttle_duration_sec=2.0)
+            return
+        if problem.goal_snapped:
+            self.get_logger().info(
+                f'Goal snapped to nearest free cell: {problem.goal}',
+                throttle_duration_sec=2.0)
 
         # ----------------------------
         # Run Planner
         # ----------------------------
-        path = None
-
-        if isinstance(self.planner, ARAStarPlanner):
-            self.planner.s_start = (start_i, start_j)
-            self.planner.s_goal = (goal_i, goal_j)
-            self.planner.cmap = padded_costmap
-            self.planner.obstacle_threshold = self.obstacle_threshold
-            self.planner.create_graph_from_costmap()
-            path = self.planner.arastar()
-
-        elif isinstance(self.planner, DijkstraPathPlanner):
-            path = self.planner.shortest_path(
-                padded_costmap,
-                (start_i, start_j),
-                (goal_i, goal_j),
-                self.obstacle_threshold
-            )
-
-        elif isinstance(self.planner, DPPathPlanner):
-            self.planner.costmap_data = padded_costmap
-            self.planner.obstacle_threshold = self.obstacle_threshold
-            success = self.planner.run_value_iteration(start_i, start_j, goal_i, goal_j)
-            if success:
-                path = self.planner.extract_path(
-                    (start_i, start_j),
-                    (goal_i, goal_j)
-                )
-
-        elif isinstance(self.planner, NeuralPathPlanner):
-            path = self.planner.predict_path(
-                padded_costmap,
-                (start_i, start_j),
-                (goal_i, goal_j)
-            )
-
-        elif isinstance(self.planner, TRRTStarPathPlanner):
-            path = self.planner.trrtstar_path(
-                padded_costmap,
-                (start_i, start_j),
-                (goal_i, goal_j),
-                self.obstacle_threshold
-            )
+        path = self.planner(
+            problem.costmap,
+            problem.start,
+            problem.goal,
+            self.obstacle_threshold
+        )
 
         if path is None or len(path) == 0:
             self.get_logger().warning("!!! Pathfinding returned a path as None !!!",
