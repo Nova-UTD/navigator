@@ -89,6 +89,19 @@ def test_build_problem_matches_legacy_node_pipeline(shape, resolution):
     assert all(n > 0 for n in outcomes.values()), outcomes
 
 
+@pytest.mark.parametrize('resolution,cells', [(0.2, 300), (0.4, 150)])
+def test_float32_resolution_keeps_the_grid_size(resolution, cells):
+    # What the node actually receives: OccupancyGrid.info.resolution is float32
+    received = float(np.float32(resolution))
+    grid = np.zeros((cells, cells), dtype=np.int32)
+    grid[:, cells - 20] = 100
+    out = costmap_to_array(grid.ravel(), cells, cells, received)
+    assert out.shape == (cells, cells)
+    np.testing.assert_array_equal(out, grid)  # no resample, nothing moved
+    # The pre-fix node truncated to one cell fewer and resampled every frame
+    assert int(60.0 / received) == cells - 1
+
+
 def test_published_grid_needs_no_rescale_and_starts_at_vehicle():
     grid = np.zeros((300, 300), dtype=np.int32)
     out = costmap_to_array(grid.ravel(), 300, 300, 0.2)

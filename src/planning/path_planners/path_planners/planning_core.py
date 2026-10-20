@@ -49,7 +49,9 @@ class PlanningProblem:
 def costmap_to_array(data: Sequence[int], height: int, width: int,
                      resolution: float) -> np.ndarray:
     """Reshape OccupancyGrid data and rescale it to GRID_SPAN_M square."""
-    target_cells = int(GRID_SPAN_M / resolution)
+    # OccupancyGrid resolution is float32: 0.2 arrives as 0.2000000030, and
+    # int(60 / that) is 299, which resampled every 300x300 frame to 299x299.
+    target_cells = int(round(GRID_SPAN_M / resolution))
     costmap_np = np.asarray(data, dtype=np.int32).reshape(height, width)
     if height != target_cells or width != target_cells:
         # Nearest neighbour so obstacles remain discrete
