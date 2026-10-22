@@ -11,12 +11,12 @@ from path_planners.planner_registry import (
     DEFAULT_PLANNER, make_planner, PLANNER_NAMES, UnknownPlannerError)
 import pytest
 
-NEEDS = {'ara-star': 'networkx', 'neural-network': 'torch'}
+# Modules only these planners import (the training module the UNet comes from needs pandas)
+NEEDS = {'ara-star': ('networkx',), 'neural-network': ('torch', 'skimage', 'pandas')}
 
 
-def _available(name):
-    module = NEEDS.get(name)
-    return module is None or importlib.util.find_spec(module) is not None
+def _missing(name):
+    return [m for m in NEEDS.get(name, ()) if importlib.util.find_spec(m) is None]
 
 
 def test_default_is_dijkstra_and_listed():
@@ -29,8 +29,7 @@ def test_launch_default_matches_the_registry():
     # launch_node_definitions.py keeps a literal default so it never imports this package
     launch_file = (Path(__file__).resolve().parents[4] / 'launches'
                    / 'launch_node_definitions.py')
-    if not launch_file.exists():
-        pytest.skip('package is not inside a navigator checkout')
+    assert launch_file.exists(), f'{launch_file} not found; update this test if it moved'
     defaults = re.findall(r"LaunchConfiguration\('planner', default='([^']+)'\)",
                           launch_file.read_text())
     assert defaults == [DEFAULT_PLANNER]
@@ -56,8 +55,12 @@ def test_dijkstra_does_not_import_heavy_dependencies():
 
 @pytest.mark.parametrize('name', PLANNER_NAMES)
 def test_every_planner_runs_through_the_uniform_call(name):
-    if not _available(name):
-        pytest.skip(f'{NEEDS[name]} not installed')
+    missing = _missing(name)
+    if missing:
+        # Heavy dependencies are optional; without one, picking that planner must fail loudly
+        with pytest.raises(ImportError, match='|'.join(missing)):
+            make_planner(name)
+        return
     costmap = np.zeros((40, 40), dtype=np.int32)
     costmap[10:30, 20] = 100  # a wall to go around
     planner = make_planner(name)
