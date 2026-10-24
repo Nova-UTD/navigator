@@ -41,10 +41,11 @@ def generate_launch_description():
         # lane_type_detector,
         # pedestrian_skeleton
         # road_user_detector,      # YOLO model required - disabled until model present
-        # image_segmentation,      # mmseg/PSPNet required - disabled until installed
+        image_segmentation,        # mmseg/PSPNet, now installed -- runs on cuda:1
         ground_seg,
         static_grid,
         hybrid_grid,
         perception_drivable_grid,
         hybrid_drivable_grid,
+        yolopv2_lane,
     ])

@@ -40,6 +40,8 @@ class DijkstraPathPlanner:
 
         def h(r, c):
             return WEIGHT * ((r - er) ** 2 + (c - ec) ** 2) ** 0.5
+        #def h(r, c):
+        #    return ((r - er) ** 2 + (c - ec) ** 2) ** 0.5
 
         heap = [(h(*start), 0.0, start)]
 

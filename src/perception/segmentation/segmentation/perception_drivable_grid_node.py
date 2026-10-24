@@ -2,7 +2,11 @@
 """
 perception_drivable_grid_node.py  —  Camera-first real-time drivable area grid
 
-Pipeline  (10 Hz)
+Modified by Siddarth Nandyala <siddarth.nandyala@utdallas.edu>: publish rate
+bumped 10Hz -> 20Hz (ALPHA_BLEND/DECAY_RATE rescaled by sqrt() to preserve
+the same real-time EMA smoothing constant at the new rate).
+
+Pipeline  (20 Hz)
   1. Project PSPNet semantic images -> per-cell road observations (LUT at init)
   2. Cross-validate with LiDAR ground/obstacle evidence
   3. Temporal accumulation with odometry pose compensation
