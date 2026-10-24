@@ -14,13 +14,13 @@ autonomous_cruise_controller:
     wheelbase: 2.875  # meters (typical sedan)
     
     # Lateral control (Pure Pursuit) parameters
-    min_lookahead: 3.0  # meters
+    min_lookahead: 6.0  # meters
     max_lookahead: 15.0  # meters
-    lookahead_gain: 0.5  # dimensionless (lookahead = min + gain * speed)
+    lookahead_gain: 0.3  # dimensionless (lookahead = min + gain * speed)
     max_steer: 1.0  # radians (±57 degrees)
     
     # Longitudinal control (PID) parameters
-    target_speed: 6.0  # m/s (~13.4 mph, ~21.6 km/h)
+    target_speed: 3.5  # m/s (~13.4 mph, ~21.6 km/h)
     kp: 1.2  # Proportional gain
     ki: 0.15  # Integral gain
     kd: 0.05  # Derivative gain

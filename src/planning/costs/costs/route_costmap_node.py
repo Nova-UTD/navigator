@@ -118,10 +118,21 @@ class RouteCostmapNode(Node):
             return False
         return int(self._drivable_grid[row, col]) < 90
 
+    # Perception evidence is EMA-smoothed and continuous (see
+    # perception_drivable_grid_node's ALPHA_BLEND) — a genuinely confirmed
+    # cell asymptotically approaches but rarely lands on *exactly* 0
+    # (that needs evidence > 0.995, ~20+ consecutive high-confidence frames
+    # on the same cell). Requiring exact equality made "confirmed" flicker
+    # almost at random as the vehicle moved and cells entered/left view,
+    # which was the real cause of the wild goal jumps / constant pathfinding
+    # failures. Use a tolerant threshold instead, consistent with
+    # _is_drivable's `< 90` style check.
+    CONFIRMED_THRESHOLD = 30
+
     def _is_camera_confirmed_drivable(self, x_bl: float, y_bl: float) -> bool:
-        """Return True only if drivable_grid == 0 at this cell.
-        drivable == 0 means perception actively classified it as road surface.
-        drivable == 50 means HD-map default / unmapped — beyond camera horizon."""
+        """Return True if drivable_grid is confidently road surface at this cell
+        (<= CONFIRMED_THRESHOLD). drivable == 50 means HD-map default /
+        unmapped — beyond camera horizon."""
         if self._drivable_grid is None:
             return False  # conservative: no perception data yet
         col = int(round((x_bl + 20.0) / 0.2))
@@ -130,7 +141,7 @@ class RouteCostmapNode(Node):
             return False
         if not (0 <= col < self._drivable_grid.shape[1]):
             return False
-        return int(self._drivable_grid[row, col]) == 0
+        return int(self._drivable_grid[row, col]) <= self.CONFIRMED_THRESHOLD
 
     # TODO: currently implemented, the route cannot be changed once it is first received
     def routeCb(self, msg: Path):
@@ -285,24 +296,30 @@ class RouteCostmapNode(Node):
             # Gradient corridor: centerline lowest cost, padding slightly higher.
             # Path hugs the exact route center; deviates only when an obstacle
             # (occupancy=100 -> sc=100 via np.maximum) blocks the centerline.
-            HALF_W = 10               # padding half-width cells (2.0m at 0.2m/cell)
+            HALF_W = 10               # lane half-width cells (2.0m at 0.2m/cell)
             CENTER_CONFIRMED   = 0   # exact route centerline, camera confirmed
             CENTER_UNCONFIRMED = 20  # exact route centerline, HD-map only
-            SIDE_CONFIRMED     = 10  # side padding band, camera confirmed
-            SIDE_UNCONFIRMED   = 30  # side padding band, HD-map only
+            EDGE_CONFIRMED     = 10  # lane-edge cost, camera confirmed
+            EDGE_UNCONFIRMED   = 30  # lane-edge cost, HD-map only
             for r in range(len(gridxs)):
                 confirmed = self._is_camera_confirmed_drivable(gridxs[r], gridys[r])
                 center_val = CENTER_CONFIRMED if confirmed else CENTER_UNCONFIRMED
-                side_val   = SIDE_CONFIRMED   if confirmed else SIDE_UNCONFIRMED
+                edge_val   = EDGE_CONFIRMED   if confirmed else EDGE_UNCONFIRMED
                 ci = int(round((gridys[r] + veh_lat)  / gridres))
                 cj = int(round((gridxs[r] + veh_long) / gridres))
-                # Paint padding band first, then stamp centerline on top
+                # Radial gradient: cost is lowest exactly on the centerline and
+                # ramps up smoothly to edge_val at the lane edge (HALF_W cells
+                # out), instead of a flat padding band. Biases the planner to
+                # hug lane center and only drift outward when something (an
+                # obstacle) forces it to.
                 for di in range(-HALF_W, HALF_W + 1):
                     for dj in range(-HALF_W, HALF_W + 1):
                         ni, nj = ci + di, cj + dj
                         if 0 <= ni < grid_rows and 0 <= nj < grid_cols:
-                            if routemap[ni, nj] > side_val:
-                                routemap[ni, nj] = side_val
+                            frac = min(1.0, np.sqrt(di * di + dj * dj) / HALF_W)
+                            cell_val = center_val + (edge_val - center_val) * frac
+                            if routemap[ni, nj] > cell_val:
+                                routemap[ni, nj] = cell_val
                 # Exact centerline always lowest cost
                 if 0 <= ci < grid_rows and 0 <= cj < grid_cols:
                     if routemap[ci, cj] > center_val:
