@@ -2,6 +2,15 @@
 Package: lane_type_detector
 File: lane_type_detector.py
 Author: Pranav Boyapati
+
+Bug fix (image encoding crash + hardcoded frame-width assumption):
+Siddarth Nandyala <siddarth.nandyala@utdallas.edu>
+- image_callback previously requested cv_bridge encoding '8UC3', which is
+  not a valid conversion target for this camera's actual bgra8 encoding
+  and raised a CvBridgeError on every single frame -- changed to 'bgr8'.
+- numLanesLeftOfImageCenter compared box centers against a hardcoded
+  image width of 400, which does not match this camera's real resolution
+  -- changed to read the actual image width at runtime.
 """
 
 import rclpy
@@ -43,7 +52,10 @@ class LaneTypeDetector(Node):
 
     #callbacks for subscriptions
     def image_callback(self, msg : Image):
-        self.image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='8UC3')
+        # /cameras/camera0 publishes bgra8; '8UC3' isn't a real encoding
+        # conversion target for cv_bridge (it errored on every frame) --
+        # bgr8 is the standard 3-channel format YOLO expects.
+        self.image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         self.make_lane_detections()
 
     
@@ -74,7 +86,8 @@ class LaneTypeDetector(Node):
                 numTotalLanes += 1
                 
                 x1, y1, x2, y2 = box
-                if (((x1 + x2) / 2) < (400 / 2)):
+                image_width = self.image.shape[1]  # was hardcoded to 400, wrong for this camera's actual resolution
+                if (((x1 + x2) / 2) < (image_width / 2)):
                     numLanesLeftOfImageCenter += 1
                 
             if (int(cls) == 1):
