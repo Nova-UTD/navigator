@@ -17,4 +17,5 @@
   </export>
 
   <depend>nav_msgs</depend>
+  <exec_depend>helpers</exec_depend>
 </package>
