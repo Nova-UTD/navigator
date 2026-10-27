@@ -29,12 +29,11 @@ LAUNCHES = {
     "perception": "launches/launch.perception.py",
     "nav2": "launches/launch.nav2.py",
     "rviz": "launches/launch.rviz.py",
-    "map": "launches/launch.mapmanager.py",
-    "carla_localization_test": "launches/launch.carla.localization_test.py"
+    "map": "launches/launch.mapmanager.py"
 }
 
 
-def launch(name, extra_args=None):
+def launch(name):
     """Launches a launch file.
     
     @param name[str]: Name of launch file to launch. Must be a key in LAUNCHES.
@@ -46,10 +45,7 @@ def launch(name, extra_args=None):
         err_fatal("Launch name not found")
 
     try:
-        cmd = ["ros2", "launch", LAUNCHES[name]]
-        if extra_args:
-            cmd.extend(extra_args)
-        subprocess.run(cmd)
+        subprocess.run(["ros2", "launch", LAUNCHES[name]])
     except KeyboardInterrupt:
         print("Launch interrupted")
 
@@ -67,8 +63,7 @@ subparsers = parser.add_subparsers(required=True)
 # Usage: navigator launch [launch_name]
 launch_parser = subparsers.add_parser("launch", help="launches an existing launch file")
 launch_parser.add_argument("launch_name", help="name of launch", choices=LAUNCHES.keys())
-launch_parser.add_argument("launch_args", nargs=argparse.REMAINDER, help="extra ros2 launch arguments")
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    launch(args.launch_name, args.launch_args)
+    launch(args.launch_name)
