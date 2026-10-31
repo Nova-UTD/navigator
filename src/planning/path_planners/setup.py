@@ -20,6 +20,8 @@ setup(
     entry_points={
         "console_scripts": [
             "path_planner_node = path_planners.path_planner_node:main",
+            "planner_benchmark = path_planners.benchmark.cli:main",
+            "extract_costmaps = path_planners.benchmark.extract_costmaps:main",
         ],
     },
 )

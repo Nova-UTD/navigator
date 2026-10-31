@@ -1,5 +1,6 @@
 """This module defines nodes used in launch files."""
 
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 NAVIGATOR_DIR = "/navigator/"
@@ -129,9 +130,12 @@ path_planner = Node(
     package="path_planners", 
     executable="path_planner_node",
     parameters=[
-        {'planner': 'dijkstra'}
+        # Literal default, not imported from path_planners, so launch files that
+        # import this module still load where path_planners is not built. Must equal
+        # planner_registry.DEFAULT_PLANNER (test_planner_registry checks it).
+        {'planner': LaunchConfiguration('planner', default='dijkstra')}
     ]
-) # options: dijkstra, ara-star, dynamic-programming, neural-network, trrt-star
+) # choose with the launch argument planner:=<name>, see path_planners.planner_registry
 
 path_planner_nav2 = Node(
     package='nav2_path_planner',

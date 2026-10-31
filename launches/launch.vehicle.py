@@ -4,9 +4,10 @@ from os import path
 import sys
 
 from launch import LaunchDescription
-from launch.actions import RegisterEventHandler, LogInfo
+from launch.actions import DeclareLaunchArgument, RegisterEventHandler, LogInfo
 from launch.event_handlers import OnProcessStart
 import launch_ros.actions
+from path_planners.planner_registry import DEFAULT_PLANNER, PLANNER_NAMES
 
 sys.path.append(path.abspath("/navigator/"))
 from launches.launch_node_definitions import *
@@ -41,6 +42,13 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            # Path planner selection, e.g. ros2 launch launches/launch.carla.py planner:=ara-star
+            DeclareLaunchArgument(
+                "planner",
+                default_value=DEFAULT_PLANNER,
+                choices=list(PLANNER_NAMES),
+                description="Path planner run by path_planner_node.",
+            ),
             # Set the global config file as a parameter for all nodes.
             launch_ros.actions.SetParameter(name="global_config", value="/navigator/param/global_parameters.yaml"),
             
