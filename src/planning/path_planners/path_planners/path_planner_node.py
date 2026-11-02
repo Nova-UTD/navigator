@@ -174,6 +174,13 @@ class PathPlannerNode(Node):
         )
         self.path_goal = None
 
+        # Remaining route in base_link, used to snap a blocked goal back along
+        # the road rather than along the straight start->goal line.
+        self.route_local_sub = self.create_subscription(
+            Path, "/planning/route_local", self.route_local_callback, 1
+        )
+        self.route_local = None
+
         # Publishers
         self.path_pub = self.create_publisher(Path, "/planning/path", 1)
         self.debug_marker_pub = self.create_publisher(
@@ -209,6 +216,13 @@ class PathPlannerNode(Node):
         # Guard against race where generate_path reads costmap mid-update
         with self._costmap_lock:
             self.costmap = msg
+
+    def route_local_callback(self, msg: Path):
+        if not msg.poses:
+            self.route_local = None
+            return
+        self.route_local = np.array(
+            [(p.pose.position.x, p.pose.position.y) for p in msg.poses])
 
     def path_goal_callback(self, msg: PoseStamped):
         # Ghost rejection — two layers:
@@ -314,13 +328,37 @@ class PathPlannerNode(Node):
 
 
         # ----------------------------
-        # Goal snap: if goal landed in an obstacle cell (e.g. grid edge
-        # dilation or boundary), walk back along the line toward start
-        # until we find the furthest free cell.
+        # Goal snap: if goal landed in an obstacle cell (e.g. a cross street
+        # hidden behind a corner building reads as obstacle), walk back along
+        # the route toward the vehicle and use the furthest free route cell.
+        # The straight start->goal line cuts across the inside of turns, so it
+        # is only used when no route is available.
         # ----------------------------
         if padded_costmap[goal_i, goal_j] >= self.obstacle_threshold:
+            route = self.route_local
+            snapped_on_route = False
+            if route is not None and len(route) > 1:
+                gx = self.path_goal.pose.position.x
+                gy = self.path_goal.pose.position.y
+                k = int(np.argmin(np.hypot(route[:, 0] - gx, route[:, 1] - gy)))
+                for x, y in route[k::-1]:
+                    if x <= 0.0:
+                        break  # reached the vehicle; nothing free ahead on the route
+                    ci = int(round((y + self.origin_y) / resolution))
+                    cj = int(round((x + self.origin_x) / resolution))
+                    if not (0 <= ci < height and 0 <= cj < width):
+                        continue
+                    if padded_costmap[ci, cj] < self.obstacle_threshold:
+                        goal_i, goal_j = ci, cj
+                        snapped_on_route = True
+                        break
+                if snapped_on_route:
+                    self.get_logger().info(
+                        f'Goal snapped back along route to free cell: ({goal_i},{goal_j})',
+                        throttle_duration_sec=2.0)
+
             steps = max(abs(goal_i - start_i), abs(goal_j - start_j))
-            if steps > 0:
+            if not snapped_on_route and steps > 0:
                 snapped = False
                 for s in range(steps, -1, -1):
                     t = s / steps

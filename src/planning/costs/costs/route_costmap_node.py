@@ -65,6 +65,12 @@ class RouteCostmapNode(Node):
         self.goal_marker_pub = self.create_publisher(
             Marker, '/planning/goal_marker', 1)
 
+        # Remaining route in base_link (same points the goal is picked from).
+        # path_planner_node uses it to pull a blocked goal back along the road
+        # instead of along a straight line that cuts across corners.
+        self.route_local_pub = self.create_publisher(
+            Path, '/planning/route_local', 1)
+
         route_sub = self.create_subscription(
             Path, '/planning/route', self.routeCb, 1)
         self.route = None
@@ -95,6 +101,7 @@ class RouteCostmapNode(Node):
         self._last_paint_ty = None
         self._cached_routemap = None
         self._cached_goal = None
+        self._cached_route_local = None
 
     def clockCb(self, msg: Clock):
         self.clock = msg
@@ -219,7 +226,8 @@ class RouteCostmapNode(Node):
             # transform the route points to base_link 
             # If vehicle hasn't moved enough, re-publish cached result and skip
             if skip_repaint and hasattr(self, '_cached_routemap') and self._cached_routemap is not None:
-                self.publish(self._cached_routemap, self._cached_goal, cfg)
+                self.publish(self._cached_routemap, self._cached_goal, cfg,
+                             self._cached_route_local)
                 return
 
             route_baselink_x = np.zeros(len(self.route_remaining))
@@ -376,13 +384,14 @@ class RouteCostmapNode(Node):
 
             self._cached_routemap = routemap
             self._cached_goal = goal
-            self.publish(routemap, goal, cfg)
+            self._cached_route_local = (gridxs, gridys)
+            self.publish(routemap, goal, cfg, self._cached_route_local)
 
         except(LookupException, ExtrapolationException, ConnectivityException) as e: # typically get some errors on startup as the tf buffer fills
             self.get_logger().warning("!!! Error finding transform to build route grid !!!")
             self.get_logger().error('failed to get transform {} \n'.format(repr(e)))
 
-    def publish(self, routemap, goal, cfg):
+    def publish(self, routemap, goal, cfg, route_local=None):
         # Publish path goal
         path_goal = PoseStamped()
         path_goal.header.stamp = self.clock.clock
@@ -390,6 +399,19 @@ class RouteCostmapNode(Node):
         path_goal.pose.position.x = goal[0]
         path_goal.pose.position.y = goal[1]
         self.path_goal_pub.publish(path_goal)
+
+        # Publish the route (base_link) the goal was picked from; empty when
+        # there is no route ahead so the planner never uses a stale one.
+        route_msg = Path()
+        route_msg.header = path_goal.header
+        if route_local is not None:
+            for x, y in zip(*route_local):
+                pose = PoseStamped()
+                pose.header = path_goal.header
+                pose.pose.position.x = float(x)
+                pose.pose.position.y = float(y)
+                route_msg.poses.append(pose)
+        self.route_local_pub.publish(route_msg)
 
         # Marker for RViz goal arrow
         self.publish_marker(path_goal, (0.0, 1.0, 0.4), self.goal_marker_pub)

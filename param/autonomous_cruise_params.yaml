@@ -12,9 +12,10 @@ autonomous_cruise_controller:
     
     # Vehicle parameters
     wheelbase: 2.875  # meters (typical sedan)
+    rear_axle_offset: 1.4  # meters, rear axle behind base_link (vehicle centre); pure pursuit steers from here
     
     # Lateral control (Pure Pursuit) parameters
-    min_lookahead: 6.0  # meters
+    min_lookahead: 4.0  # meters (6.0 cut Town02's tight right turns onto the sidewalk)
     max_lookahead: 15.0  # meters
     lookahead_gain: 0.3  # dimensionless (lookahead = min + gain * speed)
     max_steer: 1.0  # radians (±57 degrees)

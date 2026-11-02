@@ -107,7 +107,9 @@ map_manager = Node(
         {'from_file': True},
         {'data_path': '/navigator/data'},
         {'route_path': '/navigator/data/maps/ps4_loop_route.txt'}
-    ]#,
+    ],
+    # hybrid_drivable_grid fuses this HD-map grid with perception and publishes /grid/drivable
+    remappings=[('/grid/drivable', '/grid/drivable/hdmap')]#,
     #prefix=['xterm -e gdb -ex run --args']
 )
 
@@ -116,7 +118,9 @@ map_manager_carla = Node(
     executable='map_management_node',
     parameters=[
         {'from_file': False}
-    ]#,
+    ],
+    # hybrid_drivable_grid fuses this HD-map grid with perception and publishes /grid/drivable
+    remappings=[('/grid/drivable', '/grid/drivable/hdmap')]#,
     #prefix=['xterm -e gdb -ex run --args']
 )
 
