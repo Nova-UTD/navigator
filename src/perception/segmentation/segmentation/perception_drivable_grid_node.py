@@ -33,6 +33,7 @@ Output: /grid/drivable/segmented  300x300 OccupancyGrid 0.2m/cell base_link
 import math
 import threading
 from collections import deque
+from array import array
 
 import cv2
 import numpy as np
@@ -231,8 +232,15 @@ class PerceptionDrivableGridNode(Node):
             use = lut.valid & (scores >= 0)
             if not use.any():
                 continue
-            np.add.at(obs_sum,   (lut.gr[use], lut.gc[use]), scores[use].astype(np.float32))
-            np.add.at(obs_count, (lut.gr[use], lut.gc[use]), 1.0)
+            # Aggregate repeated cell indices in bulk instead of scattering
+            # each camera pixel through np.add.at.
+            cells = lut.gr[use] * GRID_SIZE + lut.gc[use]
+            obs_sum += np.bincount(
+                cells, weights=scores[use], minlength=GRID_SIZE * GRID_SIZE
+            ).reshape(GRID_SIZE, GRID_SIZE).astype(np.float32)
+            obs_count += np.bincount(
+                cells, minlength=GRID_SIZE * GRID_SIZE
+            ).reshape(GRID_SIZE, GRID_SIZE).astype(np.float32)
         return obs_sum, obs_count
 
     # ── step 2: lidar evidence grid ───────────────────────────────────────────
@@ -512,7 +520,11 @@ class PerceptionDrivableGridNode(Node):
         msg.info.origin.position.y    = ORIGIN_Y
         msg.info.origin.position.z    = 0.0
         msg.info.origin.orientation.w = 1.0
-        msg.data                      = grid_out.ravel().tolist()
+        # The ROS setter accepts a signed-byte array directly, avoiding
+        # Python validation loops over all 90,000 cells.
+        data = array('b')
+        data.frombytes(grid_out.tobytes())
+        msg.data = data
         self.pub.publish(msg)
 
 

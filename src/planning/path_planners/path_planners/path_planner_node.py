@@ -32,9 +32,6 @@ from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
-from tf2_ros.buffer import Buffer
-from tf2_ros.transform_listener import TransformListener
-
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from nav_msgs.msg import OccupancyGrid, Path
 from rosgraph_msgs.msg import Clock
@@ -134,6 +131,13 @@ class PathPlannerNode(Node):
         self.obstacle_threshold = 90  # Values above this are considered obstacles
         self.obstacle_padding = 5  # Cells to pad around obstacles (5 = 1.0m, ~vehicle half-width)
 
+        # Lane corridor: the vehicle centre may only be this far from the route (lane centre).
+        # Keeps the path in our lane: no cutting across sidewalks on turns, no swinging into the
+        # other lane around a car we are following. Anything blocking the lane ends the path
+        # before it instead, and the ACC stops / follows behind it.
+        self.corridor_half_width = 1.2  # m
+        self.start_clear_radius = 1.0   # m — the car's own footprint is never an obstacle
+
         # Path re-use: cache the last valid Dijkstra result.
         # Replan only when an obstacle blocks the cached path or the goal moves.
         self._cached_path_cells = None
@@ -154,9 +158,8 @@ class PathPlannerNode(Node):
         self.planner_type_obj = self.get_parameter('planner')
         self.planner_type = self.planner_type_obj.value
 
-        # TF setup
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
+        # No TF listener: nothing here uses TF, and processing every /tf message in Python
+        # starved the planning timer (8 Hz instead of 30 Hz with the CARLA bridge's /tf traffic).
 
         # Subscribers
         self.clock_sub = self.create_subscription(
@@ -174,15 +177,22 @@ class PathPlannerNode(Node):
         )
         self.path_goal = None
 
+        # Remaining route in base_link, used to snap a blocked goal back along
+        # the road rather than along the straight start->goal line.
+        self.route_local_sub = self.create_subscription(
+            Path, "/planning/route_local", self.route_local_callback, 1
+        )
+        self.route_local = None
+
         # Publishers
         self.path_pub = self.create_publisher(Path, "/planning/path", 1)
         self.debug_marker_pub = self.create_publisher(
             Marker, "/planning/debug_markers", 1
         )
 
-        # Planning timer
+        # Planning timer: 30 Hz
         self.path_timer = self.create_timer(
-            0.05, self.generate_path, callback_group=MutuallyExclusiveCallbackGroup()
+            1.0 / 30.0, self.generate_path, callback_group=MutuallyExclusiveCallbackGroup()
         )
 
         # Initialize path planners
@@ -209,6 +219,13 @@ class PathPlannerNode(Node):
         # Guard against race where generate_path reads costmap mid-update
         with self._costmap_lock:
             self.costmap = msg
+
+    def route_local_callback(self, msg: Path):
+        if not msg.poses:
+            self.route_local = None
+            return
+        self.route_local = np.array(
+            [(p.pose.position.x, p.pose.position.y) for p in msg.poses])
 
     def path_goal_callback(self, msg: PoseStamped):
         # Ghost rejection — two layers:
@@ -238,6 +255,49 @@ class PathPlannerNode(Node):
 
         return new.astype(np.int32)
 
+
+    def apply_lane_corridor(self, padded, raw, route, resolution, start, goal):
+        """Confine planning to our lane and pick a goal we can actually reach in it.
+
+        Edits `padded` in place: cells further than corridor_half_width from the route become
+        obstacles, except a disk around the vehicle reaching back to the corridor (so the car can
+        rejoin the lane after drifting); the vehicle's own footprint is cleared so the search can
+        always start. The goal is moved to the route point nearest the requested goal, or to the
+        last free route point before the first one where the lane is blocked, whichever is closer.
+
+        Returns (route_used, goal_i, goal_j); goal == start means the lane is blocked right ahead.
+        """
+        height, width = padded.shape
+        ci = np.round((route[:, 1] + self.origin_y) / resolution).astype(int)
+        cj = np.round((route[:, 0] + self.origin_x) / resolution).astype(int)
+        inside = (ci >= 0) & (ci < height) & (cj >= 0) & (cj < width)
+        ahead = np.flatnonzero(inside & (route[:, 0] > 0.0))
+        if len(ahead) == 0:
+            return False, goal[0], goal[1]
+
+        # Distance (m) from every cell to the route
+        off_route = np.ones((height, width), dtype=bool)
+        off_route[ci[inside], cj[inside]] = False
+        dist = scipy.ndimage.distance_transform_edt(off_route) * resolution
+
+        si, sj = start
+        rows, cols = np.ogrid[:height, :width]
+        d_start = np.hypot(rows - si, cols - sj) * resolution
+        rejoin = d_start <= dist[si, sj] + 1.0
+        padded[(dist > self.corridor_half_width) & ~rejoin] = 100
+        footprint = d_start <= self.start_clear_radius
+        padded[footprint] = np.minimum(raw[footprint], self.obstacle_threshold - 1)
+
+        # Walk the route from the vehicle towards the goal; stop at the first blocked point
+        k_goal = int(ahead[np.argmin((ci[ahead] - goal[0]) ** 2 + (cj[ahead] - goal[1]) ** 2)])
+        last_free = None
+        for k in range(ahead[0], k_goal + 1):
+            if not inside[k] or padded[ci[k], cj[k]] >= self.obstacle_threshold:
+                break
+            last_free = k
+        if last_free is None:
+            return True, si, sj
+        return True, int(ci[last_free]), int(cj[last_free])
 
     def generate_path(self):
         # Snapshot costmap under lock to prevent race with callback thread
@@ -312,15 +372,51 @@ class PathPlannerNode(Node):
             self.obstacle_padding
         )
 
+        # ----------------------------
+        # Lane corridor + goal: keep the path within corridor_half_width of the
+        # route, and end it before the first point where something blocks the
+        # lane (a car we are following, a stopped car, a pedestrian).
+        # ----------------------------
+        route = self.route_local
+        on_route = False
+        if route is not None and len(route) > 1:
+            on_route, goal_i, goal_j = self.apply_lane_corridor(
+                padded_costmap, costmap_np, route, resolution,
+                (start_i, start_j), (goal_i, goal_j))
+            if on_route and (goal_i, goal_j) == (start_i, start_j):
+                self.get_logger().info('Lane blocked right ahead; no path.',
+                                       throttle_duration_sec=2.0)
+                return
 
         # ----------------------------
-        # Goal snap: if goal landed in an obstacle cell (e.g. grid edge
-        # dilation or boundary), walk back along the line toward start
-        # until we find the furthest free cell.
+        # Goal snap (no route available): if goal landed in an obstacle cell,
+        # walk back along the straight start->goal line to the nearest free cell.
         # ----------------------------
-        if padded_costmap[goal_i, goal_j] >= self.obstacle_threshold:
+        if not on_route and padded_costmap[goal_i, goal_j] >= self.obstacle_threshold:
+            route = self.route_local
+            snapped_on_route = False
+            if route is not None and len(route) > 1:
+                gx = self.path_goal.pose.position.x
+                gy = self.path_goal.pose.position.y
+                k = int(np.argmin(np.hypot(route[:, 0] - gx, route[:, 1] - gy)))
+                for x, y in route[k::-1]:
+                    if x <= 0.0:
+                        break  # reached the vehicle; nothing free ahead on the route
+                    ci = int(round((y + self.origin_y) / resolution))
+                    cj = int(round((x + self.origin_x) / resolution))
+                    if not (0 <= ci < height and 0 <= cj < width):
+                        continue
+                    if padded_costmap[ci, cj] < self.obstacle_threshold:
+                        goal_i, goal_j = ci, cj
+                        snapped_on_route = True
+                        break
+                if snapped_on_route:
+                    self.get_logger().info(
+                        f'Goal snapped back along route to free cell: ({goal_i},{goal_j})',
+                        throttle_duration_sec=2.0)
+
             steps = max(abs(goal_i - start_i), abs(goal_j - start_j))
-            if steps > 0:
+            if not snapped_on_route and steps > 0:
                 snapped = False
                 for s in range(steps, -1, -1):
                     t = s / steps

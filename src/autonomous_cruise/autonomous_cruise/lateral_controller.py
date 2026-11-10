@@ -31,7 +31,8 @@ class PurePursuitController:
         min_lookahead: float = 3.0,
         max_lookahead: float = 15.0,
         lookahead_gain: float = 0.5,
-        max_steer: float = 1.0
+        max_steer: float = 1.0,
+        rear_axle_offset: float = 0.0
     ):
         """
         Initialize the Pure Pursuit controller.
@@ -42,12 +43,15 @@ class PurePursuitController:
             max_lookahead: Maximum lookahead distance (meters).
             lookahead_gain: Gain for speed-dependent lookahead (dimensionless).
             max_steer: Maximum steering angle (radians).
+            rear_axle_offset: How far the rear axle is behind base_link (meters). Pure Pursuit
+                geometry is about the rear axle; measuring from a point ahead of it cuts corners.
         """
         self.wheelbase = wheelbase
         self.min_lookahead = min_lookahead
         self.max_lookahead = max_lookahead
         self.lookahead_gain = lookahead_gain
         self.max_steer = max_steer
+        self.rear_axle_offset = rear_axle_offset
 
         self.path: Optional[Path] = None
         self.current_pose: Optional[Pose] = None
@@ -147,7 +151,7 @@ class PurePursuitController:
         closest_idx = 0
 
         for i, pose_stamped in enumerate(self.path.poses):
-            dx = pose_stamped.pose.position.x
+            dx = pose_stamped.pose.position.x + self.rear_axle_offset
             dy = pose_stamped.pose.position.y
             dist = math.sqrt(dx * dx + dy * dy)
 
@@ -158,7 +162,7 @@ class PurePursuitController:
         # Search forward from closest point for lookahead point
         for i in range(closest_idx, len(self.path.poses)):
             pose_stamped = self.path.poses[i]
-            dx = pose_stamped.pose.position.x
+            dx = pose_stamped.pose.position.x + self.rear_axle_offset
             dy = pose_stamped.pose.position.y
             dist = math.sqrt(dx * dx + dy * dy)
 
@@ -186,8 +190,8 @@ class PurePursuitController:
         Returns:
             Steering angle (radians).
         """
-        # Path is in base_link frame; target_point is already vehicle-local
-        target_x = target_point.x
+        # Path is in base_link frame; shift it to the rear axle
+        target_x = target_point.x + self.rear_axle_offset
         target_y = target_point.y
 
         # Compute lookahead distance
