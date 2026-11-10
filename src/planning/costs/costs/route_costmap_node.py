@@ -99,6 +99,7 @@ class RouteCostmapNode(Node):
         # every callback and causing Dijkstra to oscillate between two routes.
         self._last_paint_tx = None
         self._last_paint_ty = None
+        self._last_paint_yaw = None
         self._cached_routemap = None
         self._cached_goal = None
         self._cached_route_local = None
@@ -149,6 +150,18 @@ class RouteCostmapNode(Node):
         if not (0 <= col < self._drivable_grid.shape[1]):
             return False
         return int(self._drivable_grid[row, col]) <= self.CONFIRMED_THRESHOLD
+
+    def _camera_confirmed_mask(self, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
+        """_is_camera_confirmed_drivable for arrays of base_link points."""
+        if self._drivable_grid is None:
+            return np.zeros(len(xs), dtype=bool)
+        col = np.round((xs + 20.0) / 0.2).astype(int)
+        row = np.round((ys + 30.0) / 0.2).astype(int)
+        inside = (row >= 0) & (row < self._drivable_grid.shape[0]) & \
+                 (col >= 0) & (col < self._drivable_grid.shape[1])
+        out = np.zeros(len(xs), dtype=bool)
+        out[inside] = self._drivable_grid[row[inside], col[inside]] <= self.CONFIRMED_THRESHOLD
+        return out
 
     # TODO: currently implemented, the route cannot be changed once it is first received
     def routeCb(self, msg: Path):
@@ -201,21 +214,29 @@ class RouteCostmapNode(Node):
                 rclpy.time.Duration(seconds=5.0))
             
             roll, pitch, yaw = euler_from_quaternion(quat_to_numpy(ego_tf.transform.rotation))
+            # Stamp everything with the time of the pose it was built from. self.clock can lag
+            # the sim by seconds when this node is busy, and the planner drops goals that look
+            # more than 3 s old.
+            stamp = ego_tf.header.stamp
 
             # Position hysteresis: skip expensive corridor repaint when vehicle
             # hasn't moved >=0.3 m, but always re-publish the cached goal/map
             # so the path_planner's stale-goal timer never expires.
+            # Turning counts as moving too: a cached corridor rotated by a few degrees
+            # is a metre off at 15 m.
             tx = ego_tf.transform.translation.x
             ty = ego_tf.transform.translation.y
             skip_repaint = False
             if self._last_paint_tx is not None:
                 dx = tx - self._last_paint_tx
                 dy = ty - self._last_paint_ty
-                if dx*dx + dy*dy < 0.09:   # < 0.3 m
+                dyaw = abs((yaw - self._last_paint_yaw + np.pi) % (2 * np.pi) - np.pi)
+                if dx*dx + dy*dy < 0.09 and dyaw < 0.01:   # < 0.3 m and < ~0.6 deg
                     skip_repaint = True
             if not skip_repaint:
                 self._last_paint_tx = tx
                 self._last_paint_ty = ty
+                self._last_paint_yaw = yaw
 
             xmax    =  cfg['occupancy_grids']['length'] - veh_long   # +40 m ahead
             xmin    = -veh_long                                        # -20 m behind
@@ -227,19 +248,13 @@ class RouteCostmapNode(Node):
             # If vehicle hasn't moved enough, re-publish cached result and skip
             if skip_repaint and hasattr(self, '_cached_routemap') and self._cached_routemap is not None:
                 self.publish(self._cached_routemap, self._cached_goal, cfg,
-                             self._cached_route_local)
+                             self._cached_route_local, stamp)
                 return
 
-            route_baselink_x = np.zeros(len(self.route_remaining))
-            route_baselink_y = np.zeros(len(self.route_remaining))
-            # dist_to_car = np.zeros(len(self.route_remaining))
-            for i,pose in enumerate(self.route_remaining):
-                x = pose.pose.position.x*np.cos(yaw) - pose.pose.position.y*np.sin(yaw) + ego_tf.transform.translation.x
-                y = pose.pose.position.x*np.sin(yaw) + pose.pose.position.y*np.cos(yaw) + ego_tf.transform.translation.y
-                # dist_to_car[i] = np.sqrt(x**2+y**2)
-
-                route_baselink_x[i] = x
-                route_baselink_y[i] = y
+            px = np.array([pose.pose.position.x for pose in self.route_remaining])
+            py = np.array([pose.pose.position.y for pose in self.route_remaining])
+            route_baselink_x = px*np.cos(yaw) - py*np.sin(yaw) + ego_tf.transform.translation.x
+            route_baselink_y = px*np.sin(yaw) + py*np.cos(yaw) + ego_tf.transform.translation.y
 
             # Anything behind the vehicle we say we have visited already
             keep_idxs = np.flatnonzero(np.array(route_baselink_x) > 0) 
@@ -266,26 +281,27 @@ class RouteCostmapNode(Node):
             # Interpolate route into per-cell points (gridxs, gridys in m,
             # base_link).  Collect ALL points in the costmap.
             # ------------------------------------------------------------------
-            gridxs = []
-            gridys = []
+            seg_x, seg_y = [], []
             for idx in range(1, len(route_baselink_x)):
                 dx = route_baselink_x[idx] - route_baselink_x[idx-1]
                 dy = route_baselink_y[idx] - route_baselink_y[idx-1]
                 steps = int(np.ceil(max(abs(dx), abs(dy)) / gridres))
                 if steps == 0:
                     continue
-                for t in np.linspace(0, 1, steps + 1)[1:]:
-                    newx = route_baselink_x[idx-1] + t * dx
-                    newy = route_baselink_y[idx-1] + t * dy
-                    if self.is_within_costmap(newx, newy):
-                        gridxs.append(newx)
-                        gridys.append(newy)
+                t = np.linspace(0, 1, steps + 1)[1:]
+                seg_x.append(route_baselink_x[idx-1] + t * dx)
+                seg_y.append(route_baselink_y[idx-1] + t * dy)
+            allx = np.concatenate(seg_x) if seg_x else np.zeros(0)
+            ally = np.concatenate(seg_y) if seg_y else np.zeros(0)
+            within = (allx >= xmin) & (allx <= xmax) & (ally >= ymin) & (ally <= ymax)
+            gridxs = allx[within].tolist()
+            gridys = ally[within].tolist()
 
             self.get_logger().debug('grid route has %i points' % len(gridxs))
 
             if len(gridxs) < 2:
                 self.get_logger().info('You have reached the end of the route.')
-                self.publish(routemap, (0.0, 0.0))
+                self.publish(routemap, (0.0, 0.0), cfg)
                 return
 
             # ------------------------------------------------------------------
@@ -309,29 +325,32 @@ class RouteCostmapNode(Node):
             CENTER_UNCONFIRMED = 20  # exact route centerline, HD-map only
             EDGE_CONFIRMED     = 10  # lane-edge cost, camera confirmed
             EDGE_UNCONFIRMED   = 30  # lane-edge cost, HD-map only
-            for r in range(len(gridxs)):
-                confirmed = self._is_camera_confirmed_drivable(gridxs[r], gridys[r])
-                center_val = CENTER_CONFIRMED if confirmed else CENTER_UNCONFIRMED
-                edge_val   = EDGE_CONFIRMED   if confirmed else EDGE_UNCONFIRMED
-                ci = int(round((gridys[r] + veh_lat)  / gridres))
-                cj = int(round((gridxs[r] + veh_long) / gridres))
-                # Radial gradient: cost is lowest exactly on the centerline and
-                # ramps up smoothly to edge_val at the lane edge (HALF_W cells
-                # out), instead of a flat padding band. Biases the planner to
-                # hug lane center and only drift outward when something (an
-                # obstacle) forces it to.
-                for di in range(-HALF_W, HALF_W + 1):
-                    for dj in range(-HALF_W, HALF_W + 1):
-                        ni, nj = ci + di, cj + dj
-                        if 0 <= ni < grid_rows and 0 <= nj < grid_cols:
-                            frac = min(1.0, np.sqrt(di * di + dj * dj) / HALF_W)
-                            cell_val = center_val + (edge_val - center_val) * frac
-                            if routemap[ni, nj] > cell_val:
-                                routemap[ni, nj] = cell_val
-                # Exact centerline always lowest cost
-                if 0 <= ci < grid_rows and 0 <= cj < grid_cols:
-                    if routemap[ci, cj] > center_val:
-                        routemap[ci, cj] = center_val
+            # Radial gradient: cost is lowest exactly on the centerline and ramps up
+            # smoothly to edge_val at the lane edge (HALF_W cells out), within the
+            # HALF_W square around each route cell. Biases the planner to hug lane
+            # center and only drift outward when something (an obstacle) forces it to.
+            # Done with distance transforms from the route cells: painting every
+            # route point's square in Python took ~0.25 s, so this node only ran
+            # at ~4 Hz and the corridor lagged the car by a few tenths of a second,
+            # which on a turn rotates the whole corridor away from the road.
+            xs = np.asarray(gridxs)
+            ys = np.asarray(gridys)
+            ci = np.round((ys + veh_lat) / gridres).astype(int)
+            cj = np.round((xs + veh_long) / gridres).astype(int)
+            ok = (ci >= 0) & (ci < grid_rows) & (cj >= 0) & (cj < grid_cols)
+            confirmed = self._camera_confirmed_mask(xs, ys)
+            confirmed_cells = np.zeros((grid_rows, grid_cols), dtype=bool)
+            confirmed_cells[ci[ok & confirmed], cj[ok & confirmed]] = True
+            off_route = np.ones((grid_rows, grid_cols), dtype=bool)
+            off_route[ci[ok], cj[ok]] = False
+            if ok.any():
+                dist, (near_i, near_j) = ndimage.distance_transform_edt(off_route, return_indices=True)
+                square = ndimage.distance_transform_cdt(off_route, metric='chessboard') <= HALF_W
+                conf = confirmed_cells[near_i, near_j]
+                center_val = np.where(conf, CENTER_CONFIRMED, CENTER_UNCONFIRMED)
+                edge_val = np.where(conf, EDGE_CONFIRMED, EDGE_UNCONFIRMED)
+                frac = np.minimum(1.0, dist / HALF_W)
+                routemap = np.where(square, center_val + (edge_val - center_val) * frac, routemap)
 
             # ------------------------------------------------------------------
             # Goal selection: camera-horizon receding-goal strategy.
@@ -368,11 +387,17 @@ class RouteCostmapNode(Node):
                 else:
                     break  # first unconfirmed gap: stop here
 
-            # Fallback: any drivable cell (startup / perception warming up)
+            # Fallback (startup / perception warming up / camera blocked by a car right in
+            # front): the end of the contiguous drivable stretch of route ahead. Walking back
+            # from the far end instead picked whatever drivable route point was furthest away,
+            # often the grid edge past a turn, with non-drivable cells in between.
             if goal is None:
-                for r in range(len(gridxs) - 1, -1, -1):
+                for r in range(len(gridxs)):
+                    if gridxs[r] < 0.0:
+                        continue
                     if self._is_drivable(gridxs[r], gridys[r]):
                         goal = (gridxs[r], gridys[r])
+                    else:
                         break
 
             if goal is None:
@@ -385,16 +410,18 @@ class RouteCostmapNode(Node):
             self._cached_routemap = routemap
             self._cached_goal = goal
             self._cached_route_local = (gridxs, gridys)
-            self.publish(routemap, goal, cfg, self._cached_route_local)
+            self.publish(routemap, goal, cfg, self._cached_route_local, stamp)
 
         except(LookupException, ExtrapolationException, ConnectivityException) as e: # typically get some errors on startup as the tf buffer fills
             self.get_logger().warning("!!! Error finding transform to build route grid !!!")
             self.get_logger().error('failed to get transform {} \n'.format(repr(e)))
 
-    def publish(self, routemap, goal, cfg, route_local=None):
+    def publish(self, routemap, goal, cfg, route_local=None, stamp=None):
+        if stamp is None:
+            stamp = self.clock.clock
         # Publish path goal
         path_goal = PoseStamped()
-        path_goal.header.stamp = self.clock.clock
+        path_goal.header.stamp = stamp
         path_goal.header.frame_id = 'base_link'
         path_goal.pose.position.x = goal[0]
         path_goal.pose.position.y = goal[1]
@@ -430,7 +457,7 @@ class RouteCostmapNode(Node):
         route_cost_msg.info.origin.position.x            = -cfg['occupancy_grids']['vehicle_longitudinal_location']
         route_cost_msg.info.origin.position.y            = -cfg['occupancy_grids']['vehicle_latitudinal_location']
         route_cost_msg.info.origin.orientation.w         = 1.0
-        route_cost_msg.header.stamp                      = self.clock.clock
+        route_cost_msg.header.stamp                      = stamp
         route_cost_msg.header.frame_id                   = 'base_link'
 
         # Clamp and flatten — routemap shape matches (grid_rows, grid_cols)

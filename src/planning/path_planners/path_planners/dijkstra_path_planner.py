@@ -33,7 +33,7 @@ class DijkstraPathPlanner:
         # heuristic assumes, so the heuristic is very loose and the search
         # expands close to the full MARGIN bounding box every call. Scaling
         # the heuristic keeps it goal-directed so it actually finishes inside
-        # the 20Hz planning budget; bounded suboptimality is an acceptable
+        # the planning time budget; bounded suboptimality is an acceptable
         # trade here since the costmap gradient still pulls the path to the
         # lane center.
         WEIGHT = 3.0

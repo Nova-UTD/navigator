@@ -20,6 +20,7 @@ from std_msgs.msg import String
 from geometry_msgs.msg import Pose
 
 import math
+from collections import deque
 import numpy as np
 from typing import Optional, Tuple
 
@@ -78,6 +79,7 @@ class AutonomousCruiseController(Node):
 
         # State variables
         self.current_path: Optional[Path] = None
+        self.path_received_time: Optional[float] = None  # s, this node's clock
         self.current_odom: Optional[Odometry] = None
         self.current_objects: Optional[Object3DArray] = None
         self.current_speed: float = 0.0
@@ -91,6 +93,7 @@ class AutonomousCruiseController(Node):
         self.obstacle_clear_since: Optional[float] = None
         self.obstacle_brake = 0.0
         self.lidar_hits = 0  # consecutive LiDAR frames with an obstacle in the way
+        self.obstacle_history = deque()  # (time s, obstacle distance m), last RECEDE_WINDOW
         self.last_control_time = self.get_clock().now()
         self.enabled = True
 
@@ -287,6 +290,7 @@ class AutonomousCruiseController(Node):
             msg: Path message from path planner.
         """
         self.current_path = msg
+        self.path_received_time = self.get_clock().now().nanoseconds / 1e9
         self.lateral_controller.set_path(msg)
 
         self.get_logger().debug(
@@ -442,6 +446,16 @@ class AutonomousCruiseController(Node):
         dt = (current_time - self.last_control_time).nanoseconds / 1e9
         self.last_control_time = current_time
 
+        # The path is in base_link at the time it was planned. If the planner has stopped
+        # publishing (no route through, lane blocked right ahead) it no longer matches where we
+        # are, so steering along it drives off the road: stop instead.
+        PATH_TIMEOUT = 1.0  # s
+        STALE_PATH_BRAKE = 0.4
+        if current_time.nanoseconds / 1e9 - self.path_received_time > PATH_TIMEOUT:
+            self.get_logger().warn('Path is stale, stopping', throttle_duration_sec=2.0)
+            self._publish_stop(STALE_PATH_BRAKE)
+            return
+
         # Extract current state
         current_pose = self.current_odom.pose.pose
         current_speed = self.current_speed
@@ -462,8 +476,11 @@ class AutonomousCruiseController(Node):
         MEMORY = 0.6           # s — bridge a couple of dropped LiDAR frames (~3-4 Hz), no longer
         FRESH = 0.5            # s — only a detection this recent can latch a stop
         APPROACH_THROTTLE = 0.3  # max throttle while an obstacle is limiting our speed
-        RELEASE_GAP = STOP_GAP + 2.0  # m — obstacle must be this far (or gone) to drive off again
+        LATCH_GAP = STOP_GAP + 2.0  # m — stopped with an obstacle this close: stay stopped, don't creep up
+        RELEASE_GAP = LATCH_GAP + 0.5  # m — obstacle must be this far (or gone) to drive off again
         RELEASE_TIME = 1.5     # s — ...for this long
+        RECEDE_WINDOW = 1.0    # s — an obstacle whose distance grew by more than...
+        RECEDE_MIN = 0.3       # m — ...this over the last RECEDE_WINDOW is pulling away
         now_s = current_time.nanoseconds / 1e9
 
         # Obstacle distance (along the path), dead-reckoned through a dropped frame or two so a
@@ -478,8 +495,16 @@ class AutonomousCruiseController(Node):
         d = self.obstacle_distance if self.obstacle_distance is not None else float('inf')
 
         # Once stopped for an obstacle we actually still see, stay stopped until it has cleared.
+        # This includes stopping a little short of STOP_GAP in front of something that is not
+        # moving away (creeping the last metre or two up to a stopped car is not worth the
+        # stop-start); a slow car we are following, pulling away, is just followed.
         fresh = np.isfinite(d) and now_s - self.obstacle_seen_time < FRESH
-        if fresh and d <= STOP_GAP + 0.5 and current_speed < 0.3:
+        self.obstacle_history.append((now_s, d))
+        while self.obstacle_history and now_s - self.obstacle_history[0][0] > RECEDE_WINDOW:
+            self.obstacle_history.popleft()
+        closest_recent = min(dist for _, dist in self.obstacle_history)
+        receding = np.isfinite(d) and d - closest_recent > RECEDE_MIN
+        if fresh and current_speed < 0.3 and (d <= STOP_GAP + 0.5 or (d <= LATCH_GAP and not receding)):
             self.stopped_for_obstacle = True
         if self.stopped_for_obstacle:
             if d > RELEASE_GAP:
@@ -562,6 +587,18 @@ class AutonomousCruiseController(Node):
             brake,
             cross_track_error
         )
+
+    def _publish_stop(self, brake: float):
+        """Publish a braking command with the wheels straight."""
+        control_msg = VehicleControl()
+        control_msg.header.stamp = self.get_clock().now().to_msg()
+        control_msg.header.frame_id = 'base_link'
+        control_msg.throttle = 0.0
+        control_msg.brake = float(brake)
+        control_msg.steer = 0.0
+        control_msg.reverse = False
+
+        self.control_pub.publish(control_msg)
 
     def _publish_zero_control(self):
         """Publish zero control commands (safety fallback)."""
