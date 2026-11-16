@@ -4,59 +4,55 @@ Runs PSPNet (mmseg v1.x) on 4 CARLA cameras in a round-robin background thread.
 Callbacks only store the latest frame — no blocking inference in the spin thread.
 
 Modified by Siddarth Nandyala <siddarth.nandyala@utdallas.edu>: moved inference
-onto cuda:1 (kept off GPU0 to avoid contending with CARLA's own rendering),
-and added the stamp-gated re-processing guard so a cached frame isn't
-reprocessed/re-published faster than new camera frames actually arrive.
+onto the GPU with the most available memory, and added the stamp-gated
+re-processing guard so a cached frame isn't reprocessed/re-published faster
+than new camera frames actually arrive.
 """
 
 import threading
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import (
-    QoSProfile,
-    QoSReliabilityPolicy,
-    QoSHistoryPolicy,
-    QoSDurabilityPolicy,
-)
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
 import numpy as np
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from mmseg.apis import inference_model, init_model
+from helpers.gpu import run_model_initializer, select_cuda_device
 
 # input_topic → output_topic (bridge remaps /carla/hero/rgb_*/image → /cameras/camera*)
 CAMERAS = [
-    ("/cameras/camera0", "/semantic/front"),
-    ("/cameras/camera1", "/semantic/right"),
-    ("/cameras/camera2", "/semantic/back"),
-    ("/cameras/camera3", "/semantic/left"),
+    ('/cameras/camera0', '/semantic/front'),
+    ('/cameras/camera1', '/semantic/right'),
+    ('/cameras/camera2', '/semantic/back'),
+    ('/cameras/camera3', '/semantic/left'),
 ]
 
-_CONFIG = "/usr/local/lib/python3.10/dist-packages/mmseg/.mim/configs/pspnet/pspnet_r18-d8_4xb2-80k_cityscapes-512x1024.py"
-_CKPT = "/navigator_binaries/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth"
+_CONFIG = '/usr/local/lib/python3.10/dist-packages/mmseg/.mim/configs/pspnet/pspnet_r18-d8_4xb2-80k_cityscapes-512x1024.py'
+_CKPT   = '/navigator_binaries/pspnet_r18-d8_512x1024_80k_cityscapes_20201225_021458-09ffa746.pth'
+_MIN_FREE_GPU_MEMORY_MB = 1024  # Safety headroom; this is not a model-size estimate.
 
 # Cityscapes 19-class → RGB (for downstream classification)
 _PALETTE = {
-    0: (128, 64, 128),  # road
-    1: (244, 35, 232),  # sidewalk
-    2: (70, 70, 70),  # building
-    3: (102, 102, 156),  # wall
-    4: (190, 153, 153),  # fence
-    5: (153, 153, 153),  # pole
-    6: (250, 170, 30),  # traffic light
-    7: (220, 220, 0),  # traffic sign
-    8: (107, 142, 35),  # vegetation
-    9: (145, 170, 100),  # terrain
-    10: (70, 130, 180),  # sky
-    11: (220, 20, 60),  # person
-    12: (255, 0, 0),  # rider
-    13: (0, 0, 142),  # car
-    14: (0, 0, 70),  # truck
-    15: (0, 60, 100),  # bus
-    16: (0, 80, 100),  # train
-    17: (0, 0, 230),  # motorcycle
-    18: (119, 11, 32),  # bicycle
+    0:  (128,  64, 128),  # road
+    1:  (244,  35, 232),  # sidewalk
+    2:  ( 70,  70,  70),  # building
+    3:  (102, 102, 156),  # wall
+    4:  (190, 153, 153),  # fence
+    5:  (153, 153, 153),  # pole
+    6:  (250, 170,  30),  # traffic light
+    7:  (220, 220,   0),  # traffic sign
+    8:  (107, 142,  35),  # vegetation
+    9:  (145, 170, 100),  # terrain
+    10: ( 70, 130, 180),  # sky
+    11: (220,  20,  60),  # person
+    12: (255,   0,   0),  # rider
+    13: (  0,   0, 142),  # car
+    14: (  0,   0,  70),  # truck
+    15: (  0,  60, 100),  # bus
+    16: (  0,  80, 100),  # train
+    17: (  0,   0, 230),  # motorcycle
+    18: (119,  11,  32),  # bicycle
 }
-
 
 def _class_ids_to_rgb(class_ids: np.ndarray) -> np.ndarray:
     H, W = class_ids.shape
@@ -70,13 +66,21 @@ def _class_ids_to_rgb(class_ids: np.ndarray) -> np.ndarray:
 class ImageSegmentationNode(Node):
 
     def __init__(self):
-        super().__init__("image_segmentation_node")
-        self.get_logger().info(
-            "Loading PSPNet on GPU (cuda:1, kept off GPU0 to avoid contending with CARLA rendering)…"
+        super().__init__('image_segmentation_node')
+        device = select_cuda_device(
+            caller='image_segmentation_node',
+            purpose='loading PSPNet for four-camera semantic segmentation',
+            min_free_memory_mb=_MIN_FREE_GPU_MEMORY_MB,
         )
-        self.model = init_model(_CONFIG, _CKPT, device="cuda:2")
+        self.get_logger().info(f"Loading PSPNet on {device}…")
+        self.model = run_model_initializer(
+            lambda: init_model(_CONFIG, _CKPT, device=str(device)),
+            device=device,
+            caller='image_segmentation_node',
+            purpose='loading PSPNet for four-camera semantic segmentation',
+        )
         self.bridge = CvBridge()
-        self.get_logger().info("PSPNet ready.")
+        self.get_logger().info('PSPNet ready.')
 
         image_qos = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
@@ -86,17 +90,16 @@ class ImageSegmentationNode(Node):
         )
 
         # Per-camera: latest raw frame + publisher
-        self._latest = {}  # topic → (msg | None, publisher)
-        self._lock = threading.Lock()
-        self._order = [t for t, _ in CAMERAS]
+        self._latest = {}   # topic → (msg | None, publisher)
+        self._lock   = threading.Lock()
+        self._order  = [t for t, _ in CAMERAS]
 
         for in_topic, out_topic in CAMERAS:
             pub = self.create_publisher(Image, out_topic, 1)
             self._latest[in_topic] = (None, pub)
-            self.create_subscription(
-                Image, in_topic, lambda msg, t=in_topic: self._store(msg, t), image_qos
-            )
-            self.get_logger().info(f"  {in_topic} → {out_topic}")
+            self.create_subscription(Image, in_topic,
+                lambda msg, t=in_topic: self._store(msg, t), image_qos)
+            self.get_logger().info(f'  {in_topic} → {out_topic}')
 
         self._idx = 0
         threading.Thread(target=self._loop, daemon=True).start()
@@ -110,9 +113,8 @@ class ImageSegmentationNode(Node):
     # ── inference loop: round-robin all 4 cameras ───────────────────────
     def _loop(self):
         import time
-
         n = len(self._order)
-        self.get_logger().info("Inference thread running (round-robin 4 cameras).")
+        self.get_logger().info('Inference thread running (round-robin 4 cameras).')
         # Track the last frame stamp we actually ran inference on per camera.
         # On GPU, inference is fast enough that without this check the loop
         # re-processes and re-publishes the same cached frame hundreds of
@@ -129,15 +131,15 @@ class ImageSegmentationNode(Node):
             if msg is not None and stamp != last_stamp[cam]:
                 last_stamp[cam] = stamp
                 try:
-                    img = self.bridge.imgmsg_to_cv2(msg, "rgb8")[:, :, :3]
-                    result = inference_model(self.model, img)
+                    img       = self.bridge.imgmsg_to_cv2(msg, 'rgb8')[:, :, :3]
+                    result    = inference_model(self.model, img)
                     class_ids = result.pred_sem_seg.data[0].cpu().numpy()
-                    rgb_out = _class_ids_to_rgb(class_ids)
-                    out_msg = self.bridge.cv2_to_imgmsg(rgb_out, encoding="rgb8")
+                    rgb_out   = _class_ids_to_rgb(class_ids)
+                    out_msg   = self.bridge.cv2_to_imgmsg(rgb_out, encoding='rgb8')
                     out_msg.header = msg.header
                     pub.publish(out_msg)
                 except Exception as e:
-                    self.get_logger().error(f"Inference error on {cam}: {e}")
+                    self.get_logger().error(f'Inference error on {cam}: {e}')
             else:
                 time.sleep(0.01)
 
@@ -149,5 +151,5 @@ def main(args=None):
     rclpy.spin(ImageSegmentationNode())
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

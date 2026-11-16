@@ -182,7 +182,7 @@ class PathPlannerNode(Node):
 
         # Planning timer
         self.path_timer = self.create_timer(
-            0.1, self.generate_path, callback_group=MutuallyExclusiveCallbackGroup()
+            0.05, self.generate_path, callback_group=MutuallyExclusiveCallbackGroup()
         )
 
         # Initialize path planners

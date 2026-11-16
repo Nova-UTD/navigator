@@ -14,11 +14,13 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
 from nav_msgs.msg import Odometry, Path
-from navigator_msgs.msg import VehicleControl, Object3DArray
+from sensor_msgs.msg import PointCloud2
+from navigator_msgs.msg import VehicleControl, Object3DArray, VehicleSpeed, IntersectionBehavior
 from std_msgs.msg import String
 from geometry_msgs.msg import Pose
 
 import math
+import numpy as np
 from typing import Optional, Tuple
 
 from autonomous_cruise.lateral_controller import PurePursuitController
@@ -77,6 +79,10 @@ class AutonomousCruiseController(Node):
         self.current_path: Optional[Path] = None
         self.current_odom: Optional[Odometry] = None
         self.current_objects: Optional[Object3DArray] = None
+        self.current_speed: float = 0.0
+        self.intersection_action: str = 'Proceed'  # 'Wait' = stop, 'Proceed' = go
+        self.traffic_light_red: bool = False
+        self.lidar_obstacle_distance: float = float('inf')  # m to nearest forward obstacle
         self.last_control_time = self.get_clock().now()
         self.enabled = True
 
@@ -113,6 +119,33 @@ class AutonomousCruiseController(Node):
             self.objects_topic,
             self.objects_callback,
             qos_reliable
+        )
+
+        self.speed_sub = self.create_subscription(
+            VehicleSpeed,
+            '/speed',
+            self.speed_callback,
+            qos_best_effort
+        )
+
+        self.intersection_sub = self.create_subscription(
+            IntersectionBehavior,
+            '/intersection',
+            self.intersection_callback,
+            qos_reliable
+        )
+        self.traffic_light_sub = self.create_subscription(
+            String,
+            "/carla/traffic_light_state",
+            self.traffic_light_callback,
+            qos_reliable
+        )
+
+        self.lidar_sub = self.create_subscription(
+            PointCloud2,
+            '/lidar/filtered',
+            self.lidar_callback,
+            qos_best_effort
         )
 
         # Publishers
@@ -260,6 +293,57 @@ class AutonomousCruiseController(Node):
             f'Received {len(msg.objects)} detected objects'
         )
 
+    def speed_callback(self, msg: VehicleSpeed):
+        """Callback for vehicle speed from GNSS processor."""
+        self.current_speed = msg.speed
+
+    def intersection_callback(self, msg: IntersectionBehavior):
+        """Callback for intersection manager commands (Wait / Proceed)."""
+        self.intersection_action = msg.action
+
+    def traffic_light_callback(self, msg: String):
+        self.traffic_light_red = (msg.data == "Red")
+
+    def lidar_callback(self, msg: PointCloud2):
+        """Scan ground-segmented LiDAR for obstacles on the planned path only."""
+        if msg.width == 0 or msg.point_step == 0:
+            return
+        step = msg.point_step // 4
+        raw = np.frombuffer(bytes(msg.data), dtype=np.float32)
+        if len(raw) < step:
+            return
+        xs = raw[0::step]
+        ys = raw[1::step]
+        zs = raw[2::step]
+
+        # Pre-filter: ahead of bumper, not too far, above ground
+        # Near-field floor kept below STOP_DIST=2.0m: the old 2.5m cutoff
+        # made obstacles between 2.0-2.5m invisible, so the controller saw
+        # 'no obstacle' and re-accelerated into whatever it had just stopped
+        # for. 0.5m still excludes ego-vehicle/hood returns.
+        pre = (xs > 0.5) & (xs < 20.0) & (zs > 0.3)
+        if not pre.any():
+            self.lidar_obstacle_distance = float('inf')
+            return
+        xs_f, ys_f = xs[pre], ys[pre]
+
+        path = self.current_path
+        if path is not None and len(path.poses) > 1:
+            wx = np.array([p.pose.position.x for p in path.poses])
+            wy = np.array([p.pose.position.y for p in path.poses])
+            ahead = (wx > 1.0) & (wx < 20.0)
+            if ahead.any():
+                wx, wy = wx[ahead], wy[ahead]
+                dx = xs_f[:, None] - wx[None, :]
+                dy = ys_f[:, None] - wy[None, :]
+                on_path = np.sqrt(dx**2 + dy**2).min(axis=1) < 0.6
+                self.lidar_obstacle_distance = float(xs_f[on_path].min()) if on_path.sum() >= 5 else float('inf')
+                return
+
+        # Fallback: tight rectangular corridor when no path available
+        mask = (np.abs(ys_f) < 0.9)
+        self.lidar_obstacle_distance = float(xs_f[mask].min()) if mask.sum() >= 5 else float('inf')
+
     def control_loop(self):
         """Main control loop executed at control_rate Hz."""
         if not self.enabled:
@@ -290,16 +374,26 @@ class AutonomousCruiseController(Node):
 
         # Extract current state
         current_pose = self.current_odom.pose.pose
-        current_velocity = self.current_odom.twist.twist.linear
-        current_speed = math.sqrt(
-            current_velocity.x**2 + current_velocity.y**2
-        )
+        current_speed = self.current_speed
 
         # Lateral control (steering)
         steer, cross_track_error = self.lateral_controller.compute_steering(
             current_pose,
             current_speed
         )
+
+        # LiDAR-based speed limit — scale down as obstacle approaches
+        SLOW_DIST = 7.0   # m — begin decelerating
+        STOP_DIST = 2.0   # m — full stop
+        CREEP = 1.0       # m/s — minimum speed while obstacle present (lets planner replan)
+        d = self.lidar_obstacle_distance
+        if d < STOP_DIST:
+            self.longitudinal_controller.target_speed = 0.0
+        elif d < SLOW_DIST:
+            ratio = (d - STOP_DIST) / (SLOW_DIST - STOP_DIST)
+            self.longitudinal_controller.target_speed = max(CREEP, self.target_speed * ratio)
+        else:
+            self.longitudinal_controller.target_speed = self.target_speed
 
         # Longitudinal control (throttle/brake)
         throttle, brake, target_speed = (
@@ -309,6 +403,11 @@ class AutonomousCruiseController(Node):
                 dt
             )
         )
+
+        # Intersection / traffic light override — stop on red
+        if self.intersection_action == 'Wait' or self.traffic_light_red:
+            throttle = 0.0
+            brake = 1.0
 
         # Create and publish control message
         control_msg = VehicleControl()

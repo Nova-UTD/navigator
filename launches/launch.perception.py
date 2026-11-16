@@ -29,11 +29,11 @@ def generate_launch_description():
         # semantic_projection,
         # ground_seg,                         # /lidar --> /lidar/filtered
         # static_grid,                        # /lidar/filtered --> /grid/occupancy/current
-        *object3d_launch_entities,
+        # *object3d_launch_entities,
         # traffic_light_detector,
         # prednet_inference,
         # driveable_area,
-        pedestrian_intent_to_enter_road,
+        # pedestrian_intent_to_enter_road,
         # road_signs_classifier,
         # image_segmentation, 
         # depth_processing, 
@@ -47,5 +47,7 @@ def generate_launch_description():
         hybrid_grid,
         perception_drivable_grid,
         hybrid_drivable_grid,
+        yolopv2_drivable_grid,
+        route_costmap_v2,
         yolopv2_lane,
     ])

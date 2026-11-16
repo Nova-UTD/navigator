@@ -76,6 +76,7 @@ from cv_bridge import CvBridge
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
 from sensor_msgs.msg import Image
+from helpers.gpu import run_model_initializer, select_cuda_device
 
 from segmentation.yolopv2_preprocessing import letterbox, unletterbox_mask
 
@@ -84,6 +85,7 @@ _RAW_TOPIC = '/cameras/camera0'
 _MASK_TOPIC = '/lane_mask/front'
 _VIZ_TOPIC = '/lane_mask_viz/front'
 _LANE_LINE_THRESHOLD = 0.5  # model's ll head output is already probability-like (0-1); round() at 0.5
+_MIN_FREE_GPU_MEMORY_MB = 1024  # Safety headroom; this is not a model-size estimate.
 
 _DRIVABLE_COLOR_BGR = (0, 200, 0)    # green
 _LANE_LINE_COLOR_BGR = (0, 0, 230)   # red
@@ -111,11 +113,27 @@ class Yolopv2LaneNode(Node):
 
     def __init__(self):
         super().__init__('yolopv2_lane_node')
-        self.get_logger().info("Loading YOLOPv2 on GPU (cuda:1, same as PSPNet, kept off GPU0)…")
-        self.device = torch.device('cuda:1')
-        self.model = torch.jit.load(_WEIGHTS)
-        self.model = self.model.to(self.device).half()
-        self.model.eval()
+        self.device = select_cuda_device(
+            caller='yolopv2_lane_node',
+            purpose='loading the YOLOPv2 lane segmentation model',
+            min_free_memory_mb=_MIN_FREE_GPU_MEMORY_MB,
+        )
+        self.get_logger().info(f"Loading YOLOPv2 on {self.device}…")
+
+        def load_yolopv2():
+            model = torch.jit.load(_WEIGHTS)
+            model = model.to(self.device)
+            if self.device.type == "cuda":
+                model = model.half()
+            model.eval()
+            return model
+
+        self.model = run_model_initializer(
+            load_yolopv2,
+            device=self.device,
+            caller='yolopv2_lane_node',
+            purpose='loading the YOLOPv2 lane segmentation model',
+        )
         self.bridge = CvBridge()
         self.get_logger().info('YOLOPv2 ready.')
 
@@ -169,7 +187,10 @@ class Yolopv2LaneNode(Node):
 
         padded, ratio, pad = letterbox(raw)
         img_in = padded[:, :, ::-1].transpose(2, 0, 1).copy()  # BGR -> RGB, HWC -> CHW
-        img_t = torch.from_numpy(img_in).to(self.device).half() / 255.0
+        img_t = torch.from_numpy(img_in).to(self.device)
+        if self.device.type == "cuda":
+            img_t = img_t.half()
+        img_t = img_t / 255.0
         img_t = img_t.unsqueeze(0)
 
         with torch.no_grad():
