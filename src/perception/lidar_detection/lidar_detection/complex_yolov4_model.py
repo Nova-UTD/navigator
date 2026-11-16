@@ -67,7 +67,7 @@ class ComplexYOLOv4Model():
             lidar_np['x'].flatten(), 
             lidar_np['y'].flatten(), 
             lidar_np['z'].flatten(), 
-            lidar_np['reflectivity'].flatten()])
+            lidar_np['intensity'].flatten()])
         # Tranforms array to shape [n, (x y z r)]
         lidar_pcd = np.transpose(lidar_pcd)
         lidar_pcd[:, 3] /= 255.0 # Normalizes refl.

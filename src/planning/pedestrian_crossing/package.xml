@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>pedestrian_crossing</name>
+  <version>0.1.0</version>
+  <description>
+    Detects pedestrians on or approaching the vehicle's planned route and
+    publishes TTC-based status signals for behavioral integration.
+    Decision-only: publishes status, takes no vehicle control authority.
+  </description>
+
+  <maintainer email="axd240055@utdallas.edu">Anirudh Devatha</maintainer>
+  <license>MIT</license>
+
+  <depend>rclpy</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>tf2_ros</depend>
+
+  <exec_depend>navigator_msgs</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
+  <!-- Optional camera-matching layer only; the node degrades cleanly without it. -->
+  <exec_depend>image_geometry</exec_depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
