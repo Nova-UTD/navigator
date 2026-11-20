@@ -20,6 +20,7 @@ from std_msgs.msg import String
 from geometry_msgs.msg import Pose
 
 import math
+from collections import deque
 import numpy as np
 from typing import Optional, Tuple
 
@@ -55,7 +56,8 @@ class AutonomousCruiseController(Node):
             min_lookahead=self.min_lookahead,
             max_lookahead=self.max_lookahead,
             lookahead_gain=self.lookahead_gain,
-            max_steer=self.max_steer
+            max_steer=self.max_steer,
+            rear_axle_offset=self.rear_axle_offset
         )
 
         self.longitudinal_controller = AdaptiveLongitudinalController(
@@ -77,12 +79,21 @@ class AutonomousCruiseController(Node):
 
         # State variables
         self.current_path: Optional[Path] = None
+        self.path_received_time: Optional[float] = None  # s, this node's clock
         self.current_odom: Optional[Odometry] = None
         self.current_objects: Optional[Object3DArray] = None
         self.current_speed: float = 0.0
         self.intersection_action: str = 'Proceed'  # 'Wait' = stop, 'Proceed' = go
         self.traffic_light_red: bool = False
-        self.lidar_obstacle_distance: float = float('inf')  # m to nearest forward obstacle
+        self.lidar_obstacle_distance: float = float('inf')  # m from front bumper to nearest obstacle in our way
+        self.route_local: Optional[np.ndarray] = None  # (N, 2) route points around the car, base_link
+        self.obstacle_distance: Optional[float] = None  # last obstacle distance, dead-reckoned through dropouts
+        self.obstacle_seen_time: float = 0.0
+        self.stopped_for_obstacle = False
+        self.obstacle_clear_since: Optional[float] = None
+        self.obstacle_brake = 0.0
+        self.lidar_hits = 0  # consecutive LiDAR frames with an obstacle in the way
+        self.obstacle_history = deque()  # (time s, obstacle distance m), last RECEDE_WINDOW
         self.last_control_time = self.get_clock().now()
         self.enabled = True
 
@@ -148,6 +159,14 @@ class AutonomousCruiseController(Node):
             qos_best_effort
         )
 
+        # Route around the car (base_link), used to follow the lane past the end of the path
+        self.route_local_sub = self.create_subscription(
+            Path,
+            '/planning/route_local',
+            self.route_local_callback,
+            1
+        )
+
         # Publishers
         self.control_pub = self.create_publisher(
             VehicleControl,
@@ -189,6 +208,7 @@ class AutonomousCruiseController(Node):
 
         # Vehicle parameters
         self.declare_parameter('wheelbase', 2.875)
+        self.declare_parameter('rear_axle_offset', 1.4)  # m behind base_link (vehicle centre)
 
         # Lateral control parameters
         self.declare_parameter('min_lookahead', 3.0)
@@ -207,6 +227,9 @@ class AutonomousCruiseController(Node):
         self.declare_parameter('max_throttle', 0.75)
         self.declare_parameter('max_brake', 1.0)
         self.declare_parameter('integral_limit', 5.0)
+
+        # LiDAR braking: distance from the LiDAR (vehicle centre) to the front bumper
+        self.declare_parameter('front_bumper_offset', 2.4)
 
         # Adaptive cruise parameters
         self.declare_parameter('time_gap', 1.5)
@@ -228,6 +251,7 @@ class AutonomousCruiseController(Node):
 
         # Vehicle parameters
         self.wheelbase = self.get_parameter('wheelbase').value
+        self.rear_axle_offset = self.get_parameter('rear_axle_offset').value
 
         # Lateral control parameters
         self.min_lookahead = self.get_parameter('min_lookahead').value
@@ -246,6 +270,7 @@ class AutonomousCruiseController(Node):
         self.max_throttle = self.get_parameter('max_throttle').value
         self.max_brake = self.get_parameter('max_brake').value
         self.integral_limit = self.get_parameter('integral_limit').value
+        self.front_bumper_offset = self.get_parameter('front_bumper_offset').value
 
         # Adaptive cruise parameters
         self.time_gap = self.get_parameter('time_gap').value
@@ -265,6 +290,7 @@ class AutonomousCruiseController(Node):
             msg: Path message from path planner.
         """
         self.current_path = msg
+        self.path_received_time = self.get_clock().now().nanoseconds / 1e9
         self.lateral_controller.set_path(msg)
 
         self.get_logger().debug(
@@ -304,8 +330,44 @@ class AutonomousCruiseController(Node):
     def traffic_light_callback(self, msg: String):
         self.traffic_light_red = (msg.data == "Red")
 
+    def route_local_callback(self, msg: Path):
+        if len(msg.poses) < 2:
+            self.route_local = None
+            return
+        self.route_local = np.array([[p.pose.position.x, p.pose.position.y] for p in msg.poses])
+
+    def _path_continuation(self, end_x: float, end_y: float, heading: float, length: float) -> np.ndarray:
+        """Points continuing `length` metres past the end of the path.
+
+        The planner ends the path just before anything it treats as an obstacle (e.g. a stopped
+        car), so the obstacle itself is past the path's end. Follow the route from there, since it
+        keeps following the lane through turns; fall back to the path's last heading without it.
+        """
+        route = self.route_local
+        if route is not None:
+            k = int(np.argmin(np.hypot(route[:, 0] - end_x, route[:, 1] - end_y)))
+            if np.hypot(route[k, 0] - end_x, route[k, 1] - end_y) < 2.0:
+                ahead = route[k:]
+                seg = np.hypot(np.diff(ahead[:, 0]), np.diff(ahead[:, 1]))
+                travelled = np.concatenate([[0.0], np.cumsum(seg)])
+                return ahead[travelled <= length]
+        ext = np.arange(0.5, length + 0.01, 0.5)
+        return np.stack([end_x + ext * np.cos(heading), end_y + ext * np.sin(heading)], axis=1)
+
     def lidar_callback(self, msg: PointCloud2):
-        """Scan ground-segmented LiDAR for obstacles on the planned path only."""
+        """Scan ground-segmented LiDAR for obstacles in the way of the planned path.
+
+        Only points within PATH_HALF_WIDTH of the path, or of its continuation along the route
+        just past its end, count; anything else the LiDAR sees (parked cars, buildings on a turn)
+        is ignored. The distance is measured along the path from the front bumper, so on a turn an
+        obstacle around the corner is as far away as the drive to it, not its straight-line x.
+        """
+        LOOK_AHEAD = 20.0      # m from the LiDAR
+        PATH_HALF_WIDTH = 1.0  # m — ego half-width plus a little margin
+        CONTINUATION = 6.0     # m — the planner stops the path ~1-2 m short of an obstacle
+        MIN_POINTS = 5
+        CONFIRM_FRAMES = 2     # a one-frame blip (curb, pole at a corner) must not slam the brakes
+
         if msg.width == 0 or msg.point_step == 0:
             return
         step = msg.point_step // 4
@@ -316,13 +378,10 @@ class AutonomousCruiseController(Node):
         ys = raw[1::step]
         zs = raw[2::step]
 
-        # Pre-filter: ahead of bumper, not too far, above ground
-        # Near-field floor kept below STOP_DIST=2.0m: the old 2.5m cutoff
-        # made obstacles between 2.0-2.5m invisible, so the controller saw
-        # 'no obstacle' and re-accelerated into whatever it had just stopped
-        # for. 0.5m still excludes ego-vehicle/hood returns.
-        pre = (xs > 0.5) & (xs < 20.0) & (zs > 0.3)
+        # Pre-filter: ahead of the LiDAR, not too far, above ground. 0.5 m excludes ego returns.
+        pre = (xs > 0.5) & (xs < LOOK_AHEAD) & (zs > 0.3)
         if not pre.any():
+            self.lidar_hits = 0
             self.lidar_obstacle_distance = float('inf')
             return
         xs_f, ys_f = xs[pre], ys[pre]
@@ -331,18 +390,33 @@ class AutonomousCruiseController(Node):
         if path is not None and len(path.poses) > 1:
             wx = np.array([p.pose.position.x for p in path.poses])
             wy = np.array([p.pose.position.y for p in path.poses])
-            ahead = (wx > 1.0) & (wx < 20.0)
-            if ahead.any():
-                wx, wy = wx[ahead], wy[ahead]
-                dx = xs_f[:, None] - wx[None, :]
-                dy = ys_f[:, None] - wy[None, :]
-                on_path = np.sqrt(dx**2 + dy**2).min(axis=1) < 0.6
-                self.lidar_obstacle_distance = float(xs_f[on_path].min()) if on_path.sum() >= 5 else float('inf')
-                return
+            ahead = (wx > 0.0) & (wx < LOOK_AHEAD)
+            wx, wy = wx[ahead], wy[ahead]
+            if len(wx) == 0:
+                wx, wy = np.array([0.0]), np.array([0.0])
+            heading = np.arctan2(wy[-1] - wy[-2], wx[-1] - wx[-2]) if len(wx) >= 2 else 0.0
+            cont = self._path_continuation(wx[-1], wy[-1], heading, CONTINUATION)
+            wx = np.concatenate([[0.0], wx, cont[:, 0]])
+            wy = np.concatenate([[0.0], wy, cont[:, 1]])
+            arc = np.concatenate([[0.0], np.cumsum(np.hypot(np.diff(wx), np.diff(wy)))])
+            dx = xs_f[:, None] - wx[None, :]
+            dy = ys_f[:, None] - wy[None, :]
+            dist = np.sqrt(dx**2 + dy**2)
+            in_way = dist.min(axis=1) < PATH_HALF_WIDTH
+            along = arc[dist.argmin(axis=1)]  # distance along the path to each point
+        else:
+            # No path: straight corridor
+            in_way = np.abs(ys_f) < PATH_HALF_WIDTH
+            along = xs_f
 
-        # Fallback: tight rectangular corridor when no path available
-        mask = (np.abs(ys_f) < 0.9)
-        self.lidar_obstacle_distance = float(xs_f[mask].min()) if mask.sum() >= 5 else float('inf')
+        if in_way.sum() >= MIN_POINTS:
+            self.lidar_hits += 1
+        else:
+            self.lidar_hits = 0
+        if self.lidar_hits >= CONFIRM_FRAMES:
+            self.lidar_obstacle_distance = max(float(along[in_way].min()) - self.front_bumper_offset, 0.0)
+        else:
+            self.lidar_obstacle_distance = float('inf')
 
     def control_loop(self):
         """Main control loop executed at control_rate Hz."""
@@ -372,6 +446,16 @@ class AutonomousCruiseController(Node):
         dt = (current_time - self.last_control_time).nanoseconds / 1e9
         self.last_control_time = current_time
 
+        # The path is in base_link at the time it was planned. If the planner has stopped
+        # publishing (no route through, lane blocked right ahead) it no longer matches where we
+        # are, so steering along it drives off the road: stop instead.
+        PATH_TIMEOUT = 1.0  # s
+        STALE_PATH_BRAKE = 0.4
+        if current_time.nanoseconds / 1e9 - self.path_received_time > PATH_TIMEOUT:
+            self.get_logger().warn('Path is stale, stopping', throttle_duration_sec=2.0)
+            self._publish_stop(STALE_PATH_BRAKE)
+            return
+
         # Extract current state
         current_pose = self.current_odom.pose.pose
         current_speed = self.current_speed
@@ -382,18 +466,61 @@ class AutonomousCruiseController(Node):
             current_speed
         )
 
-        # LiDAR-based speed limit — scale down as obstacle approaches
-        SLOW_DIST = 7.0   # m — begin decelerating
-        STOP_DIST = 2.0   # m — full stop
-        CREEP = 1.0       # m/s — minimum speed while obstacle present (lets planner replan)
-        d = self.lidar_obstacle_distance
-        if d < STOP_DIST:
-            self.longitudinal_controller.target_speed = 0.0
-        elif d < SLOW_DIST:
-            ratio = (d - STOP_DIST) / (SLOW_DIST - STOP_DIST)
-            self.longitudinal_controller.target_speed = max(CREEP, self.target_speed * ratio)
+        # LiDAR-based speed limit: ease down to a stop STOP_GAP short of an obstacle in our way.
+        # Distances are from the front bumper (see lidar_callback).
+        STOP_GAP = 4.0         # m — where we come to rest behind the obstacle
+        COMFORT_DECEL = 1.0    # m/s^2 — deceleration the approach is planned around
+        FULL_BRAKE_DECEL = 6.0  # m/s^2 — rough deceleration at brake = 1.0, maps decel to brake
+        BRAKE_RATE = 0.8       # brake units per second — how fast the brake pedal may move
+        URGENT_DECEL = 2.5     # m/s^2 — above this, brake at once instead of easing in
+        MEMORY = 0.6           # s — bridge a couple of dropped LiDAR frames (~3-4 Hz), no longer
+        FRESH = 0.5            # s — only a detection this recent can latch a stop
+        APPROACH_THROTTLE = 0.3  # max throttle while an obstacle is limiting our speed
+        LATCH_GAP = STOP_GAP + 2.0  # m — stopped with an obstacle this close: stay stopped, don't creep up
+        RELEASE_GAP = LATCH_GAP + 0.5  # m — obstacle must be this far (or gone) to drive off again
+        RELEASE_TIME = 1.5     # s — ...for this long
+        RECEDE_WINDOW = 1.0    # s — an obstacle whose distance grew by more than...
+        RECEDE_MIN = 0.3       # m — ...this over the last RECEDE_WINDOW is pulling away
+        now_s = current_time.nanoseconds / 1e9
+
+        # Obstacle distance (along the path), dead-reckoned through a dropped frame or two so a
+        # single miss does not read as "road clear" and make the car lurch forward.
+        if np.isfinite(self.lidar_obstacle_distance):
+            self.obstacle_distance = self.lidar_obstacle_distance
+            self.obstacle_seen_time = now_s
+        elif self.obstacle_distance is not None and now_s - self.obstacle_seen_time < MEMORY:
+            self.obstacle_distance = max(self.obstacle_distance - current_speed * dt, 0.0)
         else:
-            self.longitudinal_controller.target_speed = self.target_speed
+            self.obstacle_distance = None
+        d = self.obstacle_distance if self.obstacle_distance is not None else float('inf')
+
+        # Once stopped for an obstacle we actually still see, stay stopped until it has cleared.
+        # This includes stopping a little short of STOP_GAP in front of something that is not
+        # moving away (creeping the last metre or two up to a stopped car is not worth the
+        # stop-start); a slow car we are following, pulling away, is just followed.
+        fresh = np.isfinite(d) and now_s - self.obstacle_seen_time < FRESH
+        self.obstacle_history.append((now_s, d))
+        while self.obstacle_history and now_s - self.obstacle_history[0][0] > RECEDE_WINDOW:
+            self.obstacle_history.popleft()
+        closest_recent = min(dist for _, dist in self.obstacle_history)
+        receding = np.isfinite(d) and d - closest_recent > RECEDE_MIN
+        if fresh and current_speed < 0.3 and (d <= STOP_GAP + 0.5 or (d <= LATCH_GAP and not receding)):
+            self.stopped_for_obstacle = True
+        if self.stopped_for_obstacle:
+            if d > RELEASE_GAP:
+                if self.obstacle_clear_since is None:
+                    self.obstacle_clear_since = now_s
+                elif now_s - self.obstacle_clear_since > RELEASE_TIME:
+                    self.stopped_for_obstacle = False
+            else:
+                self.obstacle_clear_since = None
+
+        # Fastest speed from which COMFORT_DECEL still stops us at STOP_GAP.
+        allowed_speed = np.sqrt(2.0 * COMFORT_DECEL * max(d - STOP_GAP, 0.0)) if np.isfinite(d) else float('inf')
+        if self.stopped_for_obstacle:
+            self.longitudinal_controller.target_speed = 0.0
+        else:
+            self.longitudinal_controller.target_speed = min(self.target_speed, allowed_speed)
 
         # Longitudinal control (throttle/brake)
         throttle, brake, target_speed = (
@@ -403,6 +530,37 @@ class AutonomousCruiseController(Node):
                 dt
             )
         )
+
+        # Brake for the obstacle directly: the deceleration needed to stop at STOP_GAP, with the
+        # pedal moving at most BRAKE_RATE per second so the stop is smooth rather than stop-start.
+        urgent = False
+        if self.stopped_for_obstacle or d <= STOP_GAP:
+            wanted_brake = self.max_brake if current_speed < 0.3 else min(
+                self.max_brake, COMFORT_DECEL * 2.0 / FULL_BRAKE_DECEL + 0.2)
+        elif np.isfinite(d) and current_speed > allowed_speed:
+            needed_decel = current_speed ** 2 / (2.0 * max(d - STOP_GAP, 0.3))
+            wanted_brake = min(self.max_brake, needed_decel / FULL_BRAKE_DECEL)
+            urgent = needed_decel > URGENT_DECEL  # something appeared close: no time to ease in
+        else:
+            wanted_brake = 0.0
+        if urgent and wanted_brake > self.obstacle_brake:
+            self.obstacle_brake = wanted_brake
+        else:
+            step_limit = BRAKE_RATE * dt
+            self.obstacle_brake += float(np.clip(wanted_brake - self.obstacle_brake, -step_limit, step_limit))
+        if self.obstacle_brake > 0.01:
+            throttle = 0.0
+            brake = max(brake, self.obstacle_brake)
+
+        # While an obstacle is limiting our speed, don't let the PID surge past the allowed speed
+        # (full throttle up, brake, stop, repeat): coast near the limit, gentle throttle below it,
+        # and drop any integral wind-up that would push us forward.
+        if self.stopped_for_obstacle or allowed_speed < self.target_speed:
+            self.longitudinal_controller.integral = min(self.longitudinal_controller.integral, 0.0)
+            if self.stopped_for_obstacle or current_speed >= allowed_speed - 0.2:
+                throttle = 0.0
+            else:
+                throttle = min(throttle, APPROACH_THROTTLE)
 
         # Intersection / traffic light override — stop on red
         if self.intersection_action == 'Wait' or self.traffic_light_red:
@@ -429,6 +587,18 @@ class AutonomousCruiseController(Node):
             brake,
             cross_track_error
         )
+
+    def _publish_stop(self, brake: float):
+        """Publish a braking command with the wheels straight."""
+        control_msg = VehicleControl()
+        control_msg.header.stamp = self.get_clock().now().to_msg()
+        control_msg.header.frame_id = 'base_link'
+        control_msg.throttle = 0.0
+        control_msg.brake = float(brake)
+        control_msg.steer = 0.0
+        control_msg.reverse = False
+
+        self.control_pub.publish(control_msg)
 
     def _publish_zero_control(self):
         """Publish zero control commands (safety fallback)."""
