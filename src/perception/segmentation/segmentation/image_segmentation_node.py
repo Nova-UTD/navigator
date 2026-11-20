@@ -17,7 +17,7 @@ import numpy as np
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from mmseg.apis import inference_model, init_model
-from helpers.gpu import run_model_initializer, select_cuda_device
+from helpers.gpu import load_model_on_best_gpu
 
 # input_topic → output_topic (bridge remaps /carla/hero/rgb_*/image → /cameras/camera*)
 CAMERAS = [
@@ -67,17 +67,12 @@ class ImageSegmentationNode(Node):
 
     def __init__(self):
         super().__init__('image_segmentation_node')
-        device = select_cuda_device(
+        self.model, _ = load_model_on_best_gpu(
+            lambda device: init_model(_CONFIG, _CKPT, device=str(device)),
             caller='image_segmentation_node',
             purpose='loading PSPNet for four-camera semantic segmentation',
             min_free_memory_mb=_MIN_FREE_GPU_MEMORY_MB,
-        )
-        self.get_logger().info(f"Loading PSPNet on {device}…")
-        self.model = run_model_initializer(
-            lambda: init_model(_CONFIG, _CKPT, device=str(device)),
-            device=device,
-            caller='image_segmentation_node',
-            purpose='loading PSPNet for four-camera semantic segmentation',
+            log=self.get_logger().info,
         )
         self.bridge = CvBridge()
         self.get_logger().info('PSPNet ready.')

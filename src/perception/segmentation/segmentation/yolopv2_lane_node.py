@@ -76,7 +76,7 @@ from cv_bridge import CvBridge
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
 from sensor_msgs.msg import Image
-from helpers.gpu import run_model_initializer, select_cuda_device
+from helpers.gpu import load_model_on_best_gpu
 
 from segmentation.yolopv2_preprocessing import letterbox, unletterbox_mask
 
@@ -113,26 +113,22 @@ class Yolopv2LaneNode(Node):
 
     def __init__(self):
         super().__init__('yolopv2_lane_node')
-        self.device = select_cuda_device(
-            caller='yolopv2_lane_node',
-            purpose='loading the YOLOPv2 lane segmentation model',
-            min_free_memory_mb=_MIN_FREE_GPU_MEMORY_MB,
-        )
-        self.get_logger().info(f"Loading YOLOPv2 on {self.device}…")
-
-        def load_yolopv2():
-            model = torch.jit.load(_WEIGHTS)
-            model = model.to(self.device)
-            if self.device.type == "cuda":
+        def load_yolopv2(device):
+            # The TorchScript file records cuda:0 as its device; without
+            # map_location it is restored onto GPU0 before .to() runs.
+            model = torch.jit.load(_WEIGHTS, map_location=device)
+            model = model.to(device)
+            if device.type == "cuda":
                 model = model.half()
             model.eval()
             return model
 
-        self.model = run_model_initializer(
+        self.model, self.device = load_model_on_best_gpu(
             load_yolopv2,
-            device=self.device,
             caller='yolopv2_lane_node',
             purpose='loading the YOLOPv2 lane segmentation model',
+            min_free_memory_mb=_MIN_FREE_GPU_MEMORY_MB,
+            log=self.get_logger().info,
         )
         self.bridge = CvBridge()
         self.get_logger().info('YOLOPv2 ready.')
