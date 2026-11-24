@@ -19,19 +19,16 @@ def draw_odometry(pred_poses):
     plt.plot(-y_pred, x_pred, color='blue')
     plt.show()
 
-def view_map(save_dir):
+def view_map(save_dir, show_trajectory=False):
     local_maps_dir = os.path.join(save_dir, "local_maps")
     poses_file = os.path.join(save_dir, "optimized_poses.txt")
     poses = np.loadtxt(poses_file)
     local_map_files = sorted(glob.glob(local_maps_dir + '/*.ply'))
 
-    poses_pred = []
-    for pose in poses:
-        poses_pred.append(pose.reshape(4,4))
-    
-    draw_odometry(np.array(poses_pred))
-    return
-    
+    if show_trajectory:
+        draw_odometry(np.array([pose.reshape(4, 4) for pose in poses]))
+        return
+
     global_map = []
     for poses_flattened, local_map_path in zip(poses, local_map_files):
         local_map_o3d = o3d.io.read_point_cloud(local_map_path)
@@ -50,9 +47,10 @@ def view_map(save_dir):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('save_dir', help='directory to which contains the map built by SLAM')
+    parser.add_argument('--trajectory', action='store_true', help='plot the 2D trajectory of the local map poses instead of the 3D map')
     args = parser.parse_args()
     save_dir = args.save_dir
     assert os.path.isdir(save_dir)
 
-    view_map(save_dir)
+    view_map(save_dir, show_trajectory=args.trajectory)
     

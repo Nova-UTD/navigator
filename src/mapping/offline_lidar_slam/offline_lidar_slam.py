@@ -84,7 +84,8 @@ def run_offline_slam_pipeline(bag_path, topic_name, save_dir):
         odometry.register_frame(pcd, None)
 
         # downsamples current scan and adds it to the current local map
-        current_frame_pose = odometry.poses[-1]
+        # kiss-icp >= 1.0 only keeps the latest pose (no .poses history)
+        current_frame_pose = odometry.last_pose
         scan_downsample = voxel_down_sample(pcd, kiss_config.mapping.voxel_size * 0.5)
         frame_to_local_map_pose = np.linalg.inv(current_local_map_pose) @ current_frame_pose
         voxel_local_map.add_points(transform_points(scan_downsample, frame_to_local_map_pose))

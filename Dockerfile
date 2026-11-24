@@ -255,16 +255,13 @@ RUN mim install mmsegmentation==1.2.2
 RUN pip3 install setuptools==79.0.1 shapely==2.0.2 ftfy==6.3.1 regex==2025.9.18
 
 
-# install loop closure package "MapClosures"
-# this issue was addressed here: https://github.com/abetlen/llama-cpp-python/issues/707
-# RUN python3 -m pip uninstall -y exceptiongroup
-# RUN sudo apt remove python3-pathspec -y
-# RUN pip3 install --no-cache-dir pathspec yamllint "exceptiongroup<=1.2.0"
-# RUN git clone https://github.com/PRBonn/MapClosures.git
-# WORKDIR MapClosures
-# RUN cmake -B build -S cpp
-# RUN cmake --build build -j8
-# RUN make
+# Loop closure / place recognition package "MapClosures", used by
+# src/mapping/offline_lidar_slam and src/mapping/localization.
+# Pinned to 1.0.1: 2.x replaced the match_and_add() API those scripts use.
+# --no-deps because its requirements (kiss-icp, pydantic, typer, rich, ...)
+# are already installed above, and letting pip resolve them upgrades rich,
+# which breaks the version openxlab (pulled in by openmim) requires.
+RUN pip3 install --no-deps map_closures==1.0.1
 
 WORKDIR /
 

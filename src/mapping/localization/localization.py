@@ -1,8 +1,6 @@
 # utility
-from scipy.spatial.transform import Rotation
 import numpy as np
 import glob
-import matplotlib.pyplot as plt
 from numpy.lib.recfunctions import unstructured_to_structured
 from scipy.spatial.transform import Rotation
 import os
@@ -35,16 +33,22 @@ def transform_points(pcd, T):
     return pcd @ R.T + t
 
 
-class MinimalPublisher(Node):
+class LocalizationNode(Node):
 
     def __init__(self):
-        super().__init__('minimal_publisher')
+        super().__init__('kiss_icp_localization')
+
+        # Directory produced by offline_lidar_slam.py (local_maps/*.ply + optimized_poses.txt)
+        self.map_db_path = self.declare_parameter('map_db_path', '/navigator/data/slam_results/').value
+        self.map_frame = self.declare_parameter('map_frame', 'map').value
+        self.vehicle_frame = self.declare_parameter('vehicle_frame', 'vehicle').value
+
         self.map_publisher = self.create_publisher(PointCloud2, '/local_map', 10)
         self.odom_publisher = self.create_publisher(Odometry, '/vehicle_odom', 10)
-        
+
 
         self.lidar_sub = self.create_subscription(
-            PointCloud2, 
+            PointCloud2,
             '/lidar',
             self.lidar_cb,
             10
@@ -66,18 +70,29 @@ class MinimalPublisher(Node):
         self.map_idx = 0
         self.is_localized = False
 
-        self.map_db_path = '/navigator/data/slam_results/'
         local_maps_dir = os.path.join(self.map_db_path, "local_maps")
         self.local_map_files = sorted(glob.glob(local_maps_dir + '/*.ply'))
         poses_file = os.path.join(self.map_db_path, "optimized_poses.txt")
-        self.local_map_poses = np.loadtxt(poses_file)
+        self.local_map_poses = np.loadtxt(poses_file, ndmin=2)
+        if len(self.local_map_files) == 0 or len(self.local_map_files) != len(self.local_map_poses):
+            raise RuntimeError(
+                f'Map database at {self.map_db_path} has {len(self.local_map_files)} local maps '
+                f'and {len(self.local_map_poses)} poses; expected the same non-zero number. '
+                'Generate it with src/mapping/offline_lidar_slam/offline_lidar_slam.py.')
         self.global_map_downsample = None
         self.load_database()
         self.load_global_map()
 
-        self.map_range = self.closure_config.local_map_factor * self.kiss_config.data.max_range
+        # Distance driven before a query local map is closed and matched against the database.
+        # Keep this equal to map_range in offline_lidar_slam.py so query and database maps
+        # cover the same extent (MapClosures matches their density images).
+        self.map_range = self.declare_parameter('local_map_range', 60.0).value
 
         self.tf_broadcaster = TransformBroadcaster(self)
+
+        # The global map is large and static; publishing it from the lidar callback
+        # serializes the whole cloud every scan and makes odometry fall behind.
+        self.global_map_timer = self.create_timer(1.0, self.publish_global_map)
 
 
     def load_global_map(self):
@@ -137,8 +152,10 @@ class MinimalPublisher(Node):
         frame = rnp.numpify(lidar_msg)
         frame = np.array([ frame['x'].flatten(), frame['y'].flatten(), frame['z'].flatten()]).T
         self.odometry.register_frame(frame, None)
-        current_frame_pose = self.odometry.poses[-1]
-        
+        # kiss-icp >= 1.0 only keeps the latest pose and delta (no .poses history)
+        current_frame_pose = self.odometry.last_pose
+        localized_this_frame = False
+
         # downsamples current frame and adds it to the current local map
         frame_downsample = voxel_down_sample(frame, self.kiss_config.mapping.voxel_size * 0.5)
         frame_to_local_map_pose = np.linalg.inv(self.current_local_map_pose) @ current_frame_pose
@@ -148,17 +165,19 @@ class MinimalPublisher(Node):
 
             # add to database, ignore matching
             local_map_pointcloud = self.voxel_local_map.point_cloud()
-            print(f'map_index: {self.map_idx}')
+            self.get_logger().debug(f'map_index: {self.map_idx}')
             closure = self.map_closures.match_and_add(self.map_idx, local_map_pointcloud)
 
             if closure.number_of_inliers > self.closure_config.inliers_threshold:
                 # only look at matches with the stored map, not the local maps added while localization
-                if closure.source_id < self.num_maps_in_db:   
-                    self.get_logger().info(f'Localized!!!')
+                if closure.source_id < self.num_maps_in_db:
+                    self.get_logger().info(
+                        f'Localized against map {closure.source_id} ({closure.number_of_inliers} inliers)')
                     self.initial_odometry_pose = self.current_local_map_pose
                     localized_pose = self.get_localized_pose(closure.pose, closure.source_id, local_map_pointcloud)
                     self.localized_pose = localized_pose @ frame_to_local_map_pose
-                    self.is_localized = True                        
+                    self.is_localized = True
+                    localized_this_frame = True
 
             # start a new local map initialized with most recent frame's pose as origin
             self.voxel_local_map.remove_far_away_points(frame_to_local_map_pose[:3, -1])
@@ -169,18 +188,13 @@ class MinimalPublisher(Node):
 
             self.current_local_map_pose = np.copy(current_frame_pose)
             self.map_idx += 1
-    
-
-        # publish global map
-        global_map_msg: PointCloud2 = rnp.msgify(PointCloud2, self.global_map_downsample)
-        global_map_msg.header.stamp = self.get_clock().now().to_msg()
-        global_map_msg.header.frame_id = 'map'
-        self.map_publisher.publish(global_map_msg)
 
 
         if self.is_localized:
-            relative_transform = np.linalg.inv(self.odometry.poses[-2]) @ self.odometry.poses[-1]
-            self.localized_pose = self.localized_pose @ relative_transform
+            # localized_pose already corresponds to this scan when we just localized;
+            # otherwise propagate it with the latest odometry increment.
+            if not localized_this_frame:
+                self.localized_pose = self.localized_pose @ self.odometry.last_delta
 
             current_pose = self.localized_pose
 
@@ -189,17 +203,17 @@ class MinimalPublisher(Node):
             pose.position.x, pose.position.y, pose.position.z = current_pose[:3, -1]
             pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w = Rotation.from_matrix(current_pose[:3, :3]).as_quat()
             odom_msg: Odometry = Odometry()
-            odom_msg.child_frame_id = 'vehicle'
-            odom_msg.header.stamp = self.get_clock().now().to_msg()
-            odom_msg.header.frame_id = 'map'
+            odom_msg.child_frame_id = self.vehicle_frame
+            odom_msg.header.stamp = lidar_msg.header.stamp
+            odom_msg.header.frame_id = self.map_frame
             odom_msg.pose.pose = pose
             self.odom_publisher.publish(odom_msg)
 
             # publish transform from vehicle to map
             t = TransformStamped()
-            t.header.stamp = self.get_clock().now().to_msg()
-            t.header.frame_id = 'map'
-            t.child_frame_id = 'vehicle'
+            t.header.stamp = lidar_msg.header.stamp
+            t.header.frame_id = self.map_frame
+            t.child_frame_id = self.vehicle_frame
 
             t.transform.translation.x = current_pose[0, -1]
             t.transform.translation.y = current_pose[1, -1]
@@ -214,18 +228,25 @@ class MinimalPublisher(Node):
             self.tf_broadcaster.sendTransform(t)
 
 
+    def publish_global_map(self):
+        global_map_msg: PointCloud2 = rnp.msgify(PointCloud2, self.global_map_downsample)
+        global_map_msg.header.stamp = self.get_clock().now().to_msg()
+        global_map_msg.header.frame_id = self.map_frame
+        self.map_publisher.publish(global_map_msg)
+
+
 def main(args=None):
     rclpy.init(args=args)
 
-    minimal_publisher = MinimalPublisher()
+    node = LocalizationNode()
 
-    rclpy.spin(minimal_publisher)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    minimal_publisher.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':
