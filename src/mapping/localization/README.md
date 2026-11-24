@@ -39,6 +39,7 @@ Dependencies (`kiss-icp==1.0.0`, `map_closures==1.0.1`, `open3d`, `g2o-python`, 
    | `local_map_range` | `60.0` | Metres driven before a query local map is matched. Keep equal to `map_range` in `offline_lidar_slam.py`. |
    | `map_frame` | `map` | Frame of the published pose and global map |
    | `vehicle_frame` | `vehicle` | Child frame of the published pose / TF |
+   | `icp_max_correspondence_distance` | `0.02` | Max correspondence distance (m) of the ICP that refines a MapClosures match. Values from 0.25 to 2.0 made no measurable difference in CARLA. |
 
    Publishes `/vehicle_odom` (`nav_msgs/Odometry`), TF `map_frame -> vehicle_frame`, and the downsampled global map on `/local_map` at 1 Hz.
 
@@ -46,4 +47,24 @@ Dependencies (`kiss-icp==1.0.0`, `map_closures==1.0.1`, `open3d`, `g2o-python`, 
 
 - The pose is in the frame of the SLAM map, whose origin is the lidar pose at the first scan of the mapping bag. It is not yet aligned with the stack's GNSS-based `map` frame, and it is the lidar's pose, not `base_link`'s.
 - No pose is published until the first successful match, i.e. after driving at least `local_map_range` metres.
-- Offline replay on the CARLA bag `/storage/bags/2025/rosbag2_2025_05_14-16_45_40` (349 m drive, map built from the same bag, 5 local maps): started at 0 m, 63 m and 125 m into the drive, the node localized within 1-2 query maps and then tracked `/carla/hero/gnss_gt` with 0.26-0.39 m RMSE (max 1.2 m) after a rigid alignment, at ~63 ms per scan. Started 190 m or more into the drive it did not localize: matches only succeed when a query map roughly lines up with a database map, and the last partial local map is not saved by `offline_lidar_slam.py`, so the end of the route is not covered. The shifting-window suggestion above would address this.
+- Matches only succeed when a query map roughly lines up with a database map, and the last partial local map is not saved by `offline_lidar_slam.py`, so the end of a mapped route is not covered. The shifting-window suggestion above would address both.
+
+## CARLA test results
+
+Live test (Town02, CARLA 0.9.13, `carla_interface` lidar on `/lidar`, synchronous mode at 0.2 s, no traffic). The ego vehicle was driven with CARLA's `BasicAgent` around a fixed 1.84 km loop:
+
+1. Mapping drive from one corner of the loop, recorded and run through `offline_lidar_slam.py` (26 local maps, loop closures found).
+2. A separate localization drive of the same loop, starting from the opposite corner, with this node running live against that map.
+
+Errors are against CARLA's true vehicle pose, with the SLAM map frame placed at the true pose of the first mapping scan (no fitting).
+
+| | Localization drive (live) | Mapping drive replayed against its own map |
+| --- | --- | --- |
+| First fix after | 71.5 m (22 s), from an unknown start | 62.3 m |
+| Scans with a published pose after the first fix | 2160 / 2161 | 2186 / 2186 |
+| Position error RMSE / median / p95 / max | 1.18 / 0.97 / 2.08 / 2.68 m | 1.23 / 0.93 / 2.17 / 4.27 m |
+| Cross-track / along-track RMSE | 0.96 / 0.71 m | |
+
+A separate drive localizes as accurately as the data the map was built from, so the remaining ~1 m error comes from distortion in the SLAM map over the 1.8 km loop rather than from the localization. Improving the map (e.g. GNSS priors in the pose graph, scan deskewing) is the next lever. Corrections at each relocalization jump the pose by up to ~3 m. The CARLA lidar has no noise, so expect worse numbers on a real vehicle.
+
+An earlier offline replay of the CARLA bag `/storage/bags/2025/rosbag2_2025_05_14-16_45_40` (349 m drive, map from the same bag, 5 local maps) gave 0.26-0.39 m RMSE after a rigid alignment, at ~63 ms per scan; the shorter map has less room to drift.

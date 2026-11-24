@@ -42,6 +42,9 @@ class LocalizationNode(Node):
         self.map_db_path = self.declare_parameter('map_db_path', '/navigator/data/slam_results/').value
         self.map_frame = self.declare_parameter('map_frame', 'map').value
         self.vehicle_frame = self.declare_parameter('vehicle_frame', 'vehicle').value
+        # Max correspondence distance (m) of the ICP that refines a MapClosures match.
+        self.icp_max_correspondence_distance = self.declare_parameter(
+            'icp_max_correspondence_distance', 0.02).value
 
         self.map_publisher = self.create_publisher(PointCloud2, '/local_map', 10)
         self.odom_publisher = self.create_publisher(Odometry, '/vehicle_odom', 10)
@@ -139,7 +142,7 @@ class LocalizationNode(Node):
         query_pcd.points = o3d.utility.Vector3dVector(local_map_pcd)
 
         p2p_icp_reg = o3d.pipelines.registration.registration_icp(
-            ref_pcd, query_pcd, 0.02, pose_estimate, 
+            ref_pcd, query_pcd, self.icp_max_correspondence_distance, pose_estimate,
             o3d.pipelines.registration.TransformationEstimationPointToPoint()  
         )
 
