@@ -45,7 +45,7 @@ Dependencies (`kiss-icp==1.0.0`, `map_closures==1.0.1`, `open3d`, `g2o-python`, 
 
 ## Notes
 
-- The pose is in the frame of the SLAM map, whose origin is the lidar pose at the first scan of the mapping bag. It is not yet aligned with the stack's GNSS-based `map` frame, and it is the lidar's pose, not `base_link`'s.
+- The pose is in the frame of the SLAM map, whose origin is the pose at the first scan of the mapping bag. It is not yet aligned with the stack's GNSS-based `map` frame. It is the pose of the frame the `/lidar` points are expressed in (`base_link` for `carla_interface`, which shifts the cloud from the sensor to `base_link`).
 - No pose is published until the first successful match, i.e. after driving at least `local_map_range` metres.
 - Matches only succeed when a query map roughly lines up with a database map, and the last partial local map is not saved by `offline_lidar_slam.py`, so the end of a mapped route is not covered. The shifting-window suggestion above would address both.
 
