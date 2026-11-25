@@ -1,0 +1,11 @@
+pedestrian_costmap_node:
+  ros__parameters:
+    publish_rate_hz: 15.0        # Hz — timer-driven publish rate of /grid/pedestrian
+    d_max_m: 10.0                # m — gap-to-road-edge at which a pedestrian stops
+                                 #     contributing cost (distance 0 -> cost 100)
+    inflation_radius_m: 0.8      # m — painted disk radius (footprint + safety pad)
+
+# NOTE: cam_offset_x / cam_offset_y are NOT here — they configure the monocular
+# projection, which runs in the producer node (pedestrian_intent_to_enter_road),
+# not this costmap node. Set them there (default 0.0) from the measured
+# camera->base_link mount before the layer is wired live (Phase 3, spec 11.2).
